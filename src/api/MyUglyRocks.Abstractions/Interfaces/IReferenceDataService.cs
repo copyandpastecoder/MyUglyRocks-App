@@ -33,4 +33,7 @@ public interface IReferenceDataService
     Task<MaterialDetailDto> CreateMaterialAsync(CreateMaterialRequest request);
     Task<MaterialDetailDto> UpdateMaterialAsync(Guid id, UpdateMaterialRequest request);
     Task DeleteMaterialAsync(Guid id);
+
+    // Barrel Nicknames (public)
+    Task<IEnumerable<string>> GetBarrelNicknamesAsync();
 }

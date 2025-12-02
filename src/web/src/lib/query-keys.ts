@@ -58,6 +58,11 @@ export const queryKeys = {
     detail: (id: string) => [...queryKeys.materials.details(), id] as const,
   },
 
+  barrelNicknames: {
+    all: ['barrelNicknames'] as const,
+    list: () => [...queryKeys.barrelNicknames.all, 'list'] as const,
+  },
+
   // Posts/Gallery (medium cache, matches backend Redis cache)
   posts: {
     all: ['posts'] as const,

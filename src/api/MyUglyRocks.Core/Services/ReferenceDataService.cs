@@ -15,6 +15,7 @@ public class ReferenceDataService : IReferenceDataService
     private const string SpecimenCacheKeyPrefix = "specimens:";
     private const string MaterialsCacheKey = "materials:all";
     private const string MaterialCacheKeyPrefix = "materials:";
+    private const string BarrelNicknamesCacheKey = "barrel-nicknames:all";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromHours(1);
 
     public ReferenceDataService(DbContext context, ICacheService cache)
@@ -446,6 +447,26 @@ public class ReferenceDataService : IReferenceDataService
         // Invalidate materials cache
         await _cache.RemoveAsync(MaterialsCacheKey);
         await _cache.RemoveAsync($"{MaterialCacheKeyPrefix}{id}");
+    }
+
+    #endregion
+
+    #region Barrel Nicknames
+
+    public async Task<IEnumerable<string>> GetBarrelNicknamesAsync()
+    {
+        var cached = await _cache.GetAsync<List<string>>(BarrelNicknamesCacheKey);
+        if (cached != null)
+            return cached;
+
+        var nicknames = await _context.Set<BarrelNickname>()
+            .Where(n => n.IsActive)
+            .Select(n => n.Name)
+            .OrderBy(n => n)
+            .ToListAsync();
+
+        await _cache.SetAsync(BarrelNicknamesCacheKey, nicknames, CacheDuration);
+        return nicknames;
     }
 
     #endregion

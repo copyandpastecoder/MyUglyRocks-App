@@ -32,7 +32,7 @@ public static class MappingConfig
 
         // Barrel mappings
         TypeAdapterConfig<Barrel, BarrelDto>.NewConfig()
-            .Map(dest => dest.IsMounted, src => src.StageRunBarrels.Any(srb => srb.StageRun.Status == StageRunStatus.Active));
+            .Map(dest => dest.IsMounted, src => src.StageRunBarrels.Any(srb => srb.StageRun != null && srb.StageRun.Status == StageRunStatus.Active));
 
         TypeAdapterConfig<CreateBarrelRequest, Barrel>.NewConfig()
             .Ignore(dest => dest.Id)
@@ -70,7 +70,7 @@ public static class MappingConfig
             .Map(dest => dest.WaterLevel, src => src.WaterLevel != null ? src.WaterLevel.ToString() : null)
             .Map(dest => dest.NextAction, src => src.NextAction != null ? src.NextAction.ToString() : null)
             .Map(dest => dest.Materials, src => src.StageMaterials)
-            .Map(dest => dest.Barrels, src => src.StageRunBarrels.Select(srb => srb.Barrel));
+            .Map(dest => dest.Barrels, src => src.StageRunBarrels.Where(srb => srb.Barrel != null).Select(srb => srb.Barrel));
 
         TypeAdapterConfig<StageRun, StageRunSummaryDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString());
@@ -107,10 +107,10 @@ public static class MappingConfig
 
         // Material mappings
         TypeAdapterConfig<StageMaterial, StageMaterialDto>.NewConfig()
-            .Map(dest => dest.MaterialName, src => src.Material.CommonName);
+            .Map(dest => dest.MaterialName, src => src.Material != null ? src.Material.CommonName : null);
 
         TypeAdapterConfig<CleaningMaterial, CleaningMaterialDto>.NewConfig()
-            .Map(dest => dest.MaterialName, src => src.Material.CommonName);
+            .Map(dest => dest.MaterialName, src => src.Material != null ? src.Material.CommonName : null);
 
         TypeAdapterConfig<Material, MaterialDto>.NewConfig()
             .Map(dest => dest.Category, src => src.Category.ToString())

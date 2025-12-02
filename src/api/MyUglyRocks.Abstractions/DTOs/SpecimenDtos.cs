@@ -22,6 +22,8 @@ public record SpecimenListDto
 {
     public Guid Id { get; init; }
     public required string CommonName { get; init; }
+    public string? Alias { get; init; }
+    public string? Variety { get; init; }
     public string? RockFamily { get; init; }
     public string MaterialType { get; init; } = "Rock";
     public decimal? MohsHardnessMin { get; init; }

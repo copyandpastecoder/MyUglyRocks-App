@@ -538,7 +538,9 @@ When creating a new cycle, users can start from scratch or use a template.
 
 ### 5.3 Desktop Layout (Cycle Form)
 
-**Field Order:** Specimens → Start Date → (Auto-populated) Cycle Name → Goal → Tags → Notes
+**Field Order:** Start Date → Rocks/Specimens → Other Specimens → Cycle Name → Notes
+
+**Validation:** At least one of Rocks/Specimens or Other Specimens must have a value.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
@@ -549,30 +551,42 @@ When creating a new cycle, users can start from scratch or use a template.
 │                                                                                 │
 │   ┌─────────────────────────────────────────────────────────────────────────┐  │
 │   │                                                                          │  │
-│   │   New Cycle                                                              │  │
-│   │                                                                          │  │
-│   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
-│   │   │ Specimens *                                                ⓘ    │   │  │
-│   │   │ ┌─────────────────────────────────────────────────────────────┐ │   │  │
-│   │   │ │ 🔍 Search by name or alias...                            ▼  │ │   │  │
-│   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
-│   │   │                                                                  │   │  │
-│   │   │ Selected:                                                        │   │  │
-│   │   │ ┌──────────────────────┐  ┌──────────────────────┐              │   │  │
-│   │   │ │ Lake Superior Agate ✕│  │ Banded Agate       ✕│              │   │  │
-│   │   │ │ Mohs: 6.5-7          │  │ Mohs: 6.5-7          │              │   │  │
-│   │   │ └──────────────────────┘  └──────────────────────┘              │   │  │
-│   │   │                                                                  │   │  │
-│   │   │ ⚠️ Hardness Warning: Consider separating specimens with very    │   │  │
-│   │   │    different hardness levels.                                    │   │  │
-│   │   └─────────────────────────────────────────────────────────────────┘   │  │
+│   │   Start New Cycle                                                        │  │
+│   │   Begin tracking a new tumbling cycle                                    │  │
 │   │                                                                          │  │
 │   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
 │   │   │ Start Date *                                               ⓘ    │   │  │
 │   │   │ ┌─────────────────────────────────────────────────────────────┐ │   │  │
 │   │   │ │ January 15, 2025                                       [📅] │ │   │  │
 │   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
-│   │   │ Date displayed in your preferred format (Settings > Date Format) │   │  │
+│   │   │ The date your first tumbling stage begins                        │   │  │
+│   │   └─────────────────────────────────────────────────────────────────┘   │  │
+│   │                                                                          │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
+│   │   │ Rocks/Specimens *                                          ⓘ    │   │  │
+│   │   │ ┌─────────────────────────────────────────────────────────────┐ │   │  │
+│   │   │ │ Select specimens from the list...                        ▼  │ │   │  │
+│   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
+│   │   │                                                                  │   │  │
+│   │   │ ┌────────────────────────┐  ┌────────────────────────┐          │   │  │
+│   │   │ │ Lake Superior Agate (7)✕│  │ Banded Agate (7)     ✕│          │   │  │
+│   │   │ └────────────────────────┘  └────────────────────────┘          │   │  │
+│   │   │                                                                  │   │  │
+│   │   │ Select the types of rocks you're tumbling. Search by name,       │   │  │
+│   │   │ alias, variety, or family.                                       │   │  │
+│   │   │                                                                  │   │  │
+│   │   │ ⚠️ Hardness Warning: Selected specimens have a hardness          │   │  │
+│   │   │    difference of 2 (range: 5 - 7). Tumbling rocks with more      │   │  │
+│   │   │    than 1 point difference may damage softer specimens.          │   │  │
+│   │   └─────────────────────────────────────────────────────────────────┘   │  │
+│   │                                                                          │  │
+│   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
+│   │   │ Other Specimens *                                                │   │  │
+│   │   │ ┌─────────────────────────────────────────────────────────────┐ │   │  │
+│   │   │ │ Any specimens not in the list above...                      │ │   │  │
+│   │   │ │                                                             │ │   │  │
+│   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
+│   │   │ Add any additional rocks not found in the dropdown               │   │  │
 │   │   └─────────────────────────────────────────────────────────────────┘   │  │
 │   │                                                                          │  │
 │   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
@@ -580,26 +594,7 @@ When creating a new cycle, users can start from scratch or use a template.
 │   │   │ ┌─────────────────────────────────────────────────────────────┐ │   │  │
 │   │   │ │ Lake Superior Agate, Banded Agate - 01/15/2025             │ │   │  │
 │   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
-│   │   │ ✨ Auto-generated from specimens + date. Edit to customize.     │   │  │
-│   │   └─────────────────────────────────────────────────────────────────┘   │  │
-│   │                                                                          │  │
-│   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
-│   │   │ Goal (optional)                                                 │   │  │
-│   │   │ ┌─────────────────────────────────────────────────────────────┐ │   │  │
-│   │   │ │ Nice polish for cabochon display                            │ │   │  │
-│   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
-│   │   │ What do you hope to achieve? e.g., "Nice polish", "Shaping only" │   │  │
-│   │   └─────────────────────────────────────────────────────────────────┘   │  │
-│   │                                                                          │  │
-│   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
-│   │   │ Tags (optional)                                                 │   │  │
-│   │   │ ┌─────────────────────────────────────────────────────────────┐ │   │  │
-│   │   │ │ Type to add tags...                                         │ │   │  │
-│   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
-│   │   │                                                                  │   │  │
-│   │   │ [beach finds ✕] [agates ✕] [summer 2024 ✕]                      │   │  │
-│   │   │                                                                  │   │  │
-│   │   │ Suggestions: [favorites] [test batch] [gift project]            │   │  │
+│   │   │ A descriptive name to identify this batch                        │   │  │
 │   │   └─────────────────────────────────────────────────────────────────┘   │  │
 │   │                                                                          │  │
 │   │   ┌─────────────────────────────────────────────────────────────────┐   │  │
@@ -611,7 +606,7 @@ When creating a new cycle, users can start from scratch or use a template.
 │   │   │ └─────────────────────────────────────────────────────────────┘ │   │  │
 │   │   └─────────────────────────────────────────────────────────────────┘   │  │
 │   │                                                                          │  │
-│   │                              [ Cancel ]  [ Create Cycle ]                │  │
+│   │                              [ Cancel ]  [ Start Cycle ]                 │  │
 │   │                                                                          │  │
 │   └─────────────────────────────────────────────────────────────────────────┘  │
 │                                                                                 │
@@ -622,16 +617,22 @@ When creating a new cycle, users can start from scratch or use a template.
 
 | Field | Tooltip |
 |-------|---------|
-| Specimens | Select the rock types you're tumbling. Search by common name or alias (e.g., "LSA" finds Lake Superior Agate). |
 | Start Date | The date Stage 1 begins. This should be when you first loaded the tumbler for this batch. |
+| Rocks/Specimens | Select the rock types you're tumbling. Search by common name, alias, variety, or family. |
+| Other Specimens | Add any rocks not found in the dropdown list. |
 | Cycle Name | Auto-generated from your specimens and start date. Feel free to customize! |
 
 **Cycle Name Auto-Generation:**
 - Format: `{Specimen1}, {Specimen2} - {StartDate}`
 - Date uses user's `DateFormat` preference from settings
-- If >2 specimens: `{Specimen1}, {Specimen2}, +N more - {Date}`
+- If >3 specimens: `{Specimen1}, {Specimen2}, {Specimen3} +N more - {Date}`
 - User can edit after auto-generation
-- Re-generates if specimens or date change (only if user hasn't manually edited)
+- Re-generates if specimens or date change
+
+**Specimen Chips:**
+- Display with theme-aware colors (`bg-primary/25`, `border-primary/50`)
+- Show hardness in parentheses: `Lake Superior Agate (7)`
+- X button to remove
 
 ### 5.4 Mobile Layout
 

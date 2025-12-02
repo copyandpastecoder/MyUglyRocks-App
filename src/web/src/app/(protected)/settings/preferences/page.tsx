@@ -75,13 +75,17 @@ export default function PreferencesPage() {
               value={settings.theme}
               onValueChange={(value) => handleUpdate({ theme: value })}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-44">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="System">System</SelectItem>
-                <SelectItem value="Light">Light</SelectItem>
-                <SelectItem value="Dark">Dark</SelectItem>
+                <SelectItem value="obsidian">Obsidian (Dark)</SelectItem>
+                <SelectItem value="lapis-lazuli">Lapis Lazuli (Dark)</SelectItem>
+                <SelectItem value="bumblebee-jasper">Bumblebee Jasper (Dark)</SelectItem>
+                <SelectItem value="malachite">Malachite (Dark)</SelectItem>
+                <SelectItem value="rose-quartz">Rose Quartz (Dark)</SelectItem>
+                <SelectItem value="tigers-eye">Tiger's Eye (Dark)</SelectItem>
+                <SelectItem value="snowflake-obsidian">Snowflake Obsidian (Light)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -176,9 +180,9 @@ export default function PreferencesPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="MDY">MM/DD/YYYY</SelectItem>
-                <SelectItem value="DMY">DD/MM/YYYY</SelectItem>
-                <SelectItem value="YMD">YYYY-MM-DD</SelectItem>
+                <SelectItem value="MMDDYYYY">MM/DD/YYYY</SelectItem>
+                <SelectItem value="DDMMYYYY">DD/MM/YYYY</SelectItem>
+                <SelectItem value="YYYYMMDD">YYYY-MM-DD</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -350,8 +354,9 @@ export default function PreferencesPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Never">Never</SelectItem>
-                <SelectItem value="Daily">Daily</SelectItem>
                 <SelectItem value="Weekly">Weekly</SelectItem>
+                <SelectItem value="Monthly">Monthly</SelectItem>
+                <SelectItem value="Quarterly">Quarterly</SelectItem>
               </SelectContent>
             </Select>
           </div>

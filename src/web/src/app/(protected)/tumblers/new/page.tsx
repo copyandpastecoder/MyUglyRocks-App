@@ -5,9 +5,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
 import { tumblerApi } from '@/lib/api';
-import { useTumblerModels } from '@/hooks';
+import { useTumblerModels, useBarrelNicknames } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,12 +28,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 
 // Brands that allow user-editable motor capacity (per ADR-001)
 const EDITABLE_CAPACITY_BRANDS = ['Generic', 'Other', 'DIY', 'MJR Tumblers'];
+
+// Local barrel type for managing barrels before tumbler creation
+interface LocalBarrel {
+  id: string; // Temporary ID for React key
+  barrelNumber: number;
+  nickname?: string;
+  capacityLbs?: number;
+}
 
 const formSchema = z.object({
   brand: z.string().min(1, 'Brand is required'),
@@ -41,7 +57,6 @@ const formSchema = z.object({
   tumblerType: z.enum(['Rotary', 'Vibratory']),
   motorCapacityLbs: z.coerce.number().min(1).max(100).optional(),
   notes: z.string().max(1000).optional(),
-  barrelCount: z.coerce.number().min(1).max(10),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,6 +65,23 @@ export default function NewTumblerPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  // Fetch barrel nicknames for random assignment
+  const { data: barrelNicknames = [] } = useBarrelNicknames();
+
+  // Helper to generate random nickname
+  const getRandomNickname = useCallback(() => {
+    if (barrelNicknames.length === 0) return undefined;
+    return barrelNicknames[Math.floor(Math.random() * barrelNicknames.length)];
+  }, [barrelNicknames]);
+
+  // Local barrel state
+  const [barrels, setBarrels] = useState<LocalBarrel[]>([
+    { id: crypto.randomUUID(), barrelNumber: 1 }
+  ]);
+  const [editingBarrel, setEditingBarrel] = useState<LocalBarrel | null>(null);
+  const [barrelNickname, setBarrelNickname] = useState('');
+  const [barrelCapacity, setBarrelCapacity] = useState('');
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema) as any,
     defaultValues: {
@@ -57,7 +89,6 @@ export default function NewTumblerPage() {
       model: '',
       tumblerType: 'Rotary',
       notes: '',
-      barrelCount: 1,
     },
   });
 
@@ -104,12 +135,22 @@ export default function NewTumblerPage() {
   useEffect(() => {
     if (selectedModel) {
       form.setValue('tumblerType', selectedModel.tumblerType as 'Rotary' | 'Vibratory');
-      form.setValue('barrelCount', selectedModel.defaultBarrelCount);
       if (selectedModel.motorCapacityLbs) {
         form.setValue('motorCapacityLbs', selectedModel.motorCapacityLbs);
       }
+      // Create barrels based on model's default barrel count
+      const newBarrels: LocalBarrel[] = Array.from(
+        { length: selectedModel.defaultBarrelCount },
+        (_, i) => ({
+          id: crypto.randomUUID(),
+          barrelNumber: i + 1,
+          nickname: getRandomNickname(),
+          capacityLbs: selectedModel.defaultCapacityLbs ?? undefined,
+        })
+      );
+      setBarrels(newBarrels);
     }
-  }, [selectedModel, form]);
+  }, [selectedModel, form, getRandomNickname]);
 
   const createMutation = useMutation({
     mutationFn: tumblerApi.create,
@@ -123,11 +164,48 @@ export default function NewTumblerPage() {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    const barrels = Array.from({ length: data.barrelCount }, (_, i) => ({
-      barrelNumber: i + 1,
-    }));
+  // Barrel management functions
+  const handleAddBarrel = () => {
+    const nextNumber = Math.max(...barrels.map(b => b.barrelNumber), 0) + 1;
+    setBarrels([...barrels, {
+      id: crypto.randomUUID(),
+      barrelNumber: nextNumber,
+      nickname: getRandomNickname(),
+      capacityLbs: selectedModel?.defaultCapacityLbs ?? undefined,
+    }]);
+  };
 
+  const handleEditBarrel = (barrel: LocalBarrel) => {
+    setEditingBarrel(barrel);
+    setBarrelNickname(barrel.nickname || '');
+    setBarrelCapacity(barrel.capacityLbs?.toString() || '');
+  };
+
+  const handleSaveBarrel = () => {
+    if (!editingBarrel) return;
+    setBarrels(barrels.map(b =>
+      b.id === editingBarrel.id
+        ? {
+            ...b,
+            nickname: barrelNickname || undefined,
+            capacityLbs: barrelCapacity ? parseFloat(barrelCapacity) : undefined,
+          }
+        : b
+    ));
+    setEditingBarrel(null);
+    setBarrelNickname('');
+    setBarrelCapacity('');
+  };
+
+  const handleDeleteBarrel = (id: string) => {
+    if (barrels.length <= 1) return;
+    const remaining = barrels.filter(b => b.id !== id);
+    // Renumber barrels
+    const renumbered = remaining.map((b, i) => ({ ...b, barrelNumber: i + 1 }));
+    setBarrels(renumbered);
+  };
+
+  const onSubmit = (data: FormValues) => {
     // Only include motorCapacityLbs for editable-capacity brands
     const includeCapacity = EDITABLE_CAPACITY_BRANDS.includes(data.brand);
 
@@ -137,7 +215,11 @@ export default function NewTumblerPage() {
       tumblerType: data.tumblerType,
       motorCapacityLbs: includeCapacity ? data.motorCapacityLbs : undefined,
       notes: data.notes || undefined,
-      barrels,
+      barrels: barrels.map(b => ({
+        barrelNumber: b.barrelNumber,
+        nickname: b.nickname,
+        capacityLbs: b.capacityLbs,
+      })),
     });
   };
 
@@ -158,9 +240,6 @@ export default function NewTumblerPage() {
       <Card>
         <CardHeader>
           <CardTitle>Tumbler Details</CardTitle>
-          <CardDescription>
-            Enter the details of your rock tumbler
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -183,6 +262,9 @@ export default function NewTumblerPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormDescription className="text-helpful-tip">
+                      Don't see your tumbler? Choose "Generic" or "Other"
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -242,23 +324,6 @@ export default function NewTumblerPage() {
 
               <FormField
                 control={form.control}
-                name="barrelCount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Barrels *</FormLabel>
-                    <FormControl>
-                      <Input type="number" min={1} max={10} {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Auto-populated from model, but you can adjust
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
                 name="motorCapacityLbs"
                 render={({ field }) => (
                   <FormItem>
@@ -276,9 +341,9 @@ export default function NewTumblerPage() {
                         className={!isCapacityEditable ? 'bg-muted' : ''}
                       />
                     </FormControl>
-                    <FormDescription>
+                    <FormDescription className={isCapacityEditable ? 'text-helpful-tip' : ''}>
                       {isCapacityEditable
-                        ? `Enter motor capacity (max ${maxCapacity} lbs)`
+                        ? `Max total barrel weight your tumbler motor can handle (max ${maxCapacity} lbs)`
                         : 'Set by manufacturer specs'}
                     </FormDescription>
                     <FormMessage />
@@ -321,6 +386,142 @@ export default function NewTumblerPage() {
               </div>
             </form>
           </Form>
+        </CardContent>
+      </Card>
+
+      {/* Barrels Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Barrels</CardTitle>
+            <CardDescription className="text-helpful-tip">
+              Add all barrels you might run on this tumbler. For example, if your tumbler can run two 3lb barrels or one 6lb barrel, add all three here.
+            </CardDescription>
+          </div>
+          <Button size="sm" onClick={handleAddBarrel} disabled={barrels.length >= 10}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Barrel
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {barrels.length === 0 ? (
+            <p className="text-muted-foreground text-center py-6">
+              No barrels configured. Add a barrel to get started.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {barrels.sort((a, b) => a.barrelNumber - b.barrelNumber).map((barrel) => (
+                <div
+                  key={barrel.id}
+                  className="flex items-center justify-between p-4 rounded-lg border"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        Barrel #{barrel.barrelNumber}
+                        {barrel.nickname && ` - "${barrel.nickname}"`}
+                      </span>
+                    </div>
+                    {barrel.capacityLbs && (
+                      <div className="text-sm text-muted-foreground">
+                        {barrel.capacityLbs} lbs
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Dialog
+                      open={editingBarrel?.id === barrel.id}
+                      onOpenChange={(open) => {
+                        if (!open) {
+                          setEditingBarrel(null);
+                          setBarrelNickname('');
+                          setBarrelCapacity('');
+                        }
+                      }}
+                    >
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditBarrel(barrel)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edit Barrel #{barrel.barrelNumber}</DialogTitle>
+                          <DialogDescription>
+                            Configure barrel settings
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Nickname</label>
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="e.g., Big Blue"
+                                value={barrelNickname}
+                                onChange={(e) => setBarrelNickname(e.target.value)}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => {
+                                  const newNickname = getRandomNickname();
+                                  if (newNickname) setBarrelNickname(newNickname);
+                                }}
+                                title="Generate random nickname"
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium">Capacity (lbs)</label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              placeholder="e.g., 3"
+                              value={barrelCapacity}
+                              onChange={(e) => setBarrelCapacity(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingBarrel(null);
+                              setBarrelNickname('');
+                              setBarrelCapacity('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="button" onClick={handleSaveBarrel}>
+                            Save
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                    {barrels.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteBarrel(barrel.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

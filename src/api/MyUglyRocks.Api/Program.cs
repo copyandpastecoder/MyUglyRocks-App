@@ -222,9 +222,12 @@ try
         .WithName("HealthCheck")
         .WithOpenApi();
 
-    // Seed reference data on startup
+    // Apply migrations and seed reference data on startup
     using (var scope = app.Services.CreateScope())
     {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+
         var seeder = scope.ServiceProvider.GetRequiredService<SeedDataService>();
         await seeder.SeedAllAsync();
     }

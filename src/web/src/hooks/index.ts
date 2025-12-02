@@ -2,7 +2,7 @@
 export { queryKeys, cacheConfig } from '@/lib/query-keys';
 
 // Specimens hooks
-export { useSpecimens, useSpecimen } from './use-specimens';
+export { useSpecimens, useSpecimen, useBarrelNicknames } from './use-specimens';
 
 // Materials hooks
 export { useMaterials, useMaterial } from './use-materials';
