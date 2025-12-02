@@ -32,7 +32,7 @@ export const queryKeys = {
   cycles: {
     all: ['cycles'] as const,
     lists: () => [...queryKeys.cycles.all, 'list'] as const,
-    list: (filters?: { status?: string }) =>
+    list: (filters?: { status?: string; sortOrder?: 'asc' | 'desc' }) =>
       [...queryKeys.cycles.lists(), filters] as const,
     details: () => [...queryKeys.cycles.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.cycles.details(), id] as const,

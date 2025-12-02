@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useSpecimens, useSpecimen } from '@/hooks';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,6 +20,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Search, Gem, AlertCircle } from 'lucide-react';
 
 const MATERIAL_TYPES = ['Rock', 'Mineral', 'Gemstone', 'Fossil', 'Glass', 'Other'];
@@ -110,9 +118,9 @@ export default function SpecimensPage() {
 
       {/* Results */}
       {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Skeleton key={i} className="h-32" />
+        <div className="space-y-2">
+          {[...Array(10)].map((_, i) => (
+            <Skeleton key={i} className="h-10" />
           ))}
         </div>
       ) : error ? (
@@ -136,45 +144,61 @@ export default function SpecimensPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {specimens?.map((specimen) => (
-            <Card
-              key={specimen.id}
-              className="cursor-pointer transition-shadow hover:shadow-md"
-              onClick={() => setSelectedId(specimen.id)}
-            >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-base">{specimen.commonName}</CardTitle>
-                  <Badge variant="outline" className="text-xs">
-                    {specimen.materialType}
-                  </Badge>
-                </div>
-                {specimen.rockFamily && (
-                  <CardDescription className="text-xs">
-                    {specimen.rockFamily}
-                  </CardDescription>
-                )}
-              </CardHeader>
-              <CardContent>
-                <div className="flex gap-2">
-                  {specimen.mohsHardnessMin != null && (
-                    <Badge className={getHardnessColor(specimen.mohsHardnessMin, specimen.mohsHardnessMax)}>
-                      Mohs: {specimen.mohsHardnessMin}
-                      {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
-                        ? `-${specimen.mohsHardnessMax}`
-                        : ''}
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[300px]">Name</TableHead>
+                <TableHead className="hidden sm:table-cell">Family</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Hardness</TableHead>
+                <TableHead>Difficulty</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {specimens?.map((specimen) => (
+                <TableRow
+                  key={specimen.id}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() => setSelectedId(specimen.id)}
+                >
+                  <TableCell className="font-medium">{specimen.commonName}</TableCell>
+                  <TableCell className="hidden sm:table-cell text-muted-foreground">
+                    {specimen.rockFamily || '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="text-xs">
+                      {specimen.materialType}
                     </Badge>
-                  )}
-                  {specimen.tumblingDifficulty && (
-                    <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
-                      {specimen.tumblingDifficulty}
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </TableCell>
+                  <TableCell>
+                    {specimen.mohsHardnessMin != null ? (
+                      <Badge className={getHardnessColor(specimen.mohsHardnessMin, specimen.mohsHardnessMax)}>
+                        {specimen.mohsHardnessMin}
+                        {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
+                          ? `-${specimen.mohsHardnessMax}`
+                          : ''}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {specimen.tumblingDifficulty ? (
+                      <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
+                        {specimen.tumblingDifficulty}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <div className="px-4 py-2 border-t text-sm text-muted-foreground">
+            {specimens?.length} specimens
+          </div>
         </div>
       )}
 
@@ -205,12 +229,10 @@ export default function SpecimensPage() {
                   )}
                 </div>
 
-                {selectedSpecimen.alias && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Also Known As</p>
-                    <p className="text-sm">{selectedSpecimen.alias}</p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Also Known As</p>
+                  <p className="text-sm">{selectedSpecimen.alias || <span className="text-muted-foreground italic">Not specified</span>}</p>
+                </div>
 
                 {selectedSpecimen.variety && (
                   <div>
@@ -226,12 +248,10 @@ export default function SpecimensPage() {
                   </div>
                 )}
 
-                {selectedSpecimen.specialConsiderations && (
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Special Considerations</p>
-                    <p className="text-sm">{selectedSpecimen.specialConsiderations}</p>
-                  </div>
-                )}
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Special Considerations</p>
+                  <p className="text-sm">{selectedSpecimen.specialConsiderations || <span className="text-muted-foreground italic">Not specified</span>}</p>
+                </div>
 
                 {selectedSpecimen.notes && (
                   <div>

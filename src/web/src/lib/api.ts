@@ -177,7 +177,7 @@ export const tumblerApi = {
 };
 
 // Cycle API functions
-import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest } from '@/types/cycle';
+import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest } from '@/types/cycle';
 
 export const cycleApi = {
   getAll: async (status?: string): Promise<CycleListDto[]> => {
@@ -226,7 +226,12 @@ export const cycleApi = {
     return response.data;
   },
 
-  completeStageRun: async (id: string, data: object): Promise<StageRunDto> => {
+  updateStageRun: async (id: string, data: UpdateStageRunRequest): Promise<StageRunDto> => {
+    const response = await api.put<StageRunDto>(`/cycles/stages/${id}`, data);
+    return response.data;
+  },
+
+  completeStageRun: async (id: string, data: CompleteStageRunRequest): Promise<StageRunDto> => {
     const response = await api.post<StageRunDto>(`/cycles/stages/${id}/complete`, data);
     return response.data;
   },

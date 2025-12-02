@@ -12,15 +12,16 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardSkeleton } from '@/components/skeletons';
-import { CheckCircle2, Circle, Cylinder, RotateCcw, Clock, Plus } from 'lucide-react';
+import { CheckCircle2, Cylinder, RotateCcw, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
+import { getCycleStatusClass } from '@/lib/cycle-utils';
 
 export default function DashboardPage() {
   const { user } = useAuth();
 
   const { data: tumblers, isLoading: tumblersLoading } = useTumblers();
-  const { data: activeCycles, isLoading: activeCyclesLoading } = useCycles('Active');
-  const { data: completedCycles, isLoading: completedCyclesLoading } = useCycles('Completed');
+  const { data: activeCycles, isLoading: activeCyclesLoading } = useCycles('Active', 'asc');
+  const { data: completedCycles, isLoading: completedCyclesLoading } = useCycles('Completed', 'desc');
 
   const isLoading = tumblersLoading || activeCyclesLoading || completedCyclesLoading;
 
@@ -34,16 +35,6 @@ export default function DashboardPage() {
 
   // Calculate active stages
   const activeStageCount = activeCycles?.reduce((acc, cycle) => acc + cycle.activeStageCount, 0) ?? 0;
-
-  // Onboarding steps
-  const steps = [
-    { id: 1, label: 'Add your first tumbler', completed: tumblerCount > 0, href: '/tumblers/new' },
-    { id: 2, label: 'Start a new tumbling cycle', completed: activeCycleCount + completedCycleCount > 0, href: '/cycles/new' },
-    { id: 3, label: 'Log your first stage run', completed: activeStageCount > 0 || completedCycleCount > 0, href: '/cycles' },
-    { id: 4, label: 'Upload before/after photos', completed: false, href: '/cycles' },
-  ];
-
-  const allStepsCompleted = steps.every(s => s.completed);
 
   return (
     <div className="space-y-8">
@@ -110,39 +101,6 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Getting Started - show only if not all steps completed */}
-      {!allStepsCompleted && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
-            <CardDescription>
-              Complete these steps to start tracking your tumbling journey
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {steps.map((step) => (
-                <li key={step.id}>
-                  <Link
-                    href={step.href}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors"
-                  >
-                    {step.completed ? (
-                      <CheckCircle2 className="w-6 h-6 text-green-500" />
-                    ) : (
-                      <Circle className="w-6 h-6 text-muted-foreground" />
-                    )}
-                    <span className={step.completed ? 'text-muted-foreground line-through' : ''}>
-                      {step.label}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
@@ -184,11 +142,11 @@ export default function DashboardPage() {
           <CardContent>
             {activeCycles && activeCycles.length > 0 ? (
               <div className="space-y-2">
-                {activeCycles.slice(0, 3).map(cycle => (
+                {activeCycles.slice(0, 6).map(cycle => (
                   <Link
                     key={cycle.id}
                     href={`/cycles/${cycle.id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted transition-colors"
+                    className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${getCycleStatusClass(cycle)}`}
                   >
                     <div>
                       <p className="font-medium">{cycle.name}</p>
@@ -199,7 +157,7 @@ export default function DashboardPage() {
                     <RotateCcw className="h-4 w-4 text-muted-foreground" />
                   </Link>
                 ))}
-                {activeCycles.length > 3 && (
+                {activeCycles.length > 6 && (
                   <Link
                     href="/cycles"
                     className="block text-center text-sm text-primary hover:underline pt-2"

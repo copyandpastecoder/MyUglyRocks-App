@@ -26,6 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
+import { getCycleStatusClass } from '@/lib/cycle-utils';
 import type { CycleListDto } from '@/types/cycle';
 
 const statusColors: Record<string, 'default' | 'secondary' | 'outline'> = {
@@ -38,7 +39,9 @@ export default function CyclesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('Active');
 
-  const { data: cycles, isLoading } = useCycles(activeTab);
+  // Active cycles: oldest first (ASC), Completed/Archived: newest first (DESC)
+  const sortOrder = activeTab === 'Active' ? 'asc' : 'desc';
+  const { data: cycles, isLoading } = useCycles(activeTab, sortOrder);
   const deleteMutation = useDeleteCycle();
   const archiveMutation = useArchiveCycle();
 
@@ -59,7 +62,7 @@ export default function CyclesPage() {
   };
 
   const renderCycleCard = (cycle: CycleListDto) => (
-    <Card key={cycle.id} className="relative">
+    <Card key={cycle.id} className={`relative ${activeTab === 'Active' ? getCycleStatusClass(cycle) : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>

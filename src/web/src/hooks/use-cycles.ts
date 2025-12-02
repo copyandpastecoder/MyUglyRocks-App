@@ -4,16 +4,26 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cycleApi } from '@/lib/api';
 import { queryKeys, cacheConfig } from '@/lib/query-keys';
 import { toast } from 'sonner';
-import type { CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, CreateStageRunRequest } from '@/types/cycle';
+import type { CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest } from '@/types/cycle';
 
 /**
  * Hook to fetch all cycles with optional status filter
+ * @param status - Filter by cycle status (Active, Completed, Archived)
+ * @param sortOrder - Sort by startDate: 'asc' (oldest first) or 'desc' (newest first)
  */
-export function useCycles(status?: string) {
+export function useCycles(status?: string, sortOrder: 'asc' | 'desc' = 'desc') {
   return useQuery({
-    queryKey: queryKeys.cycles.list({ status }),
+    queryKey: queryKeys.cycles.list({ status, sortOrder }),
     queryFn: () => cycleApi.getAll(status),
     ...cacheConfig.userData,
+    select: (data) => {
+      if (!data) return data;
+      return [...data].sort((a, b) => {
+        const dateA = new Date(a.startDate).getTime();
+        const dateB = new Date(b.startDate).getTime();
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+    },
   });
 }
 
@@ -146,10 +156,32 @@ export function useAddStageRun(cycleId: string) {
     mutationFn: (data: CreateStageRunRequest) => cycleApi.addStageRun(cycleId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cycles.detail(cycleId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.lists() });
       toast.success('Stage started');
     },
     onError: () => {
       toast.error('Failed to add stage');
+    },
+  });
+}
+
+/**
+ * Hook for updating stage runs
+ */
+export function useUpdateStageRun(cycleId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ stageId, data }: { stageId: string; data: UpdateStageRunRequest }) =>
+      cycleApi.updateStageRun(stageId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.detail(cycleId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.stageRun(variables.stageId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.lists() });
+      toast.success('Stage updated');
+    },
+    onError: () => {
+      toast.error('Failed to update stage');
     },
   });
 }
@@ -161,11 +193,12 @@ export function useCompleteStageRun(cycleId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ stageId, data }: { stageId: string; data: object }) =>
+    mutationFn: ({ stageId, data }: { stageId: string; data: CompleteStageRunRequest }) =>
       cycleApi.completeStageRun(stageId, data),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cycles.detail(cycleId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.cycles.stageRun(variables.stageId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.lists() });
       toast.success('Stage completed');
     },
     onError: () => {
@@ -184,6 +217,7 @@ export function useDeleteStageRun(cycleId: string) {
     mutationFn: (stageId: string) => cycleApi.deleteStageRun(stageId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cycles.detail(cycleId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.lists() });
       toast.success('Stage deleted');
     },
     onError: () => {

@@ -125,6 +125,38 @@ export interface CreateStageMaterialRequest {
   displayUnit?: string;
 }
 
+export interface UpdateStageRunRequest {
+  barrelIds?: string[];
+  stageName: string;
+  startDateTime: string;
+  durationDays: number;
+  durationHours: number;
+  reminderEnabled?: boolean;
+  remindAfterDays?: number;
+  remindAtEndOfStage?: boolean;
+  loadWeightBeforeGrams?: number;
+  loadWeightAfterGrams?: number;
+  fillLevelPercent?: number;
+  waterLevel?: string;
+  waterAmountMl?: number;
+  notes?: string;
+}
+
+export interface CompleteStageRunRequest {
+  resultRating?: number;
+  resultShapeRounding?: number;
+  resultScratchLevel?: number;
+  resultPitting?: number;
+  resultShine?: number;
+  issueScratches?: boolean;
+  issueChips?: boolean;
+  issueUnderRounded?: boolean;
+  issueContamination?: boolean;
+  lessonsLearned?: string;
+  nextAction?: string;
+  loadWeightAfterGrams?: number;
+}
+
 export interface CleaningMaterialDto {
   id: string;
   materialId: string;
