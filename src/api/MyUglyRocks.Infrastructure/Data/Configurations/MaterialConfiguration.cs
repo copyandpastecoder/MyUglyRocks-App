@@ -421,7 +421,7 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
 
         builder.Property(us => us.TrackingMode)
             .HasColumnName("tracking_mode")
-            .HasDefaultValue(TrackingMode.Easy);
+            .HasDefaultValue(TrackingMode.Simple);
 
         builder.Property(us => us.FontSize)
             .HasColumnName("font_size")
@@ -467,7 +467,7 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
 
         builder.Property(us => us.DigestFrequency)
             .HasColumnName("digest_frequency")
-            .HasDefaultValue(DigestFrequency.Instant);
+            .HasDefaultValue(DigestFrequency.Weekly);
 
         builder.Property(us => us.PhotoUploadQuality)
             .HasColumnName("photo_upload_quality")
@@ -488,7 +488,7 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
         builder.Property(us => us.Theme)
             .HasColumnName("theme")
             .HasMaxLength(50)
-            .HasDefaultValue("obsidian");
+            .HasDefaultValue("lapis-lazuli");
 
         builder.Property(us => us.StageFieldVisibility)
             .HasColumnName("stage_field_visibility")

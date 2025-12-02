@@ -2,6 +2,8 @@
 export interface SpecimenListDto {
   id: string;
   commonName: string;
+  alias: string | null;
+  variety: string | null;
   rockFamily: string | null;
   materialType: string;
   mohsHardnessMin: number | null;

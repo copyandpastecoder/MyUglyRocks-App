@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, User } from 'lucide-react';
+import { LogOut, Settings } from 'lucide-react';
 import Link from 'next/link';
 
 export function Header() {
@@ -53,12 +53,6 @@ export function Header() {
                 </div>
               </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link href="/profile" className="flex cursor-pointer items-center">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/settings" className="flex cursor-pointer items-center">
                   <Settings className="mr-2 h-4 w-4" />

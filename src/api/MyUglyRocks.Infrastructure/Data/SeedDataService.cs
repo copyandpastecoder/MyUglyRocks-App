@@ -11,6 +11,46 @@ public class SeedDataService
     private static readonly Guid SystemUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
 
+    // CSV seed data path - BaseDirectory is bin/Debug/net9.0, go up 6 levels to solution root
+    private static string GetCsvPath(string fileName) =>
+        Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "..", "docs", "seed-data", fileName));
+
+    // Parse CSV line handling quoted fields
+    private static List<string> ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        var inQuotes = false;
+        var field = new System.Text.StringBuilder();
+
+        for (int i = 0; i < line.Length; i++)
+        {
+            var c = line[i];
+            if (c == '"')
+            {
+                if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                {
+                    field.Append('"');
+                    i++; // Skip escaped quote
+                }
+                else
+                {
+                    inQuotes = !inQuotes;
+                }
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                result.Add(field.ToString().Trim());
+                field.Clear();
+            }
+            else
+            {
+                field.Append(c);
+            }
+        }
+        result.Add(field.ToString().Trim());
+        return result;
+    }
+
     public SeedDataService(AppDbContext context, ILogger<SeedDataService> logger)
     {
         _context = context;
@@ -24,6 +64,7 @@ public class SeedDataService
         await SeedSpecimensAsync();
         await SeedMaterialsAsync();
         await SeedTumblerModelsAsync();
+        await SeedBarrelNicknamesAsync();
     }
 
     private async Task EnsureSystemUserAsync()
@@ -105,857 +146,183 @@ public class SeedDataService
     private List<Specimen> GetSpecimenSeedData()
     {
         var now = DateTime.UtcNow;
-        return
-        [
-            // Agates
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Agate",
-                RockFamily = "Chalcedony",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Very common and forgiving. Good for beginners.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Blue Lace Agate",
-                RockFamily = "Chalcedony",
-                Variety = "Agate",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Moss Agate",
-                RockFamily = "Chalcedony",
-                Variety = "Agate",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Crazy Lace Agate",
-                RockFamily = "Chalcedony",
-                Variety = "Agate",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Lake Superior Agate",
-                RockFamily = "Chalcedony",
-                Variety = "Agate",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Famous banded patterns. Very popular for tumbling.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var specimens = new List<Specimen>();
 
-            // Jaspers
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Jasper",
-                RockFamily = "Chalcedony",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Opaque variety of chalcedony. Takes a great polish.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Red Jasper",
-                RockFamily = "Chalcedony",
-                Variety = "Jasper",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Ocean Jasper",
-                RockFamily = "Chalcedony",
-                Variety = "Jasper",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Beautiful orb patterns. From Madagascar.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Picture Jasper",
-                RockFamily = "Chalcedony",
-                Variety = "Jasper",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var csvPath = GetCsvPath("specimens-seed.csv");
+        if (!File.Exists(csvPath))
+        {
+            _logger.LogWarning("Specimens CSV not found at {Path}, skipping", csvPath);
+            return specimens;
+        }
 
-            // Quartz varieties
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Quartz",
-                ScientificName = "Silicon Dioxide",
-                RockFamily = "Quartz",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 7.0m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Rose Quartz",
-                RockFamily = "Quartz",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 7.0m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "May have fractures that affect polish quality.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Smoky Quartz",
-                RockFamily = "Quartz",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 7.0m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Amethyst",
-                RockFamily = "Quartz",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 7.0m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "60/90, 120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Crystal points may chip. Use ceramic media for protection.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Citrine",
-                RockFamily = "Quartz",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 7.0m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "60/90, 120/220, 500, Pre-Polish, Polish",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var lines = File.ReadAllLines(csvPath);
+        var isFirstDataLine = true;
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#'))
+                continue;
 
-            // Other popular specimens
-            new Specimen
+            if (isFirstDataLine)
+            {
+                isFirstDataLine = false;
+                continue;
+            }
+
+            var parts = ParseCsvLine(line);
+            if (parts.Count < 13) continue;
+
+            // CSV: CommonName,RockFamily,Species,Variety,Alias,ScientificName,MaterialType,MohsHardnessMin,MohsHardnessMax,TumblingDifficulty,RecommendedGritSequence,SpecialConsiderations,Notes
+            var commonName = parts[0];
+            var rockFamily = parts[1];
+            var species = parts[2];
+            var variety = parts[3];
+            var alias = parts[4];
+            var scientificName = parts[5];
+            var materialTypeStr = parts[6];
+            var mohsMinStr = parts[7];
+            var mohsMaxStr = parts[8];
+            var difficultyStr = parts[9];
+            var gritSequence = parts[10];
+            var specialConsiderations = parts[11];
+            var notes = parts[12];
+
+            // Parse MaterialType
+            var materialType = materialTypeStr.ToLowerInvariant() switch
+            {
+                "mineral" or "mineral/gemstone" => SpecimenMaterialType.Mineral,
+                "glass" => SpecimenMaterialType.Glass,
+                "fossil" => SpecimenMaterialType.Fossil,
+                "other" or "man-made" or "organic" or "abrasive" => SpecimenMaterialType.Other,
+                _ => SpecimenMaterialType.Rock
+            };
+
+            // Parse TumblingDifficulty
+            var difficulty = difficultyStr.ToLowerInvariant() switch
+            {
+                "intermediate" or "medium" => TumblingDifficulty.Medium,
+                "hard" or "advanced" or "expert" or "very hard" => TumblingDifficulty.Hard,
+                _ => TumblingDifficulty.Easy
+            };
+
+            // Parse Mohs hardness
+            decimal? mohsMin = null;
+            decimal? mohsMax = null;
+            if (decimal.TryParse(mohsMinStr, out var minVal)) mohsMin = minVal;
+            if (decimal.TryParse(mohsMaxStr, out var maxVal)) mohsMax = maxVal;
+
+            specimens.Add(new Specimen
             {
                 Id = Guid.NewGuid(),
-                CommonName = "Tiger's Eye",
-                RockFamily = "Quartz",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Shows beautiful chatoyancy when polished.",
+                CommonName = commonName,
+                ScientificName = string.IsNullOrWhiteSpace(scientificName) ? null : scientificName,
+                Alias = string.IsNullOrWhiteSpace(alias) ? null : alias,
+                RockFamily = string.IsNullOrWhiteSpace(rockFamily) ? null : rockFamily,
+                Species = string.IsNullOrWhiteSpace(species) ? null : species,
+                Variety = string.IsNullOrWhiteSpace(variety) ? null : variety,
+                MaterialType = materialType,
+                MohsHardnessMin = mohsMin,
+                MohsHardnessMax = mohsMax,
+                TumblingDifficulty = difficulty,
+                RecommendedGritSequence = string.IsNullOrWhiteSpace(gritSequence) ? null : gritSequence,
+                SpecialConsiderations = string.IsNullOrWhiteSpace(specialConsiderations) ? null : specialConsiderations,
+                Notes = string.IsNullOrWhiteSpace(notes) ? null : notes,
                 UserCreated = SystemUserId,
                 UserUpdated = SystemUserId,
                 DateCreated = now,
                 DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Obsidian",
-                RockFamily = "Volcanic Glass",
-                MaterialType = SpecimenMaterialType.Glass,
-                MohsHardnessMin = 5.0m,
-                MohsHardnessMax = 5.5m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Softer than quartz. Skip coarse grit. Can chip easily.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Snowflake Obsidian",
-                RockFamily = "Volcanic Glass",
-                Variety = "Obsidian",
-                MaterialType = SpecimenMaterialType.Glass,
-                MohsHardnessMin = 5.0m,
-                MohsHardnessMax = 5.5m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Has cristobalite inclusions creating snowflake pattern.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Petrified Wood",
-                RockFamily = "Silicified Wood",
-                MaterialType = SpecimenMaterialType.Fossil,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Shows beautiful wood grain patterns when polished.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Amazonite",
-                RockFamily = "Feldspar",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 6.0m,
-                MohsHardnessMax = 6.5m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "60/90, 120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Softer than quartz. Don't mix with harder stones.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Labradorite",
-                RockFamily = "Feldspar",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 6.0m,
-                MohsHardnessMax = 6.5m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "60/90, 120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Shows beautiful iridescent labradorescence when polished.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Moonstone",
-                RockFamily = "Feldspar",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 6.0m,
-                MohsHardnessMax = 6.5m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Shows adularescence. Handle gently.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Sodalite",
-                RockFamily = "Sodalite Group",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 5.5m,
-                MohsHardnessMax = 6.0m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Softer mineral. Don't mix with quartz.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Lapis Lazuli",
-                RockFamily = "Lazurite",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 5.0m,
-                MohsHardnessMax = 5.5m,
-                TumblingDifficulty = TumblingDifficulty.Hard,
-                RecommendedGritSequence = "220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Soft and porous. Requires extra care. May need sealing.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Malachite",
-                RockFamily = "Copper Carbonate",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 3.5m,
-                MohsHardnessMax = 4.0m,
-                TumblingDifficulty = TumblingDifficulty.Hard,
-                RecommendedGritSequence = "220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Very soft. Tumble alone. Dust is toxic - use wet tumbling only.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Turquoise",
-                RockFamily = "Phosphate",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 5.0m,
-                MohsHardnessMax = 6.0m,
-                TumblingDifficulty = TumblingDifficulty.Hard,
-                RecommendedGritSequence = "220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Porous material. May need stabilization. Tumble alone.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Carnelian",
-                RockFamily = "Chalcedony",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Orange-red variety of chalcedony. Takes excellent polish.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Onyx",
-                RockFamily = "Chalcedony",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Banded variety of chalcedony. Excellent for tumbling.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Aventurine",
-                RockFamily = "Quartz",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Contains mica or fuchsite inclusions that create sparkle.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Bloodstone",
-                RockFamily = "Chalcedony",
-                Alias = "Heliotrope",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.5m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Dark green with red spots. Classic tumbling stone.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Unakite",
-                RockFamily = "Granite",
-                MaterialType = SpecimenMaterialType.Rock,
-                MohsHardnessMin = 6.0m,
-                MohsHardnessMax = 7.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "60/90, 120/220, 500, Polish",
-                SpecialConsiderations = "Pink feldspar and green epidote. May have variable hardness.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Rhodonite",
-                RockFamily = "Pyroxenoid",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 5.5m,
-                MohsHardnessMax = 6.5m,
-                TumblingDifficulty = TumblingDifficulty.Medium,
-                RecommendedGritSequence = "60/90, 120/220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Pink with black manganese inclusions. Variable hardness.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Howlite",
-                RockFamily = "Borate",
-                MaterialType = SpecimenMaterialType.Mineral,
-                MohsHardnessMin = 3.5m,
-                MohsHardnessMax = 3.5m,
-                TumblingDifficulty = TumblingDifficulty.Hard,
-                RecommendedGritSequence = "220, 500, Pre-Polish, Polish",
-                SpecialConsiderations = "Very soft. Often dyed to imitate turquoise. Tumble alone.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Specimen
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Sea Glass",
-                MaterialType = SpecimenMaterialType.Glass,
-                MohsHardnessMin = 5.5m,
-                MohsHardnessMax = 6.0m,
-                TumblingDifficulty = TumblingDifficulty.Easy,
-                RecommendedGritSequence = "120/220, 500, Polish",
-                SpecialConsiderations = "Already frosted. Light tumbling to smooth edges.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-        ];
+            });
+        }
+
+        _logger.LogInformation("Loaded {Count} specimens from CSV", specimens.Count);
+        return specimens;
     }
 
     private List<Material> GetMaterialSeedData()
     {
         var now = DateTime.UtcNow;
-        return
-        [
-            // Abrasives - Silicon Carbide grits
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Silicon Carbide 60/90 Grit",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Silicon Carbide",
-                MaterialSize = "60/90 mesh",
-                UsageType = UsageType.Coarse,
-                MeshSize = 60,
-                SortOrder = 1,
-                Notes = "Coarse grit for initial shaping. Removes rough edges and shapes stones.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Silicon Carbide 120/220 Grit",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Silicon Carbide",
-                MaterialSize = "120/220 mesh",
-                UsageType = UsageType.Medium,
-                MeshSize = 120,
-                SortOrder = 2,
-                Notes = "Medium grit for smoothing. Removes scratches from coarse stage.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Silicon Carbide 500 Grit",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Silicon Carbide",
-                MaterialSize = "500 mesh",
-                UsageType = UsageType.Fine,
-                MeshSize = 500,
-                SortOrder = 3,
-                Notes = "Fine grit for pre-polish smoothing.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Silicon Carbide 600 Grit",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Silicon Carbide",
-                MaterialSize = "600 mesh",
-                UsageType = UsageType.Fine,
-                MeshSize = 600,
-                SortOrder = 4,
-                Notes = "Alternative fine grit option.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Silicon Carbide 1000 Grit",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Silicon Carbide",
-                MaterialSize = "1000 mesh",
-                UsageType = UsageType.PrePolish,
-                MeshSize = 1000,
-                SortOrder = 5,
-                Notes = "Pre-polish grit for extra-smooth finish before polishing.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var materials = new List<Material>();
 
-            // Aluminum Oxide grits
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Aluminum Oxide 60/90 Grit",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Aluminum Oxide",
-                MaterialSize = "60/90 mesh",
-                UsageType = UsageType.Coarse,
-                MeshSize = 60,
-                SortOrder = 10,
-                Notes = "Alternative coarse grit. Longer lasting than silicon carbide.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Aluminum Oxide 120/220 Grit",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Aluminum Oxide",
-                MaterialSize = "120/220 mesh",
-                UsageType = UsageType.Medium,
-                MeshSize = 120,
-                SortOrder = 11,
-                Notes = "Alternative medium grit option.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var csvPath = GetCsvPath("materials-seed.csv");
+        if (!File.Exists(csvPath))
+        {
+            _logger.LogWarning("Materials CSV not found at {Path}, skipping", csvPath);
+            return materials;
+        }
 
-            // Polishes
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Aluminum Oxide Polish",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Aluminum Oxide",
-                MaterialSize = "Micro",
-                UsageType = UsageType.Polish,
-                MeshSize = 0,
-                SortOrder = 20,
-                Notes = "Standard polish for most stones. Good all-around choice.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Cerium Oxide Polish",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Cerium Oxide",
-                MaterialSize = "Micro",
-                UsageType = UsageType.Polish,
-                MeshSize = 0,
-                SortOrder = 21,
-                Notes = "Excellent for glass and obsidian. Creates high shine.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Tin Oxide Polish",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Tin Oxide",
-                MaterialSize = "Micro",
-                UsageType = UsageType.Polish,
-                MeshSize = 0,
-                SortOrder = 22,
-                Notes = "Premium polish for best shine. More expensive.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Chrome Oxide Polish",
-                Category = MaterialCategory.Abrasive,
-                MaterialType = "Chrome Oxide",
-                MaterialSize = "Micro",
-                UsageType = UsageType.Polish,
-                MeshSize = 0,
-                SortOrder = 23,
-                Notes = "Green polish. Excellent for jade and softer stones.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var lines = File.ReadAllLines(csvPath);
+        var isFirstDataLine = true;
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#'))
+                continue;
 
-            // Media
-            new Material
+            if (isFirstDataLine)
             {
-                Id = Guid.NewGuid(),
-                CommonName = "Ceramic Cylinders",
-                Category = MaterialCategory.Media,
-                MaterialType = "Ceramic",
-                MaterialSize = "Various",
-                MeshSize = 0,
-                SortOrder = 30,
-                Notes = "Tumbling media. Helps cushion and fill barrel for even tumbling.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Ceramic Triangles",
-                Category = MaterialCategory.Media,
-                MaterialType = "Ceramic",
-                MaterialSize = "Various",
-                MeshSize = 0,
-                SortOrder = 31,
-                Notes = "Tumbling media. Gets into corners and crevices.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Plastic Pellets",
-                Category = MaterialCategory.Media,
-                MaterialType = "Plastic",
-                MaterialSize = "Small",
-                MeshSize = 0,
-                SortOrder = 32,
-                Notes = "Used in polish stage. Cushions stones and helps distribute polish.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Corn Cob Media",
-                Category = MaterialCategory.Media,
-                MaterialType = "Organic",
-                MaterialSize = "Granular",
-                MeshSize = 0,
-                SortOrder = 33,
-                Notes = "Used for drying and light burnishing.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Walnut Shell Media",
-                Category = MaterialCategory.Media,
-                MaterialType = "Organic",
-                MaterialSize = "Granular",
-                MeshSize = 0,
-                SortOrder = 34,
-                Notes = "Softer media for delicate stones.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
+                isFirstDataLine = false;
+                continue;
+            }
 
-            // Cleaning and additives
-            new Material
+            var parts = ParseCsvLine(line);
+            if (parts.Count < 9) continue;
+
+            // CSV: Category,MaterialType,MaterialSize,CommonName,UsageType,MeshSize,SortOrder,IsCleaning,Notes
+            var categoryStr = parts[0];
+            var materialType = parts[1];
+            var materialSize = parts[2];
+            var commonName = parts[3];
+            var usageTypeStr = parts[4];
+            var meshSizeStr = parts[5];
+            var sortOrderStr = parts[6];
+            var isCleaningStr = parts[7];
+            var notes = parts[8];
+
+            // Parse Category (Polish -> Abrasive per CSV comment)
+            var category = categoryStr.ToLowerInvariant() switch
+            {
+                "additive" => MaterialCategory.Additive,
+                "media" => MaterialCategory.Media,
+                "cleaning" => MaterialCategory.Cleaning,
+                _ => MaterialCategory.Abrasive // Abrasive and Polish both map to Abrasive
+            };
+
+            // Parse UsageType (per CSV comments)
+            UsageType? usageType = usageTypeStr.ToLowerInvariant() switch
+            {
+                "coarse" => UsageType.Coarse,
+                "medium" => UsageType.Medium,
+                "fine" => UsageType.Fine,
+                "pre-polish" => UsageType.PrePolish,
+                "polish" or "burnish" or "ultra polish" => UsageType.Polish,
+                "cleaning" => UsageType.Cleaning,
+                _ => null // "Filler", "All", etc. -> null
+            };
+
+            // Parse numeric fields
+            int.TryParse(meshSizeStr, out var meshSize);
+            int.TryParse(sortOrderStr, out var sortOrder);
+            bool.TryParse(isCleaningStr, out var isCleaning);
+
+            materials.Add(new Material
             {
                 Id = Guid.NewGuid(),
-                CommonName = "Burnishing Soap",
-                Category = MaterialCategory.Cleaning,
-                MaterialType = "Soap",
-                UsageType = UsageType.Cleaning,
-                MeshSize = 0,
-                SortOrder = 40,
-                IsCleaning = true,
-                Notes = "Used in burnish stage for final shine. Ivory soap flakes work well.",
+                CommonName = commonName,
+                Category = category,
+                MaterialType = string.IsNullOrWhiteSpace(materialType) ? null : materialType,
+                MaterialSize = string.IsNullOrWhiteSpace(materialSize) ? null : materialSize,
+                UsageType = usageType,
+                MeshSize = meshSize,
+                SortOrder = sortOrder,
+                IsCleaning = isCleaning,
+                Notes = string.IsNullOrWhiteSpace(notes) ? null : notes,
                 UserCreated = SystemUserId,
                 UserUpdated = SystemUserId,
                 DateCreated = now,
                 DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Borax",
-                Category = MaterialCategory.Additive,
-                MaterialType = "Chemical",
-                MeshSize = 0,
-                SortOrder = 41,
-                Notes = "Additive to help grit work. Cleans and softens water.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new Material
-            {
-                Id = Guid.NewGuid(),
-                CommonName = "Baking Soda",
-                Category = MaterialCategory.Additive,
-                MaterialType = "Chemical",
-                MeshSize = 0,
-                SortOrder = 42,
-                Notes = "Helps neutralize acids and clean stones.",
-                UserCreated = SystemUserId,
-                UserUpdated = SystemUserId,
-                DateCreated = now,
-                DateUpdated = now
-            },
-        ];
+            });
+        }
+
+        _logger.LogInformation("Loaded {Count} materials from CSV", materials.Count);
+        return materials;
     }
 
     private async Task SeedTumblerModelsAsync()
@@ -975,326 +342,138 @@ public class SeedDataService
     private List<TumblerModel> GetTumblerModelSeedData()
     {
         var now = DateTime.UtcNow;
-        return
-        [
-            // Lortone - Popular rotary tumblers
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Lortone",
-                Model = "3A",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 3,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 3,
-                SortOrder = 1,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Lortone",
-                Model = "33B",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 3,
-                DefaultBarrelCount = 2,
-                MotorCapacityLbs = 6,
-                SortOrder = 2,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Lortone",
-                Model = "45C",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 4,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 4,
-                SortOrder = 3,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Lortone",
-                Model = "QT-6",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 6,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 6,
-                SortOrder = 4,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Lortone",
-                Model = "QT-12",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 12,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 12,
-                SortOrder = 5,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Lortone",
-                Model = "QT-66",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 6,
-                DefaultBarrelCount = 2,
-                MotorCapacityLbs = 12,
-                SortOrder = 6,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var models = new List<TumblerModel>();
 
-            // Thumler's Tumbler
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Thumler's",
-                Model = "Model A-R1",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 3,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 3,
-                SortOrder = 10,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Thumler's",
-                Model = "Model A-R2",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 3,
-                DefaultBarrelCount = 2,
-                MotorCapacityLbs = 6,
-                SortOrder = 11,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Thumler's",
-                Model = "Model B",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 15,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 15,
-                SortOrder = 12,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Thumler's",
-                Model = "UV-10",
-                TumblerType = TumblerType.Vibratory,
-                DefaultCapacityLbs = 10,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 10,
-                SortOrder = 13,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Thumler's",
-                Model = "UV-18",
-                TumblerType = TumblerType.Vibratory,
-                DefaultCapacityLbs = 18,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 18,
-                SortOrder = 14,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var csvPath = GetCsvPath("tumbler-models-seed.csv");
+        if (!File.Exists(csvPath))
+        {
+            _logger.LogWarning("Tumbler models CSV not found at {Path}, skipping", csvPath);
+            return models;
+        }
 
-            // National Geographic (beginner friendly)
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "National Geographic",
-                Model = "Starter Kit",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 1,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 1,
-                SortOrder = 20,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "National Geographic",
-                Model = "Professional",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 2,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 2,
-                SortOrder = 21,
-                DateCreated = now,
-                DateUpdated = now
-            },
+        var lines = File.ReadAllLines(csvPath);
+        var isFirstDataLine = true;
+        foreach (var line in lines)
+        {
+            // Skip comments and empty lines
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#'))
+                continue;
 
-            // Harbor Freight / Chicago Electric
-            new TumblerModel
+            // Skip header row
+            if (isFirstDataLine)
             {
-                Id = Guid.NewGuid(),
-                Brand = "Harbor Freight",
-                Model = "Dual Drum",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 3,
-                DefaultBarrelCount = 2,
-                MotorCapacityLbs = 6,
-                SortOrder = 30,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Harbor Freight",
-                Model = "Single Drum",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = 3,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 3,
-                SortOrder = 31,
-                DateCreated = now,
-                DateUpdated = now
-            },
+                isFirstDataLine = false;
+                continue;
+            }
 
-            // Raytech / Lortone vibratory
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Raytech",
-                Model = "TV-5",
-                TumblerType = TumblerType.Vibratory,
-                DefaultCapacityLbs = 5,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 5,
-                SortOrder = 40,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Raytech",
-                Model = "TV-10",
-                TumblerType = TumblerType.Vibratory,
-                DefaultCapacityLbs = 10,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = 10,
-                SortOrder = 41,
-                DateCreated = now,
-                DateUpdated = now
-            },
+            var parts = line.Split(',');
+            if (parts.Length < 8)
+                continue;
 
-            // MJR Tumblers (custom/DIY brand - editable capacity)
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "MJR Tumblers",
-                Model = "Custom Rotary",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = null,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = null,
-                IsCustomEntry = true,
-                SortOrder = 50,
-                DateCreated = now,
-                DateUpdated = now
-            },
+            // Parse CSV: Brand,Model,TumblerType,DefaultCapacityLbs,DefaultBarrelCount,MotorCapacityLbs,IsCustomEntry,SortOrder,Notes
+            var brand = parts[0].Trim();
+            var model = parts[1].Trim();
+            var tumblerTypeStr = parts[2].Trim();
+            var defaultCapacityStr = parts[3].Trim();
+            var defaultBarrelCountStr = parts[4].Trim();
+            var motorCapacityStr = parts[5].Trim();
+            var isCustomEntryStr = parts[6].Trim();
+            var sortOrderStr = parts[7].Trim();
 
-            // Generic options (for users to enter custom)
-            new TumblerModel
+            // Parse tumbler type
+            var tumblerType = tumblerTypeStr.Equals("Vibratory", StringComparison.OrdinalIgnoreCase)
+                ? TumblerType.Vibratory
+                : TumblerType.Rotary;
+
+            // Parse nullable decimals
+            decimal? defaultCapacity = string.IsNullOrEmpty(defaultCapacityStr) ? null : decimal.Parse(defaultCapacityStr);
+            decimal? motorCapacity = string.IsNullOrEmpty(motorCapacityStr) ? null : decimal.Parse(motorCapacityStr);
+
+            // Parse other fields
+            int.TryParse(defaultBarrelCountStr, out var defaultBarrelCount);
+            if (defaultBarrelCount == 0) defaultBarrelCount = 1;
+
+            bool.TryParse(isCustomEntryStr, out var isCustomEntry);
+            int.TryParse(sortOrderStr, out var sortOrder);
+
+            models.Add(new TumblerModel
             {
                 Id = Guid.NewGuid(),
-                Brand = "Generic",
-                Model = "Rotary Tumbler",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = null,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = null,
-                IsCustomEntry = true,
-                SortOrder = 90,
+                Brand = brand,
+                Model = model,
+                TumblerType = tumblerType,
+                DefaultCapacityLbs = defaultCapacity,
+                DefaultBarrelCount = defaultBarrelCount,
+                MotorCapacityLbs = motorCapacity,
+                IsCustomEntry = isCustomEntry,
+                SortOrder = sortOrder,
                 DateCreated = now,
                 DateUpdated = now
-            },
-            new TumblerModel
+            });
+        }
+
+        _logger.LogInformation("Loaded {Count} tumbler models from CSV", models.Count);
+        return models;
+    }
+
+    private async Task SeedBarrelNicknamesAsync()
+    {
+        if (await _context.BarrelNicknames.AnyAsync())
+        {
+            _logger.LogInformation("Barrel nicknames already seeded, skipping");
+            return;
+        }
+
+        var nicknames = GetBarrelNicknameSeedData();
+        _context.BarrelNicknames.AddRange(nicknames);
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Seeded {Count} barrel nicknames", nicknames.Count);
+    }
+
+    private List<BarrelNickname> GetBarrelNicknameSeedData()
+    {
+        var now = DateTime.UtcNow;
+        var nicknames = new List<BarrelNickname>();
+
+        var csvPath = GetCsvPath("barrel-nicknames-seed.csv");
+        if (!File.Exists(csvPath))
+        {
+            _logger.LogWarning("Barrel nicknames CSV not found at {Path}, using empty list", csvPath);
+            return nicknames;
+        }
+
+        var lines = File.ReadAllLines(csvPath);
+        var isFirstDataLine = true;
+        foreach (var line in lines)
+        {
+            if (string.IsNullOrWhiteSpace(line) || line.TrimStart().StartsWith('#'))
+                continue;
+
+            if (isFirstDataLine)
+            {
+                isFirstDataLine = false;
+                continue;
+            }
+
+            var parts = ParseCsvLine(line);
+            if (parts.Count < 2) continue;
+
+            var name = parts[0];
+            var category = parts[1];
+
+            nicknames.Add(new BarrelNickname
             {
                 Id = Guid.NewGuid(),
-                Brand = "Generic",
-                Model = "Vibratory Tumbler",
-                TumblerType = TumblerType.Vibratory,
-                DefaultCapacityLbs = null,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = null,
-                IsCustomEntry = true,
-                SortOrder = 91,
+                Name = name,
+                Category = category,
+                UserCreated = SystemUserId,
+                UserUpdated = SystemUserId,
                 DateCreated = now,
                 DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Other",
-                Model = "Rotary Tumbler",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = null,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = null,
-                IsCustomEntry = true,
-                SortOrder = 95,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "Other",
-                Model = "Vibratory Tumbler",
-                TumblerType = TumblerType.Vibratory,
-                DefaultCapacityLbs = null,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = null,
-                IsCustomEntry = true,
-                SortOrder = 96,
-                DateCreated = now,
-                DateUpdated = now
-            },
-            new TumblerModel
-            {
-                Id = Guid.NewGuid(),
-                Brand = "DIY",
-                Model = "Custom Build",
-                TumblerType = TumblerType.Rotary,
-                DefaultCapacityLbs = null,
-                DefaultBarrelCount = 1,
-                MotorCapacityLbs = null,
-                IsCustomEntry = true,
-                SortOrder = 98,
-                DateCreated = now,
-                DateUpdated = now
-            },
-        ];
+            });
+        }
+
+        _logger.LogInformation("Loaded {Count} barrel nicknames from CSV", nicknames.Count);
+        return nicknames;
     }
 }

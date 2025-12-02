@@ -31,7 +31,11 @@
       "Bash(powershell -Command \"cd ''D:\\MyRepo\\MyUglyRocks-App\\src\\web'' ; npm install date-fns\")",
       "Bash(powershell -Command:*)",
       "Bash(ipconfig:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(powershell -File:*)",
+      "Bash(timeout /t 8 /nobreak)",
+      "Bash(taskkill /F /PID 22460)"
     ],
     "deny": [],
     "ask": []

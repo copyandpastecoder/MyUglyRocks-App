@@ -270,6 +270,13 @@ export const materialApi = {
   },
 };
 
+export const barrelNicknameApi = {
+  getAll: async (): Promise<string[]> => {
+    const response = await api.get<string[]>('/barrel-nicknames');
+    return response.data;
+  },
+};
+
 // Post API functions (Gallery/Social)
 import type {
   PostDto,

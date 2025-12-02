@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { specimenApi } from '@/lib/api';
+import { specimenApi, barrelNicknameApi } from '@/lib/api';
 import { queryKeys, cacheConfig } from '@/lib/query-keys';
 import type { SpecimenSearchRequest } from '@/types/reference';
 
@@ -25,6 +25,18 @@ export function useSpecimen(id: string | null) {
     queryKey: queryKeys.specimens.detail(id!),
     queryFn: () => specimenApi.getById(id!),
     enabled: !!id,
+    ...cacheConfig.referenceData,
+  });
+}
+
+/**
+ * Hook to fetch all barrel nicknames
+ * Uses long cache time since reference data rarely changes
+ */
+export function useBarrelNicknames() {
+  return useQuery({
+    queryKey: queryKeys.barrelNicknames.list(),
+    queryFn: () => barrelNicknameApi.getAll(),
     ...cacheConfig.referenceData,
   });
 }

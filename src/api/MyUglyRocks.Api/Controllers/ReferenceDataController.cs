@@ -100,4 +100,19 @@ public class ReferenceDataController : ControllerBase
     }
 
     #endregion
+
+    #region Barrel Nicknames
+
+    /// <summary>
+    /// Get all barrel nicknames (public)
+    /// </summary>
+    [HttpGet("barrel-nicknames")]
+    [ProducesResponseType(typeof(IEnumerable<string>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<string>>> GetBarrelNicknames()
+    {
+        var nicknames = await _referenceDataService.GetBarrelNicknamesAsync();
+        return Ok(nicknames);
+    }
+
+    #endregion
 }

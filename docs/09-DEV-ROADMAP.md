@@ -3,8 +3,8 @@
 ## Document Info
 | Field | Value |
 |-------|-------|
-| Version | 1.4 |
-| Last Updated | 2025-12-01 |
+| Version | 1.5 |
+| Last Updated | 2025-12-02 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
 
@@ -750,6 +750,119 @@ M6: Launch Prep (requires M5)
   - `form.watch()` + `useMemo` for cascading dropdown state
   - `useEffect` hooks for auto-population
   - `useTumblerModels` hook for fetching reference data
+
+---
+
+### Session: 2025-12-01 - Bug Fixes & Seed Data Expansion
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Tumbler Model Seed Data Expansion | Merged comprehensive tumbler model list - now ~100 models across 22 brands | ✅ |
+| NullReferenceException Fix | Fixed 500 error when creating tumbler - null check for TumblerModel in Mapster mapping | ✅ |
+| Mapster Null Safety Audit | Added null checks to 4 additional mappings: Barrel→BarrelDto, StageRun→StageRunDto, StageMaterial→StageMaterialDto, CleaningMaterial→CleaningMaterialDto | ✅ |
+| Obsolete Seed File Cleanup | Deleted obsolete `docs/seed-data/tumblers-seed.csv` (replaced by `tumbler-models-seed.csv`) | ✅ |
+
+#### Technical Details
+
+- **Files Modified**:
+  - `src/api/MyUglyRocks.Core/Mappings/MappingConfig.cs` - Null safety fixes for navigation properties
+  - `docs/seed-data/tumbler-models-seed.csv` - Expanded to ~100 tumbler models
+
+- **Bug Fix Details** (MappingConfig.cs):
+  | Line | Issue | Fix |
+  |------|-------|-----|
+  | 18 | `src.TumblerModel!.MotorCapacityLbs` threw NullReferenceException | Added null check: `src.TumblerModel != null ? ... : null` |
+  | 35 | `srb.StageRun.Status` could throw if navigation not loaded | Added null check: `srb.StageRun != null && ...` |
+  | 73 | `srb.Barrel` could be null | Added `.Where(srb => srb.Barrel != null)` filter |
+  | 110, 113 | `src.Material.CommonName` could throw | Added null check: `src.Material != null ? ... : null` |
+
+- **New Tumbler Brands Added**:
+  - Covington Engineering, Diamond Pacific, Gy-Roc, Highland Park, Lot-o-Tumbler
+  - Tumble-Bee, Rebel 17, VEVOR, Leegol Electric, WireJewelry
+  - Frankford Arsenal, Dan&Darci, Discover with Dr. Cool, NSI/Smithsonian, RELIGHTABLE
+
+---
+
+### Session: 2025-12-01 - Seed Data & Barrel Management UI
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| BarrelNickname Seed Data | Added 359 barrel nicknames to SeedDataService with categories (Geology, Weather, Animals, etc.) | ✅ |
+| Database Seed Order Fix | Fixed Program.cs to run migrations before seeding - was causing "relation 'users' does not exist" error | ✅ |
+| Database Reset & Reseed | Dropped database and verified all seed data loads correctly (2 users, 33 specimens, 19 materials, 23 tumbler models, 359 barrel nicknames) | ✅ |
+| Barrel Management UI | Added complete barrel management UI to `/tumblers/new` page with add/edit/delete functionality | ✅ |
+
+#### Technical Details
+
+- **Files Modified**:
+  - `src/api/MyUglyRocks.Infrastructure/Data/SeedDataService.cs` - Added `SeedBarrelNicknamesAsync()` method with 359 nicknames
+  - `src/api/MyUglyRocks.Api/Program.cs` - Added `db.Database.MigrateAsync()` before seeding to ensure schema exists
+  - `src/web/src/app/(protected)/tumblers/new/page.tsx` - Complete barrel management UI with local state
+
+- **Barrel Management Features**:
+  - Local state management with `LocalBarrel` interface (id, barrelNumber, nickname, capacityLbs)
+  - Auto-populates barrels from selected tumbler model
+  - Add/Edit/Delete barrels with Dialog UI
+  - Barrel renumbering on delete
+  - Submit sends barrel array with nickname and capacity to API
+
+- **Seed Data Structure**:
+  ```csharp
+  SeedAllAsync() calls in order:
+  1. EnsureSystemUserAsync()
+  2. EnsureTestUserAsync()  // test@myuglyrocks.local / Test123!
+  3. SeedSpecimensAsync()
+  4. SeedMaterialsAsync()
+  5. SeedTumblerModelsAsync()
+  6. SeedBarrelNicknamesAsync()  // NEW
+  ```
+
+---
+
+### Session: 2025-12-01 (Evening) - Cycles Form Refinement
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Remove Goal & Expected Difficulty | Removed Goal and Expected Difficulty fields from `/cycles/new` form - deferred to future release | ✅ |
+| Specimen Multi-Select Component | Created `SpecimenMultiSelect` component with searchable dropdown, column toggles, and theme-aware chips | ✅ |
+| Specimen Validation Logic | Added validation requiring at least one of: specimens from dropdown OR "Other Specimens" text field | ✅ |
+| Hardness Warning System | Added warning alert when selected specimens have >1 Mohs hardness difference | ✅ |
+| Theme-Aware Chip Colors | Updated specimen chips to use CSS variables (`bg-primary/25`, `border-primary/50`) for theme compatibility | ✅ |
+| Specimen Seed Data Fix | Fixed specimen CSV parsing - was only reading 13 columns, CSV had more; properly maps MaterialType and TumblingDifficulty | ✅ |
+| Documentation Update | Updated `02-cycles.md` wireframe to reflect new form layout | ✅ |
+
+#### Technical Details
+
+- **Files Modified**:
+  - `src/web/src/app/(protected)/cycles/new/page.tsx` - Removed Goal/Difficulty fields, added specimen validation
+  - `src/web/src/components/specimen-multi-select.tsx` - New component with multi-select, search, hardness warning
+  - `src/api/MyUglyRocks.Infrastructure/Data/SeedDataService.cs` - Fixed CSV parsing for specimens
+  - `docs/wireframes/02-cycles.md` - Updated wireframe documentation
+
+- **New Cycle Form Layout**:
+  1. Start Date (required)
+  2. Rocks/Specimens multi-select (required*)
+  3. Other Specimens text area (required*)
+  4. Cycle Name (auto-generated, editable)
+  5. Notes (optional)
+
+  *At least one specimen source required
+
+- **SpecimenMultiSelect Features**:
+  - Searchable dropdown (searches name, alias, variety, family)
+  - Configurable column display (Common Name, Max Hardness, Alias, Variety, Rock Family)
+  - Selected specimens shown as theme-aware chips with hardness values
+  - Hardness warning alert when difference > 1 Mohs
+
+- **Chip Styling Evolution**:
+  - Initial: hardcoded `bg-slate-200 dark:bg-slate-700`
+  - Final: theme-aware `bg-primary/25 text-foreground border border-primary/50`
 
 ---
 
