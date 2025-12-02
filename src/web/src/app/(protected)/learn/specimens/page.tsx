@@ -1,0 +1,249 @@
+'use client';
+
+import { useState } from 'react';
+import { useSpecimens, useSpecimen } from '@/hooks';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Search, Gem, AlertCircle } from 'lucide-react';
+
+const MATERIAL_TYPES = ['Rock', 'Mineral', 'Gemstone', 'Fossil', 'Glass', 'Other'];
+const DIFFICULTY_LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
+
+function getHardnessColor(min: number | null, max: number | null): string {
+  if (min == null) return 'bg-muted text-muted-foreground';
+  const hardness = max ? (min + max) / 2 : min;
+  if (hardness <= 3) return 'bg-green-100 text-green-800';
+  if (hardness <= 5) return 'bg-yellow-100 text-yellow-800';
+  if (hardness <= 7) return 'bg-orange-100 text-orange-800';
+  return 'bg-red-100 text-red-800';
+}
+
+function getDifficultyColor(difficulty: string | null): string {
+  switch (difficulty?.toLowerCase()) {
+    case 'easy': return 'bg-green-100 text-green-800';
+    case 'medium': return 'bg-yellow-100 text-yellow-800';
+    case 'hard': return 'bg-orange-100 text-orange-800';
+    case 'expert': return 'bg-red-100 text-red-800';
+    default: return 'bg-muted text-muted-foreground';
+  }
+}
+
+export default function SpecimensPage() {
+  const [search, setSearch] = useState('');
+  const [materialType, setMaterialType] = useState<string>('__all__');
+  const [difficulty, setDifficulty] = useState<string>('__all__');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const { data: specimens, isLoading, error } = useSpecimens({
+    query: search || undefined,
+    materialType: materialType === '__all__' ? undefined : materialType,
+    difficulty: difficulty === '__all__' ? undefined : difficulty,
+  });
+
+  const { data: selectedSpecimen } = useSpecimen(selectedId);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Rock & Mineral Database</h1>
+        <p className="text-muted-foreground">
+          Learn about different specimens and their tumbling characteristics
+        </p>
+      </div>
+
+      {/* Search and Filters */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search rocks, minerals, gemstones..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Select value={materialType} onValueChange={setMaterialType}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Types</SelectItem>
+                  {MATERIAL_TYPES.map(type => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={difficulty} onValueChange={setDifficulty}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Difficulty" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">All Levels</SelectItem>
+                  {DIFFICULTY_LEVELS.map(level => (
+                    <SelectItem key={level} value={level}>{level}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Results */}
+      {isLoading ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
+        </div>
+      ) : error ? (
+        <Card className="border-destructive">
+          <CardContent className="flex items-center gap-4 py-6">
+            <AlertCircle className="h-8 w-8 text-destructive" />
+            <div>
+              <p className="font-medium">Error loading specimens</p>
+              <p className="text-sm text-muted-foreground">Please try again later</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : specimens?.length === 0 ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Gem className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold">No specimens found</h3>
+            <p className="text-muted-foreground text-center">
+              Try adjusting your search or filters
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {specimens?.map((specimen) => (
+            <Card
+              key={specimen.id}
+              className="cursor-pointer transition-shadow hover:shadow-md"
+              onClick={() => setSelectedId(specimen.id)}
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-base">{specimen.commonName}</CardTitle>
+                  <Badge variant="outline" className="text-xs">
+                    {specimen.materialType}
+                  </Badge>
+                </div>
+                {specimen.rockFamily && (
+                  <CardDescription className="text-xs">
+                    {specimen.rockFamily}
+                  </CardDescription>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2">
+                  {specimen.mohsHardnessMin != null && (
+                    <Badge className={getHardnessColor(specimen.mohsHardnessMin, specimen.mohsHardnessMax)}>
+                      Mohs: {specimen.mohsHardnessMin}
+                      {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
+                        ? `-${specimen.mohsHardnessMax}`
+                        : ''}
+                    </Badge>
+                  )}
+                  {specimen.tumblingDifficulty && (
+                    <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
+                      {specimen.tumblingDifficulty}
+                    </Badge>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedId} onOpenChange={(open) => !open && setSelectedId(null)}>
+        <DialogContent className="max-w-lg">
+          {selectedSpecimen && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedSpecimen.commonName}</DialogTitle>
+                <DialogDescription>
+                  {selectedSpecimen.scientificName || selectedSpecimen.rockFamily || selectedSpecimen.materialType}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{selectedSpecimen.materialType}</Badge>
+                  <Badge className={getHardnessColor(selectedSpecimen.mohsHardnessMin, selectedSpecimen.mohsHardnessMax)}>
+                    Mohs: {selectedSpecimen.mohsHardnessMin}
+                    {selectedSpecimen.mohsHardnessMax && selectedSpecimen.mohsHardnessMax !== selectedSpecimen.mohsHardnessMin
+                      ? `-${selectedSpecimen.mohsHardnessMax}`
+                      : ''}
+                  </Badge>
+                  {selectedSpecimen.tumblingDifficulty && (
+                    <Badge className={getDifficultyColor(selectedSpecimen.tumblingDifficulty)}>
+                      {selectedSpecimen.tumblingDifficulty}
+                    </Badge>
+                  )}
+                </div>
+
+                {selectedSpecimen.alias && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Also Known As</p>
+                    <p className="text-sm">{selectedSpecimen.alias}</p>
+                  </div>
+                )}
+
+                {selectedSpecimen.variety && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Variety</p>
+                    <p className="text-sm">{selectedSpecimen.variety}</p>
+                  </div>
+                )}
+
+                {selectedSpecimen.recommendedGritSequence && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Recommended Grits</p>
+                    <p className="text-sm">{selectedSpecimen.recommendedGritSequence}</p>
+                  </div>
+                )}
+
+                {selectedSpecimen.specialConsiderations && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Special Considerations</p>
+                    <p className="text-sm">{selectedSpecimen.specialConsiderations}</p>
+                  </div>
+                )}
+
+                {selectedSpecimen.notes && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                    <p className="text-sm">{selectedSpecimen.notes}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

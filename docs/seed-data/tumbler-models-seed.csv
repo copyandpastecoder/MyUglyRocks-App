@@ -1,0 +1,134 @@
+# Tumbler Models Seed Data
+# Maps to: TumblerModel (4.11) entity
+# TumblerType: Rotary=0, Vibratory=1 (seeder maps strings)
+# IsCustomEntry: true for Generic/DIY entries where user must specify capacity
+# SortOrder: Lower = appears first (popular models prioritized)
+# MotorCapacityLbs: Total motor capacity (DefaultCapacityLbs × DefaultBarrelCount for multi-barrel)
+#
+Brand,Model,TumblerType,DefaultCapacityLbs,DefaultBarrelCount,MotorCapacityLbs,IsCustomEntry,SortOrder,Notes
+# === LORTONE - Most Popular Hobbyist Brand ===
+Lortone,3A,Rotary,3,1,3,false,10,Single barrel hobby tumbler - excellent for beginners
+Lortone,33B,Rotary,3,2,6,false,11,Dual 3lb barrels - popular choice for hobbyists
+Lortone,45C,Rotary,12,1,12,false,12,Large single barrel - professional grade
+Lortone,QT6,Rotary,6,1,6,false,15,Mid-size single barrel with quiet operation
+Lortone,QT12,Rotary,12,1,12,false,16,Large quiet tumbler for serious collectors
+Lortone,QT66,Rotary,6,2,12,false,17,Twin 6 lb barrels - process two batches at once
+Lortone,1.5A,Rotary,1.5,1,1.5,false,18,Compact single barrel
+Lortone,C20,Rotary,20,1,20,false,19,Commercial 20 lb capacity tumbler - steel barrel with neoprene liner
+Lortone,C40,Rotary,40,1,40,false,20,Commercial 40 lb capacity tumbler - steel barrel with neoprene liner
+# === THUMLER'S TUMBLER ===
+Thumler's Tumbler,Model A-R1,Rotary,2,1,2,false,30,Compact single barrel for small batches
+Thumler's Tumbler,Model A-R2,Rotary,2,2,4,false,31,Dual 2 lb barrels for small batches
+Thumler's Tumbler,Model A-R12,Rotary,3,2,6,false,32,Dual 3lb barrels for small batches
+Thumler's Tumbler,AR-6,Rotary,9,1,9,false,33,9 lb capacity rotary tumbler
+Thumler's Tumbler,Model B (1550RPM),Rotary,15,1,15,false,34,Model B heavy duty 15 lb (1550 RPM)
+Thumler's Tumbler,Model B (3000RPM High Speed),Rotary,15,1,15,false,35,Model B heavy duty 15 lb (3000 RPM)
+Thumler's Tumbler,UV-10,Vibratory,10,1,10,false,36,Heavy-duty vibratory tumbler
+Thumler's Tumbler,UV-18,Vibratory,18,1,18,false,37,Industrial vibratory tumbler
+Thumler's Tumbler,UV-45,Vibratory,45,1,45,false,38,Heavy-duty vibratory tumbler
+# === NATIONAL GEOGRAPHIC - Beginner/Educational ===
+National Geographic,Starter Rock Tumbler Kit,Rotary,0.5,1,0.5,false,40,Simple plug-in; no speed controls; good for kids and beginners
+National Geographic,Explorer Series,Rotary,0.6,1,0.6,false,41,Includes rough stones and polishing grit; geared to newbies
+National Geographic,Hobby Rock Tumbler Kit,Rotary,1,1,1,false,42,Rubber barrel quieter includes timer and full kit
+National Geographic,Professional,Rotary,2,1,2,false,43,Selectable speeds timer quieter design
+National Geographic,3 Lb Extra Large Capacity,Rotary,3,1,3,false,44,Larger barrel variant
+# === HARBOR FREIGHT / CHICAGO ELECTRIC - Budget ===
+Harbor Freight,Single Drum,Rotary,3,1,3,false,50,Budget-friendly single barrel option
+Harbor Freight,Dual Drum,Rotary,3,2,6,false,51,Budget dual barrel kit for staggered stages
+# === HIGHLAND PARK ===
+Highland Park,Triple 1.5lb Rotary,Rotary,1.5,3,4.5,false,60,Triple barrel rotary tumbler - 1.5lb capacity per barrel
+Highland Park,Single 3lb Rotary,Rotary,3,1,3,false,61,Single barrel rotary tumbler - 3lb capacity
+Highland Park,Dual 3lb Rotary,Rotary,3,2,6,false,62,Dual barrel rotary tumbler - 3lb capacity per barrel
+Highland Park,Single 4.5lb Rotary,Rotary,4.5,1,4.5,false,63,Single barrel rotary tumbler - 4.5lb capacity
+Highland Park,Single 6lb Variable Speed,Rotary,6,1,6,false,64,Single barrel with variable speed
+Highland Park,Dual 6lb Variable Speed,Rotary,6,2,12,false,65,Dual barrel with variable speed
+Highland Park,Single 12lb Variable Speed,Rotary,12,1,12,false,66,Single barrel - 12lb capacity with variable speed
+# === COVINGTON ENGINEERING ===
+Covington Engineering,Single Quart Roll-N-Tumble,Rotary,3,1,3,false,70,Single quart roll-n-tumble (3 lb capacity)
+Covington Engineering,Double Quart Roll-N-Tumble,Rotary,3,2,6,false,71,Double 1-quart barrels (each 3 lb)
+Covington Engineering,Triple Quart Roll-N-Tumble,Rotary,3,3,9,false,72,Triple 1-quart barrels (each 3 lb)
+Covington Engineering,1/2-Gallon Barrel,Rotary,6,1,6,false,73,Half-gallon barrel (6 lb)
+Covington Engineering,Double 1/2-Gallon Barrel,Rotary,6,2,12,false,74,Two half-gallon barrels (each 6 lb)
+Covington Engineering,Triple 1/2-Gallon Barrel,Rotary,6,3,18,false,75,Triple 1/2-gallon barrels (each 6 lb)
+Covington Engineering,Model 1018,Rotary,10,1,10,false,76,Heavy-duty steel barrel for production runs
+Covington Engineering,1 Gallon Barrel,Rotary,12,1,12,false,77,One-gallon barrel (12 lb)
+Covington Engineering,Double 1 Gallon Barrel,Rotary,12,2,24,false,78,Two one-gallon barrels (each 12 lb)
+Covington Engineering,Triple 1 Gallon Barrel,Rotary,12,3,36,false,79,Three one-gallon barrels (each 12 lb)
+Covington Engineering,40 Lb Production Tumbler,Rotary,40,1,40,false,80,Production tumbler - 40 lb capacity
+Covington Engineering,10.5in Frame Roll-N-Tumble,Rotary,0,1,0,false,81,Frame tumbler (capacity depends on barrel installed)
+Covington Engineering,17in Frame Roll-N-Tumble,Rotary,0,1,0,false,82,Frame tumbler (multiple barrel options)
+Covington Engineering,35in Frame Roll-N-Tumble,Rotary,0,1,0,false,83,Large frame tumbler (capacity varies by barrel)
+Covington Engineering,Mini Sonic Tumbler,Vibratory,4,1,4,false,84,Quiet sonic agitation for fragile stones
+Covington Engineering,250 Deluxe Tumbler,Vibratory,12,1,12,false,85,250 Deluxe model
+# === RAYTECH ===
+Raytech,23-005R,Rotary,6,1,6,false,90,Commercial rotary tumbler
+Raytech,TV-5,Vibratory,5,1,5,false,91,Professional vibratory bowl
+Raytech,Tumble-Vibe 10 (No Drain),Vibratory,10,1,10,false,92,Tumble-Vibe 10 no-drain rock polishing
+Raytech,Tumble-Vibe 10 (With Drain),Vibratory,10,1,10,false,93,Tumble-Vibe 10 with drain
+Raytech,Adjusta-Vibe 18,Vibratory,18,1,18,false,94,Adjustable vibratory tumbler 18 lb capacity
+Raytech,Adjusta-Vibe 25,Vibratory,25,1,25,false,95,Adjustable vibratory tumbler 25 lb capacity
+Raytech,Adjusta-Vibe 40,Vibratory,40,1,40,false,96,Adjustable vibratory tumbler 40 lb capacity
+Raytech,AV-40SS,Vibratory,40,1,40,false,97,Stainless steel 40 lb model
+Raytech,Tumble Dump 40,Vibratory,40,1,40,false,98,Tumble-dump style 40 lb
+Raytech,Adjusta-Vibe 75,Vibratory,75,1,75,false,99,Adjustable vibratory tumbler 75 lb capacity
+Raytech,Adjusta-Vibe 75DC,Vibratory,75,1,75,false,100,DC-powered 75 lb model
+Raytech,Tumble-Dump 75,Vibratory,75,1,75,false,101,Tumble-dump style 75 lb
+Raytech,DRI-Polisher,Vibratory,0,1,0,false,102,Compact DRI-Polisher unit
+# === DIAMOND PACIFIC ===
+Diamond Pacific,Model 25RT,Rotary,25,1,25,false,110,Industrial barrel for large agate slabs
+Diamond Pacific,65T,Rotary,65,1,65,false,111,High capacity rotary tumbler
+Diamond Pacific,75RT,Rotary,75,1,75,false,112,Heavy-duty 75 lb rotary tumbler
+Diamond Pacific,MT-4 Mini-Sonic,Vibratory,4,1,4,false,113,Mini-Sonic small vibratory tumbler
+Diamond Pacific,Mini-Sonic MT-10,Vibratory,10,1,10,false,114,Non-rotary sonic agitation system
+Diamond Pacific,MT-14 Mini-Sonic,Vibratory,14,1,14,false,115,Mini-Sonic larger vibratory tumbler
+# === GY-ROC ===
+Gy-Roc,Model B,Vibratory,3,3,9,false,120,Unique rolling vibratory motion
+Gy-Roc,Model A,Vibratory,10,1,10,false,121,Large capacity for club batches
+Gy-Roc,Model C,Vibratory,40,1,40,false,122,Large capacity for club batches
+# === LOT-O-TUMBLER ===
+Lot-o-Tumbler,Single Barrel,Vibratory,4.5,1,4.5,false,130,Single bowl vibratory tumbler - 4.5lb capacity
+Lot-o-Tumbler,Twin Barrel,Vibratory,4.5,2,9,false,131,Twin vibratory bowls - 4.5lb each
+# === MJR TUMBLERS ===
+MJR Tumblers,6lb Single Barrel,Rotary,6,1,6,false,140,Single barrel rock tumbler
+MJR Tumblers,6lb Double Barrel,Rotary,6,2,12,false,141,Double barrel rock tumbler
+MJR Tumblers,6lb Triple Barrel,Rotary,6,3,18,false,142,Triple barrel rock tumbler
+MJR Tumblers,10lb Single Barrel,Rotary,10,1,10,false,143,Single barrel rock tumbler
+MJR Tumblers,10lb Double Barrel,Rotary,10,2,20,false,144,Double barrel rock tumbler
+MJR Tumblers,12lb Single Barrel,Rotary,12,1,12,false,145,Single barrel rock tumbler
+MJR Tumblers,12lb Double Barrel,Rotary,12,2,24,false,146,Double barrel rock tumbler
+MJR Tumblers,15lb Single Barrel,Rotary,15,1,15,false,147,Single barrel rock tumbler
+MJR Tumblers,20lb Single Barrel,Rotary,20,1,20,false,148,Single barrel rock tumbler
+MJR Tumblers,25lb Single Barrel,Rotary,25,1,25,false,149,Single barrel rock tumbler
+MJR Tumblers,30lb Single Barrel,Rotary,30,1,30,false,150,Single barrel rock tumbler
+MJR Tumblers,40lb Single Barrel,Rotary,40,1,40,false,151,Single barrel rock tumbler
+# === TUMBLE-BEE ===
+Tumble-Bee,TB-12,Rotary,2,1,2,false,160,1 x 2 lb rock tumbler
+Tumble-Bee,TB-14,Rotary,4,1,4,false,161,Kid-safe shutoff and molded barrel
+Tumble-Bee,TB-22,Rotary,4,2,8,false,162,Dual 4lb barrels for parallel grits
+# === REBEL 17 / STAINLESS TUMBLING MEDIA ===
+Rebel 17,Single,Rotary,17,1,17,false,170,Large capacity tumbler
+Rebel 17,Double,Rotary,17,2,34,false,171,Double large capacity
+# === VEVOR - Budget Alternative ===
+VEVOR,3 lb Rock Tumbler Kit,Rotary,3,1,3,false,180,Budget-friendly kit with programmable timer and multi-speed
+VEVOR,4 lb Direct-Drive,Rotary,4,1,4,false,181,Direct-drive with digital controls and sound-reduction cover
+# === LEEGOL ELECTRIC ===
+Leegol Electric,3 lb Single Barrel,Rotary,3,1,3,false,185,Entry-level single-barrel rotary tumbler kit
+Leegol Electric,1 lb Compact,Rotary,1,1,1,false,186,Very small single-barrel tumbler for kids
+# === WIREJEWELRY ===
+WireJewelry,Single Barrel 3 lb,Rotary,3,1,3,false,190,Professional single-barrel for jewelry makers
+WireJewelry,Double Barrel 2 x 3 lb,Rotary,3,2,6,false,191,Pro-series double-barrel rotary tumbler kit
+# === FRANKFORD ARSENAL (Brass Tumbler - Rock Compatible) ===
+Frankford Arsenal,Rotary Tumbler Lite,Rotary,3,1,3,false,195,Compact rotary primarily for brass; suitable for small rock batches
+Frankford Arsenal,Platinum Series Rotary,Rotary,15,1,15,false,196,Heavy-duty 7 liter rotary tumbler
+# === EDUCATIONAL / KIDS TUMBLERS ===
+Dan&Darci,Rock Tumbler Kit,Rotary,2,1,2,false,200,Kid-friendly starter tumbler
+Discover with Dr. Cool,Professional Series,Rotary,3,1,3,false,201,Educational kit tumbler
+NSI/Smithsonian,Smithsonian Rock Tumbler Kit,Rotary,0.5,1,0.5,false,202,Toy-grade educational tumbler
+RELIGHTABLE,Professional Rock Tumbler,Rotary,5,1,5,false,203,Heavy-duty motor with LED display
+# === GENERIC / DIY / OTHER - User Specifies Capacity ===
+Generic,Rotary - Custom,Rotary,,1,,true,900,User specifies capacity
+Generic,Vibratory - Custom,Vibratory,,1,,true,901,User specifies capacity
+DIY,Custom Build - Rotary,Rotary,,1,,true,910,Homemade tumbler - user specifies all
+DIY,Custom Build - Vibratory,Vibratory,,1,,true,911,Homemade vibratory - user specifies all
+Other,Unlisted Rotary Model,Rotary,,1,,true,920,Brand not listed - user specifies details
+Other,Unlisted Vibratory Model,Vibratory,,1,,true,921,Brand not listed - user specifies details

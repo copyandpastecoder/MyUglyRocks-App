@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(mkdir:*)",
+      "Bash(dotnet:*)",
+      "Bash(rm:*)",
+      "Bash(npx:*)",
+      "Bash(npm:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(git:*)",
+      "Bash(cd:*)",
+      "Edit(file_path:D:\\MyRepo\\MyUglyRocks-App\\*)",
+      "Write(file_path:D:\\MyRepo\\MyUglyRocks-App\\*)",
+      "Read(file_path:D:\\MyRepo\\MyUglyRocks-App\\*)",
+      "Bash(npm run build:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet ef database update:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add button input label card form toast sonner -y)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(powershell -Command \"cd ''D:\\MyRepo\\MyUglyRocks-App\\src\\web'' ; npx shadcn@latest add accordion table -y\")",
+      "Bash(powershell -Command \"cd ''D:\\MyRepo\\MyUglyRocks-App\\src\\web'' ; npm run build\")",
+      "Bash(docker exec:*)",
+      "Bash(powershell -Command \"cd ''D:\\MyRepo\\MyUglyRocks-App\\src\\api'' ; dotnet build --verbosity quiet\")",
+      "Bash(powershell -Command \"cd ''''D:\\MyRepo\\MyUglyRocks-App\\src\\web'''' ; npm run build\")",
+      "Bash(powershell -Command \"cd ''D:\\MyRepo\\MyUglyRocks-App\\src\\web'' ; npx shadcn@latest add alert checkbox badge -y\")",
+      "Bash(powershell -Command \"cd ''D:\\MyRepo\\MyUglyRocks-App\\src\\web'' ; npm install date-fns\")",
+      "Bash(powershell -Command:*)",
+      "Bash(ipconfig:*)",
+      "Bash(findstr:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

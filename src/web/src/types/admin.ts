@@ -1,0 +1,136 @@
+// Comment Report types
+export interface CommentReportDto {
+  id: string;
+  commentId: string;
+  commentContent: string;
+  commentAuthorUsername: string;
+  postId: string;
+  postTitle: string;
+  reportedByUsername: string;
+  reason: string;
+  details: string | null;
+  status: string;
+  resolvedByUsername: string | null;
+  resolvedDate: string | null;
+  resolutionNotes: string | null;
+  dateCreated: string;
+}
+
+export interface CommentReportListDto {
+  id: string;
+  commentExcerpt: string;
+  commentAuthorUsername: string;
+  reportedByUsername: string;
+  reason: string;
+  status: string;
+  dateCreated: string;
+}
+
+export interface ResolveReportRequest {
+  status: string;
+  resolutionNotes?: string;
+  deleteComment?: boolean;
+}
+
+// User Management types
+export interface AdminUserDto {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+  isActive: boolean;
+  emailVerified: boolean;
+  dateCreated: string;
+  dateLastLogin: string | null;
+  totalCycles: number;
+  totalPosts: number;
+  totalComments: number;
+}
+
+export interface AdminUserListDto {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string | null;
+  role: string;
+  isActive: boolean;
+  dateCreated: string;
+  dateLastLogin: string | null;
+}
+
+export interface ChangeUserRoleRequest {
+  role: string;
+}
+
+export interface BanUserRequest {
+  reason?: string;
+  deleteContent?: boolean;
+}
+
+// Admin Statistics
+export interface AdminStatsDto {
+  totalUsers: number;
+  activeUsers: number;
+  totalCycles: number;
+  totalPosts: number;
+  totalComments: number;
+  pendingReports: number;
+  usersRegisteredToday: number;
+  postsCreatedToday: number;
+}
+
+// Paginated response
+export interface PaginatedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+// Re-export shared types from reference to avoid duplicates
+export type {
+  SpecimenDetailDto,
+  SpecimenListDto,
+  MaterialDetailDto,
+  MaterialListDto,
+} from './reference';
+
+// Specimen Management request types
+export interface CreateSpecimenRequest {
+  commonName: string;
+  scientificName?: string;
+  alias?: string;
+  rockFamily?: string;
+  species?: string;
+  variety?: string;
+  materialType?: string;
+  mohsHardnessMin?: number;
+  mohsHardnessMax?: number;
+  tumblingDifficulty?: string;
+  recommendedGritSequence?: string;
+  specialConsiderations?: string;
+  notes?: string;
+}
+
+export interface UpdateSpecimenRequest extends CreateSpecimenRequest {
+  isActive?: boolean;
+}
+
+// Material Management request types
+export interface CreateMaterialRequest {
+  commonName: string;
+  category?: string;
+  materialType?: string;
+  materialSize?: string;
+  usageType?: string;
+  meshSize?: number;
+  sortOrder?: number;
+  isCleaning?: boolean;
+  notes?: string;
+}
+
+export interface UpdateMaterialRequest extends CreateMaterialRequest {
+  isActive?: boolean;
+}

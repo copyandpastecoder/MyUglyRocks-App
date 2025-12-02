@@ -1,0 +1,47 @@
+# Build outputs
+bin/
+obj/
+out/
+
+# IDE
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET
+*.dll
+*.exe
+*.pdb
+appsettings.*.json
+!appsettings.json
+!appsettings.Development.json.example
+
+# Node (if using frontend)
+node_modules/
+dist/
+.next/
+.nuxt/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test results
+TestResults/
+coverage/
+
+# Database
+*.db
+*.sqlite

@@ -1,0 +1,99 @@
+using Microsoft.EntityFrameworkCore;
+using MyUglyRocks.Core.Entities;
+
+namespace MyUglyRocks.Infrastructure.Data;
+
+public class AppDbContext : DbContext
+{
+    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    {
+    }
+
+    // Auth entities
+    public DbSet<User> Users => Set<User>();
+    public DbSet<UserSettings> UserSettings => Set<UserSettings>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    // Tumbler entities
+    public DbSet<TumblerModel> TumblerModels => Set<TumblerModel>();
+    public DbSet<Tumbler> Tumblers => Set<Tumbler>();
+    public DbSet<Barrel> Barrels => Set<Barrel>();
+    public DbSet<BarrelNickname> BarrelNicknames => Set<BarrelNickname>();
+
+    // Cycle entities
+    public DbSet<Cycle> Cycles => Set<Cycle>();
+    public DbSet<StageRun> StageRuns => Set<StageRun>();
+    public DbSet<StageRunBarrel> StageRunBarrels => Set<StageRunBarrel>();
+    public DbSet<CleaningRun> CleaningRuns => Set<CleaningRun>();
+    public DbSet<Photo> Photos => Set<Photo>();
+
+    // Reference data entities
+    public DbSet<Specimen> Specimens => Set<Specimen>();
+    public DbSet<CycleSpecimen> CycleSpecimens => Set<CycleSpecimen>();
+    public DbSet<Material> Materials => Set<Material>();
+    public DbSet<StageMaterial> StageMaterials => Set<StageMaterial>();
+    public DbSet<CleaningMaterial> CleaningMaterials => Set<CleaningMaterial>();
+
+    // Social entities
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<PostPhoto> PostPhotos => Set<PostPhoto>();
+    public DbSet<Vote> Votes => Set<Vote>();
+    public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<CommentReport> CommentReports => Set<CommentReport>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+
+        // Configure composite keys
+        modelBuilder.Entity<CycleSpecimen>()
+            .HasKey(cs => new { cs.CycleId, cs.SpecimenId });
+
+        // Configure self-referencing FK for RefreshToken
+        modelBuilder.Entity<RefreshToken>()
+            .HasOne(rt => rt.ReplacedByToken)
+            .WithMany()
+            .HasForeignKey(rt => rt.ReplacedByTokenId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // Configure global query filter for soft deletes
+        modelBuilder.Entity<Cycle>().HasQueryFilter(c => !c.IsDeleted);
+        modelBuilder.Entity<StageRun>().HasQueryFilter(s => !s.IsDeleted);
+        modelBuilder.Entity<Photo>().HasQueryFilter(p => !p.IsDeleted);
+        modelBuilder.Entity<Post>().HasQueryFilter(p => !p.IsDeleted);
+        modelBuilder.Entity<Comment>().HasQueryFilter(c => !c.IsDeleted);
+
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.DateCreated = DateTime.UtcNow;
+                    entry.Entity.DateUpdated = DateTime.UtcNow;
+                    break;
+                case EntityState.Modified:
+                    entry.Entity.DateUpdated = DateTime.UtcNow;
+                    break;
+            }
+        }
+
+        // Handle soft deletes
+        foreach (var entry in ChangeTracker.Entries<ISoftDeletable>())
+        {
+            if (entry.State == EntityState.Deleted)
+            {
+                entry.State = EntityState.Modified;
+                entry.Entity.IsDeleted = true;
+                entry.Entity.DateDeleted = DateTime.UtcNow;
+            }
+        }
+
+        return base.SaveChangesAsync(cancellationToken);
+    }
+}

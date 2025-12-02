@@ -1,0 +1,365 @@
+# Barrel Nicknames Seed Data
+# Maps to: BarrelNickname (4.13) entity
+# Category is optional grouping for UI filtering
+# IsActive defaults to true (omitted from CSV)
+#
+Name,Category
+Agitated Aggregator,Action
+Agitation Accelerator,Action
+Agitation Chamber,Sci-Fi
+Agitation Station,Places
+Barrel Formerly Known as Loud,Music
+Barrel O' Bliss,Feelings
+Barrel of "It'll Buff Out",Optimism
+Barrel of Bad Decisions,Humor
+Barrel of Boulders,Descriptive
+Barrel of Chaotic Neutral,Gaming
+Barrel of Fun,Classic
+Barrel of Fun (debatable),Humor
+Barrel of Mild Concern,Feelings
+Barrel of Monkeys,Classic
+Barrel of Nope,Humor
+Barrel of Poor Life Choices,Humor
+Barrel of Questionable Science,Science
+Barrel of Regrets,Feelings
+Barrel of Rocks,Descriptive
+Barrel of Smoothies,Food
+Barrel of Suspicious Noises,Humor
+Barrel of Tactical Waiting,Military
+Barrel of Transformation,Magic
+Big Grit Bin,Descriptive
+Boulder Basher,Action
+Boulder Belly,Anatomy
+Boulder Blender (Do Not Drink),Food
+Boulder Bounce House,Kids
+Boulder Bubble Bath,Spa
+Boulder Bubble Spa,Spa
+Boulder Bubbler,Action
+Boulder Burrito,Food
+Boulder Cooker,Kitchen
+Boulder Dash,Gaming
+Boulder Roller Coaster,Amusement
+Boulder Therapy Booth,Wellness
+Boulderdash Barrel,Gaming
+Bump Thump,Sounds
+Bumpy Ride Barrel,Travel
+Bumpity Bump Barrel,Sounds
+Bumpy Tumpy Tub,Sounds
+Bundle of Rocks,Descriptive
+Busy Barrel,Action
+Busy Beaver Barrel,Animals
+Busy Boulder Bin,Action
+Busy Grit Grinder,Action
+Busy Rock Rotator,Action
+Busy Tumbler,Action
+Cabin Fever Container,Feelings
+Cask of Amontillado,Literature
+Chaos Cylinder,Sci-Fi
+Chippy Churn,Action
+Chonk Chamber,Internet
+Chunk Cyclone,Weather
+Chunky Churner,Action
+Chunky Monkey Mixer,Food
+Circular Sinner,Humor
+Clank Tank,Sounds
+Clatter Can,Sounds
+Clatter Coffin,Spooky
+Click-Clack Can,Sounds
+Clunk Bunker,Sounds
+Clunkin' Pumpkin,Seasonal
+Coarse & Carefree,Descriptive
+Coarse Communicator,Tech
+Coarse Correctional Facility,Legal
+Containment Unit #404,Tech
+Crumbly Cradle,Baby
+Crystal Creator,Magic
+Cursed Crate,Spooky
+Cylindrical Spa,Spa
+De-Edger,Action
+Deuglification Station,Humor
+Dirt Dormitory,Places
+Disaster-to-Master Drum,Transformation
+DIY Rock Therapist,Wellness
+Doom Drum,Spooky
+Drama Drum,Theater
+Drip Grit Café,Food
+Dusty Disco,Music
+Dusty Drum of Destiny,Fantasy
+Final Frontier,Sci-Fi
+Fine & Dandy Cask,Descriptive
+First Date,Relationships
+Forever Box,Time
+From Meh to Yeah Drum,Transformation
+From Trash to Flash,Transformation
+Gentle Grinder,Descriptive
+Geode Getter,Geology
+Geological Mistake Fixer,Geology
+Geologist's Crockpot,Kitchen
+Geology Gym,Fitness
+Geology Roulette,Gaming
+Geology Spin Cycle,Laundry
+Gloss Boss Cask,Boss
+Gneiss Maker,Geology
+Grain Train,Transportation
+Gravel Gobbler,Action
+Gravel Hammock,Relaxation
+Great De-Uglifier Tub,Transformation
+Grime Container,Descriptive
+Grinding Gulag,Humor
+Grit Bucket,Descriptive
+Grit Git Gud,Gaming
+Grit Grotto,Places
+Grit House of Pain,Music
+Grit Pit,Descriptive
+Grit Pit Deluxe,Descriptive
+Grit Pit of Destiny,Fantasy
+Grit Storm Generator,Weather
+Grit Vault,Places
+Gritty Bitty Barrel,Descriptive
+Grit-ty City,Places
+Gritty Committee,Groups
+Gritty Gertie,Names
+Gritty Gurgler,Sounds
+Gritty Gutter,Places
+Gritty Little Secret,Secrets
+Grumble Grotto,Places
+Grumpy Grit Barrel,Feelings
+Instant Geology,Science
+Is It Done Yet? Cask,Impatience
+Jewel Java Pot,Food
+Judgement Cylinder,Legal
+Just One More Week Barrel,Impatience
+Long Wait Room,Places
+Lump Lopper,Action
+Lumpy Lounge,Places
+Main Squeeze,Relationships
+Makeover Machine Pod,Transformation
+Makeover Module,Transformation
+Meat Grinder,Kitchen
+Mid-Life Crisis,Humor
+Mineral Mayhem Machine,Action
+Mineral Mixer,Action
+Mirror Maker Module,Transformation
+Muddy Bucket,Descriptive
+Muddy Marvel,Superheroes
+My Ugly Rocks Brander,Brand
+Mystery Machine,TV
+MyUglyBarrel,Brand
+MyUglyDrum,Brand
+MyUglyMixer,Brand
+MyUglyRocks Makeover Barrel,Brand
+MyUglySpa,Brand
+MyUglyTumbler #1,Brand
+MyUglyTumbler #2,Brand
+Noise Nugget,Sounds
+Nugget Nanny,Childcare
+Patience Pod,Wellness
+Pebble Hot Tub,Spa
+Pebble Jacuzzi,Spa
+Pebble Parlor,Places
+Pebble Pilates Studio,Fitness
+Pebble Polisher Pod,Action
+Pebble Polka Barrel,Music
+Pebble Prancer,Animals
+Pebble Pummel Pod,Action
+Pebble Punisher,Superheroes
+Pebble Purgatory,Spooky
+Pebble Reform School,Education
+Pebble Spa,Spa
+Pebble Treadmill,Fitness
+Pebblication Pod,Humor
+Polish 'n' Shine,Action
+Polish Pail,Descriptive
+Polish Palace,Places
+Polish Party,Social
+Polish Pot,Descriptive
+Polish Potion Pot,Magic
+Polishing Penance Pod,Humor
+Polite Rock Persuader,Humor
+Pre-Polish Prep,Stages
+Pretty Barrel,Descriptive
+Quiet Place (It Is Not),Movies
+Rattle Can,Sounds
+Rattle Kettle,Kitchen
+Rhythmic Ruckus,Music
+Rock 'n' Roller,Music
+Rock 'Til You Drop,Music
+Rock Behavior Modification Unit,Psychology
+Rock Corrective Facility,Legal
+Rock Crock,Kitchen
+Rock Glow-Up Chamber,Transformation
+Rock Lobster Tank,Music
+Rock Locker,Places
+Rock Regret Recycler,Feelings
+Rock Rehab Unit,Wellness
+Rock Rehabilitation Cylinder,Wellness
+Rock Retirement Home,Places
+Rock Roomba,Tech
+Rock Rotisserie,Kitchen
+Rock Smasher,Action
+Rock Sock,Clothing
+Rock Sock Drawer,Furniture
+Rock Spa,Spa
+Rocky Road Container,Food
+Rolling Diner,Food
+Roly Poly Rocker,Action
+Rough Housing Unit,Action
+Round File,Office
+Round Mound,Descriptive
+Round Receptacle,Descriptive
+Rubble Rumbler,Action
+Rumble Barrel,Action
+Rumble Rumpus,Action
+Rumble Tumble Cauldron,Magic
+Rumble Tummy,Anatomy
+Schist Shipper,Geology
+Scratch & Sniff,Humor
+Scratchy Barrel,Descriptive
+Scrub Hub,Tech
+Scrub Submarine,Military
+Scuff-N-Buff,Action
+Second Date,Relationships
+Secret Weapon,Military
+Shaping Station,Action
+Shimmer Shaker,Action
+Shimmer Spinner,Action
+Shine Cyclone,Weather
+Shine Factory Barrel,Industrial
+Shine Machine,Industrial
+Shine Mine,Places
+Shine Shrine,Places
+Shiny Maker 3000,Tech
+Shiny Shaker,Action
+Shiny Surprise,Feelings
+Shiny Time Machine,Sci-Fi
+Slow Cooker Pot,Kitchen
+Smoosh Box,Action
+Smooth Criminal Containment,Music
+Smooth Transition Chamber,Transformation
+Smoothing Criminal,Music
+Social Anxiety Barrel,Feelings
+Sparkle Chamber,Magic
+Spin Bin,Descriptive
+Spin Cycle of Shame,Laundry
+Spin Doctor,Music
+Spin Doctor's Office,Medical
+Spin-Cycle Cinema,Entertainment
+Spinny Binny,Descriptive
+Spinny Grinder,Action
+Spinny Tubbie,TV
+Spinny-Winny,Descriptive
+Splish-Splash Spa,Spa
+Stone Can,Descriptive
+Stone Sauna,Spa
+Stone Shaker Container,Action
+Stone Smoother,Action
+Stress Ball (For The Rocks),Wellness
+Stress Relocation Device,Wellness
+Suspicious Rattle Factory,Humor
+Thunk Tank,Sounds
+Time Capsule,Time
+Tiny Tumbler,Descriptive
+Tumble Therapy Unit,Wellness
+Tumble Toilet,Bathroom
+Tumble Tubbie,TV
+Tumble Tummy,Anatomy
+Tumble Tunnel,Places
+Tumblenator,Movies
+Tumbler of Transformation,Transformation
+Tumbleweed for Rocks,Nature
+Tumbling Tenor,Music
+Tumbling Tub,Descriptive
+Tumbling Twister,Weather
+Ugly Barrel,Descriptive
+Ugly Blender,Kitchen
+Ugly Cask,Descriptive
+Ugly Duckling Drum,Fairytales
+Ugly Duckling Pond,Fairytales
+Ugly Eraser,Office
+Ugly In Pretty Out,Transformation
+Ugly Polisher,Action
+Ugly Rock Asylum,Places
+Ugly Rock Clinic,Medical
+Ugly Rock Redemption Center,Transformation
+Ugly Rock Roaster,Kitchen
+Ugly Rock Roller Coaster,Amusement
+Ugly Rock Sauna,Spa
+Ugly Rock Spa Day,Spa
+Ugly Rock Whirlpool,Water
+Ugly Truth Chamber,Feelings
+Vibe Check Cylinder,Internet
+Wax On Wax Off,Movies
+White Noise Generator,Tech
+Wobble Barrel,Action
+Wobble Box,Action
+Wobble Chamber,Action
+Wobble Drum,Action
+Wobble Pot,Action
+Wobble Tumbler,Action
+Wobble Wagon,Transportation
+Wobbly Bin,Action
+Wobbly Hub,Action
+Wobbly Trolley,Transportation
+Wobbly-Woozy,Action
+Sir Spins-a-Lot,Royalty
+The Polisher,Jobs
+Rolling Thunder,Weather
+The Rock Star,Music
+Stone Cold,Wrestling
+Crystal Clear,Gems
+Rough Diamond,Gems
+Smooth Operator,Music
+The Agitator,Action
+Barrel of Laughs,Humor
+Dizzy Gillespie,Music
+Whirly Bird,Animals
+The Mixer,Kitchen
+Captain Crunch,Food
+Professor Polish,Education
+Baron Von Tumble,Royalty
+Duke of Dust,Royalty
+Count Spinula,Spooky
+Sir Tumbles McRock,Royalty
+Lady Grits-a-Lot,Royalty
+The Grit Whisperer,Wellness
+Master Splinter,Movies
+Old Faithful,Nature
+The Daily Grind,Coffee
+Espresso Express,Coffee
+Java the Hutt,Movies
+Latte Launcher,Coffee
+Mocha Motion,Coffee
+Bean Machine,Coffee
+Grind Central,Coffee
+Coffee Break Barrel,Coffee
+Brew Crew,Coffee
+Tumble Bee,Animals
+Busy Bee Barrel,Animals
+Honey Pot,Animals
+Buzz Box,Animals
+Stinger Spinner,Animals
+Hive Mind,Animals
+Queen Bee Barrel,Animals
+Worker Bee Bin,Animals
+Drone Zone,Animals
+Nectar Nook,Animals
+Pizza Oven,Food
+Taco Tuesday Tumbler,Food
+Burrito Bowl,Food
+Nacho Libre,Movies
+Salsa Spinner,Food
+Guac 'n' Roll,Food
+Chip Chomper,Food
+Queso Quest,Food
+Enchilada Engine,Food
+Fajita Factory,Food
+Thunder Dome,Movies
+Mad Max Mixer,Movies
+Fury Road Roller,Movies
+Witness Me Barrel,Movies
+War Rig,Movies
+Immortan Joe's Jar,Movies
+Chrome Dome,Movies
+Citadel Cylinder,Movies
+Bullet Farm Barrel,Movies
+Gas Town Grinder,Movies

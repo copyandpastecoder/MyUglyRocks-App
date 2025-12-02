@@ -1,0 +1,73 @@
+# Materials Seed Data
+# Maps to: Material (4.8) entity
+# Category: Abrasive=0, Additive=1, Media=2, Cleaning=3 (seeder maps strings)
+#   Note: "Polish" in CSV maps to Abrasive (0) - polish compounds are abrasives
+# UsageType: Coarse=0, Medium=1, Fine=2, PrePolish=3, Polish=4, Cleaning=5 (seeder maps strings)
+#   Note: "Pre-Polish"->PrePolish, "Ultra Polish"->Polish, "Filler"->NULL, "Burnish"->Polish, "All"->NULL
+# IsCleaning: true if material should appear in cleaning run selector
+# IsActive defaults to true (omitted from CSV)
+#
+Category,MaterialType,MaterialSize,CommonName,UsageType,MeshSize,SortOrder,IsCleaning,Notes
+Abrasive,Silicon Carbide,24,Silicon Carbide Extra Extra Coarse (24),Coarse,24,5,false,Extremely aggressive - for very large rough rocks
+Abrasive,Silicon Carbide,36,Silicon Carbide Very Coarse (36),Coarse,36,6,false,Heavy grinding for oversized material
+Abrasive,Silicon Carbide,46,Silicon Carbide Coarse Plus (46),Coarse,46,7,false,Aggressive grinding for rough specimens
+Abrasive,Silicon Carbide,60/90,Silicon Carbide Coarse (60/90),Coarse,60,10,false,Primary coarse grind for shaping
+Abrasive,Silicon Carbide,80,Silicon Carbide Extra Coarse (80),Coarse,80,12,false,For very rough or large rocks
+Abrasive,Silicon Carbide,120/220,Silicon Carbide Medium (120/220),Medium,120,20,false,Smoothing stage
+Abrasive,Silicon Carbide,150,Silicon Carbide Bridge Coarse (150),Medium,150,15,false,Bridges heavy shaping and medium smoothing stages
+Abrasive,Silicon Carbide,220,Silicon Carbide Medium (220),Medium,220,22,false,Useful when stepping down from 120/220 before fine grind
+Abrasive,Silicon Carbide,400,Silicon Carbide Fine (400),Pre-Polish,400,28,false,Optional step that shortens later pre-polish time
+Abrasive,Silicon Carbide,500,Silicon Carbide Fine (500),Pre-Polish,500,30,false,Pre-polish smoothing
+Abrasive,Silicon Carbide,600,Silicon Carbide Fine (600),Pre-Polish,600,35,false,Alternative fine grind
+Abrasive,Aluminum Oxide,220,Aluminum Oxide Medium (220),Medium,220,22,false,Alternative to silicon carbide for medium grinding
+Abrasive,Aluminum Oxide,400,Aluminum Oxide Fine (400),Pre-Polish,400,28,false,Fine grinding stage for harder materials
+Abrasive,Aluminum Oxide,500,Aluminum Oxide Pre-Polish (500),Pre-Polish,500,30,false,Pre-polish stage for harder stones
+Abrasive,Aluminum Oxide,600,Aluminum Oxide Pre-Polish (600),Pre-Polish,600,35,false,Common pre-polish grit for general use
+Abrasive,Aluminum Oxide,800,Aluminum Oxide Pre-Polish (800),Pre-Polish,800,40,false,Fine pre-polish for smooth finish preparation
+Abrasive,Aluminum Oxide,1000,Aluminum Oxide Extra Fine (1000),Pre-Polish,1000,45,false,Very fine pre-polish for delicate work
+Abrasive,Aluminum Oxide,1200,Aluminum Oxide Ultra Fine (1200),Polish,1200,50,false,Ultra fine pre-polish for mirror finish preparation
+Abrasive,Aluminum Oxide,2000,Aluminum Oxide Super Fine (2000),Polish,2000,55,false,Super fine pre-polish for glass-like preparation
+Abrasive,Aluminum Oxide,3000,Aluminum Oxide Micro Fine (3000),Polish,3000,60,false,Micro fine polish compound
+Abrasive,Aluminum Oxide,5000,Aluminum Oxide Ultra Polish (5000),Polish,5000,70,false,Ultra fine polish for premium finish
+Abrasive,Aluminum Oxide,8000,Aluminum Oxide Super Fine Polish (8000),Ultra Polish,8000,80,false,Very fine polish compound for premium finish
+Abrasive,Aluminum Oxide,10000,Aluminum Oxide Ultra Fine Polish (10000),Ultra Polish,10000,90,false,Ultra fine polish for mirror-like finish
+Abrasive,Aluminum Oxide,12000,Aluminum Oxide Micro Polish (12000),Ultra Polish,12000,95,false,Micro polish for exceptional luster
+Abrasive,Aluminum Oxide,50000,Aluminum Oxide Final Polish (50000),Ultra Polish,50000,110,false,Budget-friendly polish option
+Polish,Aluminum Oxide,Polish,Aluminum Oxide Polish (Standard),Ultra Polish,14000,100,false,Excellent general-purpose polish for quartz-family stones
+Polish,Tin Oxide,Polish,Tin Oxide Polish (Standard),Ultra Polish,14000,100,false,Common for opal glass softer stones; more expensive
+Polish,Cerium Oxide,Polish,Cerium Oxide Polish (Standard),Ultra Polish,14000,100,false,Classic orange polish for quartz opal
+Polish,Cerium Oxide,Microfine,Cerium Oxide Opal Safe Polish,Ultra Polish,80000,120,false,Softer formulation to avoid undercutting opals
+Polish,Chromium Oxide,Polish,Chromium Oxide Green Rouge,Ultra Polish,60000,115,false,Favored for jade chrysoprase malachite finishes
+Polish,Zirconium Oxide,Polish,Zirconium Oxide Ceramic Polish,Ultra Polish,50000,110,false,Specialized polish for ceramic tumbling media
+Polish,Titanium Oxide,Polish,Titanium Oxide White Polish,Ultra Polish,50000,110,false,Creates bright white finish on light stones
+Polish,Diamond Compound,14000,Diamond Compound High Precision (14000),Ultra Polish,14000,100,false,Used on very hard stones needing flawless finish
+Polish,Diamond Compound,50000,Diamond Compound Premium (50000),Ultra Polish,50000,110,false,Premium polish for hardest stones
+Polish,Diamond Compound,100000,Diamond Compound Ultimate Mirror (100000),Ultra Polish,100000,130,false,Finest diamond paste for showcase stones
+Polish,Linde A Alumina,0.3 Micron,Linde A Alumina Polish,Ultra Polish,60000,115,false,Laboratory-grade alumina for agates and jaspers
+Polish,Linde B Alumina,0.05 Micron,Linde B Alumina Finish,Ultra Polish,100000,130,false,Ultra-fine alumina for final burnish on quartz
+Polish,Unknown,Polish,Generic Rock Tumbling Polish,Ultra Polish,14000,105,false,Unspecified polish compound included with kits
+Abrasive,Boron Carbide,80,Boron Carbide Ultra Hard Coarse (80),Coarse,80,12,false,Cuts sapphire ruby and other corundum faster than SiC
+Abrasive,Boron Carbide,600,Boron Carbide Ultra Hard Fine (600),Pre-Polish,600,35,false,For corundum pre-polish when aluminum oxide struggles
+Abrasive,Pumice Powder,800,Pumice Powder Pre-Polish (800),Pre-Polish,800,40,false,Removes haze on delicate organics before polish
+Abrasive,Tripoli Powder,1200,Tripoli Powder Burnish (1200),Polish,1200,50,false,Mild abrasive that evens soft stones before polish
+Media,Ceramic Cylinders,Various,Ceramic Cylinders (Load Balancer),Filler,0,200,false,Adds mass and spacing to prevent bruising in any stage
+Media,Ceramic Media,Large,Ceramic Media (Volume Filler),Filler,0,200,false,Long-lasting filler that maintains action and cushions load
+Media,Ceramic Media,Small,Ceramic Media (Volume Filler),Filler,0,200,false,Long-lasting filler that maintains action and cushions load
+Media,Ceramic Media,Various,Ceramic Media (Volume Filler),Filler,0,200,false,Long-lasting filler that maintains action and cushions load
+Media,Ceramic Spheres,Small,Ceramic Spheres (Precision Filler),Filler,0,201,false,Precision spherical media for delicate cushioning
+Media,Plastic Pellets,Non-abrasive,Plastic Pellets (Cushioning),Filler,0,200,false,Adds spacing and prevents fragile stones from bruising during tumble
+Media,Glass Beads,Non-abrasive,Glass Beads (Inert Filler),Filler,0,200,false,Keeps small batches from slamming around in the barrel
+Media,Marbles,Hard,Marbles (Barrel Balancer),Filler,0,200,false,Adds weight and improves tumbling action in under-filled barrels
+Media,Stainless Steel Shot,Mixed,Stainless Steel Shot (Burnishing),Burnish,0,205,true,For burnishing metals or hard stones to a high shine
+Media,Corn Cob Media,Soft Abrasive,Corn Cob Media (Drying/Polishing),Polish,0,210,true,Used to dry and gently buff stones after final polish
+Media,Walnut Shell Media,Soft Abrasive,Walnut Shell Media (Organic Cushion),Polish,0,210,true,Low-abrasion media for cleaning soft stones without damage
+Additive,Baking Soda,Additive,Baking Soda (Neutralizer),All,0,300,true,Neutralizes acidic polish residues before cleaning
+Additive,Borax,Additive,Borax (Stage Cleaner),All,0,300,true,Degreases stones and barrels between grit changes
+Additive,Bar Soap Shavings,Small Flakes,Bar Soap Shavings (Burnishing),All,0,300,true,Shaved bar soap used for gentle burnishing and removing polish film
+Additive,Ivory Soap Flakes,Small,Ivory Soap Flakes (Burnishing Aid),All,0,300,true,Mild burnishing agent for final cleaning passes
+Additive,Liquid Soap,Liquid,Liquid Soap (Degreaser),All,0,300,true,Generic mild liquid soap used to remove residue between stages
+Additive,OxyClean,Additive,OxyClean (Oxygen Cleaner),All,0,300,true,Oxygen-based cleaner used during cleanouts to remove polish haze
+Additive,Sodium Hexametaphosphate,Additive,Sodium Hexametaphosphate (Dispersant),All,0,300,true,Strong dispersant often used when grinding agates or jaspers
+Additive,Sodium Metaphosphate,Additive,Sodium Metaphosphate (Deflocculant),All,0,300,true,Prevents grit from clumping in soft water
+Additive,Sugar Slurry Additive,Additive,Sugar Slurry Additive (Thickener),All,0,300,false,Thickens slurry to slow impacts on fragile stones
+Additive,Washing Soda,Additive,Washing Soda (Alkalinity Booster),All,0,300,true,Raises pH to help break down slurry and clean stones
