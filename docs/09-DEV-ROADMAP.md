@@ -3,8 +3,8 @@
 ## Document Info
 | Field | Value |
 |-------|-------|
-| Version | 1.5 |
-| Last Updated | 2025-12-02 |
+| Version | 1.6 |
+| Last Updated | 2025-12-03 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
 
@@ -169,11 +169,11 @@ This document defines the development milestones for building MyUglyRocks. Each 
 #### Image Storage
 | Task | Description | Dependencies | Status |
 |------|-------------|--------------|--------|
-| I2.1 | Configure Cloudflare R2 client | M1 Complete | ⏸️ Deferred |
-| I2.2 | Implement image upload service | I2.1 | ⏸️ Deferred |
-| I2.3 | Implement image resize/compression (ImageSharp) | I2.2 | ⏸️ Deferred |
-| I2.4 | Generate signed URLs for private images | I2.1 | ⏸️ Deferred |
-| I2.5 | Implement image deletion service | I2.1 | ⏸️ Deferred |
+| I2.1 | Configure Cloudflare R2 client | M1 Complete | 🔜 Ready (R2 keys in K8s secrets) |
+| I2.2 | Implement image upload service | I2.1 | 🔜 Ready |
+| I2.3 | Implement image resize/compression (ImageSharp) | I2.2 | 🔜 Ready |
+| I2.4 | Generate signed URLs for private images | I2.1 | 🔜 Ready |
+| I2.5 | Implement image deletion service | I2.1 | 🔜 Ready |
 
 #### Tumbler API
 | Task | Description | Dependencies | Status |
@@ -209,9 +209,9 @@ This document defines the development milestones for building MyUglyRocks. Each 
 #### Photo API
 | Task | Description | Dependencies | Status |
 |------|-------------|--------------|--------|
-| B2.20 | POST /api/stages/:id/photos - Upload photo(s) | D2.4, I2.2 | ⏸️ Deferred (R2) |
-| B2.21 | DELETE /api/photos/:id - Delete photo | D2.4, I2.5 | ⏸️ Deferred (R2) |
-| B2.22 | PUT /api/photos/:id - Update photo label | D2.4 | ⏸️ Deferred (R2) |
+| B2.20 | POST /api/stages/:id/photos - Upload photo(s) | D2.4, I2.2 | 🔜 Ready (R2 configured) |
+| B2.21 | DELETE /api/photos/:id - Delete photo | D2.4, I2.5 | 🔜 Ready |
+| B2.22 | PUT /api/photos/:id - Update photo label | D2.4 | 🔜 Ready |
 
 #### Cleaning Run API
 | Task | Description | Dependencies | Status |
@@ -627,17 +627,22 @@ This document defines the development milestones for building MyUglyRocks. Each 
 #### Deployment
 | Task | Description | Dependencies | Status |
 |------|-------------|--------------|--------|
-| D6.1 | Configure Railway production environment | All above | ⏳ |
-| D6.2 | Set up production PostgreSQL | D6.1 | ⏳ |
-| D6.3 | Set up production Redis | D6.1 | ⏳ |
-| D6.4 | Configure Cloudflare R2 production bucket | D6.1 | ⏳ |
-| D6.5 | Set up custom domain with SSL | D6.1 | ⏳ |
-| D6.6 | Configure production environment variables | D6.5 | ⏳ |
-| D6.7 | Set up GitHub Actions CI/CD pipeline | D6.6 | ⏳ |
-| D6.8 | Configure database backup schedule | D6.2 | ⏳ |
-| D6.9 | Set up error monitoring (Sentry or similar) | D6.7 | ⏳ |
-| D6.10 | Set up uptime monitoring | D6.7 | ⏳ |
-| D6.11 | Create runbook for common operations | D6.7 | ⏳ |
+| D6.1 | Set up Kubernetes local development (Docker Desktop K8s) | All above | ✅ |
+| D6.2 | Create K8s namespace and secrets management | D6.1 | ✅ |
+| D6.3 | Deploy PostgreSQL to K8s with persistent storage | D6.2 | ✅ |
+| D6.4 | Deploy Redis to K8s | D6.2 | ✅ |
+| D6.5 | Deploy API to K8s with secrets injection | D6.3, D6.4 | ✅ |
+| D6.6 | Deploy Web frontend to K8s | D6.5 | ✅ |
+| D6.7 | Update Dockerfile for repo-root build context | D6.5 | ✅ |
+| D6.8 | Configure seed data in Docker image | D6.7 | ✅ |
+| D6.9 | Configure Railway production environment | D6.6 | ⏳ |
+| D6.10 | Configure Cloudflare R2 production bucket | D6.9 | ⏳ |
+| D6.11 | Set up custom domain with SSL | D6.9 | ⏳ |
+| D6.12 | Set up GitHub Actions CI/CD pipeline | D6.11 | ⏳ |
+| D6.13 | Configure database backup schedule | D6.9 | ⏳ |
+| D6.14 | Set up error monitoring (Sentry or similar) | D6.12 | ⏳ |
+| D6.15 | Set up uptime monitoring | D6.12 | ⏳ |
+| D6.16 | Create runbook for common operations | D6.12 | ⏳ |
 
 #### Documentation
 | Task | Description | Dependencies | Status |
@@ -866,6 +871,125 @@ M6: Launch Prep (requires M5)
 
 ---
 
+### Session: 2025-12-03 - Kubernetes Local Development Setup
+
+#### Overview
+
+Implemented full Kubernetes deployment for local development, matching production architecture. Dev environment now runs identical to prod.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| K8s Namespace Setup | Created `myuglyrocks` namespace in Docker Desktop K8s | ✅ |
+| Secrets Management | Implemented K8s Secrets for all sensitive config (DB, Redis, JWT, R2, Email) | ✅ |
+| PostgreSQL Deployment | Deployed PostgreSQL 16 with PersistentVolumeClaim (5Gi) | ✅ |
+| Redis Deployment | Deployed Redis 7 for caching | ✅ |
+| API Deployment | Deployed .NET API with env vars from K8s secrets | ✅ |
+| Web Deployment | Deployed Next.js frontend to K8s | ✅ |
+| Dockerfile Updates | Updated API Dockerfile to use repo-root build context | ✅ |
+| Seed Data in Image | Added seed CSV files to Docker image | ✅ |
+| Web Dockerfile | Created Dockerfile for Next.js with standalone output | ✅ |
+| Docker Compose Cleanup | Stopped old docker-compose containers | ✅ |
+| Akeyless Removal | Removed Akeyless integration (complexity not needed for dev) | ✅ |
+| R2 Credentials | Added Cloudflare R2 credentials to K8s secrets (ready for photo upload) | ✅ |
+
+#### Architecture
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                 myuglyrocks namespace                          │
+│                                                                │
+│  ┌────────────┐    ┌──────────────┐    ┌──────────────┐       │
+│  │    web     │───▶│     api      │───▶│   postgres   │       │
+│  │  (Next.js) │    │   (.NET 9)   │    │  (16-alpine) │       │
+│  │  :3000     │    │   :8080      │    │   :5432      │       │
+│  └────────────┘    └──────────────┘    └──────────────┘       │
+│                           │                   │                │
+│                           ▼           ┌───────┴───────┐       │
+│                    ┌──────────────┐   │ postgres-pvc  │       │
+│                    │    redis     │   │   (5Gi PV)    │       │
+│                    │  (7-alpine)  │   └───────────────┘       │
+│                    │   :6379      │                           │
+│                    └──────────────┘                           │
+│                                                                │
+│  Secret: myuglyrocks-secrets                                  │
+│    - postgres-password, db-connection-string                  │
+│    - redis-connection-string, jwt-secret                      │
+│    - r2-account-id, r2-access-key-id, r2-secret-access-key   │
+│    - r2-bucket-name, resend-api-key                          │
+└────────────────────────────────────────────────────────────────┘
+```
+
+#### Files Created/Modified
+
+| File | Description |
+|------|-------------|
+| `k8s/base/namespace.yaml` | K8s namespace definition |
+| `k8s/base/postgres-deployment.yaml` | PostgreSQL deployment with PVC |
+| `k8s/base/redis-deployment.yaml` | Redis deployment |
+| `k8s/base/api-deployment.yaml` | API deployment with secrets |
+| `k8s/base/web-deployment.yaml` | Web frontend deployment |
+| `k8s/base/app-secrets.yaml.example` | Template for secrets |
+| `src/api/MyUglyRocks.Api/Dockerfile` | Updated for repo-root context |
+| `src/web/Dockerfile` | New Dockerfile for Next.js |
+| `src/web/next.config.ts` | Added `output: "standalone"` |
+| `docker-compose.yml` | Updated build context |
+
+#### Deleted Files (Akeyless Cleanup)
+
+| File | Reason |
+|------|--------|
+| `src/api/MyUglyRocks.Api/Configuration/AkeylessConfigurationProvider.cs` | No longer needed |
+| `k8s/base/akeyless-gateway.yaml` | No longer needed |
+
+#### Access URLs (with port-forward)
+
+| Service | URL | Command |
+|---------|-----|---------|
+| Web | http://localhost:3000 | `kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks` |
+| API | http://localhost:5000 | `kubectl port-forward svc/myuglyrocks-api 5000:80 -n myuglyrocks` |
+| PostgreSQL | localhost:5432 | `kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks` |
+
+#### Secrets Management
+
+Secrets are stored in K8s Secret `myuglyrocks-secrets` and backed up in KeePass. To recreate:
+
+```bash
+kubectl create secret generic myuglyrocks-secrets --namespace myuglyrocks \
+  --from-literal=postgres-password="YOUR_PASSWORD" \
+  --from-literal=db-connection-string="Host=postgres;Database=myuglyrocks;Username=postgres;Password=YOUR_PASSWORD" \
+  --from-literal=redis-connection-string="redis:6379" \
+  --from-literal=jwt-secret="YOUR_JWT_SECRET" \
+  --from-literal=r2-account-id="YOUR_VALUE" \
+  --from-literal=r2-access-key-id="YOUR_VALUE" \
+  --from-literal=r2-secret-access-key="YOUR_VALUE" \
+  --from-literal=r2-bucket-name="YOUR_VALUE" \
+  --from-literal=resend-api-key="YOUR_VALUE"
+```
+
+#### Quick Start Commands
+
+```bash
+# Build images
+docker build -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
+docker build -t myuglyrocks-web:latest -f src/web/Dockerfile .
+
+# Deploy all
+kubectl apply -f k8s/base/namespace.yaml
+kubectl apply -f k8s/base/postgres-deployment.yaml
+kubectl apply -f k8s/base/redis-deployment.yaml
+kubectl apply -f k8s/base/api-deployment.yaml
+kubectl apply -f k8s/base/web-deployment.yaml
+
+# Port forward all services
+kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks &
+kubectl port-forward svc/myuglyrocks-api 5000:80 -n myuglyrocks &
+kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks &
+```
+
+---
+
 ## 11. Post-Launch Roadmap
 
 Features to consider after initial launch:
@@ -890,8 +1014,19 @@ Features to consider after initial launch:
 
 Current focus: **Milestone 6 - Launch Prep**
 
-1. Complete remaining E2E tests (T6.2-T6.4)
-2. Perform load testing (T6.5)
-3. Complete mobile responsiveness testing (T6.6)
-4. Set up production deployment on Railway (D6.1-D6.11)
-5. Configure Cloudflare R2 for photo storage (deferred from M2)
+**Recently Completed:**
+- ✅ Local K8s development environment (Docker Desktop)
+- ✅ Full stack running in K8s (Web, API, PostgreSQL, Redis)
+- ✅ K8s Secrets management (including R2 credentials)
+- ✅ Seed data included in Docker images
+- ✅ R2 API keys and bucket configured in K8s secrets
+
+**Next:**
+1. **Implement R2 photo storage** (I2.1-I2.5, B2.20-B2.22) - NOW READY
+   - Configure R2 client with credentials from K8s secrets
+   - Implement image upload/resize/delete services
+   - Connect photo API endpoints
+2. Complete remaining E2E tests (T6.2-T6.4)
+3. Perform load testing (T6.5)
+4. Complete mobile responsiveness testing (T6.6)
+5. Set up production deployment on Railway (D6.9-D6.16)

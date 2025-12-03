@@ -42,8 +42,16 @@
       "Bash(gh repo view:*)",
       "Bash(timeout /t 30 /nobreak)",
       "Bash(winget install:*)",
-      "Bash(C:Usersryans.akeylessbinakeyless.exe auth --profile dev --json)",
-      "Bash(C:Usersryans.akeylessbinakeyless.exe list-items --path /myuglyrocks/)"
+      "Bash(kubectl apply:*)",
+      "Bash(kubectl get:*)",
+      "Bash(kubectl logs:*)",
+      "Bash(kubectl exec:*)",
+      "Bash(kubectl describe:*)",
+      "Bash(kubectl rollout:*)",
+      "Bash(kubectl delete:*)",
+      "Bash(kubectl patch:*)",
+      "Bash(timeout /t 10 /nobreak)",
+      "Bash(kubectl port-forward:*)"
     ],
     "deny": [],
     "ask": []

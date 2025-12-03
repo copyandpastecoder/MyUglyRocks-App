@@ -1,0 +1,57 @@
+# Web Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myuglyrocks-web
+  namespace: myuglyrocks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: myuglyrocks-web
+  template:
+    metadata:
+      labels:
+        app: myuglyrocks-web
+    spec:
+      containers:
+      - name: web
+        image: myuglyrocks-web:latest
+        imagePullPolicy: Never  # Use local image for dev
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NEXT_PUBLIC_API_URL
+          value: "http://myuglyrocks-api"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: myuglyrocks-web
+  namespace: myuglyrocks
+spec:
+  selector:
+    app: myuglyrocks-web
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP

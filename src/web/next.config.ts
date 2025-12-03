@@ -7,6 +7,7 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  output: "standalone",
 
   // Allow LAN access for mobile testing
   allowedDevOrigins: ["http://10.80.80.181:3000"],

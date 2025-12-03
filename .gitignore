@@ -38,9 +38,6 @@ Thumbs.db
 .env.local
 .env.*.local
 
-# Sensitive notes (contain credentials)
-AKEYLESS_SETUP_NOTES.md
-
 # Test results
 TestResults/
 coverage/
@@ -49,3 +46,5 @@ coverage/
 *.db
 *.sqlite
 nul
+k8s/secrets/
+k8s/base/app-secrets.yaml

@@ -41,7 +41,7 @@ MyUglyRocks-App/
 - **Auth:** JWT with refresh tokens
 - **Logging:** Serilog
 - **API Docs:** Scalar (OpenAPI)
-- **Secrets:** Akeyless
+- **Secrets:** Kubernetes Secrets / Environment Variables
 
 ### Frontend
 - **Framework:** Next.js 16 (App Router)
@@ -165,14 +165,17 @@ In production, environment variables are set via Railway's dashboard:
 
 ## Secrets Management
 
-This project uses **Akeyless** for secrets management. Configure your Akeyless credentials in environment variables or `appsettings.json`:
+This project uses **Kubernetes Secrets** for secrets management in the K8s environment, and **environment variables** for local Docker Compose development.
 
-```json
-{
-  "Akeyless": {
-    "ApiUrl": "https://api.akeyless.io",
-    "AccessId": "your-access-id",
-    "AccessKey": "your-access-key"
-  }
-}
+### Kubernetes (Development/Production)
+
+Secrets are stored in K8s secrets and injected as environment variables. See `k8s/base/app-secrets.yaml.example` for the required secrets:
+
+```bash
+# Create the secrets (copy and edit the example file first)
+kubectl apply -f k8s/base/app-secrets.yaml
 ```
+
+### Docker Compose (Local Development)
+
+Copy `.env.example` to `.env` and fill in your values. Default values are provided for local development.
