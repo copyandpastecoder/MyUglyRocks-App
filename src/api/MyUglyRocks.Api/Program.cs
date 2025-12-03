@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Api.Configuration;
 using MyUglyRocks.Core.Mappings;
 using MyUglyRocks.Core.Services;
 using MyUglyRocks.Infrastructure.Configuration;
@@ -28,6 +29,18 @@ try
     Log.Information("Starting MyUglyRocks API");
 
     var builder = WebApplication.CreateBuilder(args);
+
+    // Load secrets from Akeyless Gateway (must be done before other configuration)
+    var akeylessGatewayUrl = builder.Configuration["Akeyless:GatewayUrl"]
+        ?? Environment.GetEnvironmentVariable("AKEYLESS_GATEWAY_URL");
+    var akeylessAccessId = builder.Configuration["Akeyless:AccessId"]
+        ?? Environment.GetEnvironmentVariable("AKEYLESS_ACCESS_ID");
+    var akeylessAccessKey = builder.Configuration["Akeyless:AccessKey"]
+        ?? Environment.GetEnvironmentVariable("AKEYLESS_ACCESS_KEY");
+    var akeylessSecretPath = builder.Configuration["Akeyless:SecretPath"]
+        ?? Environment.GetEnvironmentVariable("AKEYLESS_SECRET_PATH")
+        ?? (builder.Environment.IsProduction() ? "/myuglyrocks/prod" : "/myuglyrocks/dev");
+    builder.Configuration.AddAkeyless(akeylessGatewayUrl, akeylessAccessId, akeylessAccessKey, akeylessSecretPath);
 
     // Configure Serilog
     builder.Host.UseSerilog((context, services, configuration) => configuration

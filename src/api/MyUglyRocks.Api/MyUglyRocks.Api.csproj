@@ -4,10 +4,11 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>myuglyrocks-api-dev</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="akeyless" Version="5.0.14" />
+    <PackageReference Include="akeyless" Version="5.0.16" />
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.22" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.3" />
