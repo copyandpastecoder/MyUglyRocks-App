@@ -38,6 +38,9 @@ Thumbs.db
 .env.local
 .env.*.local
 
+# Sensitive notes (contain credentials)
+AKEYLESS_SETUP_NOTES.md
+
 # Test results
 TestResults/
 coverage/
