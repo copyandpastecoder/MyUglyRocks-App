@@ -28,23 +28,31 @@
 
 ### Secrets Management
 - All secrets are stored in Kubernetes secrets (`myuglyrocks-secrets`)
-- Secrets include: database connection, Redis, JWT, R2 storage, Resend email API
+- Secrets include: database connection, Redis, JWT, R2 storage (including public URL), Resend email API
 - The `.env` file is only for reference/local tooling, NOT for running the app
+
+### R2 Photo Storage
+- Photos are stored in Cloudflare R2 bucket: `dev-myuglyrocks-media`
+- Public URL: `https://pub-b409015555184d2ea808e87b602b1da5.r2.dev`
+- The `R2__PublicUrl` env var is set from K8s secret `r2-public-url`
+- AWSSDK.S3 v4 requires both `DisablePayloadSigning` and `DisableDefaultChecksumValidation` for R2 compatibility
 
 ### Access Methods
 
 There are two ways to access the application:
 
-#### Option 1: NodePort Services (Recommended for Network Access)
+#### Option 1: NodePort Services with HTTPS (Recommended for Network Access)
 
-NodePort services are configured with stable ports that persist across restarts:
+NodePort services are configured with stable ports that persist across restarts. HTTPS is enabled via mkcert certificates:
 
-| Service | NodePort | URL |
-|---------|----------|-----|
-| Web | 30000 | http://10.80.80.181:30000 |
-| API | 30001 | http://10.80.80.181:30001 |
+| Service | Path | URL |
+|---------|------|-----|
+| Web | / | https://10.80.80.181:30443 |
+| API | /api | https://10.80.80.181:30443/api |
 
-No port-forward needed - services are directly accessible on the host IP.
+Note: Both services are served via nginx-ingress on port 30443 with path-based routing.
+
+No port-forward needed - services are directly accessible on the host IP with HTTPS.
 
 #### Option 2: Port Forwarding (Localhost Only)
 
@@ -61,17 +69,15 @@ kubectl port-forward --address 0.0.0.0 svc/myuglyrocks-web 3000:80 -n myuglyrock
 ```
 
 **Access URLs (port-forward):**
-- Localhost: http://localhost:3000 (web), http://localhost:5222 (API)
-- Network: http://10.80.80.181:3000 (web), http://10.80.80.181:5222 (API)
+- Localhost: https://localhost:3000 (web), https://localhost:5222 (API)
+- Network: https://10.80.80.181:3000 (web), https://10.80.80.181:5222 (API)
 
 ### Rebuilding After Code Changes
 
 ```bash
 # Build images (run from repo root)
 docker build -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
-
-# Web image - MUST specify API URL (use NodePort 30001 for network access)
-docker build -t myuglyrocks-web:latest --build-arg NEXT_PUBLIC_API_URL=http://10.80.80.181:30001 -f src/web/Dockerfile .
+docker build -t myuglyrocks-web:latest -f src/web/Dockerfile .
 
 # Restart deployments to pick up new images
 kubectl rollout restart deployment myuglyrocks-api myuglyrocks-web -n myuglyrocks
@@ -79,6 +85,11 @@ kubectl rollout restart deployment myuglyrocks-api myuglyrocks-web -n myuglyrock
 # Wait for rollout
 kubectl rollout status deployment myuglyrocks-api myuglyrocks-web -n myuglyrocks
 ```
+
+**Note:** The API URL is configured at runtime via K8s deployment (`API_URL` env var), not at build time. This means:
+- Build the web image once, deploy to any environment
+- Change API URL by updating `k8s/base/web-deployment.yaml` and restarting the pod
+- No rebuild needed when changing URLs
 
 **Troubleshooting:**
 - If changes don't appear, use `--no-cache` flag: `docker build --no-cache ...`
@@ -89,9 +100,9 @@ kubectl rollout status deployment myuglyrocks-api myuglyrocks-web -n myuglyrocks
 
 CORS origins are configured in `appsettings.json` and `appsettings.Development.json`.
 
-**Important:** When using NodePort services, ensure CORS origins include the NodePort URLs:
+**Important:** When using NodePort services, ensure CORS origins include the HTTPS NodePort URLs:
 - `appsettings.Development.json` is used because K8s sets `ASPNETCORE_ENVIRONMENT=Development`
-- Origins must include `http://10.80.80.181:30000` (web NodePort)
+- Origins must include `https://10.80.80.181:30443` (web NodePort with HTTPS)
 
 If you see CORS errors like "Cross-Origin Request Blocked", check:
 1. `appsettings.Development.json` has correct origins with NodePort numbers

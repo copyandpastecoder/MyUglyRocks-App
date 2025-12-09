@@ -3,8 +3,8 @@
 ## Document Info
 | Field | Value |
 |-------|-------|
-| Version | 1.6 |
-| Last Updated | 2025-12-08 |
+| Version | 1.7 |
+| Last Updated | 2025-12-09 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
 
@@ -169,11 +169,11 @@ This document defines the development milestones for building MyUglyRocks. Each 
 #### Image Storage
 | Task | Description | Dependencies | Status |
 |------|-------------|--------------|--------|
-| I2.1 | Configure Cloudflare R2 client | M1 Complete | 🔜 Ready (R2 keys in K8s secrets) |
-| I2.2 | Implement image upload service | I2.1 | 🔜 Ready |
+| I2.1 | Configure Cloudflare R2 client | M1 Complete | ✅ |
+| I2.2 | Implement image upload service | I2.1 | ✅ |
 | I2.3 | Implement image resize/compression (ImageSharp) | I2.2 | 🔜 Ready |
-| I2.4 | Generate signed URLs for private images | I2.1 | 🔜 Ready |
-| I2.5 | Implement image deletion service | I2.1 | 🔜 Ready |
+| I2.4 | Generate signed URLs for private images | I2.1 | ⏭️ Not needed (public bucket) |
+| I2.5 | Implement image deletion service | I2.1 | ✅ |
 
 #### Tumbler API
 | Task | Description | Dependencies | Status |
@@ -209,9 +209,9 @@ This document defines the development milestones for building MyUglyRocks. Each 
 #### Photo API
 | Task | Description | Dependencies | Status |
 |------|-------------|--------------|--------|
-| B2.20 | POST /api/stages/:id/photos - Upload photo(s) | D2.4, I2.2 | 🔜 Ready (R2 configured) |
-| B2.21 | DELETE /api/photos/:id - Delete photo | D2.4, I2.5 | 🔜 Ready |
-| B2.22 | PUT /api/photos/:id - Update photo label | D2.4 | 🔜 Ready |
+| B2.20 | POST /api/stages/:id/photos - Upload photo(s) | D2.4, I2.2 | ✅ |
+| B2.21 | DELETE /api/photos/:id - Delete photo | D2.4, I2.5 | ✅ |
+| B2.22 | PUT /api/photos/:id - Update photo label | D2.4 | ✅ |
 
 #### Cleaning Run API
 | Task | Description | Dependencies | Status |
@@ -264,8 +264,8 @@ This document defines the development milestones for building MyUglyRocks. Each 
 - [x] User can CRUD tumblers
 - [x] User can CRUD cycles with specimens (free-text)
 - [x] User can add/edit/complete stage runs
-- [ ] User can upload photos (up to 10 per stage) *(deferred - R2)*
-- [ ] Photos are resized and stored in R2 *(deferred - R2)*
+- [x] User can upload photos (up to 10 per stage)
+- [ ] Photos are resized and stored in R2 *(resize deferred)*
 - [ ] User can add materials to stages *(UI deferred to M3)*
 - [ ] User can add cleaning runs to stages *(UI deferred to M3)*
 - [x] Dashboard shows active cycles with progress
@@ -947,8 +947,8 @@ Implemented full Kubernetes deployment for local development, matching productio
 
 | Service | URL | Command |
 |---------|-----|---------|
-| Web | http://localhost:3000 | `kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks` |
-| API | http://localhost:5000 | `kubectl port-forward svc/myuglyrocks-api 5000:80 -n myuglyrocks` |
+| Web | https://localhost:3000 | `kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks` |
+| API | https://localhost:5000 | `kubectl port-forward svc/myuglyrocks-api 5000:80 -n myuglyrocks` |
 | PostgreSQL | localhost:5432 | `kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks` |
 
 #### Secrets Management
@@ -1008,7 +1008,7 @@ Configured K8s NodePort services for network-accessible development and fixed CO
 #### Technical Details
 
 - **Root Cause of CORS Issue**:
-  - `appsettings.Development.json` had `http://10.80.80.181:3000` but NodePort was 30000
+  - `appsettings.Development.json` had `https://10.80.80.181:3000` but NodePort was 30000
   - Since K8s deployment uses `ASPNETCORE_ENVIRONMENT=Development`, this file overrides base config
   - Fixed by changing port to 30000
 
@@ -1026,8 +1026,8 @@ Configured K8s NodePort services for network-accessible development and fixed CO
   | API | 30001 | 8080 |
 
 - **Access URLs (NodePort)**:
-  - Web: `http://10.80.80.181:30000`
-  - API: `http://10.80.80.181:30001`
+  - Web: `https://10.80.80.181:30000`
+  - API: `https://10.80.80.181:30001`
 
 - **Docker Rebuild Commands**:
   ```bash
@@ -1037,6 +1037,89 @@ Configured K8s NodePort services for network-accessible development and fixed CO
   # Force pod restart
   kubectl delete pod -l app=myuglyrocks-api -n myuglyrocks
   ```
+
+---
+
+### Session: 2025-12-09 - R2 Photo Upload & Runtime API Config
+
+#### Overview
+
+Fixed critical infrastructure issues: R2 photo upload signature errors, mixed content HTTPS errors, and enabled public access to R2 bucket.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| R2 Signature Fix | Fixed AWSSDK.S3 v4 signature mismatch - added `DisableDefaultChecksumValidation = true` | ✅ |
+| Runtime API URL Config | Implemented runtime config endpoint (`/config`) to avoid rebuild on URL changes | ✅ |
+| Mixed Content Fix | Fixed HTTPS web calling HTTP API - proper runtime config loading | ✅ |
+| R2 Public URL Config | Added `R2__PublicUrl` to K8s secrets and API deployment | ✅ |
+| R2 Public Access | Enabled public development URL on R2 bucket | ✅ |
+| HTTPS Ingress | nginx-ingress on port 30443 with mkcert TLS certificates | ✅ |
+
+#### Technical Details
+
+- **R2 Signature Issue Root Cause**:
+  - AWSSDK.S3 v4.0.0.3 sends `x-amz-checksum-crc32` headers by default
+  - Cloudflare R2 doesn't support these checksum headers
+  - Fix: Added `DisableDefaultChecksumValidation = true` to `PutObjectRequest`
+
+- **Runtime API URL Solution**:
+  - Created `/config` endpoint in Next.js (not `/api/config` to avoid nginx routing)
+  - Uses `API_URL` env var (not `NEXT_PUBLIC_*`) for true runtime reading
+  - Axios interceptor waits for config promise before first request
+  - AuthProvider explicitly awaits config before refresh
+
+- **R2 Public URL**:
+  - Cloudflare provides `pub-{random}.r2.dev` URL (different from account ID pattern)
+  - Added `r2-public-url` to K8s secrets
+  - API deployment reads via `R2__PublicUrl` env var
+
+#### Files Modified
+
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Infrastructure/Services/R2StorageService.cs` | Added `DisableDefaultChecksumValidation = true` |
+| `src/web/src/app/config/route.ts` | New runtime config endpoint |
+| `src/web/src/lib/api.ts` | Runtime config fetching with axios interceptor |
+| `src/web/src/providers/auth-provider.tsx` | Await config before auth refresh |
+| `src/web/Dockerfile` | Removed build-time API URL arg |
+| `k8s/base/web-deployment.yaml` | Changed to `API_URL` env var |
+| `k8s/base/api-deployment.yaml` | Added `R2__PublicUrl` from secret |
+| `CLAUDE.md` | Updated documentation for runtime config |
+
+#### Architecture Update
+
+```
+Web Frontend                     nginx-ingress (:30443)               API + R2
+┌─────────────┐                 ┌─────────────────────┐              ┌─────────────┐
+│ Next.js     │ ──HTTPS──────▶ │ / → web             │              │ .NET API    │
+│ /config     │                 │ /api → api          │ ──HTTPS───▶ │             │
+│ returns     │                 │ TLS: mkcert         │              │ R2 Upload   │
+│ API_URL     │                 └─────────────────────┘              └──────┬──────┘
+└─────────────┘                                                             │
+                                                                            ▼
+                                                        ┌───────────────────────────────┐
+                                                        │ Cloudflare R2                 │
+                                                        │ pub-{id}.r2.dev (public)      │
+                                                        │ dev-myuglyrocks-media bucket  │
+                                                        └───────────────────────────────┘
+```
+
+#### Access URLs
+
+| Service | URL |
+|---------|-----|
+| Web (HTTPS) | https://10.80.80.181:30443 |
+| API (HTTPS) | https://10.80.80.181:30443/api |
+| R2 Public | https://pub-b409015555184d2ea808e87b602b1da5.r2.dev |
+
+#### Key Learnings
+
+1. **Next.js `NEXT_PUBLIC_*` vars are inlined at build time** - use non-prefixed vars for runtime config
+2. **nginx-ingress routes `/api/*` to backend** - use different path like `/config` for frontend API routes
+3. **AWSSDK.S3 v4 has breaking changes for R2** - requires both `DisablePayloadSigning` and `DisableDefaultChecksumValidation`
+4. **R2 public dev URL uses different ID than account ID** - must use Cloudflare-provided URL
 
 ---
 
@@ -1069,17 +1152,18 @@ Current focus: **Milestone 6 - Launch Prep**
 - ✅ Full stack running in K8s (Web, API, PostgreSQL, Redis)
 - ✅ K8s Secrets management (including R2 credentials)
 - ✅ Seed data included in Docker images
-- ✅ R2 API keys and bucket configured in K8s secrets
 - ✅ NodePort services for network access (Web: 30000, API: 30001)
 - ✅ CORS configuration fixed for NodePort URLs
 - ✅ Specimen multi-select UX improvements
+- ✅ **R2 photo upload working** (fixed SDK v4 signature issues)
+- ✅ **Runtime API URL config** (no rebuild needed for URL changes)
+- ✅ **HTTPS via nginx-ingress** (mkcert TLS on port 30443)
+- ✅ **R2 public bucket access** enabled
 
 **Next:**
-1. **Implement R2 photo storage** (I2.1-I2.5, B2.20-B2.22) - NOW READY
-   - Configure R2 client with credentials from K8s secrets
-   - Implement image upload/resize/delete services
-   - Connect photo API endpoints
+1. **Image resizing** (I2.3) - Implement ImageSharp resize on upload
 2. Complete remaining E2E tests (T6.2-T6.4)
 3. Perform load testing (T6.5)
 4. Complete mobile responsiveness testing (T6.6)
 5. Set up production deployment on Railway (D6.9-D6.16)
+6. Configure custom domain for R2 (production)

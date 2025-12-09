@@ -18,6 +18,7 @@ public class Photo : SoftDeletableEntity
     public int? Width { get; set; }
     public int? Height { get; set; }
     public PhotoType PhotoType { get; set; }
+    public string? Caption { get; set; }
     public int SortOrder { get; set; }
 
     // Navigation properties

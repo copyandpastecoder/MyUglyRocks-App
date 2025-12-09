@@ -70,18 +70,22 @@ public class AuthController : ControllerBase
         // No token = not logged in, return gracefully (not an error)
         if (string.IsNullOrEmpty(refreshToken))
         {
+            _logger.LogDebug("Refresh: No refresh token cookie present");
             return Ok(new AuthResult(false));
         }
 
+        _logger.LogDebug("Refresh: Token present (length={Length})", refreshToken.Length);
         var result = await _authService.RefreshTokenAsync(refreshToken, cancellationToken);
 
         if (!result.Success)
         {
             // Token was invalid/expired - clear the cookie and return gracefully
-            Response.Cookies.Delete("refreshToken");
+            _logger.LogDebug("Refresh failed: {Error}", result.Error);
+            ClearRefreshTokenCookie();
             return Ok(new AuthResult(false));
         }
 
+        _logger.LogDebug("Refresh succeeded for user {UserId}", result.User?.Id);
         SetRefreshTokenCookie(result.RefreshToken!);
         return Ok(result);
     }
@@ -107,7 +111,7 @@ public class AuthController : ControllerBase
             await _authService.LogoutAsync(userId, refreshToken, cancellationToken);
         }
 
-        Response.Cookies.Delete("refreshToken");
+        ClearRefreshTokenCookie();
         _logger.LogInformation("User logged out: {UserId}", userId);
 
         return Ok(new { message = "Logged out successfully" });
@@ -187,13 +191,24 @@ public class AuthController : ControllerBase
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
-            // In development, allow HTTP (no Secure flag) and Lax SameSite for cross-port requests
-            // In production, require HTTPS and Strict SameSite
-            Secure = !_environment.IsDevelopment(),
-            SameSite = _environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict,
+            Secure = true,
+            SameSite = SameSiteMode.Lax, // Lax allows cookies on top-level navigations (refresh, direct URL)
             Expires = DateTime.UtcNow.AddDays(7)
         };
 
         Response.Cookies.Append("refreshToken", token, cookieOptions);
+    }
+
+    private void ClearRefreshTokenCookie()
+    {
+        var cookieOptions = new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTime.UtcNow.AddDays(-1) // Expired in the past
+        };
+
+        Response.Cookies.Delete("refreshToken", cookieOptions);
     }
 }

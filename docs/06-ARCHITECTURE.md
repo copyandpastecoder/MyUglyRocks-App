@@ -883,7 +883,7 @@ import { useFocusTrap } from '@/lib/hooks/use-focus-trap';
 # .env.example
 
 # Public (exposed to browser)
-NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+NEXT_PUBLIC_API_URL=https://localhost:5000/api/v1
 NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL=https://images.myuglyrocks.com
 
 # Server-only (never exposed to client)

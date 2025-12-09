@@ -419,13 +419,9 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
             .HasColumnName("show_relative_times")
             .HasDefaultValue(true);
 
-        builder.Property(us => us.TrackingMode)
-            .HasColumnName("tracking_mode")
-            .HasDefaultValue(TrackingMode.Simple);
-
         builder.Property(us => us.FontSize)
             .HasColumnName("font_size")
-            .HasDefaultValue(FontSize.Normal);
+            .HasDefaultValue(FontSize.Medium);
 
         builder.Property(us => us.Density)
             .HasColumnName("density")
@@ -489,10 +485,6 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
             .HasColumnName("theme")
             .HasMaxLength(50)
             .HasDefaultValue("lapis-lazuli");
-
-        builder.Property(us => us.StageFieldVisibility)
-            .HasColumnName("stage_field_visibility")
-            .HasColumnType("jsonb");
 
         builder.Property(us => us.DateCreated)
             .HasColumnName("date_created")

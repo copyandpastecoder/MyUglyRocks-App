@@ -6,9 +6,9 @@ export interface User {
   username: string;
   displayName?: string;
   avatarUrl?: string;
-  isEmailVerified: boolean;
+  emailVerified: boolean;
   role: UserRole;
-  createdAt: string;
+  dateCreated: string;
 }
 
 export interface AuthResult {

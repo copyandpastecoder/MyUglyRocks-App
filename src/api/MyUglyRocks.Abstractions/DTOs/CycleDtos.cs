@@ -57,22 +57,28 @@ public record CompleteCycleRequest(
 public record StageRunSummaryDto(
     Guid Id,
     string StageName,
+    int RunNumber,
+    int TotalRuns,
     DateTime StartDateTime,
     DateTime EndDateTime,
     string Status,
-    int? ResultRating
+    int? ResultRating,
+    CleaningRunDto? CleaningRun
 );
 
 public record StageRunDto(
     Guid Id,
     Guid CycleId,
     string StageName,
+    int RunNumber,
+    int TotalRuns,
     DateTime StartDateTime,
     int DurationDays,
     int DurationHours,
     DateTime EndDateTime,
     string Status,
     bool ReminderEnabled,
+    decimal? LoadWeightBeforeGrams,
     int? FillLevelPercent,
     string? WaterLevel,
     int? WaterAmountMl,
@@ -100,7 +106,8 @@ public record CreateStageRunRequest(
     string? WaterLevel,
     int? WaterAmountMl,
     string? Notes,
-    IEnumerable<CreateStageMaterialRequest>? Materials
+    IEnumerable<CreateStageMaterialRequest>? Materials,
+    CreateCleaningRunRequest? CleaningRun
 );
 
 public record UpdateStageRunRequest(
@@ -189,6 +196,7 @@ public record PhotoDto(
     string Url,
     string? FileName,
     string PhotoType,
+    string? Caption,
     int SortOrder,
     DateTime DateCreated
 );

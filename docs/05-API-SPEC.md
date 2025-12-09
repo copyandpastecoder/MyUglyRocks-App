@@ -21,7 +21,7 @@
 ### 1.2 Base URL
 ```
 Production: https://api.myuglyrocks.com/api/v1
-Development: http://localhost:5000/api/v1
+Development: https://localhost:5000/api/v1
 ```
 
 ### 1.3 Common Headers

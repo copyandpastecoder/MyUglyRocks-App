@@ -30,7 +30,6 @@ public record UserSettingsDto(
     string Timezone,
     string FirstDayOfWeek,
     bool ShowRelativeTimes,
-    string TrackingMode,
     string FontSize,
     string Density,
     string DefaultHomeSection,
@@ -47,17 +46,7 @@ public record UserSettingsDto(
     bool AddWatermark,
     bool AutoFillFromLastRun,
     string DefaultPostVisibility,
-    string Theme,
-    StageFieldVisibilityDto? StageFieldVisibility
-);
-
-// Stage field visibility settings - controls which optional fields are shown when adding stages
-public record StageFieldVisibilityDto(
-    bool ShowLoadWeight = false,
-    bool ShowFillLevel = false,
-    bool ShowWaterLevel = false,
-    bool ShowWaterAmount = false,
-    bool ShowQualityMetrics = false
+    string Theme
 );
 
 public record UpdateSettingsRequest(
@@ -67,7 +56,6 @@ public record UpdateSettingsRequest(
     string? Timezone = null,
     string? FirstDayOfWeek = null,
     bool? ShowRelativeTimes = null,
-    string? TrackingMode = null,
     string? FontSize = null,
     string? Density = null,
     string? DefaultHomeSection = null,
@@ -84,8 +72,7 @@ public record UpdateSettingsRequest(
     bool? AddWatermark = null,
     bool? AutoFillFromLastRun = null,
     string? DefaultPostVisibility = null,
-    string? Theme = null,
-    StageFieldVisibilityDto? StageFieldVisibility = null
+    string? Theme = null
 );
 
 // Account DTOs

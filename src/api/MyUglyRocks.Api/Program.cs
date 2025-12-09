@@ -49,7 +49,9 @@ try
 
     // Configure PostgreSQL with EF Core
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+               .ConfigureWarnings(warnings =>
+                   warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
     // Register DbContext as base type for services that depend on it
     builder.Services.AddScoped<DbContext>(provider => provider.GetRequiredService<AppDbContext>());
@@ -156,7 +158,7 @@ try
     // Configure CORS
     // Default origins + config-based origins
     var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-    var defaultOrigins = new[] { "http://localhost:3000", "http://10.80.80.181:30000" };
+    var defaultOrigins = new[] { "https://myuglyrocks.local:30443", "https://10.80.80.181:30443" };
     var allowedOrigins = configOrigins != null && configOrigins.Length > 0 ? configOrigins : defaultOrigins;
     Log.Information("Configured CORS origins: {Origins}", string.Join(", ", allowedOrigins));
     builder.Services.AddCors(options =>

@@ -84,9 +84,8 @@ dotnet run --project MyUglyRocks.Api
 ```
 
 API will be available at:
-- http://localhost:5222 (HTTP)
-- https://localhost:7281 (HTTPS)
-- API Docs: http://localhost:5222/scalar/v1
+- https://localhost:5222 (HTTPS)
+- API Docs: https://localhost:5222/scalar/v1
 
 ### 3. Run the Frontend
 
@@ -100,15 +99,14 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
-Frontend will be available at http://localhost:3000
+Frontend will be available at https://localhost:3000
 
 ### Port Reference
 
 | Service    | Port  | Description              |
 |------------|-------|--------------------------|
-| Frontend   | 3000  | Next.js dev server       |
-| API (HTTP) | 5222  | ASP.NET Core API         |
-| API (HTTPS)| 7281  | ASP.NET Core API (SSL)   |
+| Frontend   | 3000  | Next.js dev server (HTTPS) |
+| API (HTTPS)| 5222  | ASP.NET Core API         |
 | PostgreSQL | 5432  | Database (Docker)        |
 | Redis      | 6379  | Cache (Docker)           |
 

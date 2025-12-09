@@ -21,8 +21,8 @@ spec:
         ports:
         - containerPort: 3000
         env:
-        - name: NEXT_PUBLIC_API_URL
-          value: "http://10.80.80.181:30001"
+        - name: API_URL
+          value: "https://10.80.80.181:30443"
         resources:
           requests:
             memory: "128Mi"

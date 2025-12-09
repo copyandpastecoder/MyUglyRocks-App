@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { AmountInput } from '@/components/amount-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -49,6 +50,8 @@ import {
   ChevronUp,
   Pencil,
   Copy,
+  Sparkles,
+  Lightbulb,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,20 +59,42 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import Link from 'next/link';
 import { CyclePhotos } from '@/components/cycle-photos';
 import { DurationPicker } from '@/components/duration-picker';
-import { TrackingModeToggle } from '@/components/tracking-mode-toggle';
 import { WeightInput } from '@/components/weight-input';
+import { CleaningRunModal } from '@/components/cleaning-run-modal';
 import { useSettings } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
-import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest } from '@/types/cycle';
+import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
 
-const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish'];
+const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish', 'Custom'];
 const WATER_UNITS = [
   { value: 'ml', label: 'ml' },
   { value: 'floz', label: 'fl oz' },
+];
+const CLEANING_PURPOSES = [
+  { value: 'PostStageClean', label: 'Post-Stage Clean' },
+  { value: 'PrePolishClean', label: 'Pre-Polish Clean' },
+  { value: 'FinalBurnish', label: 'Final Burnish' },
+  { value: 'GritRemoval', label: 'Grit Removal' },
 ];
 
 export default function CycleDetailPage() {
@@ -86,6 +111,7 @@ export default function CycleDetailPage() {
   const [isAddStageOpen, setIsAddStageOpen] = useState(false);
   const [selectedBarrelIds, setSelectedBarrelIds] = useState<string[]>([]);
   const [stageName, setStageName] = useState<string>('Coarse');
+  const [customStageName, setCustomStageName] = useState<string>('');
   const [stageStartDateTime, setStageStartDateTime] = useState<string>('');
   const [durationDays, setDurationDays] = useState<string>('7');
   const [durationHours, setDurationHours] = useState<string>('0');
@@ -95,20 +121,28 @@ export default function CycleDetailPage() {
   const [remindAfterDays, setRemindAfterDays] = useState<string>('7');
   const [selectedMaterials, setSelectedMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
   // Advanced fields
-  const [loadWeightBefore, setLoadWeightBefore] = useState<string>('');
-  const [loadWeightUnit, setLoadWeightUnit] = useState<string>('oz');
+  const [loadWeightBeforeGrams, setLoadWeightBeforeGrams] = useState<number | null>(null);
+  const [weightBeforeValidationError, setWeightBeforeValidationError] = useState(false);
   const [fillLevelPercent, setFillLevelPercent] = useState<string>('');
   const [waterAmount, setWaterAmount] = useState<string>('');
   const [waterUnit, setWaterUnit] = useState<string>('ml');
-  // Local tracking mode toggle for Add Stage modal (defaults to user preference)
-  const [addStageDetailedMode, setAddStageDetailedMode] = useState(false);
   // State for Copy from Previous
   const [isCopyingFromPrevious, setIsCopyingFromPrevious] = useState(false);
+  // Cleaning Run state for Add Stage modal
+  const [addCleaningRun, setAddCleaningRun] = useState(false);
+  const [cleaningDurationDays, setCleaningDurationDays] = useState<string>('0');
+  const [cleaningDurationHours, setCleaningDurationHours] = useState<string>('0');
+  const [cleaningDurationMinutes, setCleaningDurationMinutes] = useState<string>('0');
+  const [cleaningPurpose, setCleaningPurpose] = useState<string>('');
+  const [cleaningNotes, setCleaningNotes] = useState<string>('');
+  const [cleaningMaterials, setCleaningMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
 
   // Complete Stage Modal State
   const [isCompleteStageOpen, setIsCompleteStageOpen] = useState(false);
   const [completeStageId, setCompleteStageId] = useState<string | null>(null);
   const [completeStageName, setCompleteStageName] = useState<string>('');
+  const [completeStageRunNumber, setCompleteStageRunNumber] = useState<number>(1);
+  const [completeStageTotalRuns, setCompleteStageTotalRuns] = useState<number>(1);
   const [completeStageStartDateTime, setCompleteStageStartDateTime] = useState<string>('');
   const [completeStageDurationDays, setCompleteStageDurationDays] = useState<string>('7');
   const [completeStageDurationHours, setCompleteStageDurationHours] = useState<string>('0');
@@ -124,10 +158,14 @@ export default function CycleDetailPage() {
   const [issueContamination, setIssueContamination] = useState(false);
   const [lessonsLearned, setLessonsLearned] = useState('');
   const [nextAction, setNextAction] = useState<string>('Advance');
-  const [loadWeightAfter, setLoadWeightAfter] = useState<string>('');
-  const [loadWeightAfterUnit, setLoadWeightAfterUnit] = useState<string>('oz');
-  // Local tracking mode toggle for Complete Stage modal (defaults to user preference)
-  const [completeStageDetailedMode, setCompleteStageDetailedMode] = useState(false);
+  const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
+  const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
+  // Barrel capacity for the stage being completed (for validation)
+  const [completeStageBarrelCapacity, setCompleteStageBarrelCapacity] = useState<number | null>(null);
+  // Cleaning run info for Complete Stage modal (read-only display)
+  const [completeStageCleaningRun, setCompleteStageCleaningRun] = useState<CleaningRunDto | null>(null);
+  // Weight before (from when stage was started)
+  const [completeStageWeightBefore, setCompleteStageWeightBefore] = useState<number | null>(null);
 
   // Edit Cycle Dialog State
   const [isEditCycleOpen, setIsEditCycleOpen] = useState(false);
@@ -140,10 +178,16 @@ export default function CycleDetailPage() {
   const [isEditStageOpen, setIsEditStageOpen] = useState(false);
   const [editStageId, setEditStageId] = useState<string | null>(null);
   const [editStageName, setEditStageName] = useState('');
+  const [editCustomStageName, setEditCustomStageName] = useState('');
   const [editStageStartDateTime, setEditStageStartDateTime] = useState('');
   const [editStageDurationDays, setEditStageDurationDays] = useState('');
   const [editStageDurationHours, setEditStageDurationHours] = useState('');
   const [editStageNotes, setEditStageNotes] = useState('');
+
+  // Cleaning Run Modal State
+  const [isCleaningRunOpen, setIsCleaningRunOpen] = useState(false);
+  const [cleaningRunStageId, setCleaningRunStageId] = useState<string | null>(null);
+  const [cleaningRunStageName, setCleaningRunStageName] = useState('');
 
   const { data: cycle, isLoading: cycleLoading } = useQuery({
     queryKey: ['cycle', cycleId],
@@ -164,31 +208,13 @@ export default function CycleDetailPage() {
     if (shouldOpenAddStage && cycle && cycle.status === 'Active' && !hasHandledAddStage) {
       setHasHandledAddStage(true);
       // Use setTimeout to ensure all data is ready
-      setTimeout(() => {
-        resetAddStageForm();
-        setAddStageDetailedMode(settings?.trackingMode === 'Detailed');
-        // First stage uses cycle start date with current time, subsequent stages use "now"
-        if (cycle.stageRuns.length === 0) {
-          setStageStartDateTime(formatDateTimeLocal(combineDateWithCurrentTime(cycle.startDate)));
-        } else {
-          setStageStartDateTime(formatDateTimeLocal(new Date()));
-        }
-        setIsAddStageOpen(true);
+      setTimeout(async () => {
+        await openAddStageModal();
         // Remove the query param from URL to prevent re-opening on page refresh
         router.replace(`/cycles/${cycleId}`, { scroll: false });
       }, 100);
     }
-  }, [searchParams, cycle, hasHandledAddStage, settings?.trackingMode, cycleId, router]);
-
-  // Add Stage modal visibility - when detailed mode is on, show all advanced fields
-  const addStageShowLoadWeight = addStageDetailedMode;
-  const addStageShowFillLevel = addStageDetailedMode;
-  const addStageShowWaterAmount = addStageDetailedMode;
-  const addStageHasAnyAdvancedFields = addStageDetailedMode;
-
-  // Complete Stage modal visibility - when detailed mode is on, show all advanced fields
-  const completeStageShowLoadWeight = completeStageDetailedMode;
-  const completeStageShowQualityMetrics = completeStageDetailedMode;
+  }, [searchParams, cycle, hasHandledAddStage, cycleId, router]);
 
   const addStageMutation = useMutation({
     mutationFn: (data: {
@@ -206,6 +232,13 @@ export default function CycleDetailPage() {
       waterLevel?: string;
       waterAmountMl?: number;
       materials?: CreateStageMaterialRequest[];
+      cleaningRun?: {
+        durationMinutes: number;
+        purpose?: string;
+        reminderEnabled?: boolean;
+        notes?: string;
+        materials?: CreateCleaningMaterialRequest[];
+      };
     }) =>
       cycleApi.addStageRun(cycleId, {
         barrelIds: data.barrelIds,
@@ -222,6 +255,7 @@ export default function CycleDetailPage() {
         waterLevel: data.waterLevel,
         waterAmountMl: data.waterAmountMl,
         materials: data.materials,
+        cleaningRun: data.cleaningRun,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
@@ -293,6 +327,7 @@ export default function CycleDetailPage() {
   const resetAddStageForm = () => {
     setSelectedBarrelIds([]);
     setStageName('Coarse');
+    setCustomStageName('');
     setStageStartDateTime('');
     setDurationDays('7');
     setDurationHours('0');
@@ -301,16 +336,27 @@ export default function CycleDetailPage() {
     setReminderType('atEnd');
     setRemindAfterDays('7');
     setSelectedMaterials([]);
-    setLoadWeightBefore('');
-    setLoadWeightUnit('oz');
+    setLoadWeightBeforeGrams(null);
+    setWeightBeforeValidationError(false);
     setFillLevelPercent('');
     setWaterAmount('');
-    setWaterUnit('ml');
+    // Set water unit based on user preference
+    setWaterUnit(settings?.measurementSystem === 'Imperial' ? 'floz' : 'ml');
+    // Reset cleaning run state
+    setAddCleaningRun(false);
+    setCleaningDurationDays('0');
+    setCleaningDurationHours('0');
+    setCleaningDurationMinutes('0');
+    setCleaningPurpose('');
+    setCleaningNotes('');
+    setCleaningMaterials([]);
   };
 
   const resetCompleteStageForm = () => {
     setCompleteStageId(null);
     setCompleteStageName('');
+    setCompleteStageRunNumber(1);
+    setCompleteStageTotalRuns(1);
     setCompleteStageStartDateTime('');
     setCompleteStageDurationDays('7');
     setCompleteStageDurationHours('0');
@@ -326,8 +372,11 @@ export default function CycleDetailPage() {
     setIssueContamination(false);
     setLessonsLearned('');
     setNextAction('Advance');
-    setLoadWeightAfter('');
-    setLoadWeightAfterUnit('oz');
+    setLoadWeightAfterGrams(null);
+    setWeightAfterValidationError(false);
+    setCompleteStageBarrelCapacity(null);
+    setCompleteStageCleaningRun(null);
+    setCompleteStageWeightBefore(null);
   };
 
   const handleAddStage = () => {
@@ -339,6 +388,40 @@ export default function CycleDetailPage() {
       toast.error('Please set a start date/time');
       return;
     }
+    // Validate stage name (don't allow "Custom" as the actual name)
+    if (stageName === 'Custom' || !stageName.trim()) {
+      toast.error('Please enter a stage name');
+      return;
+    }
+
+    // Validate stage start date is not before cycle start date
+    if (cycle) {
+      const cycleStartDate = new Date(cycle.startDate);
+      const stageStart = new Date(stageStartDateTime);
+      cycleStartDate.setHours(0, 0, 0, 0);
+      const stageStartDateOnly = new Date(stageStart);
+      stageStartDateOnly.setHours(0, 0, 0, 0);
+      if (stageStartDateOnly < cycleStartDate) {
+        toast.error('Stage start date cannot be before the cycle start date');
+        return;
+      }
+    }
+
+    // Validate weight before if entered
+    if (weightBeforeValidationError) {
+      toast.error('Weight exceeds 150% of barrel capacity. Please correct before saving.');
+      return;
+    }
+
+    // Validate cleaning run if enabled
+    if (addCleaningRun) {
+      const cleaningTotalMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
+      if (cleaningTotalMinutes <= 0) {
+        toast.error('Cleaning run duration must be at least 1 minute');
+        return;
+      }
+    }
+
     const materialsToSubmit: CreateStageMaterialRequest[] = selectedMaterials
       .filter(m => m.materialId)
       .map(m => ({
@@ -346,6 +429,27 @@ export default function CycleDetailPage() {
         displayAmount: m.displayAmount ? parseFloat(m.displayAmount) : undefined,
         displayUnit: m.displayUnit || undefined,
       }));
+
+    // Build cleaning run request if enabled
+    let cleaningRunRequest = undefined;
+    if (addCleaningRun) {
+      const cleaningTotalMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
+      const cleaningMaterialsToSubmit: CreateCleaningMaterialRequest[] = cleaningMaterials
+        .filter(m => m.materialId)
+        .map(m => ({
+          materialId: m.materialId,
+          displayAmount: m.displayAmount ? parseFloat(m.displayAmount) : undefined,
+          displayUnit: m.displayUnit || undefined,
+        }));
+
+      cleaningRunRequest = {
+        durationMinutes: cleaningTotalMinutes,
+        purpose: cleaningPurpose || undefined,
+        reminderEnabled: false,
+        notes: cleaningNotes || undefined,
+        materials: cleaningMaterialsToSubmit.length > 0 ? cleaningMaterialsToSubmit : undefined,
+      };
+    }
 
     addStageMutation.mutate({
       barrelIds: selectedBarrelIds,
@@ -357,12 +461,12 @@ export default function CycleDetailPage() {
       reminderEnabled,
       remindAfterDays: reminderType === 'afterDays' ? parseInt(remindAfterDays) : undefined,
       remindAtEndOfStage: reminderType === 'atEnd' ? true : undefined,
-      // Convert weight to grams (1 oz = 28.35 g)
-      loadWeightBeforeGrams: loadWeightBefore ? Math.round(parseFloat(loadWeightBefore) * (loadWeightUnit === 'oz' ? 28.35 : 1)) : undefined,
+      loadWeightBeforeGrams: loadWeightBeforeGrams || undefined,
       fillLevelPercent: fillLevelPercent ? parseInt(fillLevelPercent) : undefined,
       // Convert water amount to ml (1 fl oz = 29.5735 ml)
       waterAmountMl: waterAmount ? Math.round(parseFloat(waterAmount) * (waterUnit === 'floz' ? 29.5735 : 1)) : undefined,
       materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
+      cleaningRun: cleaningRunRequest,
     });
   };
 
@@ -380,10 +484,8 @@ export default function CycleDetailPage() {
     return new Date(year, month - 1, day, now.getHours(), now.getMinutes());
   };
 
-  const openAddStageModal = () => {
+  const openAddStageModal = async () => {
     resetAddStageForm();
-    // Initialize local tracking mode from user settings
-    setAddStageDetailedMode(settings?.trackingMode === 'Detailed');
     // First stage uses cycle start date with current time, subsequent stages use "now"
     if (cycle && cycle.stageRuns.length === 0) {
       // First stage: use cycle's start date with current time
@@ -393,6 +495,79 @@ export default function CycleDetailPage() {
       setStageStartDateTime(formatDateTimeLocal(new Date()));
     }
     setIsAddStageOpen(true);
+
+    // Check if the last completed stage had "Repeat" as next action - if so, auto-populate
+    if (cycle && cycle.stageRuns.length > 0) {
+      const lastCompletedStage = [...cycle.stageRuns]
+        .reverse()
+        .find(s => s.status === 'Completed');
+
+      if (lastCompletedStage) {
+        try {
+          const fullStage: StageRunDto = await cycleApi.getStageRun(lastCompletedStage.id);
+          if (fullStage.nextAction === 'Repeat') {
+            // Auto-populate from the repeated stage (excluding advanced options)
+            setStageName(fullStage.stageName);
+
+            // Set start date to previous stage's end date
+            const previousEndDate = new Date(fullStage.endDateTime);
+            setStageStartDateTime(formatDateTimeLocal(previousEndDate));
+
+            // Copy barrels
+            if (fullStage.barrels && fullStage.barrels.length > 0) {
+              const previousBarrelIds = fullStage.barrels.map(b => b.id);
+              // Only select barrels that are still active
+              const activeBarrelIds = previousBarrelIds.filter(id =>
+                allBarrels.some(b => b.id === id)
+              );
+              setSelectedBarrelIds(activeBarrelIds);
+            }
+
+            // Copy materials
+            if (fullStage.materials && fullStage.materials.length > 0) {
+              const copiedMaterials = fullStage.materials.map(m => ({
+                materialId: m.materialId,
+                displayAmount: m.displayAmount ? String(m.displayAmount) : '',
+                displayUnit: m.displayUnit || 'tbsp',
+              }));
+              setSelectedMaterials(copiedMaterials);
+            }
+
+            // Copy duration
+            setDurationDays(String(fullStage.durationDays));
+            setDurationHours(String(fullStage.durationHours));
+
+            // Copy notes
+            if (fullStage.notes) {
+              setNotes(fullStage.notes);
+            }
+
+            // Copy cleaning run if present
+            if (fullStage.cleaningRun) {
+              setAddCleaningRun(true);
+              const cleaningMinutes = fullStage.cleaningRun.durationMinutes;
+              setCleaningDurationDays(String(Math.floor(cleaningMinutes / 1440)));
+              setCleaningDurationHours(String(Math.floor((cleaningMinutes % 1440) / 60)));
+              setCleaningDurationMinutes(String(cleaningMinutes % 60));
+              setCleaningPurpose(fullStage.cleaningRun.purpose || 'PostStageClean');
+              setCleaningNotes(fullStage.cleaningRun.notes || '');
+              if (fullStage.cleaningRun.materials && fullStage.cleaningRun.materials.length > 0) {
+                const copiedCleaningMaterials = fullStage.cleaningRun.materials.map(m => ({
+                  materialId: m.materialId,
+                  displayAmount: m.displayAmount ? String(m.displayAmount) : '',
+                  displayUnit: m.displayUnit || 'tbsp',
+                }));
+                setCleaningMaterials(copiedCleaningMaterials);
+              }
+            }
+
+            toast.info(`Auto-filled from previous "${fullStage.stageName}" stage (marked for repeat)`);
+          }
+        } catch {
+          // Ignore error - just don't auto-populate
+        }
+      }
+    }
   };
 
   // Copy settings from previous stage run
@@ -435,6 +610,25 @@ export default function CycleDetailPage() {
       setDurationDays(String(previousStage.durationDays));
       setDurationHours(String(previousStage.durationHours));
 
+      // Copy cleaning run if present
+      if (previousStage.cleaningRun) {
+        setAddCleaningRun(true);
+        const cleaningMinutes = previousStage.cleaningRun.durationMinutes;
+        setCleaningDurationDays(String(Math.floor(cleaningMinutes / 1440)));
+        setCleaningDurationHours(String(Math.floor((cleaningMinutes % 1440) / 60)));
+        setCleaningDurationMinutes(String(cleaningMinutes % 60));
+        setCleaningPurpose(previousStage.cleaningRun.purpose || 'PostStageClean');
+        setCleaningNotes(previousStage.cleaningRun.notes || '');
+        if (previousStage.cleaningRun.materials && previousStage.cleaningRun.materials.length > 0) {
+          const copiedCleaningMaterials = previousStage.cleaningRun.materials.map(m => ({
+            materialId: m.materialId,
+            displayAmount: m.displayAmount ? String(m.displayAmount) : '',
+            displayUnit: m.displayUnit || 'tbsp',
+          }));
+          setCleaningMaterials(copiedCleaningMaterials);
+        }
+      }
+
       toast.success(`Copied settings from previous ${previousStage.stageName} stage`);
     } catch {
       toast.error('Failed to copy from previous stage');
@@ -443,7 +637,7 @@ export default function CycleDetailPage() {
     }
   };
 
-  const openCompleteStageModal = (stage: StageRunSummaryDto) => {
+  const openCompleteStageModal = async (stage: StageRunSummaryDto) => {
     const startDate = new Date(stage.startDateTime);
     const endDate = new Date(stage.endDateTime);
     const durationMs = endDate.getTime() - startDate.getTime();
@@ -453,18 +647,39 @@ export default function CycleDetailPage() {
 
     setCompleteStageId(stage.id);
     setCompleteStageName(stage.stageName);
+    setCompleteStageRunNumber(stage.runNumber);
+    setCompleteStageTotalRuns(stage.totalRuns);
     setCompleteStageStartDateTime(stage.startDateTime.slice(0, 16)); // Format for display
     setCompleteStageDurationDays(String(days));
     setCompleteStageDurationHours(String(hours));
-    // Initialize local tracking mode from user settings
-    setCompleteStageDetailedMode(settings?.trackingMode === 'Detailed');
+    // Store cleaning run info for display
+    setCompleteStageCleaningRun(stage.cleaningRun);
     setIsCompleteStageOpen(true);
+
+    // Fetch full stage details to get weight before and barrel capacity
+    try {
+      const fullStage: StageRunDto = await cycleApi.getStageRun(stage.id);
+      setCompleteStageWeightBefore(fullStage.loadWeightBeforeGrams);
+      // Calculate total barrel capacity
+      if (fullStage.barrels && fullStage.barrels.length > 0) {
+        const totalCapacity = fullStage.barrels.reduce((sum, b) => sum + (b.capacityLbs || 0), 0);
+        setCompleteStageBarrelCapacity(totalCapacity > 0 ? totalCapacity : null);
+      }
+    } catch {
+      // Ignore error - weight before is optional
+    }
   };
 
   const handleCompleteStage = () => {
     if (!completeStageId) return;
     if (resultRating === 0) {
       toast.error('Please rate the stage result (1-5 stars)');
+      return;
+    }
+
+    // Validate weight after if entered
+    if (weightAfterValidationError) {
+      toast.error('Weight exceeds 150% of barrel capacity. Please correct before saving.');
       return;
     }
 
@@ -482,14 +697,13 @@ export default function CycleDetailPage() {
       issueUnderRounded: issueUnderRounded || undefined,
       issueContamination: issueContamination || undefined,
       lessonsLearned: lessonsLearned || undefined,
-      // Convert weight to grams (1 oz = 28.35 g)
-      loadWeightAfterGrams: loadWeightAfter ? Math.round(parseFloat(loadWeightAfter) * (loadWeightAfterUnit === 'oz' ? 28.35 : 1)) : undefined,
+      loadWeightAfterGrams: loadWeightAfterGrams || undefined,
       // Send the calculated actual end date
       actualEndDateTime: actualEndDate.toISOString(),
     };
 
     // Include advanced quality if shown
-    if (showAdvancedQuality || completeStageDetailedMode) {
+    if (showAdvancedQuality) {
       data.resultShapeRounding = resultShapeRounding;
       data.resultScratchLevel = resultScratchLevel;
       data.resultPitting = resultPitting;
@@ -515,7 +729,7 @@ export default function CycleDetailPage() {
     }
     updateCycleMutation.mutate({
       name: editCycleName,
-      startDate: new Date(editCycleStartDate).toISOString(),
+      startDate: editCycleStartDate, // Already in YYYY-MM-DD format from date input
       goal: editCycleGoal || undefined,
       notes: editCycleNotes || undefined,
     });
@@ -531,6 +745,9 @@ export default function CycleDetailPage() {
 
     setEditStageId(stage.id);
     setEditStageName(stage.stageName);
+    // Set custom stage name if it's not a standard stage name
+    const standardNames = STAGE_NAMES.slice(0, -1); // Exclude 'Custom' from standard names
+    setEditCustomStageName(!standardNames.includes(stage.stageName) ? stage.stageName : '');
     setEditStageStartDateTime(stage.startDateTime.slice(0, 16)); // Format for datetime-local input
     setEditStageDurationDays(String(days));
     setEditStageDurationHours(String(hours));
@@ -548,6 +765,25 @@ export default function CycleDetailPage() {
       return;
     }
 
+    // Validate stage name (don't allow "Custom" as the actual name)
+    if (editStageName === 'Custom' || !editStageName.trim()) {
+      toast.error('Please enter a stage name');
+      return;
+    }
+
+    // Validate stage start date is not before cycle start date
+    if (cycle && editStageStartDateTime) {
+      const cycleStartDate = new Date(cycle.startDate);
+      const stageStart = new Date(editStageStartDateTime);
+      cycleStartDate.setHours(0, 0, 0, 0);
+      const stageStartDateOnly = new Date(stageStart);
+      stageStartDateOnly.setHours(0, 0, 0, 0);
+      if (stageStartDateOnly < cycleStartDate) {
+        toast.error('Stage start date cannot be before the cycle start date');
+        return;
+      }
+    }
+
     updateStageMutation.mutate({
       id: editStageId,
       data: {
@@ -558,6 +794,12 @@ export default function CycleDetailPage() {
         notes: editStageNotes || undefined,
       },
     });
+  };
+
+  const openCleaningRunModal = (stage: StageRunSummaryDto) => {
+    setCleaningRunStageId(stage.id);
+    setCleaningRunStageName(formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns));
+    setIsCleaningRunOpen(true);
   };
 
   const addMaterial = () => {
@@ -572,6 +814,55 @@ export default function CycleDetailPage() {
     const updated = [...selectedMaterials];
     updated[index] = { ...updated[index], [field]: value };
     setSelectedMaterials(updated);
+  };
+
+  // Cleaning material helpers
+  const addCleaningMaterial = () => {
+    setCleaningMaterials([...cleaningMaterials, { materialId: '', displayAmount: '', displayUnit: 'tbsp' }]);
+  };
+
+  const removeCleaningMaterial = (index: number) => {
+    setCleaningMaterials(cleaningMaterials.filter((_, i) => i !== index));
+  };
+
+  const updateCleaningMaterial = (index: number, field: 'materialId' | 'displayAmount' | 'displayUnit', value: string) => {
+    const updated = [...cleaningMaterials];
+    updated[index] = { ...updated[index], [field]: value };
+    setCleaningMaterials(updated);
+  };
+
+  // Cleaning duration presets (in minutes)
+  const CLEANING_DURATION_PRESETS = [
+    { label: '15 min', minutes: 15 },
+    { label: '30 min', minutes: 30 },
+    { label: '1 hour', minutes: 60 },
+    { label: '1 day', minutes: 1440 },
+  ];
+
+  const handleCleaningDurationPreset = (minutes: number) => {
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    const mins = minutes % 60;
+    setCleaningDurationDays(String(days));
+    setCleaningDurationHours(String(hours));
+    setCleaningDurationMinutes(String(mins));
+    // Auto-populate purpose if empty
+    if (!cleaningPurpose) {
+      setCleaningPurpose('PostStageClean');
+    }
+  };
+
+  // Auto-populate purpose when duration changes
+  const handleCleaningDurationChange = (setter: (val: string) => void) => (value: string) => {
+    setter(value);
+    // If any duration is set and purpose is empty, default to PostStageClean
+    const newDays = setter === setCleaningDurationDays ? parseInt(value) || 0 : parseInt(cleaningDurationDays) || 0;
+    const newHours = setter === setCleaningDurationHours ? parseInt(value) || 0 : parseInt(cleaningDurationHours) || 0;
+    const newMins = setter === setCleaningDurationMinutes ? parseInt(value) || 0 : parseInt(cleaningDurationMinutes) || 0;
+    const totalMinutes = newDays * 1440 + newHours * 60 + newMins;
+    if (totalMinutes > 0 && !cleaningPurpose) {
+      setCleaningPurpose('PostStageClean');
+    }
   };
 
   const toggleBarrel = (barrelId: string) => {
@@ -592,6 +883,12 @@ export default function CycleDetailPage() {
         }))
       : []
   ) || [];
+
+  // Calculate total barrel capacity from selected barrels (for weight validation)
+  const selectedBarrelCapacityLbs = selectedBarrelIds.reduce((total, id) => {
+    const barrel = allBarrels.find(b => b.id === id);
+    return total + (barrel?.capacityLbs || 0);
+  }, 0);
 
   if (cycleLoading) {
     return (
@@ -716,20 +1013,26 @@ export default function CycleDetailPage() {
               </Button>
               <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
                 <DialogHeader className="flex-shrink-0">
-                  <DialogTitle>Add New Stage</DialogTitle>
-                  <DialogDescription>
-                    Start a new tumbling stage for this cycle
-                  </DialogDescription>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <DialogTitle>Add New Stage</DialogTitle>
+                      <DialogDescription>
+                        Start a new tumbling stage for this cycle
+                      </DialogDescription>
+                    </div>
+                    <Link
+                      href="/learn/faq/stages"
+                      target="_blank"
+                      className="p-1 hover:bg-muted rounded-md transition-colors"
+                      title="Stage Tips"
+                    >
+                      <Lightbulb className="h-5 w-5 text-yellow-500" />
+                    </Link>
+                  </div>
                 </DialogHeader>
 
                 {/* Scrollable content area */}
-                <div className="flex-1 overflow-y-auto min-h-0">
-                  {/* Simple/Detailed Toggle */}
-                  <TrackingModeToggle
-                    isDetailedMode={addStageDetailedMode}
-                    onToggle={setAddStageDetailedMode}
-                  />
-
+                <div className="flex-1 overflow-y-auto min-h-0 pr-2">
                   <div className="space-y-4 py-4">
                   {/* Stage Name */}
                   <div className="space-y-2">
@@ -739,14 +1042,39 @@ export default function CycleDetailPage() {
                         <Button
                           key={name}
                           type="button"
-                          variant={stageName === name ? 'default' : 'outline'}
+                          variant={stageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(stageName)) ? 'default' : 'outline'}
                           size="sm"
-                          onClick={() => setStageName(name)}
+                          onClick={() => {
+                            if (name === 'Custom') {
+                              setStageName('Custom');
+                              setCustomStageName('');
+                            } else {
+                              setStageName(name);
+                              setCustomStageName('');
+                            }
+                          }}
                         >
                           {name}
                         </Button>
                       ))}
                     </div>
+                    {/* Custom stage name input - show when Custom is selected or when stage name is not in standard list */}
+                    {(stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName)) && (
+                      <Input
+                        placeholder="Enter custom stage name..."
+                        value={stageName === 'Custom' ? customStageName : stageName}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setCustomStageName(value);
+                          if (value) {
+                            setStageName(value);
+                          } else {
+                            setStageName('Custom');
+                          }
+                        }}
+                        className="mt-2"
+                      />
+                    )}
                     {/* Copy from Previous button - only show when there are previous stages */}
                     {cycle && cycle.stageRuns.length > 0 && (
                       <Button
@@ -767,6 +1095,45 @@ export default function CycleDetailPage() {
                     )}
                   </div>
 
+                  {/* Barrel Selection - moved up */}
+                  <div className="space-y-2">
+                    <Label>Select Barrel(s)</Label>
+                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                      {allBarrels.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          No active barrels available
+                        </p>
+                      ) : (
+                        [...allBarrels].sort((a, b) => a.barrelNumber - b.barrelNumber).map(barrel => (
+                          <div key={barrel.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`barrel-top-${barrel.id}`}
+                              checked={selectedBarrelIds.includes(barrel.id)}
+                              onCheckedChange={() => toggleBarrel(barrel.id)}
+                            />
+                            <label
+                              htmlFor={`barrel-top-${barrel.id}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {barrel.tumblerName} - Barrel #{barrel.barrelNumber}
+                              {barrel.nickname && ` (${barrel.nickname})`}
+                              {barrel.capacityLbs && (
+                                <span className="text-muted-foreground ml-1">
+                                  - {barrel.capacityLbs} lbs
+                                </span>
+                              )}
+                            </label>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    {selectedBarrelIds.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {selectedBarrelIds.length} barrel(s) selected
+                      </p>
+                    )}
+                  </div>
+
                   {/* Start Date/Time */}
                   <div className="space-y-2">
                     <Label>Start Date/Time</Label>
@@ -782,14 +1149,39 @@ export default function CycleDetailPage() {
                     </p>
                   </div>
 
-                  {/* Duration */}
-                  <DurationPicker
-                    durationDays={durationDays}
-                    durationHours={durationHours}
-                    onDaysChange={setDurationDays}
-                    onHoursChange={setDurationHours}
-                    startDateTime={stageStartDateTime}
-                  />
+                  {/* Duration - Collapsible */}
+                  <div className="border rounded-lg p-3 space-y-3">
+                    <Collapsible defaultOpen>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full justify-between h-auto p-0 hover:bg-transparent"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4" />
+                            <span className="font-medium">Duration</span>
+                            {(parseInt(durationDays) > 0 || parseInt(durationHours) > 0) && (
+                              <span className="text-muted-foreground text-sm">
+                                ({durationDays}d {durationHours}h)
+                              </span>
+                            )}
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3">
+                        <DurationPicker
+                          durationDays={durationDays}
+                          durationHours={durationHours}
+                          onDaysChange={setDurationDays}
+                          onHoursChange={setDurationHours}
+                          startDateTime={stageStartDateTime}
+                          hideLabel
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
 
                   {/* Materials Section */}
                   <div className="space-y-2">
@@ -823,10 +1215,8 @@ export default function CycleDetailPage() {
                                 ))}
                               </SelectContent>
                             </Select>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.1"
+                            <AmountInput
+                              min={0}
                               placeholder="Amt"
                               className="w-20"
                               value={mat.displayAmount}
@@ -863,11 +1253,11 @@ export default function CycleDetailPage() {
                     )}
                   </div>
 
-                  {/* Notes */}
+                  {/* Material Notes */}
                   <div className="space-y-2">
-                    <Label>Notes (optional)</Label>
+                    <Label>Material Notes (optional)</Label>
                     <Textarea
-                      placeholder="Any notes about this stage..."
+                      placeholder="Any notes about materials or this stage..."
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       rows={2}
@@ -911,107 +1301,240 @@ export default function CycleDetailPage() {
                     )}
                   </div>
 
-                  {/* Advanced Fields - only show header if any fields are enabled */}
-                  {addStageHasAnyAdvancedFields && (
-                    <div className="border-t pt-4">
-                      <p className="text-sm font-medium text-muted-foreground mb-3">Advanced Options</p>
-                    </div>
-                  )}
+                  {/* Cleaning Run Section */}
+                  <Collapsible open={addCleaningRun} onOpenChange={setAddCleaningRun}>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4" />
+                          <span>Add Cleaning Run</span>
+                        </div>
+                        {addCleaningRun ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-4 border rounded-lg p-4">
+                      {/* Cleaning Duration */}
+                      <div className="space-y-2">
+                        <Label>Cleaning Duration</Label>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Days</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={cleaningDurationDays}
+                              onChange={(e) => handleCleaningDurationChange(setCleaningDurationDays)(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Hours</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="23"
+                              value={cleaningDurationHours}
+                              onChange={(e) => handleCleaningDurationChange(setCleaningDurationHours)(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Minutes</Label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="59"
+                              value={cleaningDurationMinutes}
+                              onChange={(e) => handleCleaningDurationChange(setCleaningDurationMinutes)(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                        {/* Duration Presets */}
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {CLEANING_DURATION_PRESETS.map((preset) => {
+                            const currentMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
+                            return (
+                              <Button
+                                key={preset.minutes}
+                                type="button"
+                                variant={currentMinutes === preset.minutes ? 'default' : 'outline'}
+                                size="sm"
+                                onClick={() => handleCleaningDurationPreset(preset.minutes)}
+                              >
+                                {preset.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                  {/* Load Weight */}
-                  {addStageShowLoadWeight && (
-                    <WeightInput
-                      label="Load Weight Before"
-                      value={loadWeightBefore}
-                      unit={loadWeightUnit}
-                      onValueChange={setLoadWeightBefore}
-                      onUnitChange={setLoadWeightUnit}
-                    />
-                  )}
-
-                  {/* Fill Level */}
-                  {addStageShowFillLevel && (
-                    <div className="space-y-2">
-                      <Label>Barrel Fill Level (%)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="100"
-                        placeholder="e.g., 75"
-                        value={fillLevelPercent}
-                        onChange={(e) => setFillLevelPercent(e.target.value)}
-                      />
-                    </div>
-                  )}
-
-                  {/* Water Amount */}
-                  {addStageShowWaterAmount && (
-                    <div className="space-y-2">
-                      <Label>Water Amount</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          placeholder="e.g., 250"
-                          value={waterAmount}
-                          onChange={(e) => setWaterAmount(e.target.value)}
-                          className="flex-1"
-                        />
-                        <Select value={waterUnit} onValueChange={setWaterUnit}>
-                          <SelectTrigger className="w-24">
-                            <SelectValue />
+                      {/* Cleaning Purpose */}
+                      <div className="space-y-2">
+                        <Label>Purpose (optional)</Label>
+                        <Select value={cleaningPurpose} onValueChange={setCleaningPurpose}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select purpose..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {WATER_UNITS.map(unit => (
-                              <SelectItem key={unit.value} value={unit.value}>
-                                {unit.label}
+                            {CLEANING_PURPOSES.map((p) => (
+                              <SelectItem key={p.value} value={p.value}>
+                                {p.label}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                    </div>
-                  )}
 
-                  {/* Barrel Selection */}
-                  <div className="space-y-2">
-                    <Label>Select Barrel(s)</Label>
-                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                      {allBarrels.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-2">
-                          No active barrels available
-                        </p>
-                      ) : (
-                        allBarrels.map(barrel => (
-                          <div key={barrel.id} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={barrel.id}
-                              checked={selectedBarrelIds.includes(barrel.id)}
-                              onCheckedChange={() => toggleBarrel(barrel.id)}
-                            />
-                            <label
-                              htmlFor={barrel.id}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                              {barrel.tumblerName} - Barrel #{barrel.barrelNumber}
-                              {barrel.nickname && ` (${barrel.nickname})`}
-                              {barrel.capacityLbs && (
-                                <span className="text-muted-foreground ml-1">
-                                  - {barrel.capacityLbs} lbs
-                                </span>
-                              )}
-                            </label>
+                      {/* Cleaning Materials */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label>Cleaning Materials</Label>
+                          <Button type="button" variant="ghost" size="sm" onClick={addCleaningMaterial}>
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+                        {cleaningMaterials.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-2">
+                            No materials added. Click &quot;Add&quot; to add soap, media, etc.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {cleaningMaterials.map((mat, index) => (
+                              <div key={index} className="flex items-center gap-2">
+                                <Select
+                                  value={mat.materialId}
+                                  onValueChange={(value) => updateCleaningMaterial(index, 'materialId', value)}
+                                >
+                                  <SelectTrigger className="flex-1">
+                                    <SelectValue placeholder="Select material..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {materials?.filter(m => m.category !== 'Abrasive').map((m) => (
+                                      <SelectItem key={m.id} value={m.id}>
+                                        {m.commonName}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <AmountInput
+                                  min={0}
+                                  placeholder="Amt"
+                                  className="w-20"
+                                  value={mat.displayAmount}
+                                  onChange={(e) => updateCleaningMaterial(index, 'displayAmount', e.target.value)}
+                                />
+                                <Select
+                                  value={mat.displayUnit}
+                                  onValueChange={(value) => updateCleaningMaterial(index, 'displayUnit', value)}
+                                >
+                                  <SelectTrigger className="w-24">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="tbsp">tbsp</SelectItem>
+                                    <SelectItem value="tsp">tsp</SelectItem>
+                                    <SelectItem value="cup">cup</SelectItem>
+                                    <SelectItem value="oz">oz</SelectItem>
+                                    <SelectItem value="g">g</SelectItem>
+                                    <SelectItem value="ml">ml</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => removeCleaningMaterial(index)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
                           </div>
-                        ))
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedBarrelIds.length > 0
-                        ? `${selectedBarrelIds.length} barrel(s) selected`
-                        : 'Select one or more barrels to run this stage'}
-                    </p>
-                  </div>
+                        )}
+                      </div>
+
+                      {/* Cleaning Notes */}
+                      <div className="space-y-2">
+                        <Label>Cleaning Notes (optional)</Label>
+                        <Textarea
+                          placeholder="e.g., Extra rinse to remove all grit residue..."
+                          value={cleaningNotes}
+                          onChange={(e) => setCleaningNotes(e.target.value)}
+                          rows={2}
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  {/* Advanced Options - Collapsible */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between"
+                      >
+                        <span>Advanced Options</span>
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-4">
+                      {/* Load Weight */}
+                      <WeightInput
+                        label="Load Weight Before"
+                        valueGrams={loadWeightBeforeGrams}
+                        onValueChange={setLoadWeightBeforeGrams}
+                        barrelCapacityLbs={selectedBarrelCapacityLbs > 0 ? selectedBarrelCapacityLbs : undefined}
+                        onValidationChange={(isValid) => setWeightBeforeValidationError(!isValid)}
+                      />
+
+                      {/* Fill Level */}
+                      <div className="space-y-2">
+                        <Label>Barrel Fill Level (%)</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="100"
+                          placeholder="e.g., 75"
+                          value={fillLevelPercent}
+                          onChange={(e) => setFillLevelPercent(e.target.value)}
+                        />
+                      </div>
+
+                      {/* Water Amount */}
+                      <div className="space-y-2">
+                        <Label>Water Amount</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            placeholder="e.g., 250"
+                            value={waterAmount}
+                            onChange={(e) => setWaterAmount(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Select value={waterUnit} onValueChange={setWaterUnit}>
+                            <SelectTrigger className="w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {WATER_UNITS.map(unit => (
+                                <SelectItem key={unit.value} value={unit.value}>
+                                  {unit.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+
                   </div>
                 </div>
                 <DialogFooter className="flex-shrink-0">
@@ -1059,6 +1582,7 @@ export default function CycleDetailPage() {
                     onComplete={() => openCompleteStageModal(stage)}
                     onEdit={() => openEditStageModal(stage)}
                     onDelete={() => deleteStageRunMutation.mutate(stage.id)}
+                    onAddCleaningRun={() => openCleaningRunModal(stage)}
                     isCompleting={completeStageMutation.isPending}
                   />
                 ))}
@@ -1074,6 +1598,7 @@ export default function CycleDetailPage() {
                     key={stage.id}
                     stage={stage}
                     onDelete={() => deleteStageRunMutation.mutate(stage.id)}
+                    onAddCleaningRun={() => openCleaningRunModal(stage)}
                   />
                 ))}
               </div>
@@ -1086,29 +1611,57 @@ export default function CycleDetailPage() {
       <Dialog open={isCompleteStageOpen} onOpenChange={setIsCompleteStageOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Complete Stage</DialogTitle>
-            <DialogDescription>
-              Mark &quot;{completeStageName}&quot; as complete
-            </DialogDescription>
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>Complete Stage</DialogTitle>
+                <DialogDescription>
+                  Mark &quot;{formatStageDisplayName(completeStageName, completeStageRunNumber, completeStageTotalRuns)}&quot; as complete
+                </DialogDescription>
+              </div>
+              <Link
+                href="/learn/faq/stages"
+                target="_blank"
+                className="p-1 hover:bg-muted rounded-md transition-colors"
+                title="Stage Tips"
+              >
+                <Lightbulb className="h-5 w-5 text-yellow-500" />
+              </Link>
+            </div>
           </DialogHeader>
 
-          {/* Simple/Detailed Toggle */}
-          <TrackingModeToggle
-            isDetailedMode={completeStageDetailedMode}
-            onToggle={setCompleteStageDetailedMode}
-          />
-
           <div className="space-y-4 py-4">
-            {/* Duration */}
-            <DurationPicker
-              durationDays={completeStageDurationDays}
-              durationHours={completeStageDurationHours}
-              onDaysChange={setCompleteStageDurationDays}
-              onHoursChange={setCompleteStageDurationHours}
-              startDateTime={completeStageStartDateTime}
-              label="Actual Duration"
-              helperText="Adjust if the stage finished earlier or later than originally planned."
-            />
+            {/* Duration - Collapsible (collapsed by default) */}
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-between"
+                >
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>Actual Duration</span>
+                    {(parseInt(completeStageDurationDays) > 0 || parseInt(completeStageDurationHours) > 0) && (
+                      <span className="text-muted-foreground text-sm">
+                        ({completeStageDurationDays}d {completeStageDurationHours}h)
+                      </span>
+                    )}
+                  </div>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <DurationPicker
+                  durationDays={completeStageDurationDays}
+                  durationHours={completeStageDurationHours}
+                  onDaysChange={setCompleteStageDurationDays}
+                  onHoursChange={setCompleteStageDurationHours}
+                  startDateTime={completeStageStartDateTime}
+                  hideLabel
+                  helperText="Adjust if the stage finished earlier or later than originally planned."
+                />
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Result Rating */}
             <div className="space-y-2">
@@ -1132,72 +1685,72 @@ export default function CycleDetailPage() {
               </div>
             </div>
 
-            {/* Advanced Quality Ratings */}
-            {(completeStageShowQualityMetrics || showAdvancedQuality) && (
-              <div className="space-y-4 border rounded-lg p-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label className="text-sm">Shape/Rounding</Label>
-                    <span className="text-sm text-muted-foreground">{resultShapeRounding}%</span>
+            {/* Advanced Quality Ratings - Collapsible */}
+            <Collapsible open={showAdvancedQuality} onOpenChange={setShowAdvancedQuality}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs"
+                >
+                  {showAdvancedQuality ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                  {showAdvancedQuality ? 'Hide' : 'Show'} advanced quality ratings
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-3">
+                <div className="space-y-4 border rounded-lg p-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Shape/Rounding</Label>
+                      <span className="text-sm text-muted-foreground">{resultShapeRounding}%</span>
+                    </div>
+                    <Slider
+                      value={[resultShapeRounding]}
+                      onValueChange={([v]) => setResultShapeRounding(v)}
+                      max={100}
+                      step={5}
+                    />
                   </div>
-                  <Slider
-                    value={[resultShapeRounding]}
-                    onValueChange={([v]) => setResultShapeRounding(v)}
-                    max={100}
-                    step={5}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label className="text-sm">Scratch Level</Label>
-                    <span className="text-sm text-muted-foreground">{resultScratchLevel}%</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Scratch Level</Label>
+                      <span className="text-sm text-muted-foreground">{resultScratchLevel}%</span>
+                    </div>
+                    <Slider
+                      value={[resultScratchLevel]}
+                      onValueChange={([v]) => setResultScratchLevel(v)}
+                      max={100}
+                      step={5}
+                    />
                   </div>
-                  <Slider
-                    value={[resultScratchLevel]}
-                    onValueChange={([v]) => setResultScratchLevel(v)}
-                    max={100}
-                    step={5}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label className="text-sm">Pitting/Chips</Label>
-                    <span className="text-sm text-muted-foreground">{resultPitting}%</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Pitting/Chips</Label>
+                      <span className="text-sm text-muted-foreground">{resultPitting}%</span>
+                    </div>
+                    <Slider
+                      value={[resultPitting]}
+                      onValueChange={([v]) => setResultPitting(v)}
+                      max={100}
+                      step={5}
+                    />
                   </div>
-                  <Slider
-                    value={[resultPitting]}
-                    onValueChange={([v]) => setResultPitting(v)}
-                    max={100}
-                    step={5}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between">
-                    <Label className="text-sm">Shine</Label>
-                    <span className="text-sm text-muted-foreground">{resultShine}%</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <Label className="text-sm">Shine</Label>
+                      <span className="text-sm text-muted-foreground">{resultShine}%</span>
+                    </div>
+                    <Slider
+                      value={[resultShine]}
+                      onValueChange={([v]) => setResultShine(v)}
+                      max={100}
+                      step={5}
+                    />
                   </div>
-                  <Slider
-                    value={[resultShine]}
-                    onValueChange={([v]) => setResultShine(v)}
-                    max={100}
-                    step={5}
-                  />
                 </div>
-              </div>
-            )}
-
-            {!completeStageShowQualityMetrics && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAdvancedQuality(!showAdvancedQuality)}
-                className="text-xs"
-              >
-                {showAdvancedQuality ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
-                {showAdvancedQuality ? 'Hide' : 'Show'} advanced quality ratings
-              </Button>
-            )}
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* Issues */}
             <div className="space-y-2">
@@ -1222,17 +1775,20 @@ export default function CycleDetailPage() {
               </div>
             </div>
 
-            {/* Weight After - only if load weight tracking is enabled */}
-            {completeStageShowLoadWeight && (
-              <WeightInput
-                label="Weight After"
-                value={loadWeightAfter}
-                unit={loadWeightAfterUnit}
-                onValueChange={setLoadWeightAfter}
-                onUnitChange={setLoadWeightAfterUnit}
-                placeholder="e.g., 2.3"
-              />
-            )}
+            {/* Weight After */}
+            <WeightInput
+              label={
+                completeStageWeightBefore
+                  ? `Weight After (Before: ${settings?.measurementSystem === 'Metric'
+                      ? `${(completeStageWeightBefore / 1000).toFixed(2)} kg`
+                      : `${(completeStageWeightBefore / 453.592).toFixed(1)} lbs`})`
+                  : "Weight After (optional)"
+              }
+              valueGrams={loadWeightAfterGrams}
+              onValueChange={setLoadWeightAfterGrams}
+              barrelCapacityLbs={completeStageBarrelCapacity || undefined}
+              onValidationChange={(isValid) => setWeightAfterValidationError(!isValid)}
+            />
 
             {/* Lessons Learned */}
             <div className="space-y-2">
@@ -1263,6 +1819,47 @@ export default function CycleDetailPage() {
                 </div>
               </RadioGroup>
             </div>
+
+            {/* Cleaning Run Display */}
+            {completeStageCleaningRun && (
+              <div className="border rounded-lg p-4 bg-muted/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  <span className="font-medium">Cleaning Run</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Duration:</span>
+                    <span>{formatDurationMinutes(completeStageCleaningRun.durationMinutes)}</span>
+                  </div>
+                  {completeStageCleaningRun.purpose && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Purpose:</span>
+                      <span>{formatCleaningPurpose(completeStageCleaningRun.purpose)}</span>
+                    </div>
+                  )}
+                  {completeStageCleaningRun.materials && completeStageCleaningRun.materials.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">Materials:</span>
+                      <ul className="mt-1 ml-4 list-disc text-xs">
+                        {completeStageCleaningRun.materials.map((mat, idx) => (
+                          <li key={idx}>
+                            {mat.materialName}
+                            {mat.displayAmount && ` - ${mat.displayAmount} ${mat.displayUnit || ''}`}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {completeStageCleaningRun.notes && (
+                    <div>
+                      <span className="text-muted-foreground">Notes:</span>
+                      <p className="mt-1 text-xs">{completeStageCleaningRun.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCompleteStageOpen(false)}>
@@ -1340,24 +1937,64 @@ export default function CycleDetailPage() {
       <Dialog open={isEditStageOpen} onOpenChange={setIsEditStageOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Stage</DialogTitle>
-            <DialogDescription>
-              Adjust the stage duration. Use this if the stage finished earlier or later than planned.
-            </DialogDescription>
+            <div className="flex items-start justify-between">
+              <div>
+                <DialogTitle>Edit Stage</DialogTitle>
+                <DialogDescription>
+                  Adjust the stage duration. Use this if the stage finished earlier or later than planned.
+                </DialogDescription>
+              </div>
+              <Link
+                href="/learn/faq/stages"
+                target="_blank"
+                className="p-1 hover:bg-muted rounded-md transition-colors"
+                title="Stage Tips"
+              >
+                <Lightbulb className="h-5 w-5 text-yellow-500" />
+              </Link>
+            </div>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Stage Name</Label>
-              <Select value={editStageName} onValueChange={setEditStageName}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STAGE_NAMES.map(name => (
-                    <SelectItem key={name} value={name}>{name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex flex-wrap gap-1">
+                {STAGE_NAMES.map(name => (
+                  <Button
+                    key={name}
+                    type="button"
+                    variant={editStageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(editStageName)) ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => {
+                      if (name === 'Custom') {
+                        setEditStageName('Custom');
+                        setEditCustomStageName('');
+                      } else {
+                        setEditStageName(name);
+                        setEditCustomStageName('');
+                      }
+                    }}
+                  >
+                    {name}
+                  </Button>
+                ))}
+              </div>
+              {/* Custom stage name input - show when Custom is selected or when stage name is not in standard list */}
+              {(editStageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(editStageName)) && (
+                <Input
+                  placeholder="Enter custom stage name..."
+                  value={editStageName === 'Custom' ? editCustomStageName : editStageName}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setEditCustomStageName(value);
+                    if (value) {
+                      setEditStageName(value);
+                    } else {
+                      setEditStageName('Custom');
+                    }
+                  }}
+                  className="mt-2"
+                />
+              )}
             </div>
             <DurationPicker
               durationDays={editStageDurationDays}
@@ -1391,10 +2028,30 @@ export default function CycleDetailPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Cleaning Run Modal */}
+      {cleaningRunStageId && (
+        <CleaningRunModal
+          open={isCleaningRunOpen}
+          onOpenChange={setIsCleaningRunOpen}
+          stageId={cleaningRunStageId}
+          stageName={cleaningRunStageName}
+          cycleId={cycleId}
+        />
+      )}
+
       {/* Photos */}
       <CyclePhotos cycleId={cycleId} stages={cycle?.stageRuns || []} />
     </div>
   );
+}
+
+// Helper to format stage display name with run number
+// Shows "Run X" only when there are multiple runs of the same stage type
+function formatStageDisplayName(stageName: string, runNumber: number, totalRuns: number): string {
+  if (totalRuns <= 1) {
+    return stageName;
+  }
+  return `${stageName} Run ${runNumber}`;
 }
 
 function StageCard({
@@ -1402,19 +2059,23 @@ function StageCard({
   onComplete,
   onEdit,
   onDelete,
+  onAddCleaningRun,
   isCompleting,
 }: {
   stage: StageRunSummaryDto;
   onComplete?: () => void;
   onEdit?: () => void;
   onDelete: () => void;
+  onAddCleaningRun?: () => void;
   isCompleting?: boolean;
 }) {
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const isActive = stage.status === 'Active';
   const startDate = new Date(stage.startDateTime);
   const endDate = new Date(stage.endDateTime);
   const now = new Date();
   const isOverdue = isActive && endDate < now;
+  const displayName = formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns);
 
   // Calculate progress
   const totalDuration = endDate.getTime() - startDate.getTime();
@@ -1430,6 +2091,11 @@ function StageCard({
     if (isActive && onEdit) {
       onEdit();
     }
+  };
+
+  const handleDelete = () => {
+    setIsDeleteDialogOpen(false);
+    onDelete();
   };
 
   return (
@@ -1448,7 +2114,7 @@ function StageCard({
               )}
             </div>
             <div>
-              <p className="font-medium">{stage.stageName}</p>
+              <p className="font-medium">{displayName}</p>
               <p className="text-sm text-muted-foreground">
                 Started {startDate.toLocaleDateString()}
               </p>
@@ -1460,6 +2126,12 @@ function StageCard({
                 <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                 {stage.resultRating}/5
               </Badge>
+            )}
+            {isActive && onAddCleaningRun && (
+              <Button variant="secondary" size="sm" onClick={onAddCleaningRun}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Cleaning Run
+              </Button>
             )}
             {isActive && onComplete && (
               <Button size="sm" onClick={onComplete} disabled={isCompleting}>
@@ -1483,15 +2155,42 @@ function StageCard({
                     Edit Duration
                   </DropdownMenuItem>
                 )}
+                {onAddCleaningRun && (
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onAddCleaningRun(); }}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Add Cleaning Run
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   className="text-red-600 focus:text-red-600"
-                  onSelect={(e) => { e.preventDefault(); onDelete(); }}
+                  onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Stage?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete &quot;{displayName}&quot;? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
@@ -1522,9 +2221,88 @@ function StageCard({
             Completed {endDate.toLocaleDateString()}
           </p>
         )}
+
+        {/* Cleaning Run Section */}
+        {stage.cleaningRun && (
+          <Collapsible className="mt-3">
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-between p-2 h-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  <span className="text-sm font-medium">Cleaning Run</span>
+                  <Badge variant={stage.cleaningRun.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
+                    {stage.cleaningRun.status}
+                  </Badge>
+                </div>
+                <ChevronDown className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent onClick={(e) => e.stopPropagation()}>
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Duration:</span>
+                  <span>{formatDurationMinutes(stage.cleaningRun.durationMinutes)}</span>
+                </div>
+                {stage.cleaningRun.purpose && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Purpose:</span>
+                    <span>{formatCleaningPurpose(stage.cleaningRun.purpose)}</span>
+                  </div>
+                )}
+                {stage.cleaningRun.materials && stage.cleaningRun.materials.length > 0 && (
+                  <div>
+                    <span className="text-muted-foreground">Materials:</span>
+                    <ul className="mt-1 ml-4 list-disc text-xs">
+                      {stage.cleaningRun.materials.map((mat, idx) => (
+                        <li key={idx}>
+                          {mat.materialName}
+                          {mat.displayAmount && ` - ${mat.displayAmount} ${mat.displayUnit || ''}`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {stage.cleaningRun.notes && (
+                  <div>
+                    <span className="text-muted-foreground">Notes:</span>
+                    <p className="mt-1 text-xs">{stage.cleaningRun.notes}</p>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
       </CardContent>
     </Card>
   );
+}
+
+function formatDurationMinutes(minutes: number): string {
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
+
+  return parts.join(' ');
+}
+
+function formatCleaningPurpose(purpose: string): string {
+  const purposeMap: Record<string, string> = {
+    'PostStageClean': 'Post-Stage Clean',
+    'PrePolishClean': 'Pre-Polish Clean',
+    'FinalBurnish': 'Final Burnish',
+    'GritRemoval': 'Grit Removal',
+  };
+  return purposeMap[purpose] || purpose;
 }
 
 function getTimeRemaining(endDate: Date): string {

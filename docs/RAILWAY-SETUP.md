@@ -83,7 +83,9 @@ Complete guide to deploying MyUglyRocks to Railway with custom domain on Nameche
    - **Root Directory**: `/` (leave empty)
    - **Build Command**: (leave empty - uses Dockerfile)
    - **Dockerfile Path**: `src/api/MyUglyRocks.Api/Dockerfile`
-5. Under **Deploy** section:
+5. Under **Source** section:
+   - **Branch**: `Master` (only deploy production-ready code)
+6. Under **Deploy** section:
    - **Watch Paths**: Add `src/api/**`
 
 ### Add Web Service
@@ -95,8 +97,12 @@ Complete guide to deploying MyUglyRocks to Railway with custom domain on Nameche
    - **Service Name**: `web`
    - **Root Directory**: `/` (leave empty)
    - **Dockerfile Path**: `src/web/Dockerfile`
-5. Under **Deploy** section:
+5. Under **Source** section:
+   - **Branch**: `Master` (only deploy production-ready code)
+6. Under **Deploy** section:
    - **Watch Paths**: Add `src/web/**`
+
+> **Note**: See [GIT-WORKFLOW.md](./GIT-WORKFLOW.md) for the complete branching strategy. Railway only deploys from `Master`, while `develop` is used for local K8s testing.
 
 ---
 
