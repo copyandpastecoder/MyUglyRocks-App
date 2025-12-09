@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -164,8 +163,6 @@ public class UserService : IUserService
             settings.FirstDayOfWeek = fdw;
         if (request.ShowRelativeTimes.HasValue)
             settings.ShowRelativeTimes = request.ShowRelativeTimes.Value;
-        if (request.TrackingMode != null && Enum.TryParse<TrackingMode>(request.TrackingMode, true, out var tm))
-            settings.TrackingMode = tm;
         if (request.FontSize != null && Enum.TryParse<FontSize>(request.FontSize, true, out var fs))
             settings.FontSize = fs;
         if (request.Density != null && Enum.TryParse<Density>(request.Density, true, out var d))
@@ -200,8 +197,6 @@ public class UserService : IUserService
             settings.DefaultPostVisibility = pv;
         if (request.Theme != null)
             settings.Theme = request.Theme;
-        if (request.StageFieldVisibility != null)
-            settings.StageFieldVisibility = JsonSerializer.Serialize(request.StageFieldVisibility);
 
         await _context.SaveChangesAsync();
 
@@ -210,18 +205,6 @@ public class UserService : IUserService
 
     private static UserSettingsDto MapToDto(UserSettings settings)
     {
-        StageFieldVisibilityDto? stageFieldVisibility = null;
-        if (!string.IsNullOrEmpty(settings.StageFieldVisibility))
-        {
-            try
-            {
-                stageFieldVisibility = JsonSerializer.Deserialize<StageFieldVisibilityDto>(
-                    settings.StageFieldVisibility,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            }
-            catch { /* Ignore malformed JSON, use default */ }
-        }
-
         return new UserSettingsDto(
             MeasurementSystem: settings.MeasurementSystem.ToString(),
             DateFormat: settings.DateFormat.ToString(),
@@ -229,7 +212,6 @@ public class UserService : IUserService
             Timezone: settings.Timezone,
             FirstDayOfWeek: settings.FirstDayOfWeek.ToString(),
             ShowRelativeTimes: settings.ShowRelativeTimes,
-            TrackingMode: settings.TrackingMode.ToString(),
             FontSize: settings.FontSize.ToString(),
             Density: settings.Density.ToString(),
             DefaultHomeSection: settings.DefaultHomeSection.ToString(),
@@ -246,8 +228,7 @@ public class UserService : IUserService
             AddWatermark: settings.AddWatermark,
             AutoFillFromLastRun: settings.AutoFillFromLastRun,
             DefaultPostVisibility: settings.DefaultPostVisibility.ToString(),
-            Theme: settings.Theme,
-            StageFieldVisibility: stageFieldVisibility
+            Theme: settings.Theme
         );
     }
 

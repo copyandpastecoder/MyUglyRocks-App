@@ -56,7 +56,12 @@
       "Bash(timeout /t 3 /nobreak)",
       "Bash(kind load docker-image:*)",
       "Bash(timeout /t 2 /nobreak)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(kubectl config:*)",
+      "Bash(kubectl scale:*)",
+      "Bash(kubectl create secret tls:*)",
+      "Bash(kubectl wait:*)",
+      "Bash(timeout /t 15 /nobreak)"
     ],
     "deny": [],
     "ask": []

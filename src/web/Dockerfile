@@ -11,11 +11,7 @@ RUN npm ci
 # Copy source code
 COPY src/web/ .
 
-# Set API URL for build
-ARG NEXT_PUBLIC_API_URL=http://myuglyrocks-api
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
-# Build the app
+# Build the app (no API URL needed at build time anymore)
 RUN npm run build
 
 # Production stage
@@ -39,5 +35,8 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+# API URL is now set at runtime via K8s deployment, not build time
+# Default fallback - will be overridden by NEXT_PUBLIC_API_URL env var
+ENV NEXT_PUBLIC_API_URL="https://localhost:5000"
 
 CMD ["node", "server.js"]

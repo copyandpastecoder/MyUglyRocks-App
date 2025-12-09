@@ -389,7 +389,6 @@ public class ExportService : IExportService
         sb.AppendLine($"FirstDayOfWeek,{settings.FirstDayOfWeek}");
         sb.AppendLine($"ShowRelativeTimes,{(settings.ShowRelativeTimes ? "Yes" : "No")}");
         sb.AppendLine($"Theme,{settings.Theme}");
-        sb.AppendLine($"TrackingMode,{settings.TrackingMode}");
         sb.AppendLine($"NotifyStageReminders,{(settings.NotifyStageReminders ? "Yes" : "No")}");
         sb.AppendLine($"NotifyComments,{(settings.NotifyComments ? "Yes" : "No")}");
         sb.AppendLine($"NotifyReplies,{(settings.NotifyReplies ? "Yes" : "No")}");

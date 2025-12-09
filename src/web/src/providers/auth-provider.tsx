@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import type { User, LoginRequest, RegisterRequest } from '@/types/auth';
-import { authApi, setAccessToken } from '@/lib/api';
+import { authApi, setAccessToken, getApiUrl } from '@/lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -40,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAuth = async () => {
       setIsLoading(true);
+      // Wait for API config to be loaded before making any API calls
+      await getApiUrl();
       await refreshAuth();
       setIsLoading(false);
     };

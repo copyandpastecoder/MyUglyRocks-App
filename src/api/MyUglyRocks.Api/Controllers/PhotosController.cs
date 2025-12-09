@@ -46,6 +46,7 @@ public class PhotosController : ControllerBase
         Guid stageRunId,
         [FromForm] IFormFile file,
         [FromForm] string photoType = "during",
+        [FromForm] string? caption = null,
         CancellationToken cancellationToken = default)
     {
         var userId = GetUserId();
@@ -98,13 +99,18 @@ public class PhotosController : ControllerBase
 
         try
         {
+            _logger.LogDebug("Starting photo upload for stage {StageRunId}, file: {FileName}, size: {Size}",
+                stageRunId, file.FileName, file.Length);
+
             // Upload to R2
             var folder = $"photos/stages/{stageRunId}";
             await using var stream = file.OpenReadStream();
             var url = await _storageService.UploadAsync(stream, file.FileName, folder, cancellationToken);
 
-            // Get the storage key from the URL
-            var storageKey = url.Split('/').Skip(3).Aggregate((a, b) => $"{a}/{b}");
+            _logger.LogDebug("R2 upload successful, URL: {Url}", url);
+
+            // Get the storage key from the URL using Uri parsing
+            var storageKey = new Uri(url).AbsolutePath.TrimStart('/');
 
             // Create photo record
             var sortOrder = stageRun.Photos.Count;
@@ -118,6 +124,7 @@ public class PhotosController : ControllerBase
                 MimeType = file.ContentType,
                 FileSizeBytes = file.Length,
                 PhotoType = parsedPhotoType,
+                Caption = caption,
                 SortOrder = sortOrder,
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow
@@ -133,6 +140,7 @@ public class PhotosController : ControllerBase
                 photo.Url,
                 photo.FileName,
                 photo.PhotoType.ToString(),
+                photo.Caption,
                 photo.SortOrder,
                 photo.DateCreated
             );
@@ -141,8 +149,8 @@ public class PhotosController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload photo for stage {StageRunId}", stageRunId);
-            return BadRequest(new UploadPhotoResponse(false, Error: "Failed to upload photo"));
+            _logger.LogError(ex, "Failed to upload photo for stage {StageRunId}: {Message}", stageRunId, ex.Message);
+            return BadRequest(new UploadPhotoResponse(false, Error: $"Failed to upload photo: {ex.Message}"));
         }
     }
 
@@ -224,6 +232,7 @@ public class PhotosController : ControllerBase
                 p.Url,
                 p.FileName,
                 p.PhotoType.ToString(),
+                p.Caption,
                 p.SortOrder,
                 p.DateCreated
             ))

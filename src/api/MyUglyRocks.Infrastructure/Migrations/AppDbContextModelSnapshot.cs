@@ -681,6 +681,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<string>("Caption")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -1791,10 +1794,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("show_relative_times");
 
-                    b.Property<string>("StageFieldVisibility")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("stage_field_visibility");
-
                     b.Property<string>("Theme")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1816,12 +1815,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("UTC")
                         .HasColumnName("timezone");
-
-                    b.Property<int>("TrackingMode")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("tracking_mode");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")

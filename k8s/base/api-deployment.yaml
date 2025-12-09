@@ -69,6 +69,11 @@ spec:
             secretKeyRef:
               name: myuglyrocks-secrets
               key: r2-bucket-name
+        - name: R2__PublicUrl
+          valueFrom:
+            secretKeyRef:
+              name: myuglyrocks-secrets
+              key: r2-public-url
         # Email
         - name: Email__Enabled
           value: "true"
@@ -78,7 +83,7 @@ spec:
               name: myuglyrocks-secrets
               key: resend-api-key
         - name: Email__BaseUrl
-          value: "http://10.80.80.181:30000"
+          value: "https://10.80.80.181:30443"
         # Admin
         - name: ADMIN_EMAIL
           valueFrom:

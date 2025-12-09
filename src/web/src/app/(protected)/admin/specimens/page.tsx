@@ -47,8 +47,8 @@ import { toast } from 'sonner';
 import { Loader2, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import type { SpecimenDetailDto, SpecimenListDto, CreateSpecimenRequest, UpdateSpecimenRequest } from '@/types/admin';
 
-const materialTypes = ['Rock', 'Mineral', 'Glass', 'Fossil', 'Other'];
-const difficulties = ['Easy', 'Medium', 'Hard'];
+const materialTypes = ['Rock', 'Mineral', 'Glass', 'Fossil', 'Gemstone', 'Other'];
+const difficulties = ['Easy', 'Medium', 'Hard', 'Expert'];
 
 const defaultFormData: CreateSpecimenRequest = {
   commonName: '',

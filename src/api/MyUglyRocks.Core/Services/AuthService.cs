@@ -259,12 +259,13 @@ public class AuthService : IAuthService
     {
         var cacheKey = $"{PasswordResetKeyPrefix}{token}";
 
-        // Retrieve token data from Redis
-        var tokenData = await _cacheService.GetAsync<PasswordResetTokenData>(cacheKey, cancellationToken);
+        // Atomically retrieve and remove token to prevent replay attacks
+        // This ensures the token can only be used once, even with concurrent requests
+        var tokenData = await _cacheService.GetAndRemoveAsync<PasswordResetTokenData>(cacheKey, cancellationToken);
 
         if (tokenData == null)
         {
-            _logger.LogWarning("Invalid or expired password reset token attempted");
+            _logger.LogWarning("Invalid, expired, or already-used password reset token attempted");
             return false;
         }
 
@@ -274,7 +275,7 @@ public class AuthService : IAuthService
         if (user == null)
         {
             _logger.LogWarning("Password reset token for non-existent user {UserId}", tokenData.UserId);
-            await _cacheService.RemoveAsync(cacheKey, cancellationToken);
+            // Token already removed by GetAndRemoveAsync
             return false;
         }
 
@@ -287,8 +288,7 @@ public class AuthService : IAuthService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Invalidate the token
-        await _cacheService.RemoveAsync(cacheKey, cancellationToken);
+        // Token already invalidated by GetAndRemoveAsync at the start
 
         // Revoke all existing refresh tokens for this user (security measure)
         var activeTokens = await RefreshTokens
@@ -353,6 +353,7 @@ public class AuthService : IAuthService
         };
 
         await RefreshTokens.AddAsync(refreshToken, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
         return refreshToken;
     }
 }

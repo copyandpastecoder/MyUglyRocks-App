@@ -55,22 +55,28 @@ export interface CompleteCycleRequest {
 export interface StageRunSummaryDto {
   id: string;
   stageName: string;
+  runNumber: number;
+  totalRuns: number;
   startDateTime: string;
   endDateTime: string;
   status: string;
   resultRating: number | null;
+  cleaningRun: CleaningRunDto | null;
 }
 
 export interface StageRunDto {
   id: string;
   cycleId: string;
   stageName: string;
+  runNumber: number;
+  totalRuns: number;
   startDateTime: string;
   durationDays: number;
   durationHours: number;
   endDateTime: string;
   status: string;
   reminderEnabled: boolean;
+  loadWeightBeforeGrams: number | null;
   fillLevelPercent: number | null;
   waterLevel: string | null;
   waterAmountMl: number | null;
@@ -99,6 +105,7 @@ export interface CreateStageRunRequest {
   waterAmountMl?: number;
   notes?: string;
   materials?: CreateStageMaterialRequest[];
+  cleaningRun?: CreateCleaningRunRequest;
 }
 
 export interface CleaningRunDto {
@@ -109,6 +116,20 @@ export interface CleaningRunDto {
   resultNotes: string | null;
   notes: string | null;
   materials: CleaningMaterialDto[];
+}
+
+export interface CreateCleaningRunRequest {
+  durationMinutes: number;
+  purpose?: string;
+  reminderEnabled?: boolean;
+  notes?: string;
+  materials?: CreateCleaningMaterialRequest[];
+}
+
+export interface CreateCleaningMaterialRequest {
+  materialId: string;
+  displayAmount?: number;
+  displayUnit?: string;
 }
 
 export interface StageMaterialDto {
@@ -173,6 +194,7 @@ export interface PhotoDto {
   url: string;
   fileName: string | null;
   photoType: string;
+  caption: string | null;
   sortOrder: number;
   dateCreated: string;
 }

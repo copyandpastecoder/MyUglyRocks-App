@@ -12,6 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -159,16 +161,15 @@ export default function NewCyclePage() {
       </div>
 
       {!hasTumblers && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="pt-6">
-            <p className="text-yellow-800">
-              You need to add a tumbler before starting a cycle.{' '}
-              <Link href="/tumblers/new" className="font-medium underline">
-                Add a tumbler first
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You need to add a tumbler before starting a cycle.{' '}
+            <Link href="/tumblers/new" className="font-medium underline hover:text-amber-100">
+              Add a tumbler first
+            </Link>
+          </AlertDescription>
+        </Alert>
       )}
 
       <Card>

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
 
   // Allow LAN access for mobile testing
-  allowedDevOrigins: ["http://10.80.80.181:3000"],
+  allowedDevOrigins: ["https://10.80.80.181:3000"],
 
   // Optimize images
   images: {

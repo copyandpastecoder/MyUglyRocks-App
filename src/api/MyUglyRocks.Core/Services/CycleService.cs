@@ -62,7 +62,77 @@ public class CycleService : ICycleService
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId && !c.IsDeleted, cancellationToken);
 
-        return cycle?.Adapt<CycleDto>();
+        if (cycle == null)
+            return null;
+
+        // Calculate run numbers for each stage
+        var runNumbers = CalculateRunNumbers(cycle.StageRuns);
+
+        // Map to DTO with run numbers
+        return MapCycleToDto(cycle, runNumbers);
+    }
+
+    private static (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) CalculateRunNumbers(IEnumerable<StageRun> stageRuns)
+    {
+        var runNumbers = new Dictionary<Guid, int>();
+        var totalRuns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var activeStages = stageRuns
+            .Where(s => !s.IsDeleted)
+            .OrderBy(s => s.DateCreated)
+            .ToList();
+
+        // Group by stage name (case-insensitive) and assign run numbers
+        var stageNameGroups = activeStages
+            .GroupBy(s => s.StageName.ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.DateCreated).ToList());
+
+        foreach (var group in stageNameGroups)
+        {
+            totalRuns[group.Key] = group.Value.Count;
+            for (int i = 0; i < group.Value.Count; i++)
+            {
+                runNumbers[group.Value[i].Id] = i + 1;
+            }
+        }
+
+        return (runNumbers, totalRuns);
+    }
+
+    private static CycleDto MapCycleToDto(Cycle cycle, (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) runInfo)
+    {
+        var stageRunSummaries = cycle.StageRuns
+            .Where(s => !s.IsDeleted)
+            .OrderBy(s => s.DateCreated)
+            .Select(s => new StageRunSummaryDto(
+                s.Id,
+                s.StageName,
+                runInfo.RunNumbers.GetValueOrDefault(s.Id, 1),
+                runInfo.TotalRuns.GetValueOrDefault(s.StageName.ToLowerInvariant(), 1),
+                s.StartDateTime,
+                s.EndDateTime,
+                s.Status.ToString(),
+                s.ResultRating,
+                s.CleaningRun?.Adapt<CleaningRunDto>()
+            ));
+
+        var specimens = cycle.CycleSpecimens
+            .Select(cs => cs.Specimen.Adapt<SpecimenDto>());
+
+        return new CycleDto(
+            cycle.Id,
+            cycle.Name,
+            cycle.StartDate,
+            cycle.EndDate,
+            cycle.Status.ToString(),
+            cycle.Goal,
+            cycle.DifficultyRating,
+            cycle.FinalQuality,
+            cycle.AdditionalSpecimens,
+            cycle.Notes,
+            cycle.DateCreated,
+            stageRunSummaries,
+            specimens
+        );
     }
 
     public async Task<CycleDto> CreateCycleAsync(Guid userId, CreateCycleRequest request, CancellationToken cancellationToken = default)
@@ -170,6 +240,7 @@ public class CycleService : ICycleService
     {
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
+                .ThenInclude(c => c.StageRuns.Where(sr => !sr.IsDeleted))
             .Include(s => s.StageRunBarrels)
                 .ThenInclude(srb => srb.Barrel)
             .Include(s => s.StageMaterials)
@@ -180,7 +251,57 @@ public class CycleService : ICycleService
             .Include(s => s.Photos.Where(p => !p.IsDeleted))
             .FirstOrDefaultAsync(s => s.Id == id && s.Cycle.UserId == userId, cancellationToken);
 
-        return stageRun?.Adapt<StageRunDto>();
+        if (stageRun == null)
+            return null;
+
+        // Calculate run number and total runs for this stage
+        var runInfo = CalculateRunNumbers(stageRun.Cycle.StageRuns);
+        var runNumber = runInfo.RunNumbers.GetValueOrDefault(stageRun.Id, 1);
+        var totalRuns = runInfo.TotalRuns.GetValueOrDefault(stageRun.StageName.ToLowerInvariant(), 1);
+
+        return MapStageRunToDto(stageRun, runNumber, totalRuns);
+    }
+
+    private static StageRunDto MapStageRunToDto(StageRun stageRun, int runNumber, int totalRuns)
+    {
+        var barrels = stageRun.StageRunBarrels
+            .Where(srb => srb.Barrel != null)
+            .Select(srb => srb.Barrel!.Adapt<BarrelDto>());
+
+        var materials = stageRun.StageMaterials
+            .Select(sm => sm.Adapt<StageMaterialDto>());
+
+        var photos = stageRun.Photos
+            .Where(p => !p.IsDeleted)
+            .Select(p => p.Adapt<PhotoDto>());
+
+        var cleaningRun = stageRun.CleaningRun?.Adapt<CleaningRunDto>();
+
+        return new StageRunDto(
+            stageRun.Id,
+            stageRun.CycleId,
+            stageRun.StageName,
+            runNumber,
+            totalRuns,
+            stageRun.StartDateTime,
+            stageRun.DurationDays,
+            stageRun.DurationHours,
+            stageRun.EndDateTime,
+            stageRun.Status.ToString(),
+            stageRun.ReminderEnabled,
+            stageRun.LoadWeightBeforeGrams,
+            stageRun.FillLevelPercent,
+            stageRun.WaterLevel?.ToString(),
+            stageRun.WaterAmountMl,
+            stageRun.ResultRating,
+            stageRun.NextAction?.ToString(),
+            stageRun.Notes,
+            stageRun.DateCreated,
+            barrels,
+            cleaningRun,
+            materials,
+            photos
+        );
     }
 
     public async Task<StageRunDto?> AddStageRunAsync(Guid cycleId, Guid userId, CreateStageRunRequest request, CancellationToken cancellationToken = default)
@@ -232,6 +353,47 @@ public class CycleService : ICycleService
                 };
                 stageRun.StageMaterials.Add(material);
             }
+        }
+
+        // Add cleaning run if provided
+        if (request.CleaningRun != null)
+        {
+            var cleaningRun = new CleaningRun
+            {
+                Id = Guid.NewGuid(),
+                StageRunId = stageRun.Id,
+                DurationMinutes = request.CleaningRun.DurationMinutes,
+                Purpose = !string.IsNullOrEmpty(request.CleaningRun.Purpose)
+                    ? Enum.Parse<CleaningPurpose>(request.CleaningRun.Purpose, true)
+                    : null,
+                ReminderEnabled = request.CleaningRun.ReminderEnabled,
+                Notes = request.CleaningRun.Notes,
+                Status = CleaningRunStatus.Active,
+                DateCreated = DateTime.UtcNow,
+                DateUpdated = DateTime.UtcNow
+            };
+
+            // Add cleaning materials if provided
+            if (request.CleaningRun.Materials?.Any() == true)
+            {
+                int cleaningSortOrder = 0;
+                foreach (var materialRequest in request.CleaningRun.Materials)
+                {
+                    cleaningRun.CleaningMaterials.Add(new CleaningMaterial
+                    {
+                        Id = Guid.NewGuid(),
+                        CleaningRunId = cleaningRun.Id,
+                        MaterialId = materialRequest.MaterialId,
+                        DisplayAmount = materialRequest.DisplayAmount,
+                        DisplayUnit = materialRequest.DisplayUnit,
+                        SortOrder = cleaningSortOrder++,
+                        DateCreated = DateTime.UtcNow,
+                        DateUpdated = DateTime.UtcNow
+                    });
+                }
+            }
+
+            stageRun.CleaningRun = cleaningRun;
         }
 
         await StageRuns.AddAsync(stageRun, cancellationToken);

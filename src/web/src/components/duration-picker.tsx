@@ -14,6 +14,7 @@ interface DurationPickerProps {
   startDateTime?: string;
   label?: string;
   helperText?: string;
+  hideLabel?: boolean;
 }
 
 export function DurationPicker({
@@ -24,6 +25,7 @@ export function DurationPicker({
   startDateTime,
   label = 'Duration',
   helperText,
+  hideLabel = false,
 }: DurationPickerProps) {
   const showEndDatePicker = !!startDateTime;
 
@@ -69,7 +71,7 @@ export function DurationPicker({
 
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      {!hideLabel && <Label>{label}</Label>}
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Days</Label>

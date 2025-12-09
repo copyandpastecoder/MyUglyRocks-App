@@ -1,15 +1,56 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { AuthResult, LoginRequest, RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest } from '@/types/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Runtime config - fetched once on app load
+let runtimeApiUrl: string | null = null;
+let configPromise: Promise<string> | null = null;
+
+// Fetch config from server (reads env vars at runtime, not build time)
+async function fetchConfig(): Promise<string> {
+  // In browser, fetch from our API route (using /_config to avoid nginx /api routing)
+  if (typeof window !== 'undefined') {
+    try {
+      const response = await fetch('/config');
+      const config = await response.json();
+      return config.apiUrl;
+    } catch {
+      // Fallback to build-time value or default
+      return process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+    }
+  }
+  // On server, use env directly
+  return process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
+}
+
+// Get API URL (cached after first fetch)
+export async function getApiUrl(): Promise<string> {
+  if (runtimeApiUrl) return runtimeApiUrl;
+  if (!configPromise) {
+    configPromise = fetchConfig().then(url => {
+      runtimeApiUrl = url;
+      // Update axios baseURL once we have the runtime config
+      api.defaults.baseURL = `${url}/api`;
+      return url;
+    });
+  }
+  return configPromise;
+}
+
+// Initialize with build-time value, will be updated at runtime
+const initialApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 export const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: `${initialApiUrl}/api`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Ensure config is loaded before first request
+if (typeof window !== 'undefined') {
+  getApiUrl();
+}
 
 let accessToken: string | null = null;
 
@@ -19,9 +60,13 @@ export const setAccessToken = (token: string | null) => {
 
 export const getAccessToken = () => accessToken;
 
-// Request interceptor to add auth header
+// Request interceptor to ensure config is loaded and add auth header
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  async (config: InternalAxiosRequestConfig) => {
+    // Wait for runtime config to be loaded before first request
+    if (typeof window !== 'undefined' && configPromise) {
+      await configPromise;
+    }
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -177,7 +222,7 @@ export const tumblerApi = {
 };
 
 // Cycle API functions
-import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest } from '@/types/cycle';
+import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest, CleaningRunDto, CreateCleaningRunRequest } from '@/types/cycle';
 
 export const cycleApi = {
   getAll: async (status?: string): Promise<CycleListDto[]> => {
@@ -238,6 +283,20 @@ export const cycleApi = {
 
   deleteStageRun: async (id: string): Promise<void> => {
     await api.delete(`/cycles/stages/${id}`);
+  },
+
+  // Cleaning Run operations
+  addCleaningRun: async (stageId: string, data: CreateCleaningRunRequest): Promise<CleaningRunDto> => {
+    const response = await api.post<CleaningRunDto>(`/cycles/stages/${stageId}/cleaning`, data);
+    return response.data;
+  },
+
+  completeCleaningRun: async (id: string): Promise<void> => {
+    await api.post(`/cycles/cleaning/${id}/complete`);
+  },
+
+  deleteCleaningRun: async (id: string): Promise<void> => {
+    await api.delete(`/cycles/cleaning/${id}`);
   },
 };
 
@@ -660,11 +719,15 @@ export const photosApi = {
   uploadStagePhoto: async (
     stageRunId: string,
     file: File,
-    photoType: 'before' | 'during' | 'after' = 'during'
+    photoType: 'before' | 'during' | 'after' = 'during',
+    caption?: string
   ): Promise<UploadPhotoResponse> => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('photoType', photoType);
+    if (caption) {
+      formData.append('caption', caption);
+    }
     const response = await api.post<UploadPhotoResponse>(
       `/photos/stage/${stageRunId}`,
       formData,

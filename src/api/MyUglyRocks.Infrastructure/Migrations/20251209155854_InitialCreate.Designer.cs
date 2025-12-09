@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyUglyRocks.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251130235933_AddSocialEntities")]
-    partial class AddSocialEntities
+    [Migration("20251209155854_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -37,10 +37,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("barrel_number");
 
-                    b.Property<decimal?>("Capacity")
+                    b.Property<decimal?>("CapacityLbs")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)")
-                        .HasColumnName("capacity");
+                        .HasColumnName("capacity_lbs");
 
                     b.Property<string>("ContaminationNotes")
                         .HasColumnType("text")
@@ -76,12 +76,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(true)
                         .HasColumnName("is_active");
-
-                    b.Property<bool>("IsCapacityMetric")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("is_capacity_metric");
 
                     b.Property<bool>("IsDedicated")
                         .ValueGeneratedOnAdd()
@@ -314,95 +308,152 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("content");
 
                     b.Property<DateTime>("DateCreated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<DateTime?>("DateDeleted")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_deleted");
 
                     b.Property<DateTime>("DateUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<DateTime?>("EditedDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("edited_date");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<bool>("IsEdited")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_edited");
 
                     b.Property<Guid?>("ParentCommentId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_comment_id");
 
                     b.Property<Guid>("PostId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ParentCommentId");
+                    b.HasIndex("ParentCommentId")
+                        .HasDatabaseName("ix_comments_parent_id");
 
-                    b.HasIndex("PostId");
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("ix_comments_post_id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_comments_user_id");
 
-                    b.ToTable("Comments");
+                    b.HasIndex("PostId", "DateCreated")
+                        .HasDatabaseName("ix_comments_post_date");
+
+                    b.HasIndex("PostId", "ParentCommentId")
+                        .HasDatabaseName("ix_comments_post_parent");
+
+                    b.ToTable("comments", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.CommentReport", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<Guid>("CommentId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("comment_id");
 
                     b.Property<DateTime>("DateCreated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<DateTime>("DateUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<string>("Details")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("details");
 
                     b.Property<int>("Reason")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("reason");
 
                     b.Property<Guid>("ReportedByUserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("reported_by_user_id");
 
                     b.Property<string>("ResolutionNotes")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("resolution_notes");
 
                     b.Property<Guid?>("ResolvedByUserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by_user_id");
 
                     b.Property<DateTime?>("ResolvedDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_date");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CommentId");
+                    b.HasIndex("CommentId")
+                        .HasDatabaseName("ix_comment_reports_comment_id");
 
                     b.HasIndex("ReportedByUserId");
 
                     b.HasIndex("ResolvedByUserId");
 
-                    b.ToTable("CommentReports");
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_comment_reports_status");
+
+                    b.HasIndex("CommentId", "ReportedByUserId")
+                        .HasDatabaseName("ix_comment_reports_comment_reporter");
+
+                    b.HasIndex("Status", "DateCreated")
+                        .HasDatabaseName("ix_comment_reports_status_date");
+
+                    b.ToTable("comment_reports", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Cycle", b =>
@@ -633,6 +684,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<string>("Caption")
+                        .HasColumnType("text");
+
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -719,85 +773,152 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<int>("CommentCount")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("comment_count");
 
                     b.Property<Guid>("CycleId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("cycle_id");
 
                     b.Property<DateTime>("DateCreated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<DateTime?>("DateDeleted")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_deleted");
 
                     b.Property<DateTime>("DateUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<string>("Description")
-                        .HasColumnType("text");
+                        .HasColumnType("text")
+                        .HasColumnName("description");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
 
                     b.Property<DateTime>("PublishedDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_date");
 
                     b.Property<int>("Status")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("title");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.Property<int>("VoteCount")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("vote_count");
 
                     b.HasKey("Id");
 
                     b.HasIndex("CycleId");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("PublishedDate")
+                        .HasDatabaseName("ix_posts_published_date");
 
-                    b.ToTable("Posts");
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_posts_status");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_posts_user_id");
+
+                    b.HasIndex("Status", "CommentCount")
+                        .HasDatabaseName("ix_posts_status_comment_count");
+
+                    b.HasIndex("Status", "PublishedDate")
+                        .HasDatabaseName("ix_posts_status_published_date");
+
+                    b.HasIndex("Status", "VoteCount")
+                        .HasDatabaseName("ix_posts_status_vote_count");
+
+                    b.HasIndex("UserId", "Status", "PublishedDate")
+                        .HasDatabaseName("ix_posts_user_status_date");
+
+                    b.ToTable("posts", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.PostPhoto", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("DateCreated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<DateTime>("DateUpdated")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
 
                     b.Property<bool>("IsCover")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_cover");
 
                     b.Property<Guid>("PhotoId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_id");
 
                     b.Property<Guid>("PostId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
 
                     b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PhotoId");
+                    b.HasIndex("PhotoId")
+                        .HasDatabaseName("ix_post_photos_photo_id");
 
-                    b.HasIndex("PostId");
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("ix_post_photos_post_id");
 
-                    b.ToTable("PostPhotos");
+                    b.HasIndex("PostId", "SortOrder")
+                        .HasDatabaseName("ix_post_photos_post_sort");
+
+                    b.ToTable("post_photos", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.RefreshToken", b =>
@@ -1065,10 +1186,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
-                    b.Property<Guid>("BarrelId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("barrel_id");
-
                     b.Property<decimal?>("BarrelRpm")
                         .HasPrecision(6, 2)
                         .HasColumnType("numeric(6,2)")
@@ -1213,17 +1330,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
+                        .HasDefaultValue(1)
                         .HasColumnName("status");
+
+                    b.Property<int?>("WaterAmountMl")
+                        .HasColumnType("integer")
+                        .HasColumnName("water_amount_ml");
 
                     b.Property<int?>("WaterLevel")
                         .HasColumnType("integer")
                         .HasColumnName("water_level");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("BarrelId")
-                        .HasDatabaseName("ix_stage_runs_barrel_id");
 
                     b.HasIndex("CycleId")
                         .HasDatabaseName("ix_stage_runs_cycle_id");
@@ -1235,6 +1353,24 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDatabaseName("ix_stage_runs_status");
 
                     b.ToTable("stage_runs", (string)null);
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.StageRunBarrel", b =>
+                {
+                    b.Property<Guid>("StageRunId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("stage_run_id");
+
+                    b.Property<Guid>("BarrelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("barrel_id");
+
+                    b.HasKey("StageRunId", "BarrelId");
+
+                    b.HasIndex("BarrelId")
+                        .HasDatabaseName("ix_stage_run_barrels_barrel_id");
+
+                    b.ToTable("stage_run_barrels", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Tumbler", b =>
@@ -1279,6 +1415,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("model");
+
+                    b.Property<decimal?>("MotorCapacityLbs")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("motor_capacity_lbs");
 
                     b.Property<string>("Notes")
                         .HasColumnType("text")
@@ -1366,6 +1507,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("model");
+
+                    b.Property<decimal?>("MotorCapacityLbs")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)")
+                        .HasColumnName("motor_capacity_lbs");
 
                     b.Property<int>("SortOrder")
                         .ValueGeneratedOnAdd()
@@ -1574,7 +1720,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<int>("DigestFrequency")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
+                        .HasDefaultValue(1)
                         .HasColumnName("digest_frequency");
 
                     b.Property<int>("FirstDayOfWeek")
@@ -1651,16 +1797,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("show_relative_times");
 
-                    b.Property<string>("StageFieldVisibility")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("stage_field_visibility");
-
                     b.Property<string>("Theme")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasDefaultValue("obsidian")
+                        .HasDefaultValue("lapis-lazuli")
                         .HasColumnName("theme");
 
                     b.Property<int>("TimeFormat")
@@ -1676,12 +1818,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("UTC")
                         .HasColumnName("timezone");
-
-                    b.Property<int>("TrackingMode")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("tracking_mode");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -1700,28 +1836,82 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("DateCreated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("post_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId")
+                        .HasDatabaseName("ix_votes_post_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_votes_user_id");
+
+                    b.HasIndex("PostId", "UserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_votes_post_user_unique");
+
+                    b.ToTable("votes", (string)null);
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.WaitlistEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("DateCreated")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DateNotificationSent")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("DateUpdated")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("PostId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<bool>("NotificationSent")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("PostId", "UserId")
+                    b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("Votes");
+                    b.ToTable("WaitlistEntries", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Barrel", b =>
@@ -1822,7 +2012,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
                     b.HasOne("MyUglyRocks.Core.Entities.User", "ResolvedByUser")
                         .WithMany()
-                        .HasForeignKey("ResolvedByUserId");
+                        .HasForeignKey("ResolvedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Comment");
 
@@ -1900,7 +2091,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .IsRequired();
 
                     b.HasOne("MyUglyRocks.Core.Entities.User", "User")
-                        .WithMany()
+                        .WithMany("Posts")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1987,21 +2178,32 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.StageRun", b =>
                 {
-                    b.HasOne("MyUglyRocks.Core.Entities.Barrel", "Barrel")
-                        .WithMany("StageRuns")
-                        .HasForeignKey("BarrelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("MyUglyRocks.Core.Entities.Cycle", "Cycle")
                         .WithMany("StageRuns")
                         .HasForeignKey("CycleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.Navigation("Cycle");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.StageRunBarrel", b =>
+                {
+                    b.HasOne("MyUglyRocks.Core.Entities.Barrel", "Barrel")
+                        .WithMany("StageRunBarrels")
+                        .HasForeignKey("BarrelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MyUglyRocks.Core.Entities.StageRun", "StageRun")
+                        .WithMany("StageRunBarrels")
+                        .HasForeignKey("StageRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("Barrel");
 
-                    b.Navigation("Cycle");
+                    b.Navigation("StageRun");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Tumbler", b =>
@@ -2053,7 +2255,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Barrel", b =>
                 {
-                    b.Navigation("StageRuns");
+                    b.Navigation("StageRunBarrels");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.CleaningRun", b =>
@@ -2103,6 +2305,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Navigation("Photos");
 
                     b.Navigation("StageMaterials");
+
+                    b.Navigation("StageRunBarrels");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Tumbler", b =>
@@ -2118,6 +2322,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
             modelBuilder.Entity("MyUglyRocks.Core.Entities.User", b =>
                 {
                     b.Navigation("Cycles");
+
+                    b.Navigation("Posts");
 
                     b.Navigation("RefreshTokens");
 

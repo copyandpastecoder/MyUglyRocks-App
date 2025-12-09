@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MyUglyRocks.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class M2CoreTracking : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -21,6 +21,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     tumbler_type = table.Column<int>(type: "integer", nullable: false),
                     default_capacity_lbs = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: true),
                     default_barrel_count = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    motor_capacity_lbs = table.Column<decimal>(type: "numeric(6,2)", precision: 6, scale: 2, nullable: true),
                     is_custom_entry = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 100),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
@@ -61,6 +62,24 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_users", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "WaitlistEntries",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true),
+                    UserAgent = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    NotificationSent = table.Column<bool>(type: "boolean", nullable: false),
+                    DateNotificationSent = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    DateCreated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DateUpdated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_WaitlistEntries", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -245,8 +264,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     brand = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     tumbler_type = table.Column<int>(type: "integer", nullable: false),
-                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
+                    motor_capacity_lbs = table.Column<decimal>(type: "numeric(6,2)", precision: 6, scale: 2, nullable: true),
                     is_generic = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     notes = table.Column<string>(type: "text", nullable: true),
                     date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
@@ -280,7 +300,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     timezone = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "UTC"),
                     first_day_of_week = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     show_relative_times = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
-                    tracking_mode = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     font_size = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
                     density = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
                     default_home_section = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
@@ -292,13 +311,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     quiet_hours_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     quiet_hours_start = table.Column<TimeOnly>(type: "time without time zone", nullable: true),
                     quiet_hours_end = table.Column<TimeOnly>(type: "time without time zone", nullable: true),
-                    digest_frequency = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    digest_frequency = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
                     photo_upload_quality = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
                     add_watermark = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     auto_fill_from_last_run = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     default_post_visibility = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    theme = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "obsidian"),
-                    stage_field_visibility = table.Column<string>(type: "jsonb", nullable: true),
+                    theme = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false, defaultValue: "lapis-lazuli"),
                     date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
@@ -309,6 +327,92 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         name: "FK_user_settings_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "posts",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    cycle_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    title = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
+                    description = table.Column<string>(type: "text", nullable: true),
+                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    published_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    vote_count = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    comment_count = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    date_deleted = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_posts", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_posts_cycles_cycle_id",
+                        column: x => x.cycle_id,
+                        principalTable: "cycles",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_posts_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "stage_runs",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    cycle_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    stage_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    start_date_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    duration_days = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    duration_hours = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    end_date_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    reminder_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    remind_after_days = table.Column<int>(type: "integer", nullable: true),
+                    remind_at_end_of_stage = table.Column<bool>(type: "boolean", nullable: true),
+                    date_reminder_sent = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    load_weight_before_grams = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
+                    load_weight_after_grams = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
+                    barrel_rpm = table.Column<decimal>(type: "numeric(6,2)", precision: 6, scale: 2, nullable: true),
+                    is_rpm_estimated = table.Column<bool>(type: "boolean", nullable: true),
+                    fill_level_percent = table.Column<int>(type: "integer", nullable: true),
+                    water_level = table.Column<int>(type: "integer", nullable: true),
+                    water_amount_ml = table.Column<int>(type: "integer", nullable: true),
+                    result_rating = table.Column<int>(type: "integer", nullable: true),
+                    result_shape_rounding = table.Column<int>(type: "integer", nullable: true),
+                    result_scratch_level = table.Column<int>(type: "integer", nullable: true),
+                    result_pitting = table.Column<int>(type: "integer", nullable: true),
+                    result_shine = table.Column<int>(type: "integer", nullable: true),
+                    issue_scratches = table.Column<bool>(type: "boolean", nullable: true),
+                    issue_chips = table.Column<bool>(type: "boolean", nullable: true),
+                    issue_under_rounded = table.Column<bool>(type: "boolean", nullable: true),
+                    issue_contamination = table.Column<bool>(type: "boolean", nullable: true),
+                    lessons_learned = table.Column<string>(type: "text", nullable: true),
+                    next_action = table.Column<int>(type: "integer", nullable: true),
+                    notes = table.Column<string>(type: "text", nullable: true),
+                    date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    date_deleted = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_stage_runs", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_stage_runs_cycles_cycle_id",
+                        column: x => x.cycle_id,
+                        principalTable: "cycles",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -347,8 +451,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     tumbler_id = table.Column<Guid>(type: "uuid", nullable: false),
                     barrel_number = table.Column<int>(type: "integer", nullable: false),
                     nickname = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
-                    capacity = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: true),
-                    is_capacity_metric = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    capacity_lbs = table.Column<decimal>(type: "numeric(5,2)", precision: 5, scale: 2, nullable: true),
                     default_grit_amount_grams = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
                     is_dedicated = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     dedicated_stages = table.Column<string[]>(type: "varchar(100)[]", nullable: true),
@@ -370,40 +473,16 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "stage_runs",
+                name: "comments",
                 columns: table => new
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
-                    cycle_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    barrel_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    stage_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    start_date_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    duration_days = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    duration_hours = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    end_date_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    reminder_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
-                    date_reminder_sent = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    remind_after_days = table.Column<int>(type: "integer", nullable: true),
-                    remind_at_end_of_stage = table.Column<bool>(type: "boolean", nullable: true),
-                    load_weight_before_grams = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
-                    load_weight_after_grams = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
-                    barrel_rpm = table.Column<decimal>(type: "numeric(6,2)", precision: 6, scale: 2, nullable: true),
-                    is_rpm_estimated = table.Column<bool>(type: "boolean", nullable: true),
-                    fill_level_percent = table.Column<int>(type: "integer", nullable: true),
-                    water_level = table.Column<int>(type: "integer", nullable: true),
-                    result_rating = table.Column<int>(type: "integer", nullable: true),
-                    result_shape_rounding = table.Column<int>(type: "integer", nullable: true),
-                    result_scratch_level = table.Column<int>(type: "integer", nullable: true),
-                    result_pitting = table.Column<int>(type: "integer", nullable: true),
-                    result_shine = table.Column<int>(type: "integer", nullable: true),
-                    issue_scratches = table.Column<bool>(type: "boolean", nullable: true),
-                    issue_chips = table.Column<bool>(type: "boolean", nullable: true),
-                    issue_under_rounded = table.Column<bool>(type: "boolean", nullable: true),
-                    issue_contamination = table.Column<bool>(type: "boolean", nullable: true),
-                    lessons_learned = table.Column<string>(type: "text", nullable: true),
-                    next_action = table.Column<int>(type: "integer", nullable: true),
-                    notes = table.Column<string>(type: "text", nullable: true),
+                    post_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    parent_comment_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    content = table.Column<string>(type: "text", nullable: false),
+                    is_edited = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    edited_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
@@ -411,17 +490,50 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_stage_runs", x => x.id);
+                    table.PrimaryKey("PK_comments", x => x.id);
                     table.ForeignKey(
-                        name: "FK_stage_runs_barrels_barrel_id",
-                        column: x => x.barrel_id,
-                        principalTable: "barrels",
+                        name: "FK_comments_comments_parent_comment_id",
+                        column: x => x.parent_comment_id,
+                        principalTable: "comments",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_stage_runs_cycles_cycle_id",
-                        column: x => x.cycle_id,
-                        principalTable: "cycles",
+                        name: "FK_comments_posts_post_id",
+                        column: x => x.post_id,
+                        principalTable: "posts",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_comments_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "votes",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    post_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_votes", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_votes_posts_post_id",
+                        column: x => x.post_id,
+                        principalTable: "posts",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_votes_users_user_id",
+                        column: x => x.user_id,
+                        principalTable: "users",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -467,6 +579,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     width = table.Column<int>(type: "integer", nullable: true),
                     height = table.Column<int>(type: "integer", nullable: true),
                     photo_type = table.Column<int>(type: "integer", nullable: false),
+                    Caption = table.Column<string>(type: "text", nullable: true),
                     sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
@@ -518,6 +631,69 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "stage_run_barrels",
+                columns: table => new
+                {
+                    stage_run_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    barrel_id = table.Column<Guid>(type: "uuid", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_stage_run_barrels", x => new { x.stage_run_id, x.barrel_id });
+                    table.ForeignKey(
+                        name: "FK_stage_run_barrels_barrels_barrel_id",
+                        column: x => x.barrel_id,
+                        principalTable: "barrels",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_stage_run_barrels_stage_runs_stage_run_id",
+                        column: x => x.stage_run_id,
+                        principalTable: "stage_runs",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "comment_reports",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    comment_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    reported_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    reason = table.Column<int>(type: "integer", nullable: false),
+                    details = table.Column<string>(type: "text", nullable: true),
+                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    resolved_by_user_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    resolved_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    resolution_notes = table.Column<string>(type: "text", nullable: true),
+                    date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_comment_reports", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_comment_reports_comments_comment_id",
+                        column: x => x.comment_id,
+                        principalTable: "comments",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_comment_reports_users_reported_by_user_id",
+                        column: x => x.reported_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_comment_reports_users_resolved_by_user_id",
+                        column: x => x.resolved_by_user_id,
+                        principalTable: "users",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.SetNull);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "cleaning_materials",
                 columns: table => new
                 {
@@ -548,6 +724,35 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         principalTable: "materials",
                         principalColumn: "id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "post_photos",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    post_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    photo_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    is_cover = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
+                    date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
+                    date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_post_photos", x => x.id);
+                    table.ForeignKey(
+                        name: "FK_post_photos_photos_photo_id",
+                        column: x => x.photo_id,
+                        principalTable: "photos",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_post_photos_posts_post_id",
+                        column: x => x.post_id,
+                        principalTable: "posts",
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
@@ -596,6 +801,61 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 table: "cleaning_runs",
                 column: "stage_run_id",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comment_reports_comment_id",
+                table: "comment_reports",
+                column: "comment_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comment_reports_comment_reporter",
+                table: "comment_reports",
+                columns: new[] { "comment_id", "reported_by_user_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_comment_reports_reported_by_user_id",
+                table: "comment_reports",
+                column: "reported_by_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_comment_reports_resolved_by_user_id",
+                table: "comment_reports",
+                column: "resolved_by_user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comment_reports_status",
+                table: "comment_reports",
+                column: "status");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comment_reports_status_date",
+                table: "comment_reports",
+                columns: new[] { "status", "date_created" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comments_parent_id",
+                table: "comments",
+                column: "parent_comment_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comments_post_date",
+                table: "comments",
+                columns: new[] { "post_id", "date_created" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comments_post_id",
+                table: "comments",
+                column: "post_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comments_post_parent",
+                table: "comments",
+                columns: new[] { "post_id", "parent_comment_id" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_comments_user_id",
+                table: "comments",
+                column: "user_id");
 
             migrationBuilder.CreateIndex(
                 name: "ix_cycle_specimens_specimen_id",
@@ -658,6 +918,61 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 column: "stage_run_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_post_photos_photo_id",
+                table: "post_photos",
+                column: "photo_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_post_photos_post_id",
+                table: "post_photos",
+                column: "post_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_post_photos_post_sort",
+                table: "post_photos",
+                columns: new[] { "post_id", "sort_order" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_posts_cycle_id",
+                table: "posts",
+                column: "cycle_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_published_date",
+                table: "posts",
+                column: "published_date");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_status",
+                table: "posts",
+                column: "status");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_status_comment_count",
+                table: "posts",
+                columns: new[] { "status", "comment_count" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_status_published_date",
+                table: "posts",
+                columns: new[] { "status", "published_date" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_status_vote_count",
+                table: "posts",
+                columns: new[] { "status", "vote_count" });
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_user_id",
+                table: "posts",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_posts_user_status_date",
+                table: "posts",
+                columns: new[] { "user_id", "status", "published_date" });
+
+            migrationBuilder.CreateIndex(
                 name: "ix_refresh_tokens_date_expires",
                 table: "refresh_tokens",
                 column: "date_expires");
@@ -709,8 +1024,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 column: "stage_run_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_stage_runs_barrel_id",
-                table: "stage_runs",
+                name: "ix_stage_run_barrels_barrel_id",
+                table: "stage_run_barrels",
                 column: "barrel_id");
 
             migrationBuilder.CreateIndex(
@@ -780,6 +1095,28 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 table: "users",
                 column: "username",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_votes_post_id",
+                table: "votes",
+                column: "post_id");
+
+            migrationBuilder.CreateIndex(
+                name: "ix_votes_post_user_unique",
+                table: "votes",
+                columns: new[] { "post_id", "user_id" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "ix_votes_user_id",
+                table: "votes",
+                column: "user_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_WaitlistEntries_Email",
+                table: "WaitlistEntries",
+                column: "Email",
+                unique: true);
         }
 
         /// <inheritdoc />
@@ -792,10 +1129,13 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "cleaning_materials");
 
             migrationBuilder.DropTable(
+                name: "comment_reports");
+
+            migrationBuilder.DropTable(
                 name: "cycle_specimens");
 
             migrationBuilder.DropTable(
-                name: "photos");
+                name: "post_photos");
 
             migrationBuilder.DropTable(
                 name: "refresh_tokens");
@@ -804,28 +1144,46 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "stage_materials");
 
             migrationBuilder.DropTable(
+                name: "stage_run_barrels");
+
+            migrationBuilder.DropTable(
                 name: "user_settings");
+
+            migrationBuilder.DropTable(
+                name: "votes");
+
+            migrationBuilder.DropTable(
+                name: "WaitlistEntries");
 
             migrationBuilder.DropTable(
                 name: "cleaning_runs");
 
             migrationBuilder.DropTable(
+                name: "comments");
+
+            migrationBuilder.DropTable(
                 name: "specimens");
+
+            migrationBuilder.DropTable(
+                name: "photos");
 
             migrationBuilder.DropTable(
                 name: "materials");
 
             migrationBuilder.DropTable(
-                name: "stage_runs");
-
-            migrationBuilder.DropTable(
                 name: "barrels");
 
             migrationBuilder.DropTable(
-                name: "cycles");
+                name: "posts");
+
+            migrationBuilder.DropTable(
+                name: "stage_runs");
 
             migrationBuilder.DropTable(
                 name: "tumblers");
+
+            migrationBuilder.DropTable(
+                name: "cycles");
 
             migrationBuilder.DropTable(
                 name: "tumbler_models");

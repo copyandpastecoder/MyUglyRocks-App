@@ -61,7 +61,8 @@ public class R2StorageService : IStorageService
                 Key = fullKey,
                 InputStream = stream,
                 ContentType = contentType,
-                DisablePayloadSigning = true // Required for R2
+                DisablePayloadSigning = true, // Required for R2
+                DisableDefaultChecksumValidation = true // Required for R2 - doesn't support checksum headers
             };
 
             await _s3Client.PutObjectAsync(request, cancellationToken);
