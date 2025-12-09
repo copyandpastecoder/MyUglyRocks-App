@@ -47,7 +47,17 @@ public record UserSettingsDto(
     bool AddWatermark,
     bool AutoFillFromLastRun,
     string DefaultPostVisibility,
-    string Theme
+    string Theme,
+    StageFieldVisibilityDto? StageFieldVisibility
+);
+
+// Stage field visibility settings - controls which optional fields are shown when adding stages
+public record StageFieldVisibilityDto(
+    bool ShowLoadWeight = false,
+    bool ShowFillLevel = false,
+    bool ShowWaterLevel = false,
+    bool ShowWaterAmount = false,
+    bool ShowQualityMetrics = false
 );
 
 public record UpdateSettingsRequest(
@@ -74,7 +84,8 @@ public record UpdateSettingsRequest(
     bool? AddWatermark = null,
     bool? AutoFillFromLastRun = null,
     string? DefaultPostVisibility = null,
-    string? Theme = null
+    string? Theme = null,
+    StageFieldVisibilityDto? StageFieldVisibility = null
 );
 
 // Account DTOs

@@ -8,6 +8,7 @@ namespace MyUglyRocks.Core.Services;
 public class AdminService : IAdminService
 {
     private readonly DbContext _context;
+    private readonly IAuthService _authService;
 
     private DbSet<User> Users => _context.Set<User>();
     private DbSet<Cycle> Cycles => _context.Set<Cycle>();
@@ -15,9 +16,10 @@ public class AdminService : IAdminService
     private DbSet<Comment> Comments => _context.Set<Comment>();
     private DbSet<CommentReport> CommentReports => _context.Set<CommentReport>();
 
-    public AdminService(DbContext context)
+    public AdminService(DbContext context, IAuthService authService)
     {
         _context = context;
+        _authService = authService;
     }
 
     public async Task<AdminStatsDto> GetStatsAsync()
@@ -270,6 +272,69 @@ public class AdminService : IAdminService
             TotalCycles: totalCycles,
             TotalPosts: totalPosts,
             TotalComments: totalComments
+        );
+    }
+
+    public async Task<AdminUserDto> CreateUserAsync(CreateUserRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ArgumentException("Email is required");
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        // Check if email already exists
+        if (await Users.AnyAsync(u => u.Email == normalizedEmail))
+            throw new InvalidOperationException("A user with this email already exists");
+
+        var now = DateTime.UtcNow;
+
+        // Generate a random unusable password (user must use forgot password to set real password)
+        var unusablePassword = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString() + Guid.NewGuid().ToString());
+
+        // Generate username from email (before @)
+        var username = normalizedEmail.Split('@')[0].Replace(".", "_").Replace("-", "_");
+        // Ensure username is unique
+        var baseUsername = username;
+        var counter = 1;
+        while (await Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
+        {
+            username = $"{baseUsername}{counter++}";
+        }
+
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            Email = normalizedEmail,
+            PasswordHash = unusablePassword,
+            DisplayName = null,
+            EmailVerified = true, // Pre-verified so they can use forgot password
+            DateEmailVerified = now,
+            Role = UserRole.User,
+            IsActive = true,
+            DateCreated = now,
+            DateUpdated = now
+        };
+
+        Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        // Send password reset email so user can set their password
+        await _authService.RequestPasswordResetAsync(normalizedEmail);
+
+        return new AdminUserDto(
+            Id: user.Id,
+            Username: user.Username,
+            Email: user.Email,
+            DisplayName: user.DisplayName,
+            Role: user.Role.ToString(),
+            IsActive: user.IsActive,
+            EmailVerified: user.EmailVerified,
+            DateCreated: user.DateCreated,
+            DateLastLogin: user.DateLastLogin,
+            TotalCycles: 0,
+            TotalPosts: 0,
+            TotalComments: 0
         );
     }
 

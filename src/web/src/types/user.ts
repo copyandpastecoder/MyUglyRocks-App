@@ -20,6 +20,15 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+// Stage field visibility - controls which optional fields appear when adding stages
+export interface StageFieldVisibility {
+  showLoadWeight: boolean;
+  showFillLevel: boolean;
+  showWaterLevel: boolean;
+  showWaterAmount: boolean;
+  showQualityMetrics: boolean;
+}
+
 // User settings types
 export interface UserSettingsDto {
   measurementSystem: string;
@@ -46,6 +55,7 @@ export interface UserSettingsDto {
   autoFillFromLastRun: boolean;
   defaultPostVisibility: string;
   theme: string;
+  stageFieldVisibility: StageFieldVisibility | null;
 }
 
 export interface UpdateSettingsRequest {
@@ -73,6 +83,7 @@ export interface UpdateSettingsRequest {
   autoFillFromLastRun?: boolean;
   defaultPostVisibility?: string;
   theme?: string;
+  stageFieldVisibility?: StageFieldVisibility;
 }
 
 // Account types

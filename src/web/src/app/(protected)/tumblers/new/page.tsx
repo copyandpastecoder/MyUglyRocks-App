@@ -43,6 +43,21 @@ import Link from 'next/link';
 // Brands that allow user-editable motor capacity (per ADR-001)
 const EDITABLE_CAPACITY_BRANDS = ['Generic', 'Other', 'DIY', 'MJR Tumblers'];
 
+// UUID helper that works in non-secure contexts (HTTP)
+function generateUUID(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    // Fallback for non-secure contexts where randomUUID throws
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
+    const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+}
+
 // Local barrel type for managing barrels before tumbler creation
 interface LocalBarrel {
   id: string; // Temporary ID for React key
@@ -76,7 +91,7 @@ export default function NewTumblerPage() {
 
   // Local barrel state
   const [barrels, setBarrels] = useState<LocalBarrel[]>([
-    { id: crypto.randomUUID(), barrelNumber: 1 }
+    { id: generateUUID(), barrelNumber: 1 }
   ]);
   const [editingBarrel, setEditingBarrel] = useState<LocalBarrel | null>(null);
   const [barrelNickname, setBarrelNickname] = useState('');
@@ -142,7 +157,7 @@ export default function NewTumblerPage() {
       const newBarrels: LocalBarrel[] = Array.from(
         { length: selectedModel.defaultBarrelCount },
         (_, i) => ({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           barrelNumber: i + 1,
           nickname: getRandomNickname(),
           capacityLbs: selectedModel.defaultCapacityLbs ?? undefined,
@@ -168,7 +183,7 @@ export default function NewTumblerPage() {
   const handleAddBarrel = () => {
     const nextNumber = Math.max(...barrels.map(b => b.barrelNumber), 0) + 1;
     setBarrels([...barrels, {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       barrelNumber: nextNumber,
       nickname: getRandomNickname(),
       capacityLbs: selectedModel?.defaultCapacityLbs ?? undefined,

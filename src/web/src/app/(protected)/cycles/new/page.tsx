@@ -114,7 +114,8 @@ export default function NewCyclePage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cycles'] });
       toast.success('Cycle created successfully');
-      router.push(`/cycles/${data.id}`);
+      // Navigate with ?addStage=true to auto-open the Add Stage dialog
+      router.push(`/cycles/${data.id}?addStage=true`);
     },
     onError: () => {
       toast.error('Failed to create cycle');

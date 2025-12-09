@@ -24,6 +24,7 @@ export interface CycleListDto {
   difficultyRating: number | null;
   stageCount: number;
   activeStageCount: number;
+  isOverdue: boolean;
   dateCreated: string;
 }
 
@@ -155,6 +156,7 @@ export interface CompleteStageRunRequest {
   lessonsLearned?: string;
   nextAction?: string;
   loadWeightAfterGrams?: number;
+  actualEndDateTime?: string;
 }
 
 export interface CleaningMaterialDto {

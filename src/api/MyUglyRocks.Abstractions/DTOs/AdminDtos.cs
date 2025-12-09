@@ -70,6 +70,14 @@ public record BanUserRequest(
     bool DeleteContent = false
 );
 
+/// <summary>
+/// Request to create a new user (admin only).
+/// The user will need to use "Forgot Password" to set their password.
+/// </summary>
+public record CreateUserRequest(
+    string Email
+);
+
 // Admin Statistics DTOs
 public record AdminStatsDto(
     int TotalUsers,

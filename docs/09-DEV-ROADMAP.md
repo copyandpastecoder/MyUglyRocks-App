@@ -4,7 +4,7 @@
 | Field | Value |
 |-------|-------|
 | Version | 1.6 |
-| Last Updated | 2025-12-03 |
+| Last Updated | 2025-12-08 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
 
@@ -990,6 +990,56 @@ kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks &
 
 ---
 
+### Session: 2025-12-08 - NodePort Services & CORS Fix
+
+#### Overview
+
+Configured K8s NodePort services for network-accessible development and fixed CORS issues preventing cross-origin API calls.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| NodePort Services | Configured services with stable ports: Web (30000), API (30001) | ✅ |
+| CORS Port Fix | Fixed `appsettings.Development.json` - wrong port 3000 → 30000 for IP origin | ✅ |
+| CORS Configuration | Updated `appsettings.json` with correct NodePort origins | ✅ |
+| Specimen Multi-Select UX | Improved popover behavior - button hides when dropdown open | ✅ |
+
+#### Technical Details
+
+- **Root Cause of CORS Issue**:
+  - `appsettings.Development.json` had `http://10.80.80.181:3000` but NodePort was 30000
+  - Since K8s deployment uses `ASPNETCORE_ENVIRONMENT=Development`, this file overrides base config
+  - Fixed by changing port to 30000
+
+- **Files Modified**:
+  - `src/api/MyUglyRocks.Api/appsettings.Development.json` - Fixed CORS origin port
+  - `src/api/MyUglyRocks.Api/appsettings.json` - Updated CORS origins
+  - `k8s/base/api-deployment.yaml` - NodePort 30001
+  - `k8s/base/web-deployment.yaml` - NodePort 30000
+  - `src/web/src/components/specimen-multi-select.tsx` - UX improvement
+
+- **NodePort Configuration**:
+  | Service | NodePort | Internal Port |
+  |---------|----------|---------------|
+  | Web | 30000 | 3000 |
+  | API | 30001 | 8080 |
+
+- **Access URLs (NodePort)**:
+  - Web: `http://10.80.80.181:30000`
+  - API: `http://10.80.80.181:30001`
+
+- **Docker Rebuild Commands**:
+  ```bash
+  # Rebuild with no cache to ensure fresh image
+  docker build --no-cache -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
+
+  # Force pod restart
+  kubectl delete pod -l app=myuglyrocks-api -n myuglyrocks
+  ```
+
+---
+
 ## 11. Post-Launch Roadmap
 
 Features to consider after initial launch:
@@ -1020,6 +1070,9 @@ Current focus: **Milestone 6 - Launch Prep**
 - ✅ K8s Secrets management (including R2 credentials)
 - ✅ Seed data included in Docker images
 - ✅ R2 API keys and bucket configured in K8s secrets
+- ✅ NodePort services for network access (Web: 30000, API: 30001)
+- ✅ CORS configuration fixed for NodePort URLs
+- ✅ Specimen multi-select UX improvements
 
 **Next:**
 1. **Implement R2 photo storage** (I2.1-I2.5, B2.20-B2.22) - NOW READY

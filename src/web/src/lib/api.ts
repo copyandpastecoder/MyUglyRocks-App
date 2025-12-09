@@ -622,4 +622,67 @@ export const adminApi = {
   deleteMaterial: async (id: string): Promise<void> => {
     await api.delete(`/admin/materials/${id}`);
   },
+
+  // User Creation
+  createUser: async (email: string): Promise<AdminUserDto> => {
+    const response = await api.post<AdminUserDto>('/admin/users', { email });
+    return response.data;
+  },
+};
+
+// Waitlist API functions (public)
+export const waitlistApi = {
+  join: async (email: string): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post<{ success: boolean; message?: string }>('/waitlist', { email });
+    return response.data;
+  },
+};
+
+// Photos API functions
+import type { PhotoDto } from '@/types/cycle';
+
+export interface UploadPhotoResponse {
+  success: boolean;
+  photo?: PhotoDto;
+  error?: string;
+}
+
+export interface StorageStatus {
+  configured: boolean;
+}
+
+export const photosApi = {
+  getStagePhotos: async (stageRunId: string): Promise<PhotoDto[]> => {
+    const response = await api.get<PhotoDto[]>(`/photos/stage/${stageRunId}`);
+    return response.data;
+  },
+
+  uploadStagePhoto: async (
+    stageRunId: string,
+    file: File,
+    photoType: 'before' | 'during' | 'after' = 'during'
+  ): Promise<UploadPhotoResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('photoType', photoType);
+    const response = await api.post<UploadPhotoResponse>(
+      `/photos/stage/${stageRunId}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  deletePhoto: async (photoId: string): Promise<void> => {
+    await api.delete(`/photos/${photoId}`);
+  },
+
+  reorderPhotos: async (stageRunId: string, photoIds: string[]): Promise<void> => {
+    await api.put(`/photos/stage/${stageRunId}/reorder`, { photoIds });
+  },
+
+  getStorageStatus: async (): Promise<StorageStatus> => {
+    const response = await api.get<StorageStatus>('/photos/status');
+    return response.data;
+  },
 };

@@ -70,11 +70,22 @@ spec:
               name: myuglyrocks-secrets
               key: r2-bucket-name
         # Email
+        - name: Email__Enabled
+          value: "true"
         - name: Email__ApiKey
           valueFrom:
             secretKeyRef:
               name: myuglyrocks-secrets
               key: resend-api-key
+        - name: Email__BaseUrl
+          value: "http://10.80.80.181:30000"
+        # Admin
+        - name: ADMIN_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: myuglyrocks-secrets
+              key: admin-email
+              optional: true
         resources:
           requests:
             memory: "256Mi"
@@ -106,4 +117,5 @@ spec:
   ports:
   - port: 80
     targetPort: 8080
-  type: ClusterIP
+    nodePort: 30001
+  type: NodePort

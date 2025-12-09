@@ -149,7 +149,10 @@ export function SpecimenMultiSelect({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between min-h-[40px] h-auto"
+            className={cn(
+              "w-full justify-between min-h-[40px] h-auto",
+              open && "invisible h-0 min-h-0 p-0 m-0 border-0"
+            )}
             disabled={disabled || isLoading}
           >
             <span className="text-muted-foreground">
@@ -206,7 +209,7 @@ export function SpecimenMultiSelect({
 
             <CommandList>
               <CommandEmpty>No specimens found.</CommandEmpty>
-              <CommandGroup className="max-h-[300px] overflow-auto">
+              <CommandGroup className="max-h-[250px] overflow-auto">
                 {/* Header Row */}
                 <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium text-muted-foreground border-b bg-muted/50">
                   <div className="w-6" /> {/* Checkbox space */}
@@ -253,6 +256,20 @@ export function SpecimenMultiSelect({
                 })}
               </CommandGroup>
             </CommandList>
+
+            {/* Footer with Done button */}
+            <div className="border-t p-2 bg-muted/30">
+              <Button
+                type="button"
+                size="sm"
+                className="w-full"
+                onClick={() => setOpen(false)}
+              >
+                {selectedIds.length > 0
+                  ? `Done (${selectedIds.length} selected)`
+                  : 'Done'}
+              </Button>
+            </div>
           </Command>
         </PopoverContent>
       </Popover>
