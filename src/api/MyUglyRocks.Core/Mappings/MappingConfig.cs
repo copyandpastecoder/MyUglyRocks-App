@@ -46,12 +46,14 @@ public static class MappingConfig
 
         // Cycle mappings
         TypeAdapterConfig<Cycle, CycleDto>.NewConfig()
-            .Map(dest => dest.Status, src => src.Status.ToString());
+            .Map(dest => dest.Status, src => src.Status.ToString())
+            .Map(dest => dest.Specimens, src => src.CycleSpecimens.Select(cs => cs.Specimen));
 
         TypeAdapterConfig<Cycle, CycleListDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.StageCount, src => src.StageRuns.Count)
-            .Map(dest => dest.ActiveStageCount, src => src.StageRuns.Count(s => s.Status == StageRunStatus.Active));
+            .Map(dest => dest.ActiveStageCount, src => src.StageRuns.Count(s => s.Status == StageRunStatus.Active))
+            .Map(dest => dest.IsOverdue, src => src.StageRuns.Any(s => s.Status == StageRunStatus.Active && s.EndDateTime < DateTime.UtcNow));
 
         TypeAdapterConfig<CreateCycleRequest, Cycle>.NewConfig()
             .Ignore(dest => dest.Id)

@@ -1,6 +1,10 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import {
   RotateCcw,
   Camera,
@@ -8,10 +12,36 @@ import {
   BookOpen,
   Clock,
   TrendingUp,
-  Sparkles,
+  Bell,
+  Check,
+  Loader2,
 } from 'lucide-react';
+import { waitlistApi } from '@/lib/api';
 
 export default function LandingPage() {
+  const [email, setEmail] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleWaitlistSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+
+    setIsSubmitting(true);
+    setError('');
+
+    try {
+      await waitlistApi.join(email.trim());
+      setIsSuccess(true);
+      setEmail('');
+    } catch {
+      setError('Something went wrong. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -22,11 +52,8 @@ export default function LandingPage() {
             <span className="text-xl font-bold">MyUglyRocks</span>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Log in</Link>
-            </Button>
             <Button asChild>
-              <Link href="/register">Get Started</Link>
+              <Link href="/login">Log in</Link>
             </Button>
           </div>
         </div>
@@ -42,17 +69,6 @@ export default function LandingPage() {
             From ugly rough to beautiful polish. Log your cycles, track your stages,
             upload before/after photos, and share your results with the community.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild>
-              <Link href="/register">
-                <Sparkles className="mr-2 h-5 w-5" />
-                Start Tracking Free
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/gallery">Browse Gallery</Link>
-            </Button>
-          </div>
         </div>
       </section>
 
@@ -164,15 +180,42 @@ export default function LandingPage() {
       <section className="py-20 px-4 bg-muted/50">
         <div className="container mx-auto max-w-2xl text-center">
           <h2 className="text-3xl font-bold mb-4">
-            Ready to Start Tumbling Smarter?
+            Coming Soon
           </h2>
           <p className="text-muted-foreground mb-8">
-            Join rock tumblers who are tracking their cycles, learning from their results,
-            and sharing with the community.
+            MyUglyRocks is currently in private beta. Join the waitlist to be notified when we open registration to the public.
           </p>
-          <Button size="lg" asChild>
-            <Link href="/register">Create Free Account</Link>
-          </Button>
+          <div className="max-w-md mx-auto">
+            {isSuccess ? (
+              <div className="flex items-center justify-center gap-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span>Thanks! We&apos;ll let you know when we launch.</span>
+              </div>
+            ) : (
+              <form onSubmit={handleWaitlistSubmit} className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1"
+                  disabled={isSubmitting}
+                  required
+                />
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Bell className="mr-2 h-4 w-4" />
+                      Get Notified
+                    </>
+                  )}
+                </Button>
+                {error && <p className="text-sm text-red-500 mt-1">{error}</p>}
+              </form>
+            )}
+          </div>
         </div>
       </section>
 

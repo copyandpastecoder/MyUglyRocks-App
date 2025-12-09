@@ -26,6 +26,7 @@ public record CycleListDto(
     int? DifficultyRating,
     int StageCount,
     int ActiveStageCount,
+    bool IsOverdue,
     DateTime DateCreated
 );
 
@@ -131,7 +132,8 @@ public record CompleteStageRunRequest(
     bool? IssueContamination,
     string? LessonsLearned,
     string? NextAction,
-    decimal? LoadWeightAfterGrams
+    decimal? LoadWeightAfterGrams,
+    DateTime? ActualEndDateTime
 );
 
 public record CleaningRunDto(

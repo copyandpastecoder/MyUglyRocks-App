@@ -5,12 +5,14 @@ services:
       dockerfile: src/api/MyUglyRocks.Api/Dockerfile
     container_name: myuglyrocks-api
     ports:
-      - "5000:8080"
+      - "5222:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING:-Host=postgres;Database=myuglyrocks;Username=postgres;Password=postgres}
       - ConnectionStrings__Redis=${REDIS_CONNECTION_STRING:-redis:6379}
       - Jwt__Secret=${JWT_SECRET}
+      - ADMIN_EMAIL=${ADMIN_EMAIL}
+      - Email__ApiKey=${EMAIL_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy

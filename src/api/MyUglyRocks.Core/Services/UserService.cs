@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
@@ -9,10 +11,14 @@ namespace MyUglyRocks.Core.Services;
 public class UserService : IUserService
 {
     private readonly DbContext _context;
+    private readonly IStorageService _storageService;
+    private readonly ILogger<UserService> _logger;
 
-    public UserService(DbContext context)
+    public UserService(DbContext context, IStorageService storageService, ILogger<UserService> logger)
     {
         _context = context;
+        _storageService = storageService;
+        _logger = logger;
     }
 
     private DbSet<User> Users => _context.Set<User>();
@@ -54,10 +60,63 @@ public class UserService : IUserService
 
     public async Task<string?> UploadAvatarAsync(Guid userId, Stream imageStream, string fileName, string contentType)
     {
-        // TODO: Implement R2 storage upload
-        // For now, return null as R2 integration is deferred
-        await Task.CompletedTask;
-        return null;
+        if (!_storageService.IsConfigured)
+        {
+            _logger.LogWarning("Storage not configured, avatar upload skipped for user {UserId}", userId);
+            return null;
+        }
+
+        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+        if (user == null) return null;
+
+        try
+        {
+            // Delete old avatar if exists
+            if (!string.IsNullOrEmpty(user.AvatarUrl))
+            {
+                var oldKey = ExtractStorageKeyFromUrl(user.AvatarUrl);
+                if (!string.IsNullOrEmpty(oldKey))
+                {
+                    await _storageService.DeleteAsync(oldKey);
+                }
+            }
+
+            // Upload new avatar with a consistent key based on user ID
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            var key = $"{userId}{extension}";
+            var folder = "avatars";
+
+            var avatarUrl = await _storageService.UploadAsync(imageStream, fileName, folder, key);
+
+            // Update user record
+            user.AvatarUrl = avatarUrl;
+            user.DateUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Avatar uploaded for user {UserId}: {AvatarUrl}", userId, avatarUrl);
+
+            return avatarUrl;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload avatar for user {UserId}", userId);
+            return null;
+        }
+    }
+
+    private static string? ExtractStorageKeyFromUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+
+        try
+        {
+            var uri = new Uri(url);
+            return uri.AbsolutePath.TrimStart('/');
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     #endregion
@@ -141,6 +200,8 @@ public class UserService : IUserService
             settings.DefaultPostVisibility = pv;
         if (request.Theme != null)
             settings.Theme = request.Theme;
+        if (request.StageFieldVisibility != null)
+            settings.StageFieldVisibility = JsonSerializer.Serialize(request.StageFieldVisibility);
 
         await _context.SaveChangesAsync();
 
@@ -149,6 +210,18 @@ public class UserService : IUserService
 
     private static UserSettingsDto MapToDto(UserSettings settings)
     {
+        StageFieldVisibilityDto? stageFieldVisibility = null;
+        if (!string.IsNullOrEmpty(settings.StageFieldVisibility))
+        {
+            try
+            {
+                stageFieldVisibility = JsonSerializer.Deserialize<StageFieldVisibilityDto>(
+                    settings.StageFieldVisibility,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+            catch { /* Ignore malformed JSON, use default */ }
+        }
+
         return new UserSettingsDto(
             MeasurementSystem: settings.MeasurementSystem.ToString(),
             DateFormat: settings.DateFormat.ToString(),
@@ -173,7 +246,8 @@ public class UserService : IUserService
             AddWatermark: settings.AddWatermark,
             AutoFillFromLastRun: settings.AutoFillFromLastRun,
             DefaultPostVisibility: settings.DefaultPostVisibility.ToString(),
-            Theme: settings.Theme
+            Theme: settings.Theme,
+            StageFieldVisibility: stageFieldVisibility
         );
     }
 

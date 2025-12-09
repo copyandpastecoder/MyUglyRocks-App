@@ -41,6 +41,9 @@ public class AppDbContext : DbContext
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<CommentReport> CommentReports => Set<CommentReport>();
 
+    // Waitlist
+    public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

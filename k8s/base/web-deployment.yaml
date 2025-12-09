@@ -22,7 +22,7 @@ spec:
         - containerPort: 3000
         env:
         - name: NEXT_PUBLIC_API_URL
-          value: "http://myuglyrocks-api"
+          value: "http://10.80.80.181:30001"
         resources:
           requests:
             memory: "128Mi"
@@ -54,4 +54,5 @@ spec:
   ports:
   - port: 80
     targetPort: 3000
-  type: ClusterIP
+    nodePort: 30000
+  type: NodePort

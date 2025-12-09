@@ -355,6 +355,13 @@ public class CycleService : ICycleService
             ? Enum.Parse<StageNextAction>(request.NextAction, true)
             : null;
         stageRun.LoadWeightAfterGrams = request.LoadWeightAfterGrams;
+
+        // Update end date if provided (allows user to specify actual completion date)
+        if (request.ActualEndDateTime.HasValue)
+        {
+            stageRun.EndDateTime = request.ActualEndDateTime.Value;
+        }
+
         stageRun.DateUpdated = DateTime.UtcNow;
 
         await _context.SaveChangesAsync(cancellationToken);

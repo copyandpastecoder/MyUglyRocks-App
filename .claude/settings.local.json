@@ -51,7 +51,12 @@
       "Bash(kubectl delete:*)",
       "Bash(kubectl patch:*)",
       "Bash(timeout /t 10 /nobreak)",
-      "Bash(kubectl port-forward:*)"
+      "Bash(kubectl port-forward:*)",
+      "Bash(curl:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(kind load docker-image:*)",
+      "Bash(timeout /t 2 /nobreak)",
+      "Bash(netstat:*)"
     ],
     "deny": [],
     "ask": []

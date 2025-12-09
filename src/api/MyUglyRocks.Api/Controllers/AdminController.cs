@@ -157,6 +157,30 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
+    /// Create a new user (admin only). The user must use "Forgot Password" to set their password.
+    /// </summary>
+    [HttpPost("users")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AdminUserDto>> CreateUser([FromBody] CreateUserRequest request)
+    {
+        try
+        {
+            var user = await _adminService.CreateUserAsync(request);
+            return CreatedAtAction(nameof(GetUser), new { userId = user.Id }, user);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Change a user's role (admin only)
     /// </summary>
     [HttpPut("users/{userId:guid}/role")]

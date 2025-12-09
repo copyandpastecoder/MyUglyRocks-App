@@ -33,6 +33,11 @@ public interface IAdminService
 
     Task<AdminUserDto?> GetUserByIdAsync(Guid userId);
 
+    /// <summary>
+    /// Creates a new user with the given email. The user must use "Forgot Password" to set their password.
+    /// </summary>
+    Task<AdminUserDto> CreateUserAsync(CreateUserRequest request);
+
     Task<AdminUserDto> ChangeUserRoleAsync(
         Guid userId,
         Guid changedByUserId,

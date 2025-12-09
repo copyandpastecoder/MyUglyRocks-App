@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardSkeleton } from '@/components/skeletons';
-import { CheckCircle2, Cylinder, RotateCcw, Clock, Plus } from 'lucide-react';
+import { CheckCircle2, Cylinder, RotateCcw, Clock, Plus, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { getCycleStatusClass } from '@/lib/cycle-utils';
 
@@ -101,44 +101,22 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Common tasks to get you started
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            <Button asChild>
-              <Link href="/cycles/new">
-                <Plus className="mr-2 h-4 w-4" />
-                New Cycle
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/tumblers/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Tumbler
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/cycles">
-                View All Cycles
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Active Cycles Preview */}
-        <Card>
-          <CardHeader>
+      {/* Active Cycles Preview */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
             <CardTitle>Active Cycles</CardTitle>
             <CardDescription>
               Your currently running cycles
             </CardDescription>
-          </CardHeader>
+          </div>
+          <Button asChild>
+            <Link href="/cycles/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Cycle
+            </Link>
+          </Button>
+        </CardHeader>
           <CardContent>
             {activeCycles && activeCycles.length > 0 ? (
               <div className="space-y-2">
@@ -152,9 +130,18 @@ export default function DashboardPage() {
                       <p className="font-medium">{cycle.name}</p>
                       <p className="text-sm text-muted-foreground">
                         {cycle.activeStageCount} active stage{cycle.activeStageCount !== 1 ? 's' : ''}
+                        {cycle.isOverdue && (
+                          <span className="text-yellow-600 ml-2">
+                            · overdue
+                          </span>
+                        )}
                       </p>
                     </div>
-                    <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                    {cycle.isOverdue ? (
+                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                    ) : (
+                      <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                    )}
                   </Link>
                 ))}
                 {activeCycles.length > 6 && (
@@ -174,9 +161,8 @@ export default function DashboardPage() {
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

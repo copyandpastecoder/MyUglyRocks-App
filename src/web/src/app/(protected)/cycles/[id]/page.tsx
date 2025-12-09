@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cycleApi, tumblerApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,7 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Copy,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -56,26 +57,30 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Link from 'next/link';
-import { PhotoUploadPlaceholder } from '@/components/photo-upload-placeholder';
+import { CyclePhotos } from '@/components/cycle-photos';
+import { DurationPicker } from '@/components/duration-picker';
+import { TrackingModeToggle } from '@/components/tracking-mode-toggle';
+import { WeightInput } from '@/components/weight-input';
 import { useSettings } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
-import type { StageRunSummaryDto, CreateStageMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest } from '@/types/cycle';
+import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
 
 const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish'];
-const DURATION_PRESETS = [3, 5, 7, 10, 14];
-const WATER_LEVELS = [
-  { value: 'JustCovering', label: 'Just covering' },
-  { value: 'Halfway', label: 'Halfway' },
-  { value: 'ThreeQuarters', label: '3/4 full' },
-  { value: 'Full', label: 'Full' },
+const WATER_UNITS = [
+  { value: 'ml', label: 'ml' },
+  { value: 'floz', label: 'fl oz' },
 ];
 
 export default function CycleDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const cycleId = params.id as string;
+
+  // Track if we've already handled the addStage query param
+  const [hasHandledAddStage, setHasHandledAddStage] = useState(false);
 
   // Add Stage Dialog State
   const [isAddStageOpen, setIsAddStageOpen] = useState(false);
@@ -91,14 +96,22 @@ export default function CycleDetailPage() {
   const [selectedMaterials, setSelectedMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
   // Advanced fields
   const [loadWeightBefore, setLoadWeightBefore] = useState<string>('');
+  const [loadWeightUnit, setLoadWeightUnit] = useState<string>('oz');
   const [fillLevelPercent, setFillLevelPercent] = useState<string>('');
-  const [waterLevel, setWaterLevel] = useState<string>('');
-  const [waterAmountMl, setWaterAmountMl] = useState<string>('');
+  const [waterAmount, setWaterAmount] = useState<string>('');
+  const [waterUnit, setWaterUnit] = useState<string>('ml');
+  // Local tracking mode toggle for Add Stage modal (defaults to user preference)
+  const [addStageDetailedMode, setAddStageDetailedMode] = useState(false);
+  // State for Copy from Previous
+  const [isCopyingFromPrevious, setIsCopyingFromPrevious] = useState(false);
 
   // Complete Stage Modal State
   const [isCompleteStageOpen, setIsCompleteStageOpen] = useState(false);
   const [completeStageId, setCompleteStageId] = useState<string | null>(null);
   const [completeStageName, setCompleteStageName] = useState<string>('');
+  const [completeStageStartDateTime, setCompleteStageStartDateTime] = useState<string>('');
+  const [completeStageDurationDays, setCompleteStageDurationDays] = useState<string>('7');
+  const [completeStageDurationHours, setCompleteStageDurationHours] = useState<string>('0');
   const [resultRating, setResultRating] = useState<number>(0);
   const [showAdvancedQuality, setShowAdvancedQuality] = useState(false);
   const [resultShapeRounding, setResultShapeRounding] = useState<number>(50);
@@ -112,6 +125,9 @@ export default function CycleDetailPage() {
   const [lessonsLearned, setLessonsLearned] = useState('');
   const [nextAction, setNextAction] = useState<string>('Advance');
   const [loadWeightAfter, setLoadWeightAfter] = useState<string>('');
+  const [loadWeightAfterUnit, setLoadWeightAfterUnit] = useState<string>('oz');
+  // Local tracking mode toggle for Complete Stage modal (defaults to user preference)
+  const [completeStageDetailedMode, setCompleteStageDetailedMode] = useState(false);
 
   // Edit Cycle Dialog State
   const [isEditCycleOpen, setIsEditCycleOpen] = useState(false);
@@ -141,7 +157,38 @@ export default function CycleDetailPage() {
 
   const { data: settings } = useSettings();
   const { data: materials } = useMaterials();
-  const isAdvancedMode = settings?.trackingMode === 'Advanced';
+
+  // Auto-open Add Stage dialog when ?addStage=true query param is present
+  useEffect(() => {
+    const shouldOpenAddStage = searchParams.get('addStage') === 'true';
+    if (shouldOpenAddStage && cycle && cycle.status === 'Active' && !hasHandledAddStage) {
+      setHasHandledAddStage(true);
+      // Use setTimeout to ensure all data is ready
+      setTimeout(() => {
+        resetAddStageForm();
+        setAddStageDetailedMode(settings?.trackingMode === 'Detailed');
+        // First stage uses cycle start date with current time, subsequent stages use "now"
+        if (cycle.stageRuns.length === 0) {
+          setStageStartDateTime(formatDateTimeLocal(combineDateWithCurrentTime(cycle.startDate)));
+        } else {
+          setStageStartDateTime(formatDateTimeLocal(new Date()));
+        }
+        setIsAddStageOpen(true);
+        // Remove the query param from URL to prevent re-opening on page refresh
+        router.replace(`/cycles/${cycleId}`, { scroll: false });
+      }, 100);
+    }
+  }, [searchParams, cycle, hasHandledAddStage, settings?.trackingMode, cycleId, router]);
+
+  // Add Stage modal visibility - when detailed mode is on, show all advanced fields
+  const addStageShowLoadWeight = addStageDetailedMode;
+  const addStageShowFillLevel = addStageDetailedMode;
+  const addStageShowWaterAmount = addStageDetailedMode;
+  const addStageHasAnyAdvancedFields = addStageDetailedMode;
+
+  // Complete Stage modal visibility - when detailed mode is on, show all advanced fields
+  const completeStageShowLoadWeight = completeStageDetailedMode;
+  const completeStageShowQualityMetrics = completeStageDetailedMode;
 
   const addStageMutation = useMutation({
     mutationFn: (data: {
@@ -255,14 +302,18 @@ export default function CycleDetailPage() {
     setRemindAfterDays('7');
     setSelectedMaterials([]);
     setLoadWeightBefore('');
+    setLoadWeightUnit('oz');
     setFillLevelPercent('');
-    setWaterLevel('');
-    setWaterAmountMl('');
+    setWaterAmount('');
+    setWaterUnit('ml');
   };
 
   const resetCompleteStageForm = () => {
     setCompleteStageId(null);
     setCompleteStageName('');
+    setCompleteStageStartDateTime('');
+    setCompleteStageDurationDays('7');
+    setCompleteStageDurationHours('0');
     setResultRating(0);
     setShowAdvancedQuality(false);
     setResultShapeRounding(50);
@@ -276,6 +327,7 @@ export default function CycleDetailPage() {
     setLessonsLearned('');
     setNextAction('Advance');
     setLoadWeightAfter('');
+    setLoadWeightAfterUnit('oz');
   };
 
   const handleAddStage = () => {
@@ -305,10 +357,11 @@ export default function CycleDetailPage() {
       reminderEnabled,
       remindAfterDays: reminderType === 'afterDays' ? parseInt(remindAfterDays) : undefined,
       remindAtEndOfStage: reminderType === 'atEnd' ? true : undefined,
-      loadWeightBeforeGrams: loadWeightBefore ? parseFloat(loadWeightBefore) * 28.35 : undefined, // oz to grams
+      // Convert weight to grams (1 oz = 28.35 g)
+      loadWeightBeforeGrams: loadWeightBefore ? Math.round(parseFloat(loadWeightBefore) * (loadWeightUnit === 'oz' ? 28.35 : 1)) : undefined,
       fillLevelPercent: fillLevelPercent ? parseInt(fillLevelPercent) : undefined,
-      waterLevel: waterLevel || undefined,
-      waterAmountMl: waterAmountMl ? parseInt(waterAmountMl) : undefined,
+      // Convert water amount to ml (1 fl oz = 29.5735 ml)
+      waterAmountMl: waterAmount ? Math.round(parseFloat(waterAmount) * (waterUnit === 'floz' ? 29.5735 : 1)) : undefined,
       materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
     });
   };
@@ -319,12 +372,22 @@ export default function CycleDetailPage() {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
+  // Helper to combine a date string (YYYY-MM-DD) with current time
+  // This avoids UTC timezone issues when parsing date-only strings
+  const combineDateWithCurrentTime = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const now = new Date();
+    return new Date(year, month - 1, day, now.getHours(), now.getMinutes());
+  };
+
   const openAddStageModal = () => {
     resetAddStageForm();
-    // First stage uses cycle start date, subsequent stages use "now"
+    // Initialize local tracking mode from user settings
+    setAddStageDetailedMode(settings?.trackingMode === 'Detailed');
+    // First stage uses cycle start date with current time, subsequent stages use "now"
     if (cycle && cycle.stageRuns.length === 0) {
-      // First stage: use cycle's start date
-      setStageStartDateTime(formatDateTimeLocal(new Date(cycle.startDate)));
+      // First stage: use cycle's start date with current time
+      setStageStartDateTime(formatDateTimeLocal(combineDateWithCurrentTime(cycle.startDate)));
     } else {
       // Subsequent stages: default to now
       setStageStartDateTime(formatDateTimeLocal(new Date()));
@@ -332,9 +395,69 @@ export default function CycleDetailPage() {
     setIsAddStageOpen(true);
   };
 
+  // Copy settings from previous stage run
+  const copyFromPreviousStage = async () => {
+    if (!cycle || cycle.stageRuns.length === 0) return;
+
+    // Find the most recent stage (last one in the list, whether completed or active)
+    const previousStageSummary = cycle.stageRuns[cycle.stageRuns.length - 1];
+
+    setIsCopyingFromPrevious(true);
+    try {
+      // Fetch full details of the previous stage
+      const previousStage: StageRunDto = await cycleApi.getStageRun(previousStageSummary.id);
+
+      // Set start date to previous stage's end date
+      const previousEndDate = new Date(previousStage.endDateTime);
+      setStageStartDateTime(formatDateTimeLocal(previousEndDate));
+
+      // Copy barrels
+      if (previousStage.barrels && previousStage.barrels.length > 0) {
+        const previousBarrelIds = previousStage.barrels.map(b => b.id);
+        // Only select barrels that are still active
+        const activeBarrelIds = previousBarrelIds.filter(id =>
+          allBarrels.some(b => b.id === id)
+        );
+        setSelectedBarrelIds(activeBarrelIds);
+      }
+
+      // Copy materials if same stage type
+      if (stageName === previousStage.stageName && previousStage.materials && previousStage.materials.length > 0) {
+        const copiedMaterials = previousStage.materials.map(m => ({
+          materialId: m.materialId,
+          displayAmount: m.displayAmount ? String(m.displayAmount) : '',
+          displayUnit: m.displayUnit || 'tbsp',
+        }));
+        setSelectedMaterials(copiedMaterials);
+      }
+
+      // Copy duration
+      setDurationDays(String(previousStage.durationDays));
+      setDurationHours(String(previousStage.durationHours));
+
+      toast.success(`Copied settings from previous ${previousStage.stageName} stage`);
+    } catch {
+      toast.error('Failed to copy from previous stage');
+    } finally {
+      setIsCopyingFromPrevious(false);
+    }
+  };
+
   const openCompleteStageModal = (stage: StageRunSummaryDto) => {
+    const startDate = new Date(stage.startDateTime);
+    const endDate = new Date(stage.endDateTime);
+    const durationMs = endDate.getTime() - startDate.getTime();
+    const totalHours = Math.round(durationMs / (1000 * 60 * 60));
+    const days = Math.floor(totalHours / 24);
+    const hours = totalHours % 24;
+
     setCompleteStageId(stage.id);
     setCompleteStageName(stage.stageName);
+    setCompleteStageStartDateTime(stage.startDateTime.slice(0, 16)); // Format for display
+    setCompleteStageDurationDays(String(days));
+    setCompleteStageDurationHours(String(hours));
+    // Initialize local tracking mode from user settings
+    setCompleteStageDetailedMode(settings?.trackingMode === 'Detailed');
     setIsCompleteStageOpen(true);
   };
 
@@ -345,6 +468,12 @@ export default function CycleDetailPage() {
       return;
     }
 
+    // Calculate the actual end date from start date + duration
+    const days = parseInt(completeStageDurationDays) || 0;
+    const hours = parseInt(completeStageDurationHours) || 0;
+    const startDate = new Date(completeStageStartDateTime);
+    const actualEndDate = new Date(startDate.getTime() + (days * 24 + hours) * 60 * 60 * 1000);
+
     const data: CompleteStageRunRequest = {
       resultRating,
       nextAction,
@@ -353,11 +482,14 @@ export default function CycleDetailPage() {
       issueUnderRounded: issueUnderRounded || undefined,
       issueContamination: issueContamination || undefined,
       lessonsLearned: lessonsLearned || undefined,
-      loadWeightAfterGrams: loadWeightAfter ? parseFloat(loadWeightAfter) * 28.35 : undefined,
+      // Convert weight to grams (1 oz = 28.35 g)
+      loadWeightAfterGrams: loadWeightAfter ? Math.round(parseFloat(loadWeightAfter) * (loadWeightAfterUnit === 'oz' ? 28.35 : 1)) : undefined,
+      // Send the calculated actual end date
+      actualEndDateTime: actualEndDate.toISOString(),
     };
 
     // Include advanced quality if shown
-    if (showAdvancedQuality || isAdvancedMode) {
+    if (showAdvancedQuality || completeStageDetailedMode) {
       data.resultShapeRounding = resultShapeRounding;
       data.resultScratchLevel = resultScratchLevel;
       data.resultPitting = resultPitting;
@@ -539,12 +671,29 @@ export default function CycleDetailPage() {
           <div>
             <p className="text-sm text-muted-foreground">Difficulty</p>
             <p className="font-medium">
-              {cycle.difficultyRating ? `${cycle.difficultyRating}/5` : 'Not rated'}
+              {cycle.specimens && cycle.specimens.length > 0
+                ? (() => {
+                    const difficulties = cycle.specimens
+                      .map(s => s.tumblingDifficulty)
+                      .filter(Boolean);
+                    if (difficulties.length === 0) return 'Not rated';
+                    // Show the hardest difficulty (Hard > Medium > Easy)
+                    if (difficulties.includes('Hard')) return 'Hard';
+                    if (difficulties.includes('Medium')) return 'Medium';
+                    return 'Easy';
+                  })()
+                : cycle.difficultyRating
+                  ? `${cycle.difficultyRating}/5`
+                  : 'Not rated'}
             </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Specimens</p>
-            <p className="font-medium">{cycle.additionalSpecimens || 'Not specified'}</p>
+            <p className="font-medium">
+              {cycle.specimens && cycle.specimens.length > 0
+                ? cycle.specimens.map(s => s.commonName).join(', ')
+                : cycle.additionalSpecimens || 'Not specified'}
+            </p>
           </div>
           {cycle.notes && (
             <div className="md:col-span-3">
@@ -565,27 +714,26 @@ export default function CycleDetailPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Stage
               </Button>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
+              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+                <DialogHeader className="flex-shrink-0">
                   <DialogTitle>Add New Stage</DialogTitle>
                   <DialogDescription>
                     Start a new tumbling stage for this cycle
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
+
+                {/* Scrollable content area */}
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  {/* Simple/Detailed Toggle */}
+                  <TrackingModeToggle
+                    isDetailedMode={addStageDetailedMode}
+                    onToggle={setAddStageDetailedMode}
+                  />
+
+                  <div className="space-y-4 py-4">
                   {/* Stage Name */}
                   <div className="space-y-2">
                     <Label>Stage Name</Label>
-                    <Select value={stageName} onValueChange={setStageName}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STAGE_NAMES.map(name => (
-                          <SelectItem key={name} value={name}>{name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
                     <div className="flex flex-wrap gap-1">
                       {STAGE_NAMES.map(name => (
                         <Button
@@ -599,6 +747,24 @@ export default function CycleDetailPage() {
                         </Button>
                       ))}
                     </div>
+                    {/* Copy from Previous button - only show when there are previous stages */}
+                    {cycle && cycle.stageRuns.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={copyFromPreviousStage}
+                        disabled={isCopyingFromPrevious}
+                        className="mt-2"
+                      >
+                        {isCopyingFromPrevious ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Copy className="mr-2 h-4 w-4" />
+                        )}
+                        Copy from Previous Stage
+                      </Button>
+                    )}
                   </div>
 
                   {/* Start Date/Time */}
@@ -617,69 +783,13 @@ export default function CycleDetailPage() {
                   </div>
 
                   {/* Duration */}
-                  <div className="space-y-2">
-                    <Label>Duration</Label>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Days</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          value={durationDays}
-                          onChange={(e) => setDurationDays(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">Hours</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="23"
-                          value={durationHours}
-                          onChange={(e) => setDurationHours(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {DURATION_PRESETS.map(days => (
-                        <Button
-                          key={days}
-                          type="button"
-                          variant={durationDays === String(days) && durationHours === '0' ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => {
-                            setDurationDays(String(days));
-                            setDurationHours('0');
-                          }}
-                        >
-                          {days}d
-                        </Button>
-                      ))}
-                    </div>
-                    {/* Calculated End Date */}
-                    {stageStartDateTime && (parseInt(durationDays) > 0 || parseInt(durationHours) > 0) && (
-                      <div className="mt-2 p-3 bg-muted rounded-lg">
-                        <p className="text-sm">
-                          <span className="text-muted-foreground">End Date: </span>
-                          <span className="font-medium">
-                            {(() => {
-                              const start = new Date(stageStartDateTime);
-                              const days = parseInt(durationDays) || 0;
-                              const hours = parseInt(durationHours) || 0;
-                              const end = new Date(start.getTime() + (days * 24 + hours) * 60 * 60 * 1000);
-                              return end.toLocaleString(undefined, {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: 'numeric',
-                                minute: '2-digit',
-                              });
-                            })()}
-                          </span>
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                  <DurationPicker
+                    durationDays={durationDays}
+                    durationHours={durationHours}
+                    onDaysChange={setDurationDays}
+                    onHoursChange={setDurationHours}
+                    startDateTime={stageStartDateTime}
+                  />
 
                   {/* Materials Section */}
                   <div className="space-y-2">
@@ -801,66 +911,67 @@ export default function CycleDetailPage() {
                     )}
                   </div>
 
-                  {/* Advanced Fields */}
-                  {isAdvancedMode && (
-                    <>
-                      <div className="border-t pt-4">
-                        <p className="text-sm font-medium text-muted-foreground mb-3">Advanced Options</p>
-                      </div>
+                  {/* Advanced Fields - only show header if any fields are enabled */}
+                  {addStageHasAnyAdvancedFields && (
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-medium text-muted-foreground mb-3">Advanced Options</p>
+                    </div>
+                  )}
 
-                      {/* Load Weight */}
-                      <div className="space-y-2">
-                        <Label>Load Weight Before (oz)</Label>
+                  {/* Load Weight */}
+                  {addStageShowLoadWeight && (
+                    <WeightInput
+                      label="Load Weight Before"
+                      value={loadWeightBefore}
+                      unit={loadWeightUnit}
+                      onValueChange={setLoadWeightBefore}
+                      onUnitChange={setLoadWeightUnit}
+                    />
+                  )}
+
+                  {/* Fill Level */}
+                  {addStageShowFillLevel && (
+                    <div className="space-y-2">
+                      <Label>Barrel Fill Level (%)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="100"
+                        placeholder="e.g., 75"
+                        value={fillLevelPercent}
+                        onChange={(e) => setFillLevelPercent(e.target.value)}
+                      />
+                    </div>
+                  )}
+
+                  {/* Water Amount */}
+                  {addStageShowWaterAmount && (
+                    <div className="space-y-2">
+                      <Label>Water Amount</Label>
+                      <div className="flex gap-2">
                         <Input
                           type="number"
                           min="0"
                           step="0.1"
-                          placeholder="e.g., 2.5"
-                          value={loadWeightBefore}
-                          onChange={(e) => setLoadWeightBefore(e.target.value)}
-                        />
-                      </div>
-
-                      {/* Fill Level */}
-                      <div className="space-y-2">
-                        <Label>Barrel Fill Level (%)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="e.g., 75"
-                          value={fillLevelPercent}
-                          onChange={(e) => setFillLevelPercent(e.target.value)}
-                        />
-                      </div>
-
-                      {/* Water Level */}
-                      <div className="space-y-2">
-                        <Label>Water Level</Label>
-                        <RadioGroup value={waterLevel} onValueChange={setWaterLevel}>
-                          <div className="flex flex-wrap gap-4">
-                            {WATER_LEVELS.map(level => (
-                              <div key={level.value} className="flex items-center space-x-2">
-                                <RadioGroupItem value={level.value} id={level.value} />
-                                <Label htmlFor={level.value}>{level.label}</Label>
-                              </div>
-                            ))}
-                          </div>
-                        </RadioGroup>
-                      </div>
-
-                      {/* Water Amount */}
-                      <div className="space-y-2">
-                        <Label>Precise Water Amount (ml)</Label>
-                        <Input
-                          type="number"
-                          min="0"
                           placeholder="e.g., 250"
-                          value={waterAmountMl}
-                          onChange={(e) => setWaterAmountMl(e.target.value)}
+                          value={waterAmount}
+                          onChange={(e) => setWaterAmount(e.target.value)}
+                          className="flex-1"
                         />
+                        <Select value={waterUnit} onValueChange={setWaterUnit}>
+                          <SelectTrigger className="w-24">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {WATER_UNITS.map(unit => (
+                              <SelectItem key={unit.value} value={unit.value}>
+                                {unit.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
-                    </>
+                    </div>
                   )}
 
                   {/* Barrel Selection */}
@@ -901,8 +1012,9 @@ export default function CycleDetailPage() {
                         : 'Select one or more barrels to run this stage'}
                     </p>
                   </div>
+                  </div>
                 </div>
-                <DialogFooter>
+                <DialogFooter className="flex-shrink-0">
                   <Button variant="outline" onClick={() => setIsAddStageOpen(false)}>
                     Cancel
                   </Button>
@@ -979,7 +1091,25 @@ export default function CycleDetailPage() {
               Mark &quot;{completeStageName}&quot; as complete
             </DialogDescription>
           </DialogHeader>
+
+          {/* Simple/Detailed Toggle */}
+          <TrackingModeToggle
+            isDetailedMode={completeStageDetailedMode}
+            onToggle={setCompleteStageDetailedMode}
+          />
+
           <div className="space-y-4 py-4">
+            {/* Duration */}
+            <DurationPicker
+              durationDays={completeStageDurationDays}
+              durationHours={completeStageDurationHours}
+              onDaysChange={setCompleteStageDurationDays}
+              onHoursChange={setCompleteStageDurationHours}
+              startDateTime={completeStageStartDateTime}
+              label="Actual Duration"
+              helperText="Adjust if the stage finished earlier or later than originally planned."
+            />
+
             {/* Result Rating */}
             <div className="space-y-2">
               <Label>How did this stage turn out? *</Label>
@@ -1003,7 +1133,7 @@ export default function CycleDetailPage() {
             </div>
 
             {/* Advanced Quality Ratings */}
-            {(isAdvancedMode || showAdvancedQuality) && (
+            {(completeStageShowQualityMetrics || showAdvancedQuality) && (
               <div className="space-y-4 border rounded-lg p-4">
                 <div className="space-y-2">
                   <div className="flex justify-between">
@@ -1056,7 +1186,7 @@ export default function CycleDetailPage() {
               </div>
             )}
 
-            {!isAdvancedMode && (
+            {!completeStageShowQualityMetrics && (
               <Button
                 type="button"
                 variant="ghost"
@@ -1092,19 +1222,16 @@ export default function CycleDetailPage() {
               </div>
             </div>
 
-            {/* Weight After - Advanced only */}
-            {isAdvancedMode && (
-              <div className="space-y-2">
-                <Label>Weight After (oz)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  placeholder="e.g., 2.3"
-                  value={loadWeightAfter}
-                  onChange={(e) => setLoadWeightAfter(e.target.value)}
-                />
-              </div>
+            {/* Weight After - only if load weight tracking is enabled */}
+            {completeStageShowLoadWeight && (
+              <WeightInput
+                label="Weight After"
+                value={loadWeightAfter}
+                unit={loadWeightAfterUnit}
+                onValueChange={setLoadWeightAfter}
+                onUnitChange={setLoadWeightAfterUnit}
+                placeholder="e.g., 2.3"
+              />
             )}
 
             {/* Lessons Learned */}
@@ -1232,72 +1359,14 @@ export default function CycleDetailPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Duration</Label>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Days</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={editStageDurationDays}
-                    onChange={(e) => setEditStageDurationDays(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Hours</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="23"
-                    value={editStageDurationHours}
-                    onChange={(e) => setEditStageDurationHours(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {DURATION_PRESETS.map(days => (
-                  <Button
-                    key={days}
-                    type="button"
-                    variant={editStageDurationDays === String(days) && editStageDurationHours === '0' ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      setEditStageDurationDays(String(days));
-                      setEditStageDurationHours('0');
-                    }}
-                  >
-                    {days}d
-                  </Button>
-                ))}
-              </div>
-              {/* Calculated End Date */}
-              {editStageStartDateTime && (parseInt(editStageDurationDays) > 0 || parseInt(editStageDurationHours) > 0) && (
-                <div className="mt-3 p-3 bg-muted rounded-lg">
-                  <p className="text-sm">
-                    <span className="text-muted-foreground">End Date: </span>
-                    <span className="font-medium">
-                      {(() => {
-                        const start = new Date(editStageStartDateTime);
-                        const days = parseInt(editStageDurationDays) || 0;
-                        const hours = parseInt(editStageDurationHours) || 0;
-                        const end = new Date(start.getTime() + (days * 24 + hours) * 60 * 60 * 1000);
-                        return end.toLocaleString(undefined, {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: 'numeric',
-                          minute: '2-digit',
-                        });
-                      })()}
-                    </span>
-                  </p>
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground mt-2">
-                Tip: If the stage finished early (e.g., 3 days instead of 7), reduce the duration here before marking complete.
-              </p>
-            </div>
+            <DurationPicker
+              durationDays={editStageDurationDays}
+              durationHours={editStageDurationHours}
+              onDaysChange={setEditStageDurationDays}
+              onHoursChange={setEditStageDurationHours}
+              startDateTime={editStageStartDateTime}
+              helperText="Tip: If the stage finished early (e.g., 3 days instead of 7), reduce the duration here before marking complete."
+            />
             <div className="space-y-2">
               <Label>Notes (optional)</Label>
               <Textarea
@@ -1323,10 +1392,7 @@ export default function CycleDetailPage() {
       </Dialog>
 
       {/* Photos */}
-      <PhotoUploadPlaceholder
-        title="Cycle Photos"
-        description="Upload before, during, and after photos to track your progress"
-      />
+      <CyclePhotos cycleId={cycleId} stages={cycle?.stageRuns || []} />
     </div>
   );
 }
@@ -1360,8 +1426,17 @@ function StageCard({
 
   const timeRemaining = isActive ? getTimeRemaining(endDate) : null;
 
+  const handleCardClick = () => {
+    if (isActive && onEdit) {
+      onEdit();
+    }
+  };
+
   return (
-    <Card className={isOverdue ? 'border-yellow-300' : ''}>
+    <Card
+      className={`${isOverdue ? 'border-yellow-300' : ''} ${isActive && onEdit ? 'cursor-pointer transition-colors hover:bg-muted/50' : ''}`}
+      onClick={handleCardClick}
+    >
       <CardContent className="py-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-4">
@@ -1379,7 +1454,7 @@ function StageCard({
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             {stage.resultRating && (
               <Badge variant="outline" className="gap-1">
                 <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
@@ -1395,7 +1470,7 @@ function StageCard({
                 )}
               </Button>
             )}
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   <MoreVertical className="h-4 w-4" />
@@ -1403,14 +1478,14 @@ function StageCard({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {isActive && onEdit && (
-                  <DropdownMenuItem onClick={onEdit}>
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onEdit(); }}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit Duration
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuItem
                   className="text-red-600 focus:text-red-600"
-                  onClick={onDelete}
+                  onSelect={(e) => { e.preventDefault(); onDelete(); }}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete

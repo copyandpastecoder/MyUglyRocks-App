@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MyUglyRocks.Core.Entities;
 
@@ -7,6 +8,7 @@ namespace MyUglyRocks.Infrastructure.Data;
 public class SeedDataService
 {
     private readonly AppDbContext _context;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SeedDataService> _logger;
     private static readonly Guid SystemUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
@@ -51,9 +53,10 @@ public class SeedDataService
         return result;
     }
 
-    public SeedDataService(AppDbContext context, ILogger<SeedDataService> logger)
+    public SeedDataService(AppDbContext context, IConfiguration configuration, ILogger<SeedDataService> logger)
     {
         _context = context;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -61,6 +64,7 @@ public class SeedDataService
     {
         await EnsureSystemUserAsync();
         await EnsureTestUserAsync();
+        await EnsureAdminUserAsync();
         await SeedSpecimensAsync();
         await SeedMaterialsAsync();
         await SeedTumblerModelsAsync();
@@ -113,6 +117,62 @@ public class SeedDataService
             await _context.SaveChangesAsync();
             _logger.LogInformation("Created test user (test@myuglyrocks.local / Test123!)");
         }
+    }
+
+    /// <summary>
+    /// Creates an admin user from ADMIN_EMAIL environment variable if set.
+    /// The admin must use "Forgot Password" to set their password on first login.
+    /// </summary>
+    private async Task EnsureAdminUserAsync()
+    {
+        var adminEmail = _configuration["ADMIN_EMAIL"];
+        if (string.IsNullOrWhiteSpace(adminEmail))
+        {
+            _logger.LogDebug("ADMIN_EMAIL not configured, skipping admin user seed");
+            return;
+        }
+
+        var normalizedEmail = adminEmail.Trim().ToLowerInvariant();
+
+        // Check if admin user already exists
+        if (await _context.Users.AnyAsync(u => u.Email == normalizedEmail))
+        {
+            _logger.LogDebug("Admin user {Email} already exists", normalizedEmail);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+
+        // Generate a random unusable password (user must use forgot password to set real password)
+        var unusablePassword = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString() + Guid.NewGuid().ToString());
+
+        // Generate username from email (before @)
+        var username = normalizedEmail.Split('@')[0].Replace(".", "_").Replace("-", "_");
+        // Ensure username is unique
+        var baseUsername = username;
+        var counter = 1;
+        while (await _context.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
+        {
+            username = $"{baseUsername}{counter++}";
+        }
+
+        _context.Users.Add(new User
+        {
+            Id = Guid.NewGuid(),
+            Username = username,
+            Email = normalizedEmail,
+            PasswordHash = unusablePassword,
+            DisplayName = "Admin",
+            EmailVerified = true, // Pre-verified so they can use forgot password
+            DateEmailVerified = now,
+            Role = UserRole.Admin,
+            IsActive = true,
+            DateCreated = now,
+            DateUpdated = now
+        });
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Created admin user {Email} - use Forgot Password to set password", normalizedEmail);
     }
 
     private async Task SeedSpecimensAsync()

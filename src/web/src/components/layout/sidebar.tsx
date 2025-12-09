@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,23 +24,19 @@ import {
   Menu,
   ChevronLeft,
 } from 'lucide-react';
+import { getHelpTopicFromPath } from '@/data/help-content';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'My Tumblers', href: '/tumblers', icon: Cylinder },
   { name: 'Tumbling Cycles', href: '/cycles', icon: RotateCcw },
   { name: 'Photo Gallery', href: '/gallery', icon: ImageIcon },
+  { name: 'My Tumblers', href: '/tumblers', icon: Cylinder },
 ];
 
 const learnNavigation = [
   { name: 'Rock Database', href: '/learn/specimens', icon: Gem },
   { name: 'Grits & Polishes', href: '/learn/materials', icon: Sparkles },
   { name: 'FAQ', href: '/learn/faq', icon: MessageCircleQuestion },
-];
-
-const bottomNavigation = [
-  { name: 'Settings', href: '/settings', icon: Settings },
-  { name: 'Help', href: '/help', icon: HelpCircle },
 ];
 
 interface SidebarProps {
@@ -49,6 +46,12 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+
+  // Get context-aware help link based on current page
+  const helpHref = useMemo(() => {
+    const topic = getHelpTopicFromPath(pathname);
+    return `/learn/faq/${topic}`;
+  }, [pathname]);
 
   const NavLink = ({ item, isActive }: { item: typeof navigation[0]; isActive: boolean }) => {
     const linkContent = (
@@ -139,14 +142,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
             })}
           </ul>
           <ul role="list" className="mt-auto flex flex-col gap-1">
-            {bottomNavigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <li key={item.name}>
-                  <NavLink item={item} isActive={isActive} />
-                </li>
-              );
-            })}
+            {/* Settings link */}
+            <li>
+              <NavLink
+                item={{ name: 'Settings', href: '/settings', icon: Settings }}
+                isActive={pathname === '/settings' || pathname.startsWith('/settings/')}
+              />
+            </li>
+            {/* Context-aware Help link */}
+            <li>
+              <NavLink
+                item={{ name: 'Help', href: helpHref, icon: HelpCircle }}
+                isActive={pathname.startsWith('/learn/faq')}
+              />
+            </li>
           </ul>
         </nav>
       </div>

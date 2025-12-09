@@ -1,6 +1,7 @@
 using System.IO.Compression;
 using System.Text;
 using System.Threading.RateLimiting;
+using Amazon.S3;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -88,6 +89,24 @@ try
     builder.Services.AddTransient<IResend, ResendClient>();
     builder.Services.AddScoped<IEmailService, EmailService>();
 
+    // Configure R2 Storage (required)
+    builder.Services.Configure<R2Settings>(builder.Configuration.GetSection(R2Settings.SectionName));
+    var r2Settings = builder.Configuration.GetSection(R2Settings.SectionName).Get<R2Settings>();
+    if (r2Settings?.IsConfigured != true)
+    {
+        throw new InvalidOperationException("R2 storage configuration is required. Please configure R2 settings in appsettings.json or environment variables.");
+    }
+    builder.Services.AddSingleton<IAmazonS3>(sp =>
+    {
+        var config = new AmazonS3Config
+        {
+            ServiceURL = r2Settings.Endpoint,
+            ForcePathStyle = true
+        };
+        return new AmazonS3Client(r2Settings.AccessKeyId, r2Settings.SecretAccessKey, config);
+    });
+    builder.Services.AddScoped<IStorageService, R2StorageService>();
+
     // Configure Hangfire for background jobs
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddHangfire(config => config
@@ -135,11 +154,16 @@ try
     builder.Services.AddScoped<SeedDataService>();
 
     // Configure CORS
+    // Default origins + config-based origins
+    var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    var defaultOrigins = new[] { "http://localhost:3000", "http://10.80.80.181:30000" };
+    var allowedOrigins = configOrigins != null && configOrigins.Length > 0 ? configOrigins : defaultOrigins;
+    Log.Information("Configured CORS origins: {Origins}", string.Join(", ", allowedOrigins));
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"])
+            policy.WithOrigins(allowedOrigins)
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials();
@@ -212,7 +236,12 @@ try
         app.MapHangfireDashboard("/hangfire");
     }
 
-    app.UseHttpsRedirection();
+    // Only use HTTPS redirect in production
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
+
     app.UseCors("AllowFrontend");
     app.UseRateLimiter();
     app.UseAuthentication();
