@@ -155,6 +155,11 @@ try
     builder.Services.AddScoped<INotificationService, NotificationService>();
     builder.Services.AddScoped<SeedDataService>();
 
+    // Session analytics services
+    builder.Services.AddSingleton<IUserAgentParserService, UserAgentParserService>();
+    builder.Services.AddScoped<SessionAnalyticsService>();
+    builder.Services.AddScoped<ISessionAnalyticsService>(sp => sp.GetRequiredService<SessionAnalyticsService>());
+
     // Configure CORS
     // Default origins + config-based origins
     var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();

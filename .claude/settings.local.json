@@ -61,7 +61,8 @@
       "Bash(kubectl scale:*)",
       "Bash(kubectl create secret tls:*)",
       "Bash(kubectl wait:*)",
-      "Bash(timeout /t 15 /nobreak)"
+      "Bash(timeout /t 15 /nobreak)",
+      "Bash(tree:*)"
     ],
     "deny": [],
     "ask": []

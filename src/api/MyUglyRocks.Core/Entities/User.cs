@@ -34,4 +34,5 @@ public class User : BaseEntity
     public virtual ICollection<Tumbler> Tumblers { get; set; } = [];
     public virtual ICollection<Cycle> Cycles { get; set; } = [];
     public virtual ICollection<Post> Posts { get; set; } = [];
+    public virtual ICollection<UserSession> Sessions { get; set; } = [];
 }

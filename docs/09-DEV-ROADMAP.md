@@ -3,7 +3,7 @@
 ## Document Info
 | Field | Value |
 |-------|-------|
-| Version | 1.7 |
+| Version | 1.8 |
 | Last Updated | 2025-12-09 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
@@ -1159,6 +1159,8 @@ Current focus: **Milestone 6 - Launch Prep**
 - ✅ **Runtime API URL config** (no rebuild needed for URL changes)
 - ✅ **HTTPS via nginx-ingress** (mkcert TLS on port 30443)
 - ✅ **R2 public bucket access** enabled
+- ✅ **User Session Analytics** (ADR-006) - browser/device tracking, admin dashboard
+- ✅ **Admin link in header** for Admin/Moderator users
 
 **Next:**
 1. **Image resizing** (I2.3) - Implement ImageSharp resize on upload
@@ -1167,3 +1169,108 @@ Current focus: **Milestone 6 - Launch Prep**
 4. Complete mobile responsiveness testing (T6.6)
 5. Set up production deployment on Railway (D6.9-D6.16)
 6. Configure custom domain for R2 (production)
+
+---
+
+### Session: 2025-12-09 (Evening) - User Session Analytics
+
+#### Overview
+
+Implemented comprehensive user session analytics system per ADR-006, tracking browser capabilities, device info, and session engagement for the admin dashboard.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| UserSession Entity | Created entity with browser, device, OS, screen size, WebP/AVIF support, timezone, language, referrer, page views, session duration | ✅ |
+| User Agent Parser | Implemented UAParser-based service with bot filtering | ✅ |
+| Session Analytics Service | Service for recording sessions, heartbeats, page views, and aggregated stats | ✅ |
+| Session Controller | REST endpoints for heartbeat, pageview, and end session | ✅ |
+| Auth Integration | Login records session with fire-and-forget pattern (IServiceScopeFactory for background task DI) | ✅ |
+| Browser Capabilities Detection | Frontend detection of WebP/AVIF support, screen size, timezone, language, referrer | ✅ |
+| Session Heartbeat | 5-minute interval heartbeat while tab is visible (visibilitychange API) | ✅ |
+| Admin Analytics Dashboard | Full dashboard with recharts: pie charts, bar charts, line charts, metric cards | ✅ |
+| Admin Nav Link | Added "Admin" link to header dropdown for Admin/Moderator users | ✅ |
+| Database Migration | Added UserSessions table with indexes on UserId and SessionStart | ✅ |
+
+#### Technical Details
+
+**Backend Files Created:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Core/Entities/UserSession.cs` | Entity with DeviceType enum |
+| `src/api/MyUglyRocks.Abstractions/Interfaces/IUserAgentParserService.cs` | Interface with DeviceTypeDto and UserAgentInfoDto |
+| `src/api/MyUglyRocks.Infrastructure/Services/UserAgentParserService.cs` | UA parsing with bot detection |
+| `src/api/MyUglyRocks.Infrastructure/Services/SessionAnalyticsService.cs` | Session recording and stats aggregation |
+| `src/api/MyUglyRocks.Api/Controllers/SessionController.cs` | Heartbeat/pageview endpoints |
+
+**Backend Files Modified:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Core/Entities/User.cs` | Added Sessions navigation property |
+| `src/api/MyUglyRocks.Infrastructure/Data/AppDbContext.cs` | Added DbSet and entity configuration |
+| `src/api/MyUglyRocks.Abstractions/DTOs/AuthDtos.cs` | Extended LoginRequest with analytics fields |
+| `src/api/MyUglyRocks.Api/Controllers/AuthController.cs` | Session recording on login (fire-and-forget with scope factory) |
+| `src/api/MyUglyRocks.Api/Controllers/AdminController.cs` | Added browser-stats endpoint |
+| `src/api/MyUglyRocks.Api/Program.cs` | Registered analytics services |
+
+**Frontend Files Created:**
+| File | Description |
+|------|-------------|
+| `src/web/src/lib/browser-capabilities.ts` | WebP/AVIF detection, screen size, timezone |
+| `src/web/src/lib/session-heartbeat.ts` | Heartbeat interval management |
+| `src/web/src/app/(protected)/admin/analytics/page.tsx` | Full dashboard with recharts |
+
+**Frontend Files Modified:**
+| File | Description |
+|------|-------------|
+| `src/web/src/types/auth.ts` | Extended LoginRequest and AuthResult |
+| `src/web/src/types/admin.ts` | Added BrowserStatsDto and SessionTrendDto |
+| `src/web/src/lib/api.ts` | Added getBrowserStats function |
+| `src/web/src/providers/auth-provider.tsx` | Capabilities detection, heartbeat integration |
+| `src/web/src/app/(protected)/admin/layout.tsx` | Added Analytics nav item |
+| `src/web/src/components/layout/header.tsx` | Added Admin link for Admin/Moderator users |
+
+#### Architecture
+
+```
+Login Flow:
+┌─────────────┐     ┌──────────────────┐     ┌─────────────────────┐
+│ Frontend    │────▶│ POST /auth/login │────▶│ SessionAnalytics    │
+│ detects     │     │ + browser caps   │     │ Service (fire-and-  │
+│ capabilities│     │ + user agent     │     │ forget with scope)  │
+└─────────────┘     └──────────────────┘     └──────────┬──────────┘
+                                                        │
+                                                        ▼
+                                             ┌─────────────────────┐
+                                             │ UserSessions table  │
+                                             │ (browser, device,   │
+                                             │ OS, screen, etc.)   │
+                                             └─────────────────────┘
+
+Heartbeat Flow:
+┌─────────────┐     ┌────────────────────────┐     ┌─────────────────┐
+│ Frontend    │────▶│ POST /session/heartbeat│────▶│ Update SessionEnd│
+│ every 5min  │     │ (only when visible)    │     │ and duration     │
+└─────────────┘     └────────────────────────┘     └─────────────────┘
+```
+
+#### Bug Fixes
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Session not recorded on login | DbContext disposed before Task.Run completed | Used IServiceScopeFactory to create new DI scope in background task |
+| TypeScript error in Pie chart | `percent` possibly undefined | Added null coalescing: `(percent ?? 0) * 100` |
+
+#### Dashboard Features
+
+- **Key Metrics**: Total sessions, WebP support %, mobile users %, avg session duration
+- **Browsers Tab**: Browser distribution pie chart, OS bar chart, AVIF support, old browser count
+- **Devices Tab**: Device type pie chart, device breakdown with progress bars
+- **Geography Tab**: Country and timezone bar charts
+- **Engagement Tab**: Sessions over time line chart, avg duration and page views
+- **Time Period Selector**: Last 7/30/90 days
+
+#### Related ADR
+
+- [ADR-006-user-session-analytics.md](decisions/ADR-006-user-session-analytics.md)
