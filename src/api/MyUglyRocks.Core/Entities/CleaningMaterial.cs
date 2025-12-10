@@ -2,6 +2,7 @@ namespace MyUglyRocks.Core.Entities;
 
 public class CleaningMaterial : BaseEntity, IWeightable
 {
+    public Guid CleaningMaterialId { get; set; }
     public Guid CleaningRunId { get; set; }
     public Guid MaterialId { get; set; }
     public decimal? DisplayAmount { get; set; }

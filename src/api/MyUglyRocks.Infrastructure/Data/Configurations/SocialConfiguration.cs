@@ -10,10 +10,10 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
     {
         builder.ToTable("posts");
 
-        builder.HasKey(p => p.Id);
+        builder.HasKey(p => p.PostId);
 
-        builder.Property(p => p.Id)
-            .HasColumnName("id")
+        builder.Property(p => p.PostId)
+            .HasColumnName("post_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(p => p.UserId)
@@ -108,11 +108,8 @@ public class PostPhotoConfiguration : IEntityTypeConfiguration<PostPhoto>
     {
         builder.ToTable("post_photos");
 
-        builder.HasKey(pp => pp.Id);
-
-        builder.Property(pp => pp.Id)
-            .HasColumnName("id")
-            .HasDefaultValueSql("gen_random_uuid()");
+        // Composite primary key
+        builder.HasKey(pp => new { pp.PostId, pp.PhotoId });
 
         builder.Property(pp => pp.PostId)
             .HasColumnName("post_id")
@@ -168,10 +165,10 @@ public class VoteConfiguration : IEntityTypeConfiguration<Vote>
     {
         builder.ToTable("votes");
 
-        builder.HasKey(v => v.Id);
+        builder.HasKey(v => v.VoteId);
 
-        builder.Property(v => v.Id)
-            .HasColumnName("id")
+        builder.Property(v => v.VoteId)
+            .HasColumnName("vote_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(v => v.PostId)
@@ -222,10 +219,10 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
     {
         builder.ToTable("comments");
 
-        builder.HasKey(c => c.Id);
+        builder.HasKey(c => c.CommentId);
 
-        builder.Property(c => c.Id)
-            .HasColumnName("id")
+        builder.Property(c => c.CommentId)
+            .HasColumnName("comment_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(c => c.PostId)
@@ -309,10 +306,10 @@ public class CommentReportConfiguration : IEntityTypeConfiguration<CommentReport
     {
         builder.ToTable("comment_reports");
 
-        builder.HasKey(r => r.Id);
+        builder.HasKey(r => r.CommentReportId);
 
-        builder.Property(r => r.Id)
-            .HasColumnName("id")
+        builder.Property(r => r.CommentReportId)
+            .HasColumnName("comment_report_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(r => r.CommentId)

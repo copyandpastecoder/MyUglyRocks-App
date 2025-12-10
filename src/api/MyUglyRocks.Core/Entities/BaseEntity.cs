@@ -1,11 +1,11 @@
 namespace MyUglyRocks.Core.Entities;
 
 /// <summary>
-/// Base entity with audit fields (DateCreated, DateUpdated)
+/// Base entity with audit fields (DateCreated, DateUpdated).
+/// Each entity must define its own primary key as {TableName}Id.
 /// </summary>
 public abstract class BaseEntity
 {
-    public Guid Id { get; set; }
     public DateTime DateCreated { get; set; }
     public DateTime DateUpdated { get; set; }
 }

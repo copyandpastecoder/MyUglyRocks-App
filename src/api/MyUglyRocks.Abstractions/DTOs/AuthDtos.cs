@@ -31,7 +31,7 @@ public record AuthResult(
 );
 
 public record UserDto(
-    Guid Id,
+    Guid UserId,
     string Email,
     string Username,
     string? DisplayName,

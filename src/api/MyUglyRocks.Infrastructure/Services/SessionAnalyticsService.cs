@@ -32,7 +32,7 @@ public class SessionAnalyticsService : ISessionAnalyticsService
         {
             var session = new UserSession
             {
-                Id = Guid.NewGuid(),
+                UserSessionId = Guid.NewGuid(),
                 UserId = userId,
                 SessionStart = DateTime.UtcNow,
                 ScreenWidth = sessionInfo.ScreenWidth,
@@ -48,8 +48,8 @@ public class SessionAnalyticsService : ISessionAnalyticsService
             _dbContext.UserSessions.Add(session);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            _logger.LogDebug("Recorded session {SessionId} for user {UserId}", session.Id, userId);
-            return session.Id;
+            _logger.LogDebug("Recorded session {SessionId} for user {UserId}", session.UserSessionId, userId);
+            return session.UserSessionId;
         }
         catch (Exception ex)
         {
@@ -77,7 +77,7 @@ public class SessionAnalyticsService : ISessionAnalyticsService
 
             var session = new UserSession
             {
-                Id = Guid.NewGuid(),
+                UserSessionId = Guid.NewGuid(),
                 UserId = userId,
                 UserAgent = userAgent?.Length > 512 ? userAgent[..512] : userAgent,
                 BrowserName = uaInfo.BrowserName,
@@ -101,9 +101,9 @@ public class SessionAnalyticsService : ISessionAnalyticsService
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Recorded session {SessionId} for user {UserId} with browser {Browser}",
-                session.Id, userId, uaInfo.BrowserName);
+                session.UserSessionId, userId, uaInfo.BrowserName);
 
-            return session.Id;
+            return session.UserSessionId;
         }
         catch (Exception ex)
         {
@@ -125,7 +125,7 @@ public class SessionAnalyticsService : ISessionAnalyticsService
         try
         {
             var session = await _dbContext.UserSessions
-                .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
+                .FirstOrDefaultAsync(s => s.UserSessionId == sessionId, cancellationToken);
 
             if (session == null)
             {
@@ -149,7 +149,7 @@ public class SessionAnalyticsService : ISessionAnalyticsService
         try
         {
             await _dbContext.UserSessions
-                .Where(s => s.Id == sessionId)
+                .Where(s => s.UserSessionId == sessionId)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.PageViewCount, x => x.PageViewCount + 1),
                     cancellationToken);
         }
@@ -164,7 +164,7 @@ public class SessionAnalyticsService : ISessionAnalyticsService
         try
         {
             var session = await _dbContext.UserSessions
-                .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
+                .FirstOrDefaultAsync(s => s.UserSessionId == sessionId, cancellationToken);
 
             if (session == null) return;
 

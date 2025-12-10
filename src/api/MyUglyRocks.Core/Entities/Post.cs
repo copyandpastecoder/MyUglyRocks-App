@@ -9,6 +9,7 @@ public enum PostStatus
 
 public class Post : SoftDeletableEntity
 {
+    public Guid PostId { get; set; }
     public Guid UserId { get; set; }
     public Guid CycleId { get; set; }
     public required string Title { get; set; }

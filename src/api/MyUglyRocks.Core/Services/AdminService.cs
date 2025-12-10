@@ -70,7 +70,7 @@ public class AdminService : IAdminService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(r => new CommentReportListDto(
-                r.Id,
+                r.CommentReportId,
                 r.Comment.Content.Length > 100
                     ? r.Comment.Content.Substring(0, 100) + "..."
                     : r.Comment.Content,
@@ -100,12 +100,12 @@ public class AdminService : IAdminService
                 .ThenInclude(c => c.Post)
             .Include(r => r.ReportedByUser)
             .Include(r => r.ResolvedByUser)
-            .FirstOrDefaultAsync(r => r.Id == reportId);
+            .FirstOrDefaultAsync(r => r.CommentReportId == reportId);
 
         if (report == null) return null;
 
         return new CommentReportDto(
-            Id: report.Id,
+            CommentReportId: report.CommentReportId,
             CommentId: report.CommentId,
             CommentContent: report.Comment.Content,
             CommentAuthorUsername: report.Comment.User.Username,
@@ -133,7 +133,7 @@ public class AdminService : IAdminService
             .Include(r => r.Comment)
                 .ThenInclude(c => c.Post)
             .Include(r => r.ReportedByUser)
-            .FirstOrDefaultAsync(r => r.Id == reportId);
+            .FirstOrDefaultAsync(r => r.CommentReportId == reportId);
 
         if (report == null)
             throw new InvalidOperationException("Report not found");
@@ -158,7 +158,7 @@ public class AdminService : IAdminService
         var resolvedByUser = await Users.FindAsync(resolvedByUserId);
 
         return new CommentReportDto(
-            Id: report.Id,
+            CommentReportId: report.CommentReportId,
             CommentId: report.CommentId,
             CommentContent: report.Comment.Content,
             CommentAuthorUsername: report.Comment.User.Username,
@@ -189,7 +189,7 @@ public class AdminService : IAdminService
         if (post != null)
         {
             post.CommentCount = await Comments.CountAsync(c =>
-                c.PostId == post.Id && !c.IsDeleted);
+                c.PostId == post.PostId && !c.IsDeleted);
         }
 
         await _context.SaveChangesAsync();
@@ -230,7 +230,7 @@ public class AdminService : IAdminService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(u => new AdminUserListDto(
-                u.Id,
+                u.UserId,
                 u.Username,
                 u.Email,
                 u.DisplayName,
@@ -252,7 +252,7 @@ public class AdminService : IAdminService
 
     public async Task<AdminUserDto?> GetUserByIdAsync(Guid userId)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null) return null;
 
         var totalCycles = await Cycles.CountAsync(c => c.UserId == userId && !c.IsDeleted);
@@ -260,7 +260,7 @@ public class AdminService : IAdminService
         var totalComments = await Comments.CountAsync(c => c.UserId == userId && !c.IsDeleted);
 
         return new AdminUserDto(
-            Id: user.Id,
+            UserId: user.UserId,
             Username: user.Username,
             Email: user.Email,
             DisplayName: user.DisplayName,
@@ -303,7 +303,7 @@ public class AdminService : IAdminService
 
         var user = new User
         {
-            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
             Username = username,
             Email = normalizedEmail,
             PasswordHash = unusablePassword,
@@ -323,7 +323,7 @@ public class AdminService : IAdminService
         await _authService.RequestPasswordResetAsync(normalizedEmail);
 
         return new AdminUserDto(
-            Id: user.Id,
+            UserId: user.UserId,
             Username: user.Username,
             Email: user.Email,
             DisplayName: user.DisplayName,
@@ -343,7 +343,7 @@ public class AdminService : IAdminService
         Guid changedByUserId,
         ChangeUserRoleRequest request)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
             throw new InvalidOperationException("User not found");
 
@@ -367,7 +367,7 @@ public class AdminService : IAdminService
         Guid bannedByUserId,
         BanUserRequest request)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
             throw new InvalidOperationException("User not found");
 
@@ -406,7 +406,7 @@ public class AdminService : IAdminService
 
     public async Task UnbanUserAsync(Guid userId, Guid unbannedByUserId)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
             throw new InvalidOperationException("User not found");
 

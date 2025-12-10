@@ -76,14 +76,18 @@ export default function ShareCyclePage() {
   useEffect(() => {
     if (cycle) {
       form.setValue('title', cycle.name);
+      // If a post already exists for this cycle, redirect to it
+      if (cycle.postId) {
+        router.replace(`/gallery/${cycle.postId}`);
+      }
     }
-  }, [cycle, form]);
+  }, [cycle, form, router]);
 
   // Auto-select all photos and set first as cover when photos load
   useEffect(() => {
     if (photos && photos.length > 0 && selectedPhotoIds.length === 0) {
-      setSelectedPhotoIds(photos.map(p => p.id));
-      setCoverPhotoId(photos[0].id);
+      setSelectedPhotoIds(photos.map(p => p.photoId));
+      setCoverPhotoId(photos[0].photoId);
     }
   }, [photos, selectedPhotoIds.length]);
 
@@ -98,7 +102,7 @@ export default function ShareCyclePage() {
       }),
     onSuccess: (post) => {
       toast.success('Post created! Your rocks are now in the gallery.');
-      router.push(`/gallery/${post.id}`);
+      router.push(`/gallery/${post.postId}`);
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create post');
@@ -138,9 +142,9 @@ export default function ShareCyclePage() {
 
   const selectAllPhotos = () => {
     if (photos) {
-      setSelectedPhotoIds(photos.map(p => p.id));
+      setSelectedPhotoIds(photos.map(p => p.photoId));
       if (!coverPhotoId && photos.length > 0) {
-        setCoverPhotoId(photos[0].id);
+        setCoverPhotoId(photos[0].photoId);
       }
     }
   };
@@ -322,14 +326,14 @@ export default function ShareCyclePage() {
                   <h4 className="text-sm font-medium text-muted-foreground mb-3">{stageName}</h4>
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                     {stagePhotos.map((photo) => {
-                      const isSelected = selectedPhotoIds.includes(photo.id);
-                      const isCover = coverPhotoId === photo.id;
+                      const isSelected = selectedPhotoIds.includes(photo.photoId);
+                      const isCover = coverPhotoId === photo.photoId;
 
                       return (
-                        <div key={photo.id} className="relative group">
+                        <div key={photo.photoId} className="relative group">
                           <button
                             type="button"
-                            onClick={() => togglePhotoSelection(photo.id)}
+                            onClick={() => togglePhotoSelection(photo.photoId)}
                             className={cn(
                               'relative aspect-square w-full overflow-hidden rounded-lg border-2 transition-all',
                               isSelected
@@ -363,7 +367,7 @@ export default function ShareCyclePage() {
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setCoverPhoto(photo.id);
+                                setCoverPhoto(photo.photoId);
                               }}
                               className={cn(
                                 'absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-colors',

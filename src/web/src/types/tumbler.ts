@@ -1,5 +1,5 @@
 export interface TumblerDto {
-  id: string;
+  tumblerId: string;
   brand: string;
   model: string | null;
   tumblerType: string;
@@ -12,7 +12,7 @@ export interface TumblerDto {
 }
 
 export interface TumblerListDto {
-  id: string;
+  tumblerId: string;
   brand: string;
   model: string | null;
   tumblerType: string;
@@ -40,7 +40,7 @@ export interface UpdateTumblerRequest {
 }
 
 export interface BarrelDto {
-  id: string;
+  barrelId: string;
   barrelNumber: number;
   nickname: string | null;
   capacityLbs: number | null;
@@ -68,7 +68,7 @@ export interface UpdateBarrelRequest {
 }
 
 export interface TumblerModelDto {
-  id: string;
+  tumblerModelId: string;
   brand: string;
   model: string;
   tumblerType: string;

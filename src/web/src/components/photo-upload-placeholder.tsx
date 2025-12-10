@@ -107,7 +107,7 @@ export function PhotoUpload({
   const removePhoto = async (photoId: string) => {
     try {
       await photosApi.deletePhoto(photoId);
-      const newPhotos = photos.filter(p => p.id !== photoId);
+      const newPhotos = photos.filter(p => p.photoId !== photoId);
       setPhotos(newPhotos);
       onPhotosChange?.(newPhotos);
       toast.success('Photo deleted');
@@ -175,14 +175,14 @@ export function PhotoUpload({
           <div className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {photos.map(photo => (
-                <div key={photo.id} className="relative group aspect-square">
+                <div key={photo.photoId} className="relative group aspect-square">
                   <img
                     src={photo.url}
                     alt={photo.fileName || 'Photo'}
                     className="w-full h-full object-cover rounded-lg"
                   />
                   <button
-                    onClick={() => removePhoto(photo.id)}
+                    onClick={() => removePhoto(photo.photoId)}
                     className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   >
                     <X className="h-4 w-4" />

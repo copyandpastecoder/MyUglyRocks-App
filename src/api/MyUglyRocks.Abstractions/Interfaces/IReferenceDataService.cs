@@ -6,11 +6,11 @@ public interface IReferenceDataService
 {
     // Specimens (public)
     Task<IEnumerable<SpecimenListDto>> GetSpecimensAsync(SpecimenSearchRequest? search = null);
-    Task<SpecimenDetailDto?> GetSpecimenByIdAsync(Guid id);
+    Task<SpecimenDetailDto?> GetSpecimenByIdAsync(Guid specimenId);
 
     // Materials (public)
     Task<IEnumerable<MaterialListDto>> GetMaterialsAsync(MaterialSearchRequest? search = null);
-    Task<MaterialDetailDto?> GetMaterialByIdAsync(Guid id);
+    Task<MaterialDetailDto?> GetMaterialByIdAsync(Guid materialId);
 
     // Admin - Specimens
     Task<PaginatedResult<SpecimenListDto>> GetSpecimensPaginatedAsync(
@@ -20,8 +20,8 @@ public interface IReferenceDataService
         int page = 1,
         int pageSize = 20);
     Task<SpecimenDetailDto> CreateSpecimenAsync(CreateSpecimenRequest request);
-    Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid id, UpdateSpecimenRequest request);
-    Task DeleteSpecimenAsync(Guid id);
+    Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid specimenId, UpdateSpecimenRequest request);
+    Task DeleteSpecimenAsync(Guid specimenId);
 
     // Admin - Materials
     Task<PaginatedResult<MaterialListDto>> GetMaterialsPaginatedAsync(
@@ -31,8 +31,8 @@ public interface IReferenceDataService
         int page = 1,
         int pageSize = 20);
     Task<MaterialDetailDto> CreateMaterialAsync(CreateMaterialRequest request);
-    Task<MaterialDetailDto> UpdateMaterialAsync(Guid id, UpdateMaterialRequest request);
-    Task DeleteMaterialAsync(Guid id);
+    Task<MaterialDetailDto> UpdateMaterialAsync(Guid materialId, UpdateMaterialRequest request);
+    Task DeleteMaterialAsync(Guid materialId);
 
     // Barrel Nicknames (public)
     Task<IEnumerable<string>> GetBarrelNicknamesAsync();

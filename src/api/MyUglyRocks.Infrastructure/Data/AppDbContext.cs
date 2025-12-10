@@ -74,6 +74,11 @@ public class AppDbContext : DbContext
         // Configure UserSession entity
         modelBuilder.Entity<UserSession>(entity =>
         {
+            entity.HasKey(e => e.UserSessionId);
+            entity.Property(e => e.UserSessionId)
+                .HasColumnName("user_session_id")
+                .HasDefaultValueSql("gen_random_uuid()");
+
             // Essential indexes only (Phase 1)
             entity.HasIndex(e => e.UserId);
             entity.HasIndex(e => e.SessionStart);

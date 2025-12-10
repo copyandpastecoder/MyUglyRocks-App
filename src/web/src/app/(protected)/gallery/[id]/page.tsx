@@ -361,10 +361,10 @@ export default function PostDetailPage() {
             <div className="space-y-4">
               {comments?.map((comment) => (
                 <CommentItem
-                  key={comment.id}
+                  key={comment.commentId}
                   comment={comment}
                   onReply={(id) => setReplyingTo(id)}
-                  currentUserId={user?.id}
+                  currentUserId={user?.userId}
                 />
               ))}
             </div>
@@ -415,7 +415,7 @@ function CommentItem({
               variant="ghost"
               size="sm"
               className="h-6 px-2 text-xs"
-              onClick={() => onReply(comment.id)}
+              onClick={() => onReply(comment.commentId)}
             >
               Reply
             </Button>
@@ -426,7 +426,7 @@ function CommentItem({
         <div className="mt-3 space-y-3">
           {comment.replies.map((reply) => (
             <CommentItem
-              key={reply.id}
+              key={reply.commentId}
               comment={reply}
               onReply={onReply}
               currentUserId={currentUserId}

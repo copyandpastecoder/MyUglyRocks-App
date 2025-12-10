@@ -2,6 +2,7 @@ namespace MyUglyRocks.Core.Entities;
 
 public class StageMaterial : BaseEntity, IWeightable
 {
+    public Guid StageMaterialId { get; set; }
     public Guid StageRunId { get; set; }
     public Guid MaterialId { get; set; }
     public decimal? DisplayAmount { get; set; }

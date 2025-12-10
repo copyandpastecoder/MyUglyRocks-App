@@ -51,7 +51,7 @@ public class ExportService : IExportService
         var cycles = await query.OrderByDescending(c => c.StartDate).ToListAsync();
 
         var rows = cycles.Select(c => new CycleCsvRow(
-            CycleId: c.Id,
+            CycleId: c.CycleId,
             CycleName: c.Name,
             Status: c.Status.ToString(),
             StartDate: c.StartDate,
@@ -74,7 +74,7 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportCycleAsync(Guid userId, Guid cycleId)
     {
         var cycle = await Cycles
-            .Where(c => c.Id == cycleId && c.UserId == userId && !c.IsDeleted)
+            .Where(c => c.CycleId == cycleId && c.UserId == userId && !c.IsDeleted)
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageRunBarrels)
                     .ThenInclude(srb => srb.Barrel)
@@ -86,8 +86,8 @@ public class ExportService : IExportService
             throw new InvalidOperationException("Cycle not found or access denied");
 
         var rows = cycle.StageRuns.OrderBy(s => s.StartDateTime).Select(s => new StageCsvRow(
-            StageId: s.Id,
-            CycleId: cycle.Id,
+            StageId: s.StageRunId,
+            CycleId: cycle.CycleId,
             CycleName: cycle.Name,
             StageName: s.StageName,
             Status: s.Status.ToString(),
@@ -137,7 +137,7 @@ public class ExportService : IExportService
         var stages = await query.OrderByDescending(s => s.StartDateTime).ToListAsync();
 
         var rows = stages.Select(s => new StageCsvRow(
-            StageId: s.Id,
+            StageId: s.StageRunId,
             CycleId: s.CycleId,
             CycleName: s.Cycle.Name,
             StageName: s.StageName,
@@ -172,7 +172,7 @@ public class ExportService : IExportService
             .ToListAsync();
 
         var rows = tumblers.Select(t => new TumblerCsvRow(
-            TumblerId: t.Id,
+            TumblerId: t.TumblerId,
             Brand: t.Brand,
             Model: t.Model,
             TumblerType: t.TumblerType.ToString(),
@@ -197,7 +197,7 @@ public class ExportService : IExportService
             .ToListAsync();
 
         var rows = posts.Select(p => new PostCsvRow(
-            PostId: p.Id,
+            PostId: p.PostId,
             Title: p.Title,
             Description: p.Description,
             Status: p.Status.ToString(),
@@ -219,7 +219,7 @@ public class ExportService : IExportService
         // Verify password first
         var user = await Users
             .Include(u => u.Settings)
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null)
             throw new InvalidOperationException("User not found");
@@ -365,7 +365,7 @@ public class ExportService : IExportService
     {
         var sb = new StringBuilder();
         sb.AppendLine("Field,Value");
-        sb.AppendLine($"UserId,{EscapeCsvField(user.Id.ToString())}");
+        sb.AppendLine($"UserId,{EscapeCsvField(user.UserId.ToString())}");
         sb.AppendLine($"Username,{EscapeCsvField(user.Username)}");
         sb.AppendLine($"Email,{EscapeCsvField(user.Email)}");
         sb.AppendLine($"DisplayName,{EscapeCsvField(user.DisplayName)}");
@@ -410,7 +410,7 @@ public class ExportService : IExportService
 
         foreach (var comment in comments)
         {
-            sb.AppendLine($"{comment.Id},{comment.PostId},{EscapeCsvField(comment.Post?.Title)},{EscapeCsvField(comment.Content)},{comment.DateCreated:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"{comment.CommentId},{comment.PostId},{EscapeCsvField(comment.Post?.Title)},{EscapeCsvField(comment.Content)},{comment.DateCreated:yyyy-MM-dd HH:mm:ss}");
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());
@@ -429,7 +429,7 @@ public class ExportService : IExportService
 
         foreach (var vote in votes)
         {
-            sb.AppendLine($"{vote.Id},{vote.PostId},{EscapeCsvField(vote.Post?.Title)},{vote.DateCreated:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"{vote.VoteId},{vote.PostId},{EscapeCsvField(vote.Post?.Title)},{vote.DateCreated:yyyy-MM-dd HH:mm:ss}");
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());

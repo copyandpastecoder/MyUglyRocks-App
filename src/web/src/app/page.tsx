@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -60,20 +61,30 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="py-20 px-4">
-        <div className="container mx-auto text-center max-w-4xl">
+      <section className="py-4 md:py-6 px-4">
+        <div className="container mx-auto text-center max-w-5xl">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
             Track Your Rock Tumbling Journey
           </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             From ugly rough to beautiful polish. Log your cycles, track your stages,
             upload before/after photos, and share your results with the community.
           </p>
+          <div className="my-0 py-0">
+            <Image
+              src="/images/header-cartoon-no-background.webp"
+              alt="Ugly rocks going into a tumbler and coming out beautiful"
+              width={900}
+              height={400}
+              className="mx-auto w-full max-w-3xl h-auto"
+              priority
+            />
+          </div>
         </div>
       </section>
 
       {/* Problem/Solution Section */}
-      <section className="py-16 px-4 bg-muted/50">
+      <section className="py-16 px-4 bg-muted/50 -mt-8 md:-mt-12">
         <div className="container mx-auto max-w-4xl text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-4">
             Sound Familiar?
@@ -96,7 +107,7 @@ export default function LandingPage() {
             <Card>
               <CardContent className="pt-6">
                 <p className="text-muted-foreground">
-                  "My last batch turned out great but I can't remember what I did differently."
+                  "I can't remember which photo went with which tumbler or which batch."
                 </p>
               </CardContent>
             </Card>

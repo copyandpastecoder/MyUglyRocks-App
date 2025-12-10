@@ -42,12 +42,12 @@ public class PostsController : ControllerBase
     /// <summary>
     /// Get post by ID
     /// </summary>
-    [HttpGet("{id:guid}")]
+    [HttpGet("{postId:guid}")]
     [ProducesResponseType(typeof(PostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PostDto>> GetPost(Guid id)
+    public async Task<ActionResult<PostDto>> GetPost(Guid postId)
     {
-        var post = await _postService.GetPostByIdAsync(id, GetCurrentUserId());
+        var post = await _postService.GetPostByIdAsync(postId, GetCurrentUserId());
         if (post == null) return NotFound();
         return Ok(post);
     }
@@ -83,7 +83,7 @@ public class PostsController : ControllerBase
         {
             logger.LogInformation("Creating post for cycle {CycleId} with {PhotoCount} photos", request.CycleId, request.PhotoIds.Count);
             var post = await _postService.CreatePostAsync(userId.Value, request);
-            return CreatedAtAction(nameof(GetPost), new { id = post.Id }, post);
+            return CreatedAtAction(nameof(GetPost), new { id = post.PostId }, post);
         }
         catch (InvalidOperationException ex)
         {
@@ -100,17 +100,17 @@ public class PostsController : ControllerBase
     /// <summary>
     /// Update a post
     /// </summary>
-    [HttpPut("{id:guid}")]
+    [HttpPut("{postId:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(PostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<PostDto>> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
+    public async Task<ActionResult<PostDto>> UpdatePost(Guid postId, [FromBody] UpdatePostRequest request)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue) return Unauthorized();
 
-        var post = await _postService.UpdatePostAsync(id, userId.Value, request);
+        var post = await _postService.UpdatePostAsync(postId, userId.Value, request);
         if (post == null) return NotFound();
         return Ok(post);
     }
@@ -118,17 +118,17 @@ public class PostsController : ControllerBase
     /// <summary>
     /// Delete a post
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{postId:guid}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> DeletePost(Guid id)
+    public async Task<IActionResult> DeletePost(Guid postId)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue) return Unauthorized();
 
-        var deleted = await _postService.DeletePostAsync(id, userId.Value);
+        var deleted = await _postService.DeletePostAsync(postId, userId.Value);
         if (!deleted) return NotFound();
         return NoContent();
     }

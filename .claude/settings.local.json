@@ -63,7 +63,9 @@
       "Bash(kubectl wait:*)",
       "Bash(timeout /t 15 /nobreak)",
       "Bash(tree:*)",
-      "Bash(Select-Object -Last 20)"
+      "Bash(Select-Object -Last 20)",
+      "Bash(python update_ids.py:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []

@@ -9,6 +9,7 @@ public enum PhotoType
 
 public class Photo : SoftDeletableEntity
 {
+    public Guid PhotoId { get; set; }
     public Guid StageRunId { get; set; }
     public required string StorageKey { get; set; }
     public required string Url { get; set; }

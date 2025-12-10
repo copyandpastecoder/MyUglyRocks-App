@@ -32,13 +32,13 @@ public class TumblerService : ITumblerService
         return tumblers.Adapt<IEnumerable<TumblerListDto>>();
     }
 
-    public async Task<TumblerDto?> GetTumblerAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<TumblerDto?> GetTumblerAsync(Guid tumblerId, Guid userId, CancellationToken cancellationToken = default)
     {
         var tumbler = await Tumblers
             .Include(t => t.Barrels.Where(b => b.IsActive))
                 .ThenInclude(b => b.StageRunBarrels)
                     .ThenInclude(srb => srb.StageRun)
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.TumblerId == tumblerId && t.UserId == userId, cancellationToken);
 
         return tumbler?.Adapt<TumblerDto>();
     }
@@ -46,7 +46,7 @@ public class TumblerService : ITumblerService
     public async Task<TumblerDto> CreateTumblerAsync(Guid userId, CreateTumblerRequest request, CancellationToken cancellationToken = default)
     {
         var tumbler = request.Adapt<Tumbler>();
-        tumbler.Id = Guid.NewGuid();
+        tumbler.TumblerId = Guid.NewGuid();
         tumbler.UserId = userId;
         tumbler.DateCreated = DateTime.UtcNow;
         tumbler.DateUpdated = DateTime.UtcNow;
@@ -65,8 +65,8 @@ public class TumblerService : ITumblerService
                 }
 
                 var barrel = barrelRequest.Adapt<Barrel>();
-                barrel.Id = Guid.NewGuid();
-                barrel.TumblerId = tumbler.Id;
+                barrel.BarrelId = Guid.NewGuid();
+                barrel.TumblerId = tumbler.TumblerId;
                 barrel.Nickname ??= await GetRandomNicknameAsync(usedNicknames, cancellationToken);
                 if (barrel.Nickname != null) usedNicknames.Add(barrel.Nickname);
                 barrel.DateCreated = DateTime.UtcNow;
@@ -80,8 +80,8 @@ public class TumblerService : ITumblerService
             var nickname = await GetRandomNicknameAsync([], cancellationToken);
             var defaultBarrel = new Barrel
             {
-                Id = Guid.NewGuid(),
-                TumblerId = tumbler.Id,
+                BarrelId = Guid.NewGuid(),
+                TumblerId = tumbler.TumblerId,
                 BarrelNumber = 1,
                 Nickname = nickname,
                 IsActive = true,
@@ -97,11 +97,11 @@ public class TumblerService : ITumblerService
         return tumbler.Adapt<TumblerDto>();
     }
 
-    public async Task<TumblerDto?> UpdateTumblerAsync(Guid id, Guid userId, UpdateTumblerRequest request, CancellationToken cancellationToken = default)
+    public async Task<TumblerDto?> UpdateTumblerAsync(Guid tumblerId, Guid userId, UpdateTumblerRequest request, CancellationToken cancellationToken = default)
     {
         var tumbler = await Tumblers
             .Include(t => t.Barrels)
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.TumblerId == tumblerId && t.UserId == userId, cancellationToken);
 
         if (tumbler == null)
             return null;
@@ -118,17 +118,17 @@ public class TumblerService : ITumblerService
         return tumbler.Adapt<TumblerDto>();
     }
 
-    public async Task<bool> DeleteTumblerAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteTumblerAsync(Guid tumblerId, Guid userId, CancellationToken cancellationToken = default)
     {
         var tumbler = await Tumblers
             .Include(t => t.Barrels)
-            .FirstOrDefaultAsync(t => t.Id == id && t.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.TumblerId == tumblerId && t.UserId == userId, cancellationToken);
 
         if (tumbler == null)
             return false;
 
         // Check if any barrels have stage runs via the join table
-        var barrelIds = tumbler.Barrels.Select(b => b.Id).ToList();
+        var barrelIds = tumbler.Barrels.Select(b => b.BarrelId).ToList();
         var hasStageRuns = await StageRunBarrels.AnyAsync(srb => barrelIds.Contains(srb.BarrelId), cancellationToken);
 
         if (hasStageRuns)
@@ -158,7 +158,7 @@ public class TumblerService : ITumblerService
         var tumbler = await Tumblers
             .Include(t => t.Barrels)
             .Include(t => t.TumblerModel)
-            .FirstOrDefaultAsync(t => t.Id == tumblerId && t.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(t => t.TumblerId == tumblerId && t.UserId == userId, cancellationToken);
 
         if (tumbler == null)
             return null;
@@ -173,7 +173,7 @@ public class TumblerService : ITumblerService
         var usedNicknames = tumbler.Barrels.Where(b => b.Nickname != null).Select(b => b.Nickname!).ToList();
 
         var barrel = request.Adapt<Barrel>();
-        barrel.Id = Guid.NewGuid();
+        barrel.BarrelId = Guid.NewGuid();
         barrel.TumblerId = tumblerId;
         barrel.Nickname ??= await GetRandomNicknameAsync(usedNicknames, cancellationToken);
         barrel.DateCreated = DateTime.UtcNow;
@@ -190,7 +190,7 @@ public class TumblerService : ITumblerService
         var barrel = await Barrels
             .Include(b => b.Tumbler)
                 .ThenInclude(t => t.TumblerModel)
-            .FirstOrDefaultAsync(b => b.Id == barrelId && b.Tumbler.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(b => b.BarrelId == barrelId && b.Tumbler.UserId == userId, cancellationToken);
 
         if (barrel == null)
             return null;
@@ -219,7 +219,7 @@ public class TumblerService : ITumblerService
     {
         var barrel = await Barrels
             .Include(b => b.Tumbler)
-            .FirstOrDefaultAsync(b => b.Id == barrelId && b.Tumbler.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(b => b.BarrelId == barrelId && b.Tumbler.UserId == userId, cancellationToken);
 
         if (barrel == null)
             return false;

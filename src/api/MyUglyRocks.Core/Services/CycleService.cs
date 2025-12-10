@@ -42,7 +42,7 @@ public class CycleService : ICycleService
         return cycles.Adapt<IEnumerable<CycleListDto>>();
     }
 
-    public async Task<CycleDto?> GetCycleAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<CycleDto?> GetCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
     {
         var cycle = await Cycles
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
@@ -60,16 +60,22 @@ public class CycleService : ICycleService
             .Include(c => c.CycleSpecimens)
                 .ThenInclude(cs => cs.Specimen)
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId && !c.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId && !c.IsDeleted, cancellationToken);
 
         if (cycle == null)
             return null;
+
+        // Check if there's a post for this cycle
+        var postId = await _context.Set<Post>()
+            .Where(p => p.CycleId == cycleId && !p.IsDeleted)
+            .Select(p => (Guid?)p.PostId)
+            .FirstOrDefaultAsync(cancellationToken);
 
         // Calculate run numbers for each stage
         var runNumbers = CalculateRunNumbers(cycle.StageRuns);
 
         // Map to DTO with run numbers
-        return MapCycleToDto(cycle, runNumbers);
+        return MapCycleToDto(cycle, runNumbers, postId);
     }
 
     private static (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) CalculateRunNumbers(IEnumerable<StageRun> stageRuns)
@@ -91,22 +97,22 @@ public class CycleService : ICycleService
             totalRuns[group.Key] = group.Value.Count;
             for (int i = 0; i < group.Value.Count; i++)
             {
-                runNumbers[group.Value[i].Id] = i + 1;
+                runNumbers[group.Value[i].StageRunId] = i + 1;
             }
         }
 
         return (runNumbers, totalRuns);
     }
 
-    private static CycleDto MapCycleToDto(Cycle cycle, (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) runInfo)
+    private static CycleDto MapCycleToDto(Cycle cycle, (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) runInfo, Guid? postId = null)
     {
         var stageRunSummaries = cycle.StageRuns
             .Where(s => !s.IsDeleted)
             .OrderBy(s => s.DateCreated)
             .Select(s => new StageRunSummaryDto(
-                s.Id,
+                s.StageRunId,
                 s.StageName,
-                runInfo.RunNumbers.GetValueOrDefault(s.Id, 1),
+                runInfo.RunNumbers.GetValueOrDefault(s.StageRunId, 1),
                 runInfo.TotalRuns.GetValueOrDefault(s.StageName.ToLowerInvariant(), 1),
                 s.StartDateTime,
                 s.EndDateTime,
@@ -119,7 +125,7 @@ public class CycleService : ICycleService
             .Select(cs => cs.Specimen.Adapt<SpecimenDto>());
 
         return new CycleDto(
-            cycle.Id,
+            cycle.CycleId,
             cycle.Name,
             cycle.StartDate,
             cycle.EndDate,
@@ -131,14 +137,15 @@ public class CycleService : ICycleService
             cycle.Notes,
             cycle.DateCreated,
             stageRunSummaries,
-            specimens
+            specimens,
+            postId
         );
     }
 
     public async Task<CycleDto> CreateCycleAsync(Guid userId, CreateCycleRequest request, CancellationToken cancellationToken = default)
     {
         var cycle = request.Adapt<Cycle>();
-        cycle.Id = Guid.NewGuid();
+        cycle.CycleId = Guid.NewGuid();
         cycle.UserId = userId;
         cycle.Status = CycleStatus.Active;
         cycle.DateCreated = DateTime.UtcNow;
@@ -151,7 +158,7 @@ public class CycleService : ICycleService
             {
                 cycle.CycleSpecimens.Add(new CycleSpecimen
                 {
-                    CycleId = cycle.Id,
+                    CycleId = cycle.CycleId,
                     SpecimenId = specimenId,
                     DateCreated = DateTime.UtcNow,
                     DateUpdated = DateTime.UtcNow
@@ -162,12 +169,12 @@ public class CycleService : ICycleService
         await Cycles.AddAsync(cycle, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await GetCycleAsync(cycle.Id, userId, cancellationToken) ?? cycle.Adapt<CycleDto>();
+        return await GetCycleAsync(cycle.CycleId, userId, cancellationToken) ?? cycle.Adapt<CycleDto>();
     }
 
-    public async Task<CycleDto?> UpdateCycleAsync(Guid id, Guid userId, UpdateCycleRequest request, CancellationToken cancellationToken = default)
+    public async Task<CycleDto?> UpdateCycleAsync(Guid cycleId, Guid userId, UpdateCycleRequest request, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return null;
@@ -182,12 +189,12 @@ public class CycleService : ICycleService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await GetCycleAsync(id, userId, cancellationToken);
+        return await GetCycleAsync(cycleId, userId, cancellationToken);
     }
 
-    public async Task<bool> DeleteCycleAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return false;
@@ -201,9 +208,9 @@ public class CycleService : ICycleService
         return true;
     }
 
-    public async Task<CycleDto?> CompleteCycleAsync(Guid id, Guid userId, CompleteCycleRequest request, CancellationToken cancellationToken = default)
+    public async Task<CycleDto?> CompleteCycleAsync(Guid cycleId, Guid userId, CompleteCycleRequest request, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return null;
@@ -217,12 +224,12 @@ public class CycleService : ICycleService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await GetCycleAsync(id, userId, cancellationToken);
+        return await GetCycleAsync(cycleId, userId, cancellationToken);
     }
 
-    public async Task<CycleDto?> ArchiveCycleAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<CycleDto?> ArchiveCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return null;
@@ -232,11 +239,11 @@ public class CycleService : ICycleService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await GetCycleAsync(id, userId, cancellationToken);
+        return await GetCycleAsync(cycleId, userId, cancellationToken);
     }
 
     // Stage Run operations
-    public async Task<StageRunDto?> GetStageRunAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<StageRunDto?> GetStageRunAsync(Guid stageRunId, Guid userId, CancellationToken cancellationToken = default)
     {
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
@@ -249,14 +256,14 @@ public class CycleService : ICycleService
                 .ThenInclude(cr => cr!.CleaningMaterials)
                     .ThenInclude(cm => cm.Material)
             .Include(s => s.Photos.Where(p => !p.IsDeleted))
-            .FirstOrDefaultAsync(s => s.Id == id && s.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null)
             return null;
 
         // Calculate run number and total runs for this stage
         var runInfo = CalculateRunNumbers(stageRun.Cycle.StageRuns);
-        var runNumber = runInfo.RunNumbers.GetValueOrDefault(stageRun.Id, 1);
+        var runNumber = runInfo.RunNumbers.GetValueOrDefault(stageRun.StageRunId, 1);
         var totalRuns = runInfo.TotalRuns.GetValueOrDefault(stageRun.StageName.ToLowerInvariant(), 1);
 
         return MapStageRunToDto(stageRun, runNumber, totalRuns);
@@ -278,7 +285,7 @@ public class CycleService : ICycleService
         var cleaningRun = stageRun.CleaningRun?.Adapt<CleaningRunDto>();
 
         return new StageRunDto(
-            stageRun.Id,
+            stageRun.StageRunId,
             stageRun.CycleId,
             stageRun.StageName,
             runNumber,
@@ -306,13 +313,13 @@ public class CycleService : ICycleService
 
     public async Task<StageRunDto?> AddStageRunAsync(Guid cycleId, Guid userId, CreateStageRunRequest request, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.Id == cycleId && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return null;
 
         var stageRun = request.Adapt<StageRun>();
-        stageRun.Id = Guid.NewGuid();
+        stageRun.StageRunId = Guid.NewGuid();
         stageRun.CycleId = cycleId;
         stageRun.EndDateTime = stageRun.StartDateTime
             .AddDays(request.DurationDays)
@@ -328,7 +335,7 @@ public class CycleService : ICycleService
             {
                 stageRun.StageRunBarrels.Add(new StageRunBarrel
                 {
-                    StageRunId = stageRun.Id,
+                    StageRunId = stageRun.StageRunId,
                     BarrelId = barrelId
                 });
             }
@@ -342,8 +349,8 @@ public class CycleService : ICycleService
             {
                 var material = new StageMaterial
                 {
-                    Id = Guid.NewGuid(),
-                    StageRunId = stageRun.Id,
+                    StageMaterialId = Guid.NewGuid(),
+                    StageRunId = stageRun.StageRunId,
                     MaterialId = materialRequest.MaterialId,
                     DisplayAmount = materialRequest.DisplayAmount,
                     DisplayUnit = materialRequest.DisplayUnit,
@@ -360,8 +367,8 @@ public class CycleService : ICycleService
         {
             var cleaningRun = new CleaningRun
             {
-                Id = Guid.NewGuid(),
-                StageRunId = stageRun.Id,
+                CleaningRunId = Guid.NewGuid(),
+                StageRunId = stageRun.StageRunId,
                 DurationMinutes = request.CleaningRun.DurationMinutes,
                 Purpose = !string.IsNullOrEmpty(request.CleaningRun.Purpose)
                     ? Enum.Parse<CleaningPurpose>(request.CleaningRun.Purpose, true)
@@ -381,8 +388,8 @@ public class CycleService : ICycleService
                 {
                     cleaningRun.CleaningMaterials.Add(new CleaningMaterial
                     {
-                        Id = Guid.NewGuid(),
-                        CleaningRunId = cleaningRun.Id,
+                        CleaningMaterialId = Guid.NewGuid(),
+                        CleaningRunId = cleaningRun.CleaningRunId,
                         MaterialId = materialRequest.MaterialId,
                         DisplayAmount = materialRequest.DisplayAmount,
                         DisplayUnit = materialRequest.DisplayUnit,
@@ -417,18 +424,18 @@ public class CycleService : ICycleService
                 reminderTime = stageRun.EndDateTime;
             }
 
-            await _notificationService.ScheduleStageReminderAsync(stageRun.Id, reminderTime, cancellationToken);
+            await _notificationService.ScheduleStageReminderAsync(stageRun.StageRunId, reminderTime, cancellationToken);
         }
 
-        return await GetStageRunAsync(stageRun.Id, userId, cancellationToken);
+        return await GetStageRunAsync(stageRun.StageRunId, userId, cancellationToken);
     }
 
-    public async Task<StageRunDto?> UpdateStageRunAsync(Guid id, Guid userId, UpdateStageRunRequest request, CancellationToken cancellationToken = default)
+    public async Task<StageRunDto?> UpdateStageRunAsync(Guid stageRunId, Guid userId, UpdateStageRunRequest request, CancellationToken cancellationToken = default)
     {
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
             .Include(s => s.StageRunBarrels)
-            .FirstOrDefaultAsync(s => s.Id == id && s.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null)
             return null;
@@ -464,7 +471,7 @@ public class CycleService : ICycleService
             {
                 stageRun.StageRunBarrels.Add(new StageRunBarrel
                 {
-                    StageRunId = stageRun.Id,
+                    StageRunId = stageRun.StageRunId,
                     BarrelId = barrelId
                 });
             }
@@ -472,14 +479,14 @@ public class CycleService : ICycleService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await GetStageRunAsync(id, userId, cancellationToken);
+        return await GetStageRunAsync(stageRunId, userId, cancellationToken);
     }
 
-    public async Task<bool> DeleteStageRunAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteStageRunAsync(Guid stageRunId, Guid userId, CancellationToken cancellationToken = default)
     {
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
-            .FirstOrDefaultAsync(s => s.Id == id && s.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null)
             return false;
@@ -493,11 +500,11 @@ public class CycleService : ICycleService
         return true;
     }
 
-    public async Task<StageRunDto?> CompleteStageRunAsync(Guid id, Guid userId, CompleteStageRunRequest request, CancellationToken cancellationToken = default)
+    public async Task<StageRunDto?> CompleteStageRunAsync(Guid stageRunId, Guid userId, CompleteStageRunRequest request, CancellationToken cancellationToken = default)
     {
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
-            .FirstOrDefaultAsync(s => s.Id == id && s.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null)
             return null;
@@ -528,7 +535,7 @@ public class CycleService : ICycleService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await GetStageRunAsync(id, userId, cancellationToken);
+        return await GetStageRunAsync(stageRunId, userId, cancellationToken);
     }
 
     // Cleaning Run operations
@@ -537,13 +544,13 @@ public class CycleService : ICycleService
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
             .Include(s => s.CleaningRun)
-            .FirstOrDefaultAsync(s => s.Id == stageRunId && s.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null || stageRun.CleaningRun != null)
             return null;
 
         var cleaningRun = request.Adapt<CleaningRun>();
-        cleaningRun.Id = Guid.NewGuid();
+        cleaningRun.CleaningRunId = Guid.NewGuid();
         cleaningRun.StageRunId = stageRunId;
         cleaningRun.Status = CleaningRunStatus.Active;
         cleaningRun.DateCreated = DateTime.UtcNow;
@@ -557,8 +564,8 @@ public class CycleService : ICycleService
             {
                 var material = new CleaningMaterial
                 {
-                    Id = Guid.NewGuid(),
-                    CleaningRunId = cleaningRun.Id,
+                    CleaningMaterialId = Guid.NewGuid(),
+                    CleaningRunId = cleaningRun.CleaningRunId,
                     MaterialId = materialRequest.MaterialId,
                     DisplayAmount = materialRequest.DisplayAmount,
                     DisplayUnit = materialRequest.DisplayUnit,
@@ -576,12 +583,12 @@ public class CycleService : ICycleService
         return cleaningRun.Adapt<CleaningRunDto>();
     }
 
-    public async Task<bool> CompleteCleaningRunAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<bool> CompleteCleaningRunAsync(Guid cleaningRunId, Guid userId, CancellationToken cancellationToken = default)
     {
         var cleaningRun = await CleaningRuns
             .Include(cr => cr.StageRun)
                 .ThenInclude(s => s.Cycle)
-            .FirstOrDefaultAsync(cr => cr.Id == id && cr.StageRun.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(cr => cr.CleaningRunId == cleaningRunId && cr.StageRun.Cycle.UserId == userId, cancellationToken);
 
         if (cleaningRun == null)
             return false;
@@ -593,12 +600,12 @@ public class CycleService : ICycleService
         return true;
     }
 
-    public async Task<bool> DeleteCleaningRunAsync(Guid id, Guid userId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteCleaningRunAsync(Guid cleaningRunId, Guid userId, CancellationToken cancellationToken = default)
     {
         var cleaningRun = await CleaningRuns
             .Include(cr => cr.StageRun)
                 .ThenInclude(s => s.Cycle)
-            .FirstOrDefaultAsync(cr => cr.Id == id && cr.StageRun.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(cr => cr.CleaningRunId == cleaningRunId && cr.StageRun.Cycle.UserId == userId, cancellationToken);
 
         if (cleaningRun == null)
             return false;
@@ -614,7 +621,7 @@ public class CycleService : ICycleService
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
             .Include(s => s.StageMaterials)
-            .FirstOrDefaultAsync(s => s.Id == stageRunId && s.Cycle.UserId == userId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null)
             return null;
@@ -625,7 +632,7 @@ public class CycleService : ICycleService
 
         var material = new StageMaterial
         {
-            Id = Guid.NewGuid(),
+            StageMaterialId = Guid.NewGuid(),
             StageRunId = stageRunId,
             MaterialId = request.MaterialId,
             DisplayAmount = request.DisplayAmount,
@@ -641,7 +648,7 @@ public class CycleService : ICycleService
         // Reload with material navigation property
         var savedMaterial = await StageMaterials
             .Include(sm => sm.Material)
-            .FirstAsync(sm => sm.Id == material.Id, cancellationToken);
+            .FirstAsync(sm => sm.StageMaterialId == material.StageMaterialId, cancellationToken);
 
         return savedMaterial.Adapt<StageMaterialDto>();
     }
@@ -668,7 +675,7 @@ public class CycleService : ICycleService
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.Photos.Where(p => !p.IsDeleted))
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(c => c.Id == cycleId && c.UserId == userId && !c.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId && !c.IsDeleted, cancellationToken);
 
         if (cycle == null)
             return [];
@@ -683,7 +690,7 @@ public class CycleService : ICycleService
                 .Where(p => !p.IsDeleted)
                 .OrderBy(p => p.SortOrder)
                 .Select(p => new CyclePhotoDto(
-                    p.Id,
+                    p.PhotoId,
                     p.Url,
                     p.FileName,
                     p.PhotoType.ToString(),
@@ -696,9 +703,9 @@ public class CycleService : ICycleService
                     p.BlurHash,
                     p.Width,
                     p.Height,
-                    s.Id,
+                    s.StageRunId,
                     s.StageName,
-                    runNumbers.RunNumbers.TryGetValue(s.Id, out var runNum) ? runNum : 1
+                    runNumbers.RunNumbers.TryGetValue(s.StageRunId, out var runNum) ? runNum : 1
                 )))
             .OrderBy(p => p.DateCreated)
             .ToList();

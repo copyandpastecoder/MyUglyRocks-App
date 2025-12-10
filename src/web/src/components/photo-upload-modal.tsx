@@ -217,7 +217,7 @@ export function PhotoUploadModal({
               </SelectTrigger>
               <SelectContent>
                 {stages.map((stage) => (
-                  <SelectItem key={stage.id} value={stage.id}>
+                  <SelectItem key={stage.stageRunId} value={stage.stageRunId}>
                     {formatStageDisplayName(stage)}
                   </SelectItem>
                 ))}

@@ -190,7 +190,7 @@ export default function EditTumblerPage() {
   const onBarrelSubmit = (data: BarrelFormValues) => {
     if (editingBarrel) {
       updateBarrelMutation.mutate({
-        barrelId: editingBarrel.id,
+        barrelId: editingBarrel.barrelId,
         data: {
           nickname: data.nickname || undefined,
           capacityLbs: data.capacityLbs,
@@ -459,7 +459,7 @@ export default function EditTumblerPage() {
             <div className="space-y-3">
               {tumbler.barrels.sort((a, b) => a.barrelNumber - b.barrelNumber).map((barrel) => (
                 <div
-                  key={barrel.id}
+                  key={barrel.barrelId}
                   className="flex items-center justify-between p-4 rounded-lg border"
                 >
                   <div className="space-y-1">
@@ -492,7 +492,7 @@ export default function EditTumblerPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Dialog open={editingBarrel?.id === barrel.id} onOpenChange={(open) => !open && setEditingBarrel(null)}>
+                    <Dialog open={editingBarrel?.barrelId === barrel.barrelId} onOpenChange={(open) => !open && setEditingBarrel(null)}>
                       <DialogTrigger asChild>
                         <Button
                           variant="ghost"
@@ -634,7 +634,7 @@ export default function EditTumblerPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => deleteBarrelMutation.mutate(barrel.id)}
+                        onClick={() => deleteBarrelMutation.mutate(barrel.barrelId)}
                         disabled={deleteBarrelMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />

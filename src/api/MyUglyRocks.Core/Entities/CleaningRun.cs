@@ -16,6 +16,7 @@ public enum CleaningPurpose
 
 public class CleaningRun : BaseEntity
 {
+    public Guid CleaningRunId { get; set; }
     public Guid StageRunId { get; set; }
     public int DurationMinutes { get; set; }
     public CleaningPurpose? Purpose { get; set; }

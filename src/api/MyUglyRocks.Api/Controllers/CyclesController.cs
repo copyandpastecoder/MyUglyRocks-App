@@ -34,12 +34,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Get a specific cycle by ID
     /// </summary>
-    [HttpGet("{id:guid}")]
+    [HttpGet("{cycleId:guid}")]
     [ProducesResponseType(typeof(CycleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCycle(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetCycle(Guid cycleId, CancellationToken cancellationToken)
     {
-        var cycle = await _cycleService.GetCycleAsync(id, GetUserId(), cancellationToken);
+        var cycle = await _cycleService.GetCycleAsync(cycleId, GetUserId(), cancellationToken);
         if (cycle == null)
             return NotFound();
 
@@ -55,18 +55,18 @@ public class CyclesController : ControllerBase
     public async Task<IActionResult> CreateCycle([FromBody] CreateCycleRequest request, CancellationToken cancellationToken)
     {
         var cycle = await _cycleService.CreateCycleAsync(GetUserId(), request, cancellationToken);
-        return CreatedAtAction(nameof(GetCycle), new { id = cycle.Id }, cycle);
+        return CreatedAtAction(nameof(GetCycle), new { id = cycle.CycleId }, cycle);
     }
 
     /// <summary>
     /// Update an existing cycle
     /// </summary>
-    [HttpPut("{id:guid}")]
+    [HttpPut("{cycleId:guid}")]
     [ProducesResponseType(typeof(CycleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateCycle(Guid id, [FromBody] UpdateCycleRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateCycle(Guid cycleId, [FromBody] UpdateCycleRequest request, CancellationToken cancellationToken)
     {
-        var cycle = await _cycleService.UpdateCycleAsync(id, GetUserId(), request, cancellationToken);
+        var cycle = await _cycleService.UpdateCycleAsync(cycleId, GetUserId(), request, cancellationToken);
         if (cycle == null)
             return NotFound();
 
@@ -76,12 +76,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Delete a cycle (soft delete)
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{cycleId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteCycle(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteCycle(Guid cycleId, CancellationToken cancellationToken)
     {
-        var success = await _cycleService.DeleteCycleAsync(id, GetUserId(), cancellationToken);
+        var success = await _cycleService.DeleteCycleAsync(cycleId, GetUserId(), cancellationToken);
         if (!success)
             return NotFound();
 
@@ -91,12 +91,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Complete a cycle
     /// </summary>
-    [HttpPost("{id:guid}/complete")]
+    [HttpPost("{cycleId:guid}/complete")]
     [ProducesResponseType(typeof(CycleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CompleteCycle(Guid id, [FromBody] CompleteCycleRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CompleteCycle(Guid cycleId, [FromBody] CompleteCycleRequest request, CancellationToken cancellationToken)
     {
-        var cycle = await _cycleService.CompleteCycleAsync(id, GetUserId(), request, cancellationToken);
+        var cycle = await _cycleService.CompleteCycleAsync(cycleId, GetUserId(), request, cancellationToken);
         if (cycle == null)
             return NotFound();
 
@@ -106,12 +106,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Archive a cycle
     /// </summary>
-    [HttpPost("{id:guid}/archive")]
+    [HttpPost("{cycleId:guid}/archive")]
     [ProducesResponseType(typeof(CycleDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ArchiveCycle(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> ArchiveCycle(Guid cycleId, CancellationToken cancellationToken)
     {
-        var cycle = await _cycleService.ArchiveCycleAsync(id, GetUserId(), cancellationToken);
+        var cycle = await _cycleService.ArchiveCycleAsync(cycleId, GetUserId(), cancellationToken);
         if (cycle == null)
             return NotFound();
 
@@ -130,18 +130,18 @@ public class CyclesController : ControllerBase
         if (stageRun == null)
             return NotFound();
 
-        return CreatedAtAction(nameof(GetStageRun), new { id = stageRun.Id }, stageRun);
+        return CreatedAtAction(nameof(GetStageRun), new { id = stageRun.StageRunId }, stageRun);
     }
 
     /// <summary>
     /// Get a specific stage run
     /// </summary>
-    [HttpGet("stages/{id:guid}")]
+    [HttpGet("stages/{stageRunId:guid}")]
     [ProducesResponseType(typeof(StageRunDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetStageRun(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetStageRun(Guid stageRunId, CancellationToken cancellationToken)
     {
-        var stageRun = await _cycleService.GetStageRunAsync(id, GetUserId(), cancellationToken);
+        var stageRun = await _cycleService.GetStageRunAsync(stageRunId, GetUserId(), cancellationToken);
         if (stageRun == null)
             return NotFound();
 
@@ -151,12 +151,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Update a stage run
     /// </summary>
-    [HttpPut("stages/{id:guid}")]
+    [HttpPut("stages/{stageRunId:guid}")]
     [ProducesResponseType(typeof(StageRunDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateStageRun(Guid id, [FromBody] UpdateStageRunRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateStageRun(Guid stageRunId, [FromBody] UpdateStageRunRequest request, CancellationToken cancellationToken)
     {
-        var stageRun = await _cycleService.UpdateStageRunAsync(id, GetUserId(), request, cancellationToken);
+        var stageRun = await _cycleService.UpdateStageRunAsync(stageRunId, GetUserId(), request, cancellationToken);
         if (stageRun == null)
             return NotFound();
 
@@ -166,12 +166,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Delete a stage run (soft delete)
     /// </summary>
-    [HttpDelete("stages/{id:guid}")]
+    [HttpDelete("stages/{stageRunId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteStageRun(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteStageRun(Guid stageRunId, CancellationToken cancellationToken)
     {
-        var success = await _cycleService.DeleteStageRunAsync(id, GetUserId(), cancellationToken);
+        var success = await _cycleService.DeleteStageRunAsync(stageRunId, GetUserId(), cancellationToken);
         if (!success)
             return NotFound();
 
@@ -181,12 +181,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Complete a stage run
     /// </summary>
-    [HttpPost("stages/{id:guid}/complete")]
+    [HttpPost("stages/{stageRunId:guid}/complete")]
     [ProducesResponseType(typeof(StageRunDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CompleteStageRun(Guid id, [FromBody] CompleteStageRunRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CompleteStageRun(Guid stageRunId, [FromBody] CompleteStageRunRequest request, CancellationToken cancellationToken)
     {
-        var stageRun = await _cycleService.CompleteStageRunAsync(id, GetUserId(), request, cancellationToken);
+        var stageRun = await _cycleService.CompleteStageRunAsync(stageRunId, GetUserId(), request, cancellationToken);
         if (stageRun == null)
             return NotFound();
 
@@ -211,12 +211,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Complete a cleaning run
     /// </summary>
-    [HttpPost("cleaning/{id:guid}/complete")]
+    [HttpPost("cleaning/{cleaningRunId:guid}/complete")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> CompleteCleaningRun(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> CompleteCleaningRun(Guid cleaningRunId, CancellationToken cancellationToken)
     {
-        var success = await _cycleService.CompleteCleaningRunAsync(id, GetUserId(), cancellationToken);
+        var success = await _cycleService.CompleteCleaningRunAsync(cleaningRunId, GetUserId(), cancellationToken);
         if (!success)
             return NotFound();
 
@@ -226,12 +226,12 @@ public class CyclesController : ControllerBase
     /// <summary>
     /// Delete a cleaning run
     /// </summary>
-    [HttpDelete("cleaning/{id:guid}")]
+    [HttpDelete("cleaning/{cleaningRunId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteCleaningRun(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteCleaningRun(Guid cleaningRunId, CancellationToken cancellationToken)
     {
-        var success = await _cycleService.DeleteCleaningRunAsync(id, GetUserId(), cancellationToken);
+        var success = await _cycleService.DeleteCleaningRunAsync(cleaningRunId, GetUserId(), cancellationToken);
         if (!success)
             return NotFound();
 

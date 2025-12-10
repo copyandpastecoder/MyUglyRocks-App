@@ -20,6 +20,7 @@ public enum TumblingDifficulty
 
 public class Specimen : UserAuditedEntity
 {
+    public Guid SpecimenId { get; set; }
     public required string CommonName { get; set; }
     public string? ScientificName { get; set; }
     public string? Alias { get; set; }

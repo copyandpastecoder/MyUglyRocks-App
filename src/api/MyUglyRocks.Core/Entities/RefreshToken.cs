@@ -2,6 +2,7 @@ namespace MyUglyRocks.Core.Entities;
 
 public class RefreshToken : BaseEntity
 {
+    public Guid RefreshTokenId { get; set; }
     public Guid UserId { get; set; }
     public required string Token { get; set; }
     public DateTime DateExpires { get; set; }

@@ -1,7 +1,7 @@
 namespace MyUglyRocks.Abstractions.DTOs;
 
 public record CycleDto(
-    Guid Id,
+    Guid CycleId,
     string Name,
     DateOnly StartDate,
     DateOnly? EndDate,
@@ -13,11 +13,12 @@ public record CycleDto(
     string? Notes,
     DateTime DateCreated,
     IEnumerable<StageRunSummaryDto> StageRuns,
-    IEnumerable<SpecimenDto> Specimens
+    IEnumerable<SpecimenDto> Specimens,
+    Guid? PostId = null
 );
 
 public record CycleListDto(
-    Guid Id,
+    Guid CycleId,
     string Name,
     DateOnly StartDate,
     DateOnly? EndDate,
@@ -55,7 +56,7 @@ public record CompleteCycleRequest(
 );
 
 public record StageRunSummaryDto(
-    Guid Id,
+    Guid StageRunId,
     string StageName,
     int RunNumber,
     int TotalRuns,
@@ -67,7 +68,7 @@ public record StageRunSummaryDto(
 );
 
 public record StageRunDto(
-    Guid Id,
+    Guid StageRunId,
     Guid CycleId,
     string StageName,
     int RunNumber,
@@ -144,7 +145,7 @@ public record CompleteStageRunRequest(
 );
 
 public record CleaningRunDto(
-    Guid Id,
+    Guid CleaningRunId,
     int DurationMinutes,
     string? Purpose,
     string Status,
@@ -162,7 +163,7 @@ public record CreateCleaningRunRequest(
 );
 
 public record StageMaterialDto(
-    Guid Id,
+    Guid StageMaterialId,
     Guid MaterialId,
     string MaterialName,
     decimal? DisplayAmount,
@@ -177,7 +178,7 @@ public record CreateStageMaterialRequest(
 );
 
 public record CleaningMaterialDto(
-    Guid Id,
+    Guid CleaningMaterialId,
     Guid MaterialId,
     string MaterialName,
     decimal? DisplayAmount,
@@ -192,7 +193,7 @@ public record CreateCleaningMaterialRequest(
 );
 
 public record PhotoDto(
-    Guid Id,
+    Guid PhotoId,
     string Url,
     string? FileName,
     string PhotoType,
@@ -208,7 +209,7 @@ public record PhotoDto(
 );
 
 public record SpecimenDto(
-    Guid Id,
+    Guid SpecimenId,
     string CommonName,
     string? ScientificName,
     string MaterialType,
@@ -218,7 +219,7 @@ public record SpecimenDto(
 );
 
 public record MaterialDto(
-    Guid Id,
+    Guid MaterialId,
     string CommonName,
     string Category,
     string? MaterialType,
@@ -233,7 +234,7 @@ public record MaterialDto(
 /// Photo with stage context for cycle photo selection
 /// </summary>
 public record CyclePhotoDto(
-    Guid Id,
+    Guid PhotoId,
     string Url,
     string? FileName,
     string PhotoType,

@@ -61,7 +61,7 @@ public class AuthService : IAuthService
         // Create user
         var user = new User
         {
-            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
             Email = request.Email.ToLower(),
             Username = request.Username,
             DisplayName = request.DisplayName ?? request.Username,
@@ -77,8 +77,8 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync(cancellationToken);
 
         // Generate tokens
-        var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, user.Username, user.Role == UserRole.Admin);
-        var refreshToken = await CreateRefreshTokenAsync(user.Id, cancellationToken);
+        var accessToken = _tokenService.GenerateAccessToken(user.UserId, user.Email, user.Username, user.Role == UserRole.Admin);
+        var refreshToken = await CreateRefreshTokenAsync(user.UserId, cancellationToken);
 
         return new AuthResult(
             true,
@@ -118,8 +118,8 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync(cancellationToken);
 
         // Generate tokens
-        var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, user.Username, user.Role == UserRole.Admin);
-        var refreshToken = await CreateRefreshTokenAsync(user.Id, cancellationToken);
+        var accessToken = _tokenService.GenerateAccessToken(user.UserId, user.Email, user.Username, user.Role == UserRole.Admin);
+        var refreshToken = await CreateRefreshTokenAsync(user.UserId, cancellationToken);
 
         return new AuthResult(
             true,
@@ -163,10 +163,10 @@ public class AuthService : IAuthService
         storedToken.DateUpdated = DateTime.UtcNow;
 
         // Generate new tokens
-        var accessToken = _tokenService.GenerateAccessToken(user.Id, user.Email, user.Username, user.Role == UserRole.Admin);
-        var newRefreshToken = await CreateRefreshTokenAsync(user.Id, cancellationToken);
+        var accessToken = _tokenService.GenerateAccessToken(user.UserId, user.Email, user.Username, user.Role == UserRole.Admin);
+        var newRefreshToken = await CreateRefreshTokenAsync(user.UserId, cancellationToken);
 
-        storedToken.ReplacedByTokenId = newRefreshToken.Id;
+        storedToken.ReplacedByTokenId = newRefreshToken.RefreshTokenId;
         await _context.SaveChangesAsync(cancellationToken);
 
         return new AuthResult(
@@ -224,7 +224,7 @@ public class AuthService : IAuthService
         // Store token -> userId mapping in Redis with expiry
         var tokenData = new PasswordResetTokenData
         {
-            UserId = user.Id,
+            UserId = user.UserId,
             Email = user.Email,
             CreatedAt = DateTime.UtcNow
         };
@@ -270,7 +270,7 @@ public class AuthService : IAuthService
         }
 
         // Get the user
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == tokenData.UserId, cancellationToken);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == tokenData.UserId, cancellationToken);
 
         if (user == null)
         {
@@ -292,7 +292,7 @@ public class AuthService : IAuthService
 
         // Revoke all existing refresh tokens for this user (security measure)
         var activeTokens = await RefreshTokens
-            .Where(rt => rt.UserId == user.Id && !rt.IsRevoked)
+            .Where(rt => rt.UserId == user.UserId && !rt.IsRevoked)
             .ToListAsync(cancellationToken);
 
         foreach (var refreshToken in activeTokens)
@@ -304,7 +304,7 @@ public class AuthService : IAuthService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        _logger.LogInformation("Password successfully reset for user {UserId}", user.Id);
+        _logger.LogInformation("Password successfully reset for user {UserId}", user.UserId);
 
         // Send password changed notification email
         try
@@ -343,7 +343,7 @@ public class AuthService : IAuthService
     {
         var refreshToken = new RefreshToken
         {
-            Id = Guid.NewGuid(),
+            RefreshTokenId = Guid.NewGuid(),
             Token = _tokenService.GenerateRefreshToken(),
             UserId = userId,
             DateExpires = DateTime.UtcNow.AddDays(_refreshTokenExpirationDays),

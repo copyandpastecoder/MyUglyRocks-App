@@ -24,6 +24,8 @@ public enum StageNextAction
 
 public class StageRun : SoftDeletableEntity
 {
+    public Guid StageRunId { get; set; }
+
     // Foreign keys
     public Guid CycleId { get; set; }
 

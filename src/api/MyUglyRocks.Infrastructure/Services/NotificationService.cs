@@ -70,7 +70,7 @@ public class NotificationService : INotificationService
             .Include(s => s.Cycle)
                 .ThenInclude(c => c.User)
                     .ThenInclude(u => u.Settings)
-            .FirstOrDefaultAsync(s => s.Id == stageId, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageId, cancellationToken);
 
         if (stage == null)
         {
@@ -97,7 +97,7 @@ public class NotificationService : INotificationService
         var settings = user.Settings;
         if (settings != null && !settings.NotifyStageReminders)
         {
-            _logger.LogInformation("User {UserId} has stage reminders disabled", user.Id);
+            _logger.LogInformation("User {UserId} has stage reminders disabled", user.UserId);
             return;
         }
 
@@ -128,7 +128,7 @@ public class NotificationService : INotificationService
             stage.DateReminderSent = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Stage reminder sent for stage {StageId} to user {UserId}", stageId, user.Id);
+            _logger.LogInformation("Stage reminder sent for stage {StageId} to user {UserId}", stageId, user.UserId);
         }
         catch (Exception ex)
         {
@@ -152,7 +152,7 @@ public class NotificationService : INotificationService
         var post = await _context.Posts
             .Include(p => p.User)
                 .ThenInclude(u => u.Settings)
-            .FirstOrDefaultAsync(p => p.Id == postId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.PostId == postId, cancellationToken);
 
         if (post == null)
         {
@@ -172,13 +172,13 @@ public class NotificationService : INotificationService
         var settings = postOwner.Settings;
         if (settings != null && !settings.NotifyComments)
         {
-            _logger.LogInformation("User {UserId} has comment notifications disabled", postOwner.Id);
+            _logger.LogInformation("User {UserId} has comment notifications disabled", postOwner.UserId);
             return;
         }
 
         var comment = await _context.Comments
             .Include(c => c.User)
-            .FirstOrDefaultAsync(c => c.Id == commentId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.CommentId == commentId, cancellationToken);
 
         if (comment == null)
         {
@@ -200,7 +200,7 @@ public class NotificationService : INotificationService
                 postUrl,
                 cancellationToken);
 
-            _logger.LogInformation("Comment notification sent for comment {CommentId} to user {UserId}", commentId, postOwner.Id);
+            _logger.LogInformation("Comment notification sent for comment {CommentId} to user {UserId}", commentId, postOwner.UserId);
         }
         catch (Exception ex)
         {
@@ -225,7 +225,7 @@ public class NotificationService : INotificationService
             .Include(c => c.User)
                 .ThenInclude(u => u.Settings)
             .Include(c => c.Post)
-            .FirstOrDefaultAsync(c => c.Id == parentCommentId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.CommentId == parentCommentId, cancellationToken);
 
         if (parentComment == null)
         {
@@ -245,13 +245,13 @@ public class NotificationService : INotificationService
         var settings = commentOwner.Settings;
         if (settings != null && !settings.NotifyReplies)
         {
-            _logger.LogInformation("User {UserId} has reply notifications disabled", commentOwner.Id);
+            _logger.LogInformation("User {UserId} has reply notifications disabled", commentOwner.UserId);
             return;
         }
 
         var reply = await _context.Comments
             .Include(c => c.User)
-            .FirstOrDefaultAsync(c => c.Id == replyId, cancellationToken);
+            .FirstOrDefaultAsync(c => c.CommentId == replyId, cancellationToken);
 
         if (reply == null)
         {
@@ -274,7 +274,7 @@ public class NotificationService : INotificationService
                 commentUrl,
                 cancellationToken);
 
-            _logger.LogInformation("Reply notification sent for reply {ReplyId} to user {UserId}", replyId, commentOwner.Id);
+            _logger.LogInformation("Reply notification sent for reply {ReplyId} to user {UserId}", replyId, commentOwner.UserId);
         }
         catch (Exception ex)
         {
@@ -298,7 +298,7 @@ public class NotificationService : INotificationService
         var post = await _context.Posts
             .Include(p => p.User)
                 .ThenInclude(u => u.Settings)
-            .FirstOrDefaultAsync(p => p.Id == postId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.PostId == postId, cancellationToken);
 
         if (post == null)
         {
@@ -325,7 +325,7 @@ public class NotificationService : INotificationService
         var settings = postOwner.Settings;
         if (settings != null && !settings.NotifyUglyRocks)
         {
-            _logger.LogInformation("User {UserId} has vote notifications disabled", postOwner.Id);
+            _logger.LogInformation("User {UserId} has vote notifications disabled", postOwner.UserId);
             return;
         }
 
@@ -349,7 +349,7 @@ public class NotificationService : INotificationService
                 postUrl,
                 cancellationToken);
 
-            _logger.LogInformation("First vote notification sent for post {PostId} to user {UserId}", postId, postOwner.Id);
+            _logger.LogInformation("First vote notification sent for post {PostId} to user {UserId}", postId, postOwner.UserId);
         }
         catch (Exception ex)
         {
@@ -375,7 +375,7 @@ public class NotificationService : INotificationService
         var post = await _context.Posts
             .Include(p => p.User)
                 .ThenInclude(u => u.Settings)
-            .FirstOrDefaultAsync(p => p.Id == postId, cancellationToken);
+            .FirstOrDefaultAsync(p => p.PostId == postId, cancellationToken);
 
         if (post == null)
         {
@@ -394,7 +394,7 @@ public class NotificationService : INotificationService
         var settings = postOwner.Settings;
         if (settings != null && !settings.NotifyUglyRocks)
         {
-            _logger.LogInformation("User {UserId} has vote notifications disabled", postOwner.Id);
+            _logger.LogInformation("User {UserId} has vote notifications disabled", postOwner.UserId);
             return;
         }
 

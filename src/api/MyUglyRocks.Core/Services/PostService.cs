@@ -69,9 +69,9 @@ public class PostService : IPostService
         return result;
     }
 
-    public async Task<PostDto?> GetPostByIdAsync(Guid id, Guid? currentUserId = null)
+    public async Task<PostDto?> GetPostByIdAsync(Guid postId, Guid? currentUserId = null)
     {
-        var cacheKey = $"{PostsCacheKeyPrefix}{id}";
+        var cacheKey = $"{PostsCacheKeyPrefix}{postId}";
         var cached = await _cache.GetAsync<PostDto>(cacheKey);
         if (cached != null)
             return cached;
@@ -82,7 +82,7 @@ public class PostService : IPostService
                 .ThenInclude(c => c.StageRuns)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)
-            .FirstOrDefaultAsync(p => p.Id == id && p.Status == PostStatus.Published);
+            .FirstOrDefaultAsync(p => p.PostId == postId && p.Status == PostStatus.Published);
 
         if (post == null) return null;
 
@@ -110,13 +110,20 @@ public class PostService : IPostService
     {
         var cycle = await _context.Set<Cycle>()
             .Include(c => c.StageRuns)
-            .FirstOrDefaultAsync(c => c.Id == request.CycleId && c.UserId == userId);
+            .FirstOrDefaultAsync(c => c.CycleId == request.CycleId && c.UserId == userId);
 
         if (cycle == null)
             throw new InvalidOperationException("Cycle not found or doesn't belong to user");
 
         if (cycle.Status != CycleStatus.Completed)
             throw new InvalidOperationException("Can only share completed cycles");
+
+        // Check if a post already exists for this cycle
+        var existingPost = await _context.Set<Post>()
+            .AnyAsync(p => p.CycleId == request.CycleId && !p.IsDeleted);
+
+        if (existingPost)
+            throw new InvalidOperationException("A gallery post already exists for this cycle");
 
         var post = new Post
         {
@@ -137,18 +144,18 @@ public class PostService : IPostService
         if (request.PhotoIds.Count > 0)
         {
             var photos = await _context.Set<Photo>()
-                .Where(p => request.PhotoIds.Contains(p.Id))
+                .Where(p => request.PhotoIds.Contains(p.PhotoId))
                 .ToListAsync();
 
             var sortOrder = 0;
             foreach (var photoId in request.PhotoIds)
             {
-                var photo = photos.FirstOrDefault(p => p.Id == photoId);
+                var photo = photos.FirstOrDefault(p => p.PhotoId == photoId);
                 if (photo != null)
                 {
                     var postPhoto = new PostPhoto
                     {
-                        PostId = post.Id,
+                        PostId = post.PostId,
                         PhotoId = photoId,
                         SortOrder = sortOrder++,
                         IsCover = photoId == request.CoverPhotoId || (request.CoverPhotoId == null && sortOrder == 1)
@@ -163,13 +170,13 @@ public class PostService : IPostService
         // Invalidate post list caches
         await InvalidatePostListCachesAsync();
 
-        return (await GetPostByIdAsync(post.Id))!;
+        return (await GetPostByIdAsync(post.PostId))!;
     }
 
-    public async Task<PostDto?> UpdatePostAsync(Guid id, Guid userId, UpdatePostRequest request)
+    public async Task<PostDto?> UpdatePostAsync(Guid postId, Guid userId, UpdatePostRequest request)
     {
         var post = await _context.Set<Post>()
-            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId);
+            .FirstOrDefaultAsync(p => p.PostId == postId && p.UserId == userId);
 
         if (post == null) return null;
 
@@ -179,16 +186,16 @@ public class PostService : IPostService
         await _context.SaveChangesAsync();
 
         // Invalidate caches
-        await _cache.RemoveAsync($"{PostsCacheKeyPrefix}{id}");
+        await _cache.RemoveAsync($"{PostsCacheKeyPrefix}{postId}");
         await InvalidatePostListCachesAsync();
 
-        return await GetPostByIdAsync(id);
+        return await GetPostByIdAsync(postId);
     }
 
-    public async Task<bool> DeletePostAsync(Guid id, Guid userId)
+    public async Task<bool> DeletePostAsync(Guid postId, Guid userId)
     {
         var post = await _context.Set<Post>()
-            .FirstOrDefaultAsync(p => p.Id == id && p.UserId == userId);
+            .FirstOrDefaultAsync(p => p.PostId == postId && p.UserId == userId);
 
         if (post == null) return false;
 
@@ -196,7 +203,7 @@ public class PostService : IPostService
         await _context.SaveChangesAsync();
 
         // Invalidate caches
-        await _cache.RemoveAsync($"{PostsCacheKeyPrefix}{id}");
+        await _cache.RemoveAsync($"{PostsCacheKeyPrefix}{postId}");
         await InvalidatePostListCachesAsync();
 
         return true;
@@ -317,18 +324,18 @@ public class PostService : IPostService
         if (request.ParentCommentId.HasValue)
         {
             // Reply notification
-            await _notificationService.NotifyReplyAddedAsync(request.ParentCommentId.Value, comment.Id, userId);
+            await _notificationService.NotifyReplyAddedAsync(request.ParentCommentId.Value, comment.CommentId, userId);
         }
         else
         {
             // New comment notification to post owner
-            await _notificationService.NotifyCommentAddedAsync(postId, comment.Id, userId);
+            await _notificationService.NotifyCommentAddedAsync(postId, comment.CommentId, userId);
         }
 
         // Reload with user
         var savedComment = await _context.Set<Comment>()
             .Include(c => c.User)
-            .FirstAsync(c => c.Id == comment.Id);
+            .FirstAsync(c => c.CommentId == comment.CommentId);
 
         return MapCommentToDto(savedComment);
     }
@@ -337,7 +344,7 @@ public class PostService : IPostService
     {
         var comment = await _context.Set<Comment>()
             .Include(c => c.User)
-            .FirstOrDefaultAsync(c => c.Id == commentId && c.UserId == userId);
+            .FirstOrDefaultAsync(c => c.CommentId == commentId && c.UserId == userId);
 
         if (comment == null) return null;
 
@@ -353,7 +360,7 @@ public class PostService : IPostService
     public async Task<bool> DeleteCommentAsync(Guid commentId, Guid userId)
     {
         var comment = await _context.Set<Comment>()
-            .FirstOrDefaultAsync(c => c.Id == commentId && c.UserId == userId);
+            .FirstOrDefaultAsync(c => c.CommentId == commentId && c.UserId == userId);
 
         if (comment == null) return false;
 
@@ -405,7 +412,7 @@ public class PostService : IPostService
 
         return new PostListDto
         {
-            Id = post.Id,
+            PostId = post.PostId,
             Title = post.Title,
             Description = post.Description,
             PublishedDate = post.PublishedDate,
@@ -417,7 +424,7 @@ public class PostService : IPostService
             PhotoCount = post.PostPhotos.Count,
             Author = new PostAuthorDto
             {
-                Id = post.User.Id,
+                UserId = post.User.UserId,
                 Username = post.User.Username,
                 DisplayName = post.User.DisplayName,
                 AvatarUrl = post.User.AvatarUrl
@@ -429,7 +436,7 @@ public class PostService : IPostService
     {
         return new PostDto
         {
-            Id = post.Id,
+            PostId = post.PostId,
             UserId = post.UserId,
             CycleId = post.CycleId,
             Title = post.Title,
@@ -440,14 +447,14 @@ public class PostService : IPostService
             CommentCount = post.CommentCount,
             Author = new PostAuthorDto
             {
-                Id = post.User.Id,
+                UserId = post.User.UserId,
                 Username = post.User.Username,
                 DisplayName = post.User.DisplayName,
                 AvatarUrl = post.User.AvatarUrl
             },
             Cycle = new CyclePreviewDto
             {
-                Id = post.Cycle.Id,
+                CycleId = post.Cycle.CycleId,
                 Name = post.Cycle.Name,
                 Status = post.Cycle.Status.ToString(),
                 StartDate = post.Cycle.StartDate,
@@ -459,7 +466,7 @@ public class PostService : IPostService
             },
             Photos = post.PostPhotos.OrderBy(pp => pp.SortOrder).Select(pp => new PostPhotoDto
             {
-                Id = pp.Id,
+                PostId = pp.PostId,
                 PhotoId = pp.PhotoId,
                 Url = pp.Photo.Url,
                 SortOrder = pp.SortOrder,
@@ -478,7 +485,7 @@ public class PostService : IPostService
     {
         return new CommentDto
         {
-            Id = comment.Id,
+            CommentId = comment.CommentId,
             PostId = comment.PostId,
             ParentCommentId = comment.ParentCommentId,
             Content = comment.Content,
@@ -487,7 +494,7 @@ public class PostService : IPostService
             DateCreated = comment.DateCreated,
             Author = new CommentAuthorDto
             {
-                Id = comment.User.Id,
+                UserId = comment.User.UserId,
                 Username = comment.User.Username,
                 DisplayName = comment.User.DisplayName,
                 AvatarUrl = comment.User.AvatarUrl

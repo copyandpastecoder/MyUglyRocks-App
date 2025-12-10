@@ -10,10 +10,10 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
     {
         builder.ToTable("cycles");
 
-        builder.HasKey(c => c.Id);
+        builder.HasKey(c => c.CycleId);
 
-        builder.Property(c => c.Id)
-            .HasColumnName("id")
+        builder.Property(c => c.CycleId)
+            .HasColumnName("cycle_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(c => c.UserId)
@@ -94,10 +94,10 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
     {
         builder.ToTable("stage_runs");
 
-        builder.HasKey(s => s.Id);
+        builder.HasKey(s => s.StageRunId);
 
-        builder.Property(s => s.Id)
-            .HasColumnName("id")
+        builder.Property(s => s.StageRunId)
+            .HasColumnName("stage_run_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.CycleId)
@@ -241,10 +241,10 @@ public class CleaningRunConfiguration : IEntityTypeConfiguration<CleaningRun>
     {
         builder.ToTable("cleaning_runs");
 
-        builder.HasKey(cr => cr.Id);
+        builder.HasKey(cr => cr.CleaningRunId);
 
-        builder.Property(cr => cr.Id)
-            .HasColumnName("id")
+        builder.Property(cr => cr.CleaningRunId)
+            .HasColumnName("cleaning_run_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cr => cr.StageRunId)
@@ -302,10 +302,10 @@ public class PhotoConfiguration : IEntityTypeConfiguration<Photo>
     {
         builder.ToTable("photos");
 
-        builder.HasKey(p => p.Id);
+        builder.HasKey(p => p.PhotoId);
 
-        builder.Property(p => p.Id)
-            .HasColumnName("id")
+        builder.Property(p => p.PhotoId)
+            .HasColumnName("photo_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(p => p.StageRunId)

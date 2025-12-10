@@ -1,6 +1,6 @@
 // Specimen types
 export interface SpecimenListDto {
-  id: string;
+  specimenId: string;
   commonName: string;
   alias: string | null;
   variety: string | null;
@@ -12,7 +12,7 @@ export interface SpecimenListDto {
 }
 
 export interface SpecimenDetailDto {
-  id: string;
+  specimenId: string;
   commonName: string;
   scientificName: string | null;
   alias: string | null;
@@ -38,7 +38,7 @@ export interface SpecimenSearchRequest {
 
 // Material types
 export interface MaterialListDto {
-  id: string;
+  materialId: string;
   commonName: string;
   category: string;
   materialType: string | null;
@@ -48,7 +48,7 @@ export interface MaterialListDto {
 }
 
 export interface MaterialDetailDto {
-  id: string;
+  materialId: string;
   commonName: string;
   category: string;
   materialType: string | null;

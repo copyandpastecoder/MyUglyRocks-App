@@ -80,7 +80,7 @@ public class AuthController : ControllerBase
             );
 
             // Capture values for the background task
-            var userId = result.User.Id;
+            var userId = result.User.UserId;
 
             // Fire-and-forget with its own DI scope (the controller's DbContext gets disposed after response)
             _ = Task.Run(async () =>
@@ -128,7 +128,7 @@ public class AuthController : ControllerBase
             return Ok(new AuthResult(false));
         }
 
-        _logger.LogDebug("Refresh succeeded for user {UserId}", result.User?.Id);
+        _logger.LogDebug("Refresh succeeded for user {UserId}", result.User?.UserId);
         SetRefreshTokenCookie(result.RefreshToken!);
         return Ok(result);
     }

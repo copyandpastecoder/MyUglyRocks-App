@@ -76,9 +76,9 @@ export default function ModerationQueuePage() {
   });
 
   const reportDetailQuery = useQuery({
-    queryKey: ['admin', 'report', selectedReport?.id],
-    queryFn: () => adminApi.getReport(selectedReport!.id),
-    enabled: !!selectedReport?.id && isDetailDialogOpen,
+    queryKey: ['admin', 'report', selectedReport?.commentReportId],
+    queryFn: () => adminApi.getReport(selectedReport!.commentReportId),
+    enabled: !!selectedReport?.commentReportId && isDetailDialogOpen,
   });
 
   const resolveReportMutation = useMutation({
@@ -115,7 +115,7 @@ export default function ModerationQueuePage() {
   const handleResolve = () => {
     if (!selectedReport) return;
     resolveReportMutation.mutate({
-      reportId: selectedReport.id,
+      reportId: selectedReport?.commentReportId,
       status: resolutionStatus,
       notes: resolutionNotes || undefined,
       deleteComment,
@@ -178,7 +178,7 @@ export default function ModerationQueuePage() {
                 </TableHeader>
                 <TableBody>
                   {reports?.items.map((report) => (
-                    <TableRow key={report.id}>
+                    <TableRow key={report.commentReportId}>
                       <TableCell className="max-w-[200px] truncate font-medium">
                         {report.commentExcerpt}
                       </TableCell>

@@ -2,6 +2,7 @@ namespace MyUglyRocks.Core.Entities;
 
 public class BarrelNickname : BaseEntity
 {
+    public Guid BarrelNicknameId { get; set; }
     public required string Name { get; set; }
     public string? Category { get; set; }
     public bool IsActive { get; set; } = true;
