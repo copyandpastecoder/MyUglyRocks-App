@@ -18,6 +18,7 @@ export interface AuthResult {
   expiresAt?: string;
   user?: User;
   error?: string;
+  sessionId?: string;
 }
 
 export interface RegisterRequest {
@@ -30,6 +31,14 @@ export interface RegisterRequest {
 export interface LoginRequest {
   email: string;
   password: string;
+  // Optional analytics fields
+  screenWidth?: number;
+  screenHeight?: number;
+  supportsWebP?: boolean;
+  supportsAvif?: boolean;
+  timezone?: string;
+  language?: string;
+  referrerDomain?: string | null;
 }
 
 export interface ForgotPasswordRequest {

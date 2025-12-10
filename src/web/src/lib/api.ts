@@ -549,6 +549,7 @@ import type {
   UpdateSpecimenRequest,
   CreateMaterialRequest,
   UpdateMaterialRequest,
+  BrowserStatsDto,
 } from '@/types/admin';
 
 export const adminApi = {
@@ -685,6 +686,14 @@ export const adminApi = {
   // User Creation
   createUser: async (email: string): Promise<AdminUserDto> => {
     const response = await api.post<AdminUserDto>('/admin/users', { email });
+    return response.data;
+  },
+
+  // Browser/Session Analytics
+  getBrowserStats: async (days = 30): Promise<BrowserStatsDto> => {
+    const response = await api.get<BrowserStatsDto>('/admin/browser-stats', {
+      params: { days },
+    });
     return response.data;
   },
 };

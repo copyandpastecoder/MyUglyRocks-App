@@ -4,6 +4,8 @@ import { createContext, useContext, useEffect, useState, useCallback, ReactNode 
 import { useRouter } from 'next/navigation';
 import type { User, LoginRequest, RegisterRequest } from '@/types/auth';
 import { authApi, setAccessToken, getApiUrl } from '@/lib/api';
+import { detectBrowserCapabilities, clearCapabilitiesCache } from '@/lib/browser-capabilities';
+import { startSessionHeartbeat, stopSessionHeartbeat, endSession } from '@/lib/session-heartbeat';
 
 interface AuthContextType {
   user: User | null;
@@ -51,9 +53,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (data: LoginRequest) => {
     try {
-      const result = await authApi.login(data);
+      // Detect browser capabilities before login
+      const capabilities = await detectBrowserCapabilities();
+
+      // Merge capabilities with login data
+      const loginData: LoginRequest = {
+        ...data,
+        screenWidth: capabilities.screenWidth,
+        screenHeight: capabilities.screenHeight,
+        supportsWebP: capabilities.supportsWebP,
+        supportsAvif: capabilities.supportsAvif,
+        timezone: capabilities.timezone,
+        language: capabilities.language,
+        referrerDomain: capabilities.referrerDomain,
+      };
+
+      const result = await authApi.login(loginData);
       if (result.success && result.user) {
         setUser(result.user);
+
+        // Start session heartbeat if we have a session ID
+        if (result.sessionId) {
+          startSessionHeartbeat(result.sessionId);
+        }
+
         return { success: true };
       }
       return { success: false, error: result.error || 'Login failed' };
@@ -79,9 +102,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // End the session tracking
+      await endSession();
       await authApi.logout();
     } finally {
       setUser(null);
+      stopSessionHeartbeat();
+      clearCapabilitiesCache();
       router.push('/login');
     }
   };

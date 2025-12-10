@@ -10,11 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
 
 export function Header() {
   const { user, logout } = useAuth();
+
+  const isAdminOrMod = user?.role === 'Admin' || user?.role === 'Moderator';
 
   const initials = user?.displayName
     ? user.displayName
@@ -53,6 +55,14 @@ export function Header() {
                 </div>
               </div>
               <DropdownMenuSeparator />
+              {isAdminOrMod && (
+                <DropdownMenuItem asChild>
+                  <Link href="/admin" className="flex cursor-pointer items-center">
+                    <Shield className="mr-2 h-4 w-4" />
+                    <span>Admin</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem asChild>
                 <Link href="/settings" className="flex cursor-pointer items-center">
                   <Settings className="mr-2 h-4 w-4" />

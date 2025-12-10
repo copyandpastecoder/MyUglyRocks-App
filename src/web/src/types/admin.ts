@@ -134,3 +134,26 @@ export interface CreateMaterialRequest {
 export interface UpdateMaterialRequest extends CreateMaterialRequest {
   isActive?: boolean;
 }
+
+// Browser/Session Analytics types
+export interface BrowserStatsDto {
+  totalSessions: number;
+  uniqueUsers: number;
+  browserBreakdown: Record<string, number>;
+  deviceTypeBreakdown: Record<string, number>;
+  osBreakdown: Record<string, number>;
+  webPSupportPercentage: number;
+  avifSupportPercentage: number;
+  usersOnOldBrowsers: number;
+  countryBreakdown: Record<string, number>;
+  timezoneBreakdown: Record<string, number>;
+  avgSessionDurationMinutes: number;
+  avgPageViewsPerSession: number;
+  sessionTrend: SessionTrendDto[];
+}
+
+export interface SessionTrendDto {
+  date: string;
+  sessionCount: number;
+  uniqueUsers: number;
+}

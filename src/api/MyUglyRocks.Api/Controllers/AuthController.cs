@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Infrastructure.Services;
 
 namespace MyUglyRocks.Api.Controllers;
 
@@ -12,12 +13,18 @@ namespace MyUglyRocks.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AuthController> _logger;
     private readonly IWebHostEnvironment _environment;
 
-    public AuthController(IAuthService authService, ILogger<AuthController> logger, IWebHostEnvironment environment)
+    public AuthController(
+        IAuthService authService,
+        IServiceScopeFactory scopeFactory,
+        ILogger<AuthController> logger,
+        IWebHostEnvironment environment)
     {
         _authService = authService;
+        _scopeFactory = scopeFactory;
         _logger = logger;
         _environment = environment;
     }
@@ -57,6 +64,42 @@ public class AuthController : ControllerBase
         SetRefreshTokenCookie(result.RefreshToken!);
         _logger.LogInformation("User logged in: {Email}", request.Email);
 
+        // Record session analytics (fire-and-forget, non-blocking)
+        Guid? sessionId = null;
+        if (result.User != null)
+        {
+            var userAgent = Request.Headers.UserAgent.ToString();
+            var sessionInfo = new SessionInfoRequest(
+                request.ScreenWidth,
+                request.ScreenHeight,
+                request.SupportsWebP,
+                request.SupportsAvif,
+                request.Timezone,
+                request.Language,
+                request.ReferrerDomain
+            );
+
+            // Capture values for the background task
+            var userId = result.User.Id;
+
+            // Fire-and-forget with its own DI scope (the controller's DbContext gets disposed after response)
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var scope = _scopeFactory.CreateScope();
+                    var analyticsService = scope.ServiceProvider.GetRequiredService<SessionAnalyticsService>();
+                    sessionId = await analyticsService.RecordSessionWithUserAgentAsync(
+                        userId, userAgent, sessionInfo, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to record session analytics for user {UserId}", userId);
+                }
+            });
+        }
+
+        // Return result (sessionId won't be set yet since it's fire-and-forget)
         return Ok(result);
     }
 

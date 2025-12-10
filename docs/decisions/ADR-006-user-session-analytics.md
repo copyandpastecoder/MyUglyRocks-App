@@ -47,7 +47,7 @@ We need to track user browser/device information to make informed decisions abou
 ### Cross-Cutting Safeguards
 - Keep analytics capture non-blocking for authentication (log and continue on failure; prefer background/offline ingestion).
 - Apply strict field length caps and format validation to prevent oversized payloads and inconsistent data.
-- Document consent/disclosure and admin-only access for analytics endpoints.
+- Admin-only access for analytics endpoints.
 - Plan for bot filtering so stats reflect real user behaviour.
 
 ### Phase 1: Database Schema
@@ -128,19 +128,26 @@ dotnet ef migrations add AddUserSessionAnalytics --project ../MyUglyRocks.Infras
 
 #### 1.4 Add Index for Performance
 
+Start with essential indexes only. Additional composite indexes can be added later based on actual query patterns.
+
 ```csharp
 // In AppDbContext OnModelCreating
 modelBuilder.Entity<UserSession>(entity =>
 {
+    // Essential indexes (Phase 1)
     entity.HasIndex(e => e.UserId);
     entity.HasIndex(e => e.SessionStart);
-    entity.HasIndex(e => e.BrowserName);
-    entity.HasIndex(e => e.DeviceType);
-    entity.HasIndex(e => new { e.SupportsWebP, e.SessionStart }); // For WebP analysis
-    entity.HasIndex(e => new { e.SessionStart, e.Country });
-    entity.HasIndex(e => new { e.SessionStart, e.BrowserName, e.BrowserMajorVersion });
+
+    // Deferred indexes - add when query patterns are validated:
+    // entity.HasIndex(e => e.BrowserName);
+    // entity.HasIndex(e => e.DeviceType);
+    // entity.HasIndex(e => new { e.SupportsWebP, e.SessionStart }); // For WebP analysis
+    // entity.HasIndex(e => new { e.SessionStart, e.Country });
+    // entity.HasIndex(e => new { e.SessionStart, e.BrowserName, e.BrowserMajorVersion });
 });
 ```
+
+**Index Cost Tradeoff:** Each index adds write overhead. Start minimal and add indexes only when query performance becomes an issue. Monitor slow queries in production to identify which composite indexes are actually needed.
 
 #### 1.5 Enforce Field Lengths and Formats
 - Cap string fields (e.g., `UserAgent` 512, `BrowserName/Version` 64, `OsName/Version` 64, `Language` 16, `Timezone` 64, `ReferrerDomain` 128, `Country` 2).
@@ -253,8 +260,55 @@ public record LoginRequest(
 - Wrap session recording in a fire-and-forget/background dispatch (e.g., queue/outbox or hosted service) so login latency is unaffected.
 - If parsing/persisting fails, log and continue without blocking authentication.
 
-#### 2.5 Session Timing Strategy
-- If `SessionEnd`/`SessionDurationSeconds` are retained, add a heartbeat/logout hook to populate them; otherwise omit them from the initial migration.
+#### 2.5 Session Correlation & Engagement Tracking
+
+Track continued engagement for users who stay logged in for extended periods:
+
+**Heartbeat Endpoint:**
+```csharp
+// POST /api/session/heartbeat
+[Authorize]
+[HttpPost("heartbeat")]
+public async Task<IActionResult> Heartbeat()
+{
+    await _sessionAnalyticsService.UpdateSessionHeartbeatAsync(CurrentSessionId);
+    return Ok();
+}
+```
+
+**Frontend Heartbeat (every 5 minutes while active):**
+```typescript
+// filepath: src/web/src/lib/session-heartbeat.ts
+let heartbeatInterval: NodeJS.Timeout | null = null;
+
+export function startSessionHeartbeat() {
+  if (heartbeatInterval) return;
+
+  heartbeatInterval = setInterval(async () => {
+    if (document.visibilityState === 'visible') {
+      await fetch('/api/session/heartbeat', { method: 'POST' });
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+}
+
+export function stopSessionHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+```
+
+**Page View Tracking:**
+Add `PageViewCount` field to `UserSession` entity and increment on each navigation:
+```csharp
+public int PageViewCount { get; set; } = 0;
+```
+
+**Session End Detection:**
+- Update `SessionEnd` on heartbeat (rolling update)
+- Calculate `SessionDurationSeconds` as `SessionEnd - SessionStart`
+- If no heartbeat for 30 minutes, consider session ended
 
 #### 2.6 Bot Filtering
 - Add basic bot detection (user-agent heuristics + allowlist/denylist) to drop known crawlers from analytics.
@@ -374,9 +428,126 @@ Create new page at `/admin/analytics` showing:
 
 ---
 
-### Phase 5: Data Retention & Privacy
+### Phase 5: Admin Analytics Dashboard UI
 
-#### 5.1 Retention Policy
+#### 5.1 Add Analytics Link to Admin Navigation
+
+Update the admin layout to include analytics navigation:
+```typescript
+// In admin navigation component
+<Link href="/admin/analytics">Analytics</Link>
+```
+
+#### 5.2 Analytics Dashboard Page
+
+Create `/admin/analytics/page.tsx`:
+
+```typescript
+// filepath: src/web/src/app/admin/analytics/page.tsx
+'use client';
+
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+export default function AnalyticsPage() {
+  const [stats, setStats] = useState<BrowserStats | null>(null);
+  const [days, setDays] = useState(30);
+
+  useEffect(() => {
+    fetchStats();
+  }, [days]);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Session Analytics</h1>
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
+          <option value={7}>Last 7 days</option>
+          <option value={30}>Last 30 days</option>
+          <option value={90}>Last 90 days</option>
+        </select>
+      </div>
+
+      {/* Key Metrics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <MetricCard title="Total Sessions" value={stats?.totalSessions} />
+        <MetricCard title="WebP Support" value={`${stats?.webPSupportPercentage}%`} />
+        <MetricCard title="Mobile Users" value={`${stats?.mobilePercentage}%`} />
+        <MetricCard title="Avg Session" value={`${stats?.avgSessionMinutes} min`} />
+      </div>
+
+      <Tabs defaultValue="browsers">
+        <TabsList>
+          <TabsTrigger value="browsers">Browsers</TabsTrigger>
+          <TabsTrigger value="devices">Devices</TabsTrigger>
+          <TabsTrigger value="geography">Geography</TabsTrigger>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="browsers">
+          {/* Browser distribution pie chart */}
+          {/* OS breakdown bar chart */}
+          {/* Users on old Safari table */}
+        </TabsContent>
+
+        <TabsContent value="devices">
+          {/* Device type breakdown */}
+          {/* Screen resolution distribution */}
+        </TabsContent>
+
+        <TabsContent value="geography">
+          {/* Country breakdown */}
+          {/* Timezone activity heatmap */}
+        </TabsContent>
+
+        <TabsContent value="engagement">
+          {/* Sessions over time line chart */}
+          {/* Average session duration trend */}
+          {/* Page views per session */}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+#### 5.3 Chart Components
+
+Use a charting library (recommend `recharts` for React):
+```bash
+npm install recharts
+```
+
+Example pie chart for browser distribution:
+```typescript
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+
+function BrowserPieChart({ data }: { data: Record<string, number> }) {
+  const chartData = Object.entries(data).map(([name, value]) => ({ name, value }));
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <PieChart>
+        <Pie data={chartData} dataKey="value" nameKey="name" cx="50%" cy="50%">
+          {chartData.map((_, index) => (
+            <Cell key={index} fill={COLORS[index % COLORS.length]} />
+          ))}
+        </Pie>
+        <Tooltip />
+        <Legend />
+      </PieChart>
+    </ResponsiveContainer>
+  );
+}
+```
+
+---
+
+### Phase 6: Data Retention
+
+#### 6.1 Retention Policy
 
 Add a background job to clean up old sessions:
 
@@ -393,14 +564,13 @@ public async Task CleanupOldSessionsAsync()
 
 Schedule as a nightly job and record deletion counts to confirm enforcement.
 
-#### 5.2 Privacy and Consent
-- No raw IP addresses stored; derive country from the request IP in-memory and discard (optional hash only in memory if needed).
+#### 6.2 Privacy
+- No raw IP addresses stored; derive country from the request IP in-memory and discard.
 - Store referrer domain only; strip path/query/fragment before persisting.
 - Store user-agent for debugging, but only expose aggregated statistics in the UI/API.
 - 90-day retention enforced by the scheduled cleanup; log metrics for auditability.
-- Document analytics collection in the privacy policy and obtain consent/opt-out where required (GDPR/CCPA); honor user deletion requests by deleting their sessions.
 
-#### 5.3 Feature Flag
+#### 6.3 Feature Flag
 - Gate login-time session capture behind a feature flag for a staged rollout and to measure DB impact before full enablement.
 
 ---
@@ -408,10 +578,10 @@ Schedule as a nightly job and record deletion counts to confirm enforcement.
 ## Task Checklist
 
 ### Backend
-- [ ] Create `UserSession` entity
+- [ ] Create `UserSession` entity with `PageViewCount` field
 - [ ] Create `DeviceType` enum
 - [ ] Add `DbSet<UserSession>` to AppDbContext
-- [ ] Add entity configuration with indexes and length/format constraints
+- [ ] Add entity configuration with essential indexes (UserId, SessionStart)
 - [ ] Create and run migration
 - [ ] Install UAParser NuGet package
 - [ ] Create `IUserAgentParserService` and implementation
@@ -419,10 +589,11 @@ Schedule as a nightly job and record deletion counts to confirm enforcement.
 - [ ] Register services in DI
 - [ ] Update `LoginRequest` DTO with optional analytics fields
 - [ ] Update `AuthController.Login` to record session (non-blocking)
+- [ ] Add `POST /api/session/heartbeat` endpoint for session tracking
+- [ ] Add `POST /api/session/pageview` endpoint for page view counting
 - [ ] Add `BrowserStatsDto`
 - [ ] Add `GET /api/admin/browser-stats` endpoint with RBAC and caching
 - [ ] Add bot filtering heuristics
-- [ ] Decide on session timing approach (retain or remove end/duration)
 - [ ] Add session cleanup background job with metrics
 - [ ] Add feature flag for analytics capture
 
@@ -430,12 +601,16 @@ Schedule as a nightly job and record deletion counts to confirm enforcement.
 - [ ] Create `browser-capabilities.ts` utility
 - [ ] Update login flow to detect and send capabilities
 - [ ] Memoize capability checks, add timeouts, and guard referrer parsing
-- [ ] Create `/admin/analytics` page
-- [ ] Add browser stats visualizations (charts)
+- [ ] Create `session-heartbeat.ts` for engagement tracking
+- [ ] Integrate heartbeat start/stop with auth flow
+- [ ] Install `recharts` package
+- [ ] Create `/admin/analytics` page with tabs
+- [ ] Add browser stats visualizations (pie charts, bar charts)
+- [ ] Add engagement metrics (session duration, page views)
+- [ ] Add analytics link to admin navigation
 
 ### Documentation
 - [ ] Update `04-DATA-MODEL.md` with UserSession entity
-- [ ] Update Privacy Policy with analytics disclosure and consent handling
 
 ---
 

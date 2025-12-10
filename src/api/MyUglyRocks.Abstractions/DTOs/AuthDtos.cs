@@ -9,7 +9,15 @@ public record RegisterRequest(
 
 public record LoginRequest(
     string Email,
-    string Password
+    string Password,
+    // Optional analytics fields (sent from frontend)
+    int? ScreenWidth = null,
+    int? ScreenHeight = null,
+    bool? SupportsWebP = null,
+    bool? SupportsAvif = null,
+    string? Timezone = null,
+    string? Language = null,
+    string? ReferrerDomain = null
 );
 
 public record AuthResult(
@@ -18,7 +26,8 @@ public record AuthResult(
     string? RefreshToken = null,
     DateTime? DateExpires = null,
     UserDto? User = null,
-    string? Error = null
+    string? Error = null,
+    Guid? SessionId = null
 );
 
 public record UserDto(

@@ -13,11 +13,16 @@ public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
     private readonly IReferenceDataService _referenceDataService;
+    private readonly ISessionAnalyticsService _sessionAnalyticsService;
 
-    public AdminController(IAdminService adminService, IReferenceDataService referenceDataService)
+    public AdminController(
+        IAdminService adminService,
+        IReferenceDataService referenceDataService,
+        ISessionAnalyticsService sessionAnalyticsService)
     {
         _adminService = adminService;
         _referenceDataService = referenceDataService;
+        _sessionAnalyticsService = sessionAnalyticsService;
     }
 
     private Guid? GetCurrentUserId()
@@ -41,6 +46,20 @@ public class AdminController : ControllerBase
     public async Task<ActionResult<AdminStatsDto>> GetStats()
     {
         var stats = await _adminService.GetStatsAsync();
+        return Ok(stats);
+    }
+
+    /// <summary>
+    /// Get browser/device analytics for admin dashboard
+    /// </summary>
+    [HttpGet("browser-stats")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BrowserStatsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<BrowserStatsDto>> GetBrowserStats(
+        [FromQuery] int days = 30,
+        CancellationToken cancellationToken = default)
+    {
+        var stats = await _sessionAnalyticsService.GetBrowserStatsAsync(days, cancellationToken);
         return Ok(stats);
     }
 
