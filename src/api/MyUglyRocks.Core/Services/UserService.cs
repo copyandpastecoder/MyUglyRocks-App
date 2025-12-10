@@ -11,12 +11,18 @@ public class UserService : IUserService
 {
     private readonly DbContext _context;
     private readonly IStorageService _storageService;
+    private readonly IImageProcessingService _imageProcessingService;
     private readonly ILogger<UserService> _logger;
 
-    public UserService(DbContext context, IStorageService storageService, ILogger<UserService> logger)
+    public UserService(
+        DbContext context,
+        IStorageService storageService,
+        IImageProcessingService imageProcessingService,
+        ILogger<UserService> logger)
     {
         _context = context;
         _storageService = storageService;
+        _imageProcessingService = imageProcessingService;
         _logger = logger;
     }
 
@@ -80,12 +86,21 @@ public class UserService : IUserService
                 }
             }
 
-            // Upload new avatar with a consistent key based on user ID
-            var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            var key = $"{userId}{extension}";
+            // Process the image: crop to square and resize to 256x256 WebP
+            var processedAvatar = await _imageProcessingService.ProcessAvatarAsync(imageStream, fileName);
+
+            // Upload with a consistent key based on user ID
+            var key = $"{userId}.webp";
             var folder = "avatars";
 
-            var avatarUrl = await _storageService.UploadAsync(imageStream, fileName, folder, key);
+            var avatarUrl = await _storageService.UploadAsync(
+                processedAvatar.Stream,
+                $"{userId}.webp",
+                folder,
+                key);
+
+            // Dispose the processed stream
+            await processedAvatar.Stream.DisposeAsync();
 
             // Update user record
             user.AvatarUrl = avatarUrl;

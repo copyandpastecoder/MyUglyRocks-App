@@ -23,6 +23,8 @@ export interface PostListDto {
   commentCount: number;
   author: PostAuthorDto;
   coverPhotoUrl: string | null;
+  coverPhotoThumbnailUrl: string | null;
+  coverPhotoBlurHash: string | null;
   photoCount: number;
 }
 
@@ -39,6 +41,12 @@ export interface PostPhotoDto {
   url: string;
   sortOrder: number;
   isCover: boolean;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
+  blurHash: string | null;
+  width: number | null;
+  height: number | null;
 }
 
 export interface CyclePreviewDto {

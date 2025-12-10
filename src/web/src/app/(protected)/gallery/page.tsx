@@ -6,6 +6,7 @@ import { useAuth } from '@/providers/auth-provider';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { GalleryGridSkeleton } from '@/components/skeletons';
+import { LazyImage } from '@/components/lazy-image';
 import {
   Select,
   SelectContent,
@@ -125,9 +126,11 @@ function PostCard({
       <Card className="overflow-hidden transition-shadow hover:shadow-lg cursor-pointer group">
         <div className="aspect-square relative bg-muted">
           {post.coverPhotoUrl ? (
-            <img
-              src={post.coverPhotoUrl}
+            <LazyImage
+              src={post.coverPhotoThumbnailUrl || post.coverPhotoUrl}
               alt={post.title}
+              blurHash={post.coverPhotoBlurHash}
+              wrapperClassName="w-full h-full"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
