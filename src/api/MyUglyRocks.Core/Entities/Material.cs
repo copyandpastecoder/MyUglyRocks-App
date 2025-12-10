@@ -20,6 +20,7 @@ public enum UsageType
 
 public class Material : UserAuditedEntity
 {
+    public Guid MaterialId { get; set; }
     public required string CommonName { get; set; }
     public MaterialCategory Category { get; set; }
     public string? MaterialType { get; set; }

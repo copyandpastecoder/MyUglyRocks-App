@@ -97,15 +97,15 @@ public class ReferenceDataService : IReferenceDataService
         return result;
     }
 
-    public async Task<SpecimenDetailDto?> GetSpecimenByIdAsync(Guid id)
+    public async Task<SpecimenDetailDto?> GetSpecimenByIdAsync(Guid specimenId)
     {
-        var cacheKey = $"{SpecimenCacheKeyPrefix}{id}";
+        var cacheKey = $"{SpecimenCacheKeyPrefix}{specimenId}";
         var cached = await _cache.GetAsync<SpecimenDetailDto>(cacheKey);
         if (cached != null)
             return cached;
 
         var specimen = await _context.Set<Specimen>()
-            .FirstOrDefaultAsync(s => s.Id == id && s.IsActive);
+            .FirstOrDefaultAsync(s => s.SpecimenId == specimenId && s.IsActive);
 
         if (specimen == null)
             return null;
@@ -173,15 +173,15 @@ public class ReferenceDataService : IReferenceDataService
         return result;
     }
 
-    public async Task<MaterialDetailDto?> GetMaterialByIdAsync(Guid id)
+    public async Task<MaterialDetailDto?> GetMaterialByIdAsync(Guid materialId)
     {
-        var cacheKey = $"{MaterialCacheKeyPrefix}{id}";
+        var cacheKey = $"{MaterialCacheKeyPrefix}{materialId}";
         var cached = await _cache.GetAsync<MaterialDetailDto>(cacheKey);
         if (cached != null)
             return cached;
 
         var material = await _context.Set<Material>()
-            .FirstOrDefaultAsync(m => m.Id == id && m.IsActive);
+            .FirstOrDefaultAsync(m => m.MaterialId == materialId && m.IsActive);
 
         if (material == null)
             return null;
@@ -273,9 +273,9 @@ public class ReferenceDataService : IReferenceDataService
         return specimen.Adapt<SpecimenDetailDto>();
     }
 
-    public async Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid id, UpdateSpecimenRequest request)
+    public async Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid specimenId, UpdateSpecimenRequest request)
     {
-        var specimen = await _context.Set<Specimen>().FindAsync(id)
+        var specimen = await _context.Set<Specimen>().FindAsync(specimenId)
             ?? throw new InvalidOperationException("Specimen not found");
 
         specimen.CommonName = request.CommonName;
@@ -303,14 +303,14 @@ public class ReferenceDataService : IReferenceDataService
 
         // Invalidate specimens cache
         await _cache.RemoveAsync(SpecimensCacheKey);
-        await _cache.RemoveAsync($"{SpecimenCacheKeyPrefix}{id}");
+        await _cache.RemoveAsync($"{SpecimenCacheKeyPrefix}{specimenId}");
 
         return specimen.Adapt<SpecimenDetailDto>();
     }
 
-    public async Task DeleteSpecimenAsync(Guid id)
+    public async Task DeleteSpecimenAsync(Guid specimenId)
     {
-        var specimen = await _context.Set<Specimen>().FindAsync(id)
+        var specimen = await _context.Set<Specimen>().FindAsync(specimenId)
             ?? throw new InvalidOperationException("Specimen not found");
 
         specimen.IsActive = false;
@@ -320,7 +320,7 @@ public class ReferenceDataService : IReferenceDataService
 
         // Invalidate specimens cache
         await _cache.RemoveAsync(SpecimensCacheKey);
-        await _cache.RemoveAsync($"{SpecimenCacheKeyPrefix}{id}");
+        await _cache.RemoveAsync($"{SpecimenCacheKeyPrefix}{specimenId}");
     }
 
     #endregion
@@ -403,9 +403,9 @@ public class ReferenceDataService : IReferenceDataService
         return material.Adapt<MaterialDetailDto>();
     }
 
-    public async Task<MaterialDetailDto> UpdateMaterialAsync(Guid id, UpdateMaterialRequest request)
+    public async Task<MaterialDetailDto> UpdateMaterialAsync(Guid materialId, UpdateMaterialRequest request)
     {
-        var material = await _context.Set<Material>().FindAsync(id)
+        var material = await _context.Set<Material>().FindAsync(materialId)
             ?? throw new InvalidOperationException("Material not found");
 
         material.CommonName = request.CommonName;
@@ -429,14 +429,14 @@ public class ReferenceDataService : IReferenceDataService
 
         // Invalidate materials cache
         await _cache.RemoveAsync(MaterialsCacheKey);
-        await _cache.RemoveAsync($"{MaterialCacheKeyPrefix}{id}");
+        await _cache.RemoveAsync($"{MaterialCacheKeyPrefix}{materialId}");
 
         return material.Adapt<MaterialDetailDto>();
     }
 
-    public async Task DeleteMaterialAsync(Guid id)
+    public async Task DeleteMaterialAsync(Guid materialId)
     {
-        var material = await _context.Set<Material>().FindAsync(id)
+        var material = await _context.Set<Material>().FindAsync(materialId)
             ?? throw new InvalidOperationException("Material not found");
 
         material.IsActive = false;
@@ -446,7 +446,7 @@ public class ReferenceDataService : IReferenceDataService
 
         // Invalidate materials cache
         await _cache.RemoveAsync(MaterialsCacheKey);
-        await _cache.RemoveAsync($"{MaterialCacheKeyPrefix}{id}");
+        await _cache.RemoveAsync($"{MaterialCacheKeyPrefix}{materialId}");
     }
 
     #endregion

@@ -182,7 +182,7 @@ export const tumblerApi = {
     // First get the list, then fetch full details for each
     const listResponse = await api.get<TumblerListDto[]>('/tumblers');
     const fullTumblers = await Promise.all(
-      listResponse.data.map(t => api.get<TumblerDto>(`/tumblers/${t.id}`))
+      listResponse.data.map(t => api.get<TumblerDto>(`/tumblers/${t.tumblerId}`))
     );
     return fullTumblers.map(r => r.data);
   },

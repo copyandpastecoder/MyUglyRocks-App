@@ -2,6 +2,7 @@ namespace MyUglyRocks.Core.Entities;
 
 public class Comment : SoftDeletableEntity
 {
+    public Guid CommentId { get; set; }
     public Guid PostId { get; set; }
     public Guid UserId { get; set; }
     public Guid? ParentCommentId { get; set; }

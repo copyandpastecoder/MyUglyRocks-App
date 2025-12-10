@@ -73,11 +73,11 @@ public class SeedDataService
 
     private async Task EnsureSystemUserAsync()
     {
-        if (!await _context.Users.AnyAsync(u => u.Id == SystemUserId))
+        if (!await _context.Users.AnyAsync(u => u.UserId == SystemUserId))
         {
             _context.Users.Add(new User
             {
-                Id = SystemUserId,
+                UserId = SystemUserId,
                 Username = "system",
                 Email = "system@myuglyrocks.local",
                 PasswordHash = "SYSTEM_USER_NO_LOGIN",
@@ -94,12 +94,12 @@ public class SeedDataService
 
     private async Task EnsureTestUserAsync()
     {
-        if (!await _context.Users.AnyAsync(u => u.Id == TestUserId))
+        if (!await _context.Users.AnyAsync(u => u.UserId == TestUserId))
         {
             var now = DateTime.UtcNow;
             _context.Users.Add(new User
             {
-                Id = TestUserId,
+                UserId = TestUserId,
                 Username = "testuser",
                 Email = "test@myuglyrocks.local",
                 // Password: "Test123!" - pre-hashed for convenience
@@ -158,7 +158,7 @@ public class SeedDataService
 
         _context.Users.Add(new User
         {
-            Id = Guid.NewGuid(),
+            UserId = Guid.NewGuid(),
             Username = username,
             Email = normalizedEmail,
             PasswordHash = unusablePassword,
@@ -272,7 +272,7 @@ public class SeedDataService
 
             specimens.Add(new Specimen
             {
-                Id = Guid.NewGuid(),
+                SpecimenId = Guid.NewGuid(),
                 CommonName = commonName,
                 ScientificName = string.IsNullOrWhiteSpace(scientificName) ? null : scientificName,
                 Alias = string.IsNullOrWhiteSpace(alias) ? null : alias,
@@ -364,7 +364,7 @@ public class SeedDataService
 
             materials.Add(new Material
             {
-                Id = Guid.NewGuid(),
+                MaterialId = Guid.NewGuid(),
                 CommonName = commonName,
                 Category = category,
                 MaterialType = string.IsNullOrWhiteSpace(materialType) ? null : materialType,
@@ -458,7 +458,7 @@ public class SeedDataService
 
             models.Add(new TumblerModel
             {
-                Id = Guid.NewGuid(),
+                TumblerModelId = Guid.NewGuid(),
                 Brand = brand,
                 Model = model,
                 TumblerType = tumblerType,
@@ -523,7 +523,7 @@ public class SeedDataService
 
             nicknames.Add(new BarrelNickname
             {
-                Id = Guid.NewGuid(),
+                BarrelNicknameId = Guid.NewGuid(),
                 Name = name,
                 Category = category,
                 UserCreated = SystemUserId,

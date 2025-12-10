@@ -10,10 +10,10 @@ public class SpecimenConfiguration : IEntityTypeConfiguration<Specimen>
     {
         builder.ToTable("specimens");
 
-        builder.HasKey(s => s.Id);
+        builder.HasKey(s => s.SpecimenId);
 
-        builder.Property(s => s.Id)
-            .HasColumnName("id")
+        builder.Property(s => s.SpecimenId)
+            .HasColumnName("specimen_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.CommonName)
@@ -153,10 +153,10 @@ public class MaterialConfiguration : IEntityTypeConfiguration<Material>
     {
         builder.ToTable("materials");
 
-        builder.HasKey(m => m.Id);
+        builder.HasKey(m => m.MaterialId);
 
-        builder.Property(m => m.Id)
-            .HasColumnName("id")
+        builder.Property(m => m.MaterialId)
+            .HasColumnName("material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(m => m.CommonName)
@@ -242,10 +242,10 @@ public class StageMaterialConfiguration : IEntityTypeConfiguration<StageMaterial
     {
         builder.ToTable("stage_materials");
 
-        builder.HasKey(sm => sm.Id);
+        builder.HasKey(sm => sm.StageMaterialId);
 
-        builder.Property(sm => sm.Id)
-            .HasColumnName("id")
+        builder.Property(sm => sm.StageMaterialId)
+            .HasColumnName("stage_material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(sm => sm.StageRunId)
@@ -313,10 +313,10 @@ public class CleaningMaterialConfiguration : IEntityTypeConfiguration<CleaningMa
     {
         builder.ToTable("cleaning_materials");
 
-        builder.HasKey(cm => cm.Id);
+        builder.HasKey(cm => cm.CleaningMaterialId);
 
-        builder.Property(cm => cm.Id)
-            .HasColumnName("id")
+        builder.Property(cm => cm.CleaningMaterialId)
+            .HasColumnName("cleaning_material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cm => cm.CleaningRunId)
@@ -384,11 +384,8 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
     {
         builder.ToTable("user_settings");
 
-        builder.HasKey(us => us.Id);
-
-        builder.Property(us => us.Id)
-            .HasColumnName("id")
-            .HasDefaultValueSql("gen_random_uuid()");
+        // UserId is both PK and FK (1:1 with User)
+        builder.HasKey(us => us.UserId);
 
         builder.Property(us => us.UserId)
             .HasColumnName("user_id")
@@ -494,9 +491,6 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
             .HasColumnName("date_updated")
             .HasDefaultValueSql("now()");
 
-        // Indexes
-        builder.HasIndex(us => us.UserId)
-            .IsUnique()
-            .HasDatabaseName("ix_user_settings_user_id");
+        // Note: No additional index needed for UserId since it's the primary key
     }
 }

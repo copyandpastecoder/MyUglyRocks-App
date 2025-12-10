@@ -10,7 +10,11 @@ public class WaitlistEntryConfiguration : IEntityTypeConfiguration<WaitlistEntry
     {
         builder.ToTable("WaitlistEntries");
 
-        builder.HasKey(w => w.Id);
+        builder.HasKey(w => w.WaitlistEntryId);
+
+        builder.Property(w => w.WaitlistEntryId)
+            .HasColumnName("waitlist_entry_id")
+            .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(w => w.Email)
             .IsRequired()

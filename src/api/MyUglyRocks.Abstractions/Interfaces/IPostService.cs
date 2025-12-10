@@ -6,11 +6,11 @@ public interface IPostService
 {
     // Post operations
     Task<IEnumerable<PostListDto>> GetPostsAsync(string? sortBy = null, int skip = 0, int take = 20);
-    Task<PostDto?> GetPostByIdAsync(Guid id, Guid? currentUserId = null);
+    Task<PostDto?> GetPostByIdAsync(Guid postId, Guid? currentUserId = null);
     Task<IEnumerable<PostListDto>> GetUserPostsAsync(string username, int skip = 0, int take = 20);
     Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request);
-    Task<PostDto?> UpdatePostAsync(Guid id, Guid userId, UpdatePostRequest request);
-    Task<bool> DeletePostAsync(Guid id, Guid userId);
+    Task<PostDto?> UpdatePostAsync(Guid postId, Guid userId, UpdatePostRequest request);
+    Task<bool> DeletePostAsync(Guid postId, Guid userId);
 
     // Vote operations
     Task<VoteCountDto> GetVoteCountAsync(Guid postId, Guid? userId = null);

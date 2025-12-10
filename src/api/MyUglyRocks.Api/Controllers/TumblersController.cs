@@ -34,12 +34,12 @@ public class TumblersController : ControllerBase
     /// <summary>
     /// Get a specific tumbler by ID
     /// </summary>
-    [HttpGet("{id:guid}")]
+    [HttpGet("{tumblerId:guid}")]
     [ProducesResponseType(typeof(TumblerDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetTumbler(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetTumbler(Guid tumblerId, CancellationToken cancellationToken)
     {
-        var tumbler = await _tumblerService.GetTumblerAsync(id, GetUserId(), cancellationToken);
+        var tumbler = await _tumblerService.GetTumblerAsync(tumblerId, GetUserId(), cancellationToken);
         if (tumbler == null)
             return NotFound();
 
@@ -55,18 +55,18 @@ public class TumblersController : ControllerBase
     public async Task<IActionResult> CreateTumbler([FromBody] CreateTumblerRequest request, CancellationToken cancellationToken)
     {
         var tumbler = await _tumblerService.CreateTumblerAsync(GetUserId(), request, cancellationToken);
-        return CreatedAtAction(nameof(GetTumbler), new { id = tumbler.Id }, tumbler);
+        return CreatedAtAction(nameof(GetTumbler), new { id = tumbler.TumblerId }, tumbler);
     }
 
     /// <summary>
     /// Update an existing tumbler
     /// </summary>
-    [HttpPut("{id:guid}")]
+    [HttpPut("{tumblerId:guid}")]
     [ProducesResponseType(typeof(TumblerDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateTumbler(Guid id, [FromBody] UpdateTumblerRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateTumbler(Guid tumblerId, [FromBody] UpdateTumblerRequest request, CancellationToken cancellationToken)
     {
-        var tumbler = await _tumblerService.UpdateTumblerAsync(id, GetUserId(), request, cancellationToken);
+        var tumbler = await _tumblerService.UpdateTumblerAsync(tumblerId, GetUserId(), request, cancellationToken);
         if (tumbler == null)
             return NotFound();
 
@@ -76,12 +76,12 @@ public class TumblersController : ControllerBase
     /// <summary>
     /// Delete a tumbler (soft delete if has stage runs, hard delete otherwise)
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{tumblerId:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteTumbler(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> DeleteTumbler(Guid tumblerId, CancellationToken cancellationToken)
     {
-        var success = await _tumblerService.DeleteTumblerAsync(id, GetUserId(), cancellationToken);
+        var success = await _tumblerService.DeleteTumblerAsync(tumblerId, GetUserId(), cancellationToken);
         if (!success)
             return NotFound();
 

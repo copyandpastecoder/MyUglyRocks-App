@@ -45,12 +45,12 @@ public class ReferenceDataController : ControllerBase
     /// <summary>
     /// Get specimen by ID (public)
     /// </summary>
-    [HttpGet("specimens/{id:guid}")]
+    [HttpGet("specimens/{specimenId:guid}")]
     [ProducesResponseType(typeof(SpecimenDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<SpecimenDetailDto>> GetSpecimen(Guid id)
+    public async Task<ActionResult<SpecimenDetailDto>> GetSpecimen(Guid specimenId)
     {
-        var specimen = await _referenceDataService.GetSpecimenByIdAsync(id);
+        var specimen = await _referenceDataService.GetSpecimenByIdAsync(specimenId);
         if (specimen == null)
         {
             return NotFound();
@@ -86,12 +86,12 @@ public class ReferenceDataController : ControllerBase
     /// <summary>
     /// Get material by ID (public)
     /// </summary>
-    [HttpGet("materials/{id:guid}")]
+    [HttpGet("materials/{materialId:guid}")]
     [ProducesResponseType(typeof(MaterialDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MaterialDetailDto>> GetMaterial(Guid id)
+    public async Task<ActionResult<MaterialDetailDto>> GetMaterial(Guid materialId)
     {
-        var material = await _referenceDataService.GetMaterialByIdAsync(id);
+        var material = await _referenceDataService.GetMaterialByIdAsync(materialId);
         if (material == null)
         {
             return NotFound();

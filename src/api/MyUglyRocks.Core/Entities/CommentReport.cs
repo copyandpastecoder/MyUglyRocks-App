@@ -18,6 +18,7 @@ public enum ReportStatus
 
 public class CommentReport : BaseEntity
 {
+    public Guid CommentReportId { get; set; }
     public Guid CommentId { get; set; }
     public Guid ReportedByUserId { get; set; }
     public ReportReason Reason { get; set; }

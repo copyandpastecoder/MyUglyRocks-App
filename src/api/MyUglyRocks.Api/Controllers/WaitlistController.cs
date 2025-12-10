@@ -48,7 +48,7 @@ public class WaitlistController : ControllerBase
 
         var entry = new WaitlistEntry
         {
-            Id = Guid.NewGuid(),
+            WaitlistEntryId = Guid.NewGuid(),
             Email = normalizedEmail,
             IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
             UserAgent = Request.Headers.UserAgent.ToString().Length > 512

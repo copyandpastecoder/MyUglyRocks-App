@@ -24,7 +24,7 @@ public static class MappingConfig
 
         TypeAdapterConfig<CreateTumblerRequest, Tumbler>.NewConfig()
             .Map(dest => dest.TumblerType, src => Enum.Parse<TumblerType>(src.TumblerType, true))
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.TumblerId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.UserId)
@@ -35,7 +35,7 @@ public static class MappingConfig
             .Map(dest => dest.IsMounted, src => src.StageRunBarrels.Any(srb => srb.StageRun != null && srb.StageRun.Status == StageRunStatus.Active));
 
         TypeAdapterConfig<CreateBarrelRequest, Barrel>.NewConfig()
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.BarrelId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.TumblerId);
@@ -56,7 +56,7 @@ public static class MappingConfig
             .Map(dest => dest.IsOverdue, src => src.StageRuns.Any(s => s.Status == StageRunStatus.Active && s.EndDateTime < DateTime.UtcNow));
 
         TypeAdapterConfig<CreateCycleRequest, Cycle>.NewConfig()
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.CycleId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.UserId)
@@ -81,7 +81,7 @@ public static class MappingConfig
             .Map(dest => dest.WaterLevel, src => !string.IsNullOrEmpty(src.WaterLevel)
                 ? Enum.Parse<WaterLevel>(src.WaterLevel, true)
                 : (WaterLevel?)null)
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.StageRunId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.CycleId)
@@ -101,7 +101,7 @@ public static class MappingConfig
             .Map(dest => dest.Purpose, src => !string.IsNullOrEmpty(src.Purpose)
                 ? Enum.Parse<CleaningPurpose>(src.Purpose, true)
                 : (CleaningPurpose?)null)
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.CleaningRunId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.StageRunId)

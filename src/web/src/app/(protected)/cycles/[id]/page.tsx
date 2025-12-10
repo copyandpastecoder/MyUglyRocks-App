@@ -536,7 +536,7 @@ export default function CycleDetailPage() {
 
       if (lastCompletedStage) {
         try {
-          const fullStage: StageRunDto = await cycleApi.getStageRun(lastCompletedStage.id);
+          const fullStage: StageRunDto = await cycleApi.getStageRun(lastCompletedStage.stageRunId);
           if (fullStage.nextAction === 'Repeat') {
             // Auto-populate from the repeated stage (excluding advanced options)
             setStageName(fullStage.stageName);
@@ -547,10 +547,10 @@ export default function CycleDetailPage() {
 
             // Copy barrels
             if (fullStage.barrels && fullStage.barrels.length > 0) {
-              const previousBarrelIds = fullStage.barrels.map(b => b.id);
+              const previousBarrelIds = fullStage.barrels.map(b => b.barrelId);
               // Only select barrels that are still active
               const activeBarrelIds = previousBarrelIds.filter(id =>
-                allBarrels.some(b => b.id === id)
+                allBarrels.some(b => b.barrelId === id)
               );
               setSelectedBarrelIds(activeBarrelIds);
             }
@@ -612,7 +612,7 @@ export default function CycleDetailPage() {
     setIsCopyingFromPrevious(true);
     try {
       // Fetch full details of the previous stage
-      const previousStage: StageRunDto = await cycleApi.getStageRun(previousStageSummary.id);
+      const previousStage: StageRunDto = await cycleApi.getStageRun(previousStageSummary.stageRunId);
 
       // Set start date to previous stage's end date
       const previousEndDate = new Date(previousStage.endDateTime);
@@ -620,10 +620,10 @@ export default function CycleDetailPage() {
 
       // Copy barrels
       if (previousStage.barrels && previousStage.barrels.length > 0) {
-        const previousBarrelIds = previousStage.barrels.map(b => b.id);
+        const previousBarrelIds = previousStage.barrels.map(b => b.barrelId);
         // Only select barrels that are still active
         const activeBarrelIds = previousBarrelIds.filter(id =>
-          allBarrels.some(b => b.id === id)
+          allBarrels.some(b => b.barrelId === id)
         );
         setSelectedBarrelIds(activeBarrelIds);
       }
@@ -677,7 +677,7 @@ export default function CycleDetailPage() {
     const days = Math.floor(totalHours / 24);
     const hours = totalHours % 24;
 
-    setCompleteStageId(stage.id);
+    setCompleteStageId(stage.stageRunId);
     setCompleteStageName(stage.stageName);
     setCompleteStageRunNumber(stage.runNumber);
     setCompleteStageTotalRuns(stage.totalRuns);
@@ -690,7 +690,7 @@ export default function CycleDetailPage() {
 
     // Fetch full stage details to get weight before and barrel capacity
     try {
-      const fullStage: StageRunDto = await cycleApi.getStageRun(stage.id);
+      const fullStage: StageRunDto = await cycleApi.getStageRun(stage.stageRunId);
       setCompleteStageWeightBefore(fullStage.loadWeightBeforeGrams);
       // Calculate total barrel capacity
       if (fullStage.barrels && fullStage.barrels.length > 0) {
@@ -775,7 +775,7 @@ export default function CycleDetailPage() {
     const days = Math.floor(totalHours / 24);
     const hours = totalHours % 24;
 
-    setEditStageId(stage.id);
+    setEditStageId(stage.stageRunId);
     setEditStageName(stage.stageName);
     // Set custom stage name if it's not a standard stage name
     const standardNames = STAGE_NAMES.slice(0, -1); // Exclude 'Custom' from standard names
@@ -829,13 +829,13 @@ export default function CycleDetailPage() {
   };
 
   const openCleaningRunModal = (stage: StageRunSummaryDto) => {
-    setCleaningRunStageId(stage.id);
+    setCleaningRunStageId(stage.stageRunId);
     setCleaningRunStageName(formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns));
     setIsCleaningRunOpen(true);
   };
 
   const openViewStageModal = (stage: StageRunSummaryDto) => {
-    setViewStageId(stage.id);
+    setViewStageId(stage.stageRunId);
     setIsViewStageOpen(true);
   };
 
@@ -916,14 +916,14 @@ export default function CycleDetailPage() {
       ? t.barrels.filter(b => b.isActive).map(b => ({
           ...b,
           tumblerName: `${t.brand} ${t.model || ''}`.trim(),
-          tumblerId: t.id,
+          tumblerId: t.tumblerId,
         }))
       : []
   ) || [];
 
   // Calculate total barrel capacity from selected barrels (for weight validation)
   const selectedBarrelCapacityLbs = selectedBarrelIds.reduce((total, id) => {
-    const barrel = allBarrels.find(b => b.id === id);
+    const barrel = allBarrels.find(b => b.barrelId === id);
     return total + (barrel?.capacityLbs || 0);
   }, 0);
 
@@ -986,10 +986,17 @@ export default function CycleDetailPage() {
           )}
           {cycle.status === 'Completed' && (
             <Button variant="outline" size="sm" asChild>
-              <Link href={`/cycles/${cycleId}/share`}>
-                <Share2 className="mr-2 h-4 w-4" />
-                Share to Gallery
-              </Link>
+              {cycle.postId ? (
+                <Link href={`/gallery/${cycle.postId}`}>
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Gallery Post
+                </Link>
+              ) : (
+                <Link href={`/cycles/${cycleId}/share`}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Share to Gallery
+                </Link>
+              )}
             </Button>
           )}
           <Badge variant={cycle.status === 'Active' ? 'default' : 'secondary'}>
@@ -1148,14 +1155,14 @@ export default function CycleDetailPage() {
                         </p>
                       ) : (
                         [...allBarrels].sort((a, b) => a.barrelNumber - b.barrelNumber).map(barrel => (
-                          <div key={barrel.id} className="flex items-center space-x-2">
+                          <div key={barrel.barrelId} className="flex items-center space-x-2">
                             <Checkbox
-                              id={`barrel-top-${barrel.id}`}
-                              checked={selectedBarrelIds.includes(barrel.id)}
-                              onCheckedChange={() => toggleBarrel(barrel.id)}
+                              id={`barrel-top-${barrel.barrelId}`}
+                              checked={selectedBarrelIds.includes(barrel.barrelId)}
+                              onCheckedChange={() => toggleBarrel(barrel.barrelId)}
                             />
                             <label
-                              htmlFor={`barrel-top-${barrel.id}`}
+                              htmlFor={`barrel-top-${barrel.barrelId}`}
                               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
                               {barrel.tumblerName} - Barrel #{barrel.barrelNumber}
@@ -1252,7 +1259,7 @@ export default function CycleDetailPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 {materials?.map(m => (
-                                  <SelectItem key={m.id} value={m.id}>
+                                  <SelectItem key={m.materialId} value={m.materialId}>
                                     {m.commonName}
                                   </SelectItem>
                                 ))}
@@ -1456,7 +1463,7 @@ export default function CycleDetailPage() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     {materials?.filter(m => m.category !== 'Abrasive').map((m) => (
-                                      <SelectItem key={m.id} value={m.id}>
+                                      <SelectItem key={m.materialId} value={m.materialId}>
                                         {m.commonName}
                                       </SelectItem>
                                     ))}
@@ -1620,11 +1627,11 @@ export default function CycleDetailPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">Active</h3>
                 {activeStages.map((stage: StageRunSummaryDto) => (
                   <StageCard
-                    key={stage.id}
+                    key={stage.stageRunId}
                     stage={stage}
                     onComplete={() => openCompleteStageModal(stage)}
                     onEdit={() => openEditStageModal(stage)}
-                    onDelete={() => deleteStageRunMutation.mutate(stage.id)}
+                    onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
                     onAddCleaningRun={() => openCleaningRunModal(stage)}
                     isCompleting={completeStageMutation.isPending}
                   />
@@ -1638,7 +1645,7 @@ export default function CycleDetailPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">Completed</h3>
                 {completedStages.map((stage: StageRunSummaryDto) => (
                   <StageCard
-                    key={stage.id}
+                    key={stage.stageRunId}
                     stage={stage}
                     onView={() => openViewStageModal(stage)}
                   />
@@ -2201,7 +2208,7 @@ export default function CycleDetailPage() {
                   <p className="text-sm font-medium text-muted-foreground">Barrels Used</p>
                   <div className="flex flex-wrap gap-2">
                     {viewStageData.barrels.map((barrel) => (
-                      <Badge key={barrel.id} variant="secondary">
+                      <Badge key={barrel.barrelId} variant="secondary">
                         {barrel.nickname || `Barrel #${barrel.barrelNumber}`}
                         {barrel.capacityLbs && ` (${barrel.capacityLbs}lb)`}
                       </Badge>
@@ -2250,7 +2257,7 @@ export default function CycleDetailPage() {
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <ul className="space-y-1">
                       {viewStageData.materials.map((mat) => (
-                        <li key={mat.id} className="text-sm flex justify-between">
+                        <li key={mat.stageMaterialId} className="text-sm flex justify-between">
                           <span>{mat.materialName}</span>
                           {mat.displayAmount && (
                             <span className="text-muted-foreground">
@@ -2327,7 +2334,7 @@ export default function CycleDetailPage() {
                   <p className="text-sm font-medium text-muted-foreground">Photos ({viewStageData.photos.length})</p>
                   <div className="grid grid-cols-3 gap-2">
                     {viewStageData.photos.slice(0, 6).map((photo) => (
-                      <div key={photo.id} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                      <div key={photo.photoId} className="aspect-square rounded-lg overflow-hidden bg-muted">
                         <img
                           src={photo.thumbnailUrl || photo.url}
                           alt={photo.caption || 'Stage photo'}

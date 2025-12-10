@@ -97,7 +97,7 @@ export default function TumblersPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {tumblers?.map((tumbler: TumblerListDto) => (
-            <Card key={tumbler.id} className="relative">
+            <Card key={tumbler.tumblerId} className="relative">
               <CardHeader className="pb-2">
                 <div className="flex items-start justify-between">
                   <div>
@@ -115,14 +115,14 @@ export default function TumblersPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem asChild>
-                        <Link href={`/tumblers/${tumbler.id}`}>
+                        <Link href={`/tumblers/${tumbler.tumblerId}`}>
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-red-600 focus:text-red-600"
-                        onClick={() => handleDelete(tumbler.id)}
+                        onClick={() => handleDelete(tumbler.tumblerId)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete

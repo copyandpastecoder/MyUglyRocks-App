@@ -303,7 +303,7 @@ export default function NewTumblerPage() {
                       </FormControl>
                       <SelectContent>
                         {modelsForBrand.map(m => (
-                          <SelectItem key={m.id} value={m.model}>{m.model}</SelectItem>
+                          <SelectItem key={m.tumblerModelId} value={m.model}>{m.model}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

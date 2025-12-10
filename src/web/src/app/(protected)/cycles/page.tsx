@@ -64,7 +64,7 @@ export default function CyclesPage() {
   };
 
   const renderCycleCard = (cycle: CycleListDto) => (
-    <Link key={cycle.id} href={`/cycles/${cycle.id}`} className="block">
+    <Link key={cycle.cycleId} href={`/cycles/${cycle.cycleId}`} className="block">
       <Card className={`relative hover:shadow-md transition-shadow cursor-pointer ${activeTab === 'Active' ? getCycleStatusClass(cycle) : ''}`}>
         <CardHeader className="pb-2">
           <div className="flex items-start justify-between">
@@ -84,18 +84,18 @@ export default function CyclesPage() {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.id}`)}>
+                  <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}`)}>
                     <Pencil className="mr-2 h-4 w-4" />
                     View/Edit
                   </DropdownMenuItem>
                   {cycle.status === 'Active' && (
-                    <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.id}/complete`)}>
+                    <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}/complete`)}>
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Complete Cycle
                     </DropdownMenuItem>
                   )}
                   {cycle.status === 'Completed' && (
-                    <DropdownMenuItem onSelect={() => handleArchive(cycle.id)}>
+                    <DropdownMenuItem onSelect={() => handleArchive(cycle.cycleId)}>
                       <Archive className="mr-2 h-4 w-4" />
                       Archive
                     </DropdownMenuItem>
@@ -103,7 +103,7 @@ export default function CyclesPage() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-red-600 focus:text-red-600"
-                    onSelect={() => handleDelete(cycle.id)}
+                    onSelect={() => handleDelete(cycle.cycleId)}
                   >
                     <Trash2 className="mr-2 h-4 w-4" />
                     Delete
@@ -149,7 +149,7 @@ export default function CyclesPage() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              router.push(`/cycles/${cycle.id}?addStage=true`);
+              router.push(`/cycles/${cycle.cycleId}?addStage=true`);
             }}
           >
             <Plus className="mr-2 h-4 w-4" />

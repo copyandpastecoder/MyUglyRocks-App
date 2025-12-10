@@ -1,5 +1,5 @@
 export interface CycleDto {
-  id: string;
+  cycleId: string;
   name: string;
   startDate: string;
   endDate: string | null;
@@ -12,10 +12,11 @@ export interface CycleDto {
   dateCreated: string;
   stageRuns: StageRunSummaryDto[];
   specimens: SpecimenDto[];
+  postId: string | null;
 }
 
 export interface CycleListDto {
-  id: string;
+  cycleId: string;
   name: string;
   startDate: string;
   endDate: string | null;
@@ -53,7 +54,7 @@ export interface CompleteCycleRequest {
 }
 
 export interface StageRunSummaryDto {
-  id: string;
+  stageRunId: string;
   stageName: string;
   runNumber: number;
   totalRuns: number;
@@ -65,7 +66,7 @@ export interface StageRunSummaryDto {
 }
 
 export interface StageRunDto {
-  id: string;
+  stageRunId: string;
   cycleId: string;
   stageName: string;
   runNumber: number;
@@ -109,7 +110,7 @@ export interface CreateStageRunRequest {
 }
 
 export interface CleaningRunDto {
-  id: string;
+  cleaningRunId: string;
   durationMinutes: number;
   purpose: string | null;
   status: string;
@@ -133,7 +134,7 @@ export interface CreateCleaningMaterialRequest {
 }
 
 export interface StageMaterialDto {
-  id: string;
+  stageMaterialId: string;
   materialId: string;
   materialName: string;
   displayAmount: number | null;
@@ -181,7 +182,7 @@ export interface CompleteStageRunRequest {
 }
 
 export interface CleaningMaterialDto {
-  id: string;
+  cleaningMaterialId: string;
   materialId: string;
   materialName: string;
   displayAmount: number | null;
@@ -190,7 +191,7 @@ export interface CleaningMaterialDto {
 }
 
 export interface PhotoDto {
-  id: string;
+  photoId: string;
   url: string;
   fileName: string | null;
   photoType: string;
@@ -206,7 +207,7 @@ export interface PhotoDto {
 }
 
 export interface SpecimenDto {
-  id: string;
+  specimenId: string;
   commonName: string;
   scientificName: string | null;
   materialType: string;
@@ -216,7 +217,7 @@ export interface SpecimenDto {
 }
 
 export interface CyclePhotoDto {
-  id: string;
+  photoId: string;
   url: string;
   fileName: string | null;
   photoType: string;

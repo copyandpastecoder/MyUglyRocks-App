@@ -3,8 +3,8 @@
 ## Document Info
 | Field | Value |
 |-------|-------|
-| Version | 1.8 |
-| Last Updated | 2025-12-09 |
+| Version | 1.9 |
+| Last Updated | 2025-12-10 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
 
@@ -1161,14 +1161,18 @@ Current focus: **Milestone 6 - Launch Prep**
 - ✅ **R2 public bucket access** enabled
 - ✅ **User Session Analytics** (ADR-006) - browser/device tracking, admin dashboard
 - ✅ **Admin link in header** for Admin/Moderator users
+- ✅ **Avatar cache busting** - new uploads display immediately with timestamp query param
+- ✅ **Gallery post uniqueness** - one post per cycle, with "View Gallery Post" button when exists
+- ✅ **API parameter naming** - renamed generic `Id` params to entity-specific names
 
 **Next:**
 1. **Image resizing** (I2.3) - Implement ImageSharp resize on upload
-2. Complete remaining E2E tests (T6.2-T6.4)
-3. Perform load testing (T6.5)
-4. Complete mobile responsiveness testing (T6.6)
-5. Set up production deployment on Railway (D6.9-D6.16)
-6. Configure custom domain for R2 (production)
+2. **Gallery post edit page** - allow users to edit title/description after sharing
+3. Complete remaining E2E tests (T6.2-T6.4)
+4. Perform load testing (T6.5)
+5. Complete mobile responsiveness testing (T6.6)
+6. Set up production deployment on Railway (D6.9-D6.16)
+7. Configure custom domain for R2 (production)
 
 ---
 
@@ -1338,3 +1342,87 @@ Plan is ready for execution. When approved:
 3. Run `dotnet build` and `npm run build` to verify
 4. Drop database and reseed
 5. Test application end-to-end
+
+---
+
+### Session: 2025-12-10 - Avatar Cache Busting & Gallery Post Uniqueness
+
+#### Overview
+
+Fixed avatar upload caching issue and implemented gallery post uniqueness per cycle. The avatar fix ensures new uploads display immediately by adding cache-busting query parameters. The gallery post uniqueness prevents duplicate posts for the same cycle.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Avatar Cache Busting | Added timestamp query parameter (`?v={unix_timestamp}`) to avatar URLs to force browser cache refresh | ✅ |
+| CycleDto PostId Field | Added `PostId` field to CycleDto to indicate if a gallery post exists for a cycle | ✅ |
+| Unique CycleId Validation | Added backend validation to prevent creating duplicate gallery posts for the same cycle | ✅ |
+| Dynamic Button Text | Changed "Share to Gallery" button to "View Gallery Post" when post already exists | ✅ |
+| Share Page Redirect | Share page now redirects to existing post if one already exists for the cycle | ✅ |
+| ID Parameter Naming | Updated API parameter names from generic `Id` to entity-specific names (e.g., `specimenId`, `materialId`, `cycleId`) | ✅ |
+
+#### Technical Details
+
+**Avatar Cache Busting:**
+- Problem: Browser cached old avatar images even after upload because URL path stayed the same (`avatars/{userId}.webp`)
+- Solution: Store URL with cache-busting parameter in database: `{url}?v={unixTimestamp}`
+- The `ExtractStorageKeyFromUrl` method uses `Uri.AbsolutePath` which excludes query parameters, so old avatar deletion still works
+
+**Gallery Post Uniqueness:**
+- `CycleDto` now includes optional `PostId` field
+- `CycleService.GetCycleAsync` queries for existing post and includes in response
+- `PostService.CreatePostAsync` validates no existing post for cycle before creating
+- Frontend button shows "View Gallery Post" (with Eye icon) when post exists, "Share to Gallery" (with Share icon) when not
+- Share page redirects to existing post via `router.replace()`
+
+#### Files Modified
+
+**Backend:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Core/Services/UserService.cs` | Added cache-busting timestamp to avatar URL |
+| `src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs` | Added `PostId` to CycleDto |
+| `src/api/MyUglyRocks.Core/Services/CycleService.cs` | Query for existing post, pass to MapCycleToDto |
+| `src/api/MyUglyRocks.Core/Services/PostService.cs` | Added uniqueness validation for CycleId |
+| `src/api/MyUglyRocks.Abstractions/Interfaces/IRepository.cs` | Renamed `Id` parameter to `entityId` |
+| `src/api/MyUglyRocks.Api/Controllers/ReferenceDataController.cs` | Renamed route params to `specimenId`, `materialId` |
+| `src/api/MyUglyRocks.Api/Controllers/AdminController.cs` | Renamed route params to entity-specific names |
+
+**Frontend:**
+| File | Description |
+|------|-------------|
+| `src/web/src/types/cycle.ts` | Added `postId: string \| null` to CycleDto |
+| `src/web/src/app/(protected)/cycles/[id]/page.tsx` | Dynamic button based on postId existence |
+| `src/web/src/app/(protected)/cycles/[id]/share/page.tsx` | Redirect to existing post if postId present |
+
+#### API Changes
+
+**CycleDto Response:**
+```json
+{
+  "cycleId": "...",
+  "name": "...",
+  "postId": "abc123..."  // NEW - null if no gallery post exists
+}
+```
+
+**CreatePost Validation:**
+- Returns error "A gallery post already exists for this cycle" if attempting to create duplicate
+
+#### User Experience Flow
+
+**Before:**
+- User completes cycle → "Share to Gallery" button
+- User shares → creates post
+- User returns to cycle → "Share to Gallery" still shows
+- User clicks → can create duplicate post
+
+**After:**
+- User completes cycle → "Share to Gallery" button
+- User shares → creates post
+- User returns to cycle → "View Gallery Post" button (Eye icon)
+- User clicks → goes directly to their post
+- Direct URL to share page → redirects to existing post
+
+---

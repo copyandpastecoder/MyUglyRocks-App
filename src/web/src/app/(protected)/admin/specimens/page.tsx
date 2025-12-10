@@ -133,7 +133,7 @@ export default function SpecimensAdminPage() {
 
   const handleOpenEdit = async (specimen: SpecimenListDto) => {
     try {
-      const detail = await adminApi.getSpecimen(specimen.id);
+      const detail = await adminApi.getSpecimen(specimen.specimenId);
       setSelectedSpecimen(detail);
       setFormData({
         commonName: detail.commonName,
@@ -171,7 +171,7 @@ export default function SpecimensAdminPage() {
 
     if (selectedSpecimen) {
       updateMutation.mutate({
-        id: selectedSpecimen.id,
+        id: selectedSpecimen.specimenId,
         data: { ...formData, isActive: true },
       });
     } else {
@@ -260,7 +260,7 @@ export default function SpecimensAdminPage() {
                 </TableHeader>
                 <TableBody>
                   {specimens?.items.map((specimen) => (
-                    <TableRow key={specimen.id}>
+                    <TableRow key={specimen.specimenId}>
                       <TableCell className="font-medium">{specimen.commonName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{specimen.materialType}</Badge>
@@ -523,7 +523,7 @@ export default function SpecimensAdminPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => selectedSpecimen && deleteMutation.mutate(selectedSpecimen.id)}
+              onClick={() => selectedSpecimen && deleteMutation.mutate(selectedSpecimen.specimenId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -8,6 +8,8 @@ public enum TumblerType
 
 public class Tumbler : BaseEntity
 {
+    public Guid TumblerId { get; set; }
+
     // Foreign keys
     public Guid? UserId { get; set; }
     public Guid? TumblerModelId { get; set; }

@@ -76,7 +76,7 @@ public class PhotosController : ControllerBase
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
             .Include(s => s.Photos.Where(p => !p.IsDeleted))
-            .FirstOrDefaultAsync(s => s.Id == stageRunId && !s.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && !s.IsDeleted, cancellationToken);
 
         if (stageRun == null)
         {
@@ -159,7 +159,7 @@ public class PhotosController : ControllerBase
             var sortOrder = stageRun.Photos.Count;
             var photo = new Photo
             {
-                Id = photoId,
+                PhotoId = photoId,
                 StageRunId = stageRunId,
                 StorageKey = originalStorageKey ?? $"{folder}/{baseKey}-original.webp",
                 Url = originalUrl ?? largeUrl ?? mediumUrl ?? thumbnailUrl ?? throw new InvalidOperationException("No image variants were created"),
@@ -186,10 +186,10 @@ public class PhotosController : ControllerBase
             await _context.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Photo uploaded for stage {StageRunId}: {PhotoId} with {VariantCount} variants",
-                stageRunId, photo.Id, processed.Variants.Count);
+                stageRunId, photo.PhotoId, processed.Variants.Count);
 
             var dto = new PhotoDto(
-                photo.Id,
+                photo.PhotoId,
                 photo.Url,
                 photo.FileName,
                 photo.PhotoType.ToString(),
@@ -227,7 +227,7 @@ public class PhotosController : ControllerBase
         var photo = await Photos
             .Include(p => p.StageRun)
                 .ThenInclude(s => s.Cycle)
-            .FirstOrDefaultAsync(p => p.Id == photoId && !p.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(p => p.PhotoId == photoId && !p.IsDeleted, cancellationToken);
 
         if (photo == null)
         {
@@ -280,7 +280,7 @@ public class PhotosController : ControllerBase
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
             .Include(s => s.Photos.Where(p => !p.IsDeleted))
-            .FirstOrDefaultAsync(s => s.Id == stageRunId && !s.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && !s.IsDeleted, cancellationToken);
 
         if (stageRun == null)
         {
@@ -295,7 +295,7 @@ public class PhotosController : ControllerBase
         var photos = stageRun.Photos
             .OrderBy(p => p.SortOrder)
             .Select(p => new PhotoDto(
-                p.Id,
+                p.PhotoId,
                 p.Url,
                 p.FileName,
                 p.PhotoType.ToString(),
@@ -331,7 +331,7 @@ public class PhotosController : ControllerBase
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
             .Include(s => s.Photos.Where(p => !p.IsDeleted))
-            .FirstOrDefaultAsync(s => s.Id == stageRunId && !s.IsDeleted, cancellationToken);
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && !s.IsDeleted, cancellationToken);
 
         if (stageRun == null)
         {
@@ -346,7 +346,7 @@ public class PhotosController : ControllerBase
         // Update sort orders
         for (int i = 0; i < request.PhotoIds.Count; i++)
         {
-            var photo = stageRun.Photos.FirstOrDefault(p => p.Id == request.PhotoIds[i]);
+            var photo = stageRun.Photos.FirstOrDefault(p => p.PhotoId == request.PhotoIds[i]);
             if (photo != null)
             {
                 photo.SortOrder = i;

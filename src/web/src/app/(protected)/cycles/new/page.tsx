@@ -68,7 +68,7 @@ export default function NewCyclePage() {
 
   // Get selected specimens for cycle name generation
   const selectedSpecimens = useMemo(() => {
-    return specimens.filter((s) => selectedSpecimenIds.includes(s.id));
+    return specimens.filter((s) => selectedSpecimenIds.includes(s.specimenId));
   }, [specimens, selectedSpecimenIds]);
 
   // Watch start date for cycle name auto-population
@@ -117,7 +117,7 @@ export default function NewCyclePage() {
       queryClient.invalidateQueries({ queryKey: ['cycles'] });
       toast.success('Cycle created successfully');
       // Navigate with ?addStage=true to auto-open the Add Stage dialog
-      router.push(`/cycles/${data.id}?addStage=true`);
+      router.push(`/cycles/${data.cycleId}?addStage=true`);
     },
     onError: () => {
       toast.error('Failed to create cycle');

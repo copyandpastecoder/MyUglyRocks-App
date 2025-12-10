@@ -2,7 +2,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 
 // User profile DTOs
 public record UserProfileDto(
-    Guid Id,
+    Guid UserId,
     string Username,
     string Email,
     string? DisplayName,

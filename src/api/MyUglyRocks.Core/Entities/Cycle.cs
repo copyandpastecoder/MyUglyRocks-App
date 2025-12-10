@@ -9,6 +9,7 @@ public enum CycleStatus
 
 public class Cycle : SoftDeletableEntity
 {
+    public Guid CycleId { get; set; }
     public Guid UserId { get; set; }
     public required string Name { get; set; }
     public DateOnly StartDate { get; set; }

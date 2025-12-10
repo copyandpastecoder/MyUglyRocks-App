@@ -2,6 +2,8 @@ namespace MyUglyRocks.Core.Entities;
 
 public class Barrel : BaseEntity
 {
+    public Guid BarrelId { get; set; }
+
     // Foreign key
     public Guid TumblerId { get; set; }
 

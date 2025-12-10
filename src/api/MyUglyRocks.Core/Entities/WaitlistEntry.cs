@@ -5,6 +5,7 @@ namespace MyUglyRocks.Core.Entities;
 /// </summary>
 public class WaitlistEntry : BaseEntity
 {
+    public Guid WaitlistEntryId { get; set; }
     public required string Email { get; set; }
     public string? IpAddress { get; set; }
     public string? UserAgent { get; set; }

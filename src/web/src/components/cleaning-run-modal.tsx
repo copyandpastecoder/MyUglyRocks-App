@@ -261,7 +261,7 @@ export function CleaningRunModal({
                       </SelectTrigger>
                       <SelectContent>
                         {materials?.filter(m => m.category !== 'Abrasive').map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
+                          <SelectItem key={m.materialId} value={m.materialId}>
                             {m.commonName}
                           </SelectItem>
                         ))}

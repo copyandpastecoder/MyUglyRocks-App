@@ -13,6 +13,7 @@ public enum PostVisibility { Private = 0, Unlisted = 1, Public = 2 }
 
 public class UserSettings : BaseEntity
 {
+    // UserId is both PK and FK (1:1 with User)
     public Guid UserId { get; set; }
     public MeasurementSystem MeasurementSystem { get; set; } = MeasurementSystem.Imperial;
     public DateFormat DateFormat { get; set; } = DateFormat.MMDDYYYY;

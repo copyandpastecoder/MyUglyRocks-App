@@ -14,6 +14,7 @@ public enum DeviceType
 /// </summary>
 public class UserSession : BaseEntity
 {
+    public Guid UserSessionId { get; set; }
     public Guid UserId { get; set; }
 
     // Raw User Agent (for debugging/advanced analysis)

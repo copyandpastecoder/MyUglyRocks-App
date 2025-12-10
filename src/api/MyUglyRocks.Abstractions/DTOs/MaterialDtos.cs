@@ -2,7 +2,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 
 public record MaterialDetailDto
 {
-    public Guid Id { get; init; }
+    public Guid MaterialId { get; init; }
     public required string CommonName { get; init; }
     public string Category { get; init; } = "Abrasive";
     public string? MaterialType { get; init; }
@@ -16,7 +16,7 @@ public record MaterialDetailDto
 
 public record MaterialListDto
 {
-    public Guid Id { get; init; }
+    public Guid MaterialId { get; init; }
     public required string CommonName { get; init; }
     public string Category { get; init; } = "Abrasive";
     public string? MaterialType { get; init; }

@@ -122,8 +122,8 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 {activeCycles.slice(0, 6).map(cycle => (
                   <Link
-                    key={cycle.id}
-                    href={`/cycles/${cycle.id}`}
+                    key={cycle.cycleId}
+                    href={`/cycles/${cycle.cycleId}`}
                     className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${getCycleStatusClass(cycle)}`}
                   >
                     <div>

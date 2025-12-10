@@ -188,9 +188,9 @@ export default function MaterialsPage() {
                   <TableBody>
                     {items.map((material) => (
                       <TableRow
-                        key={material.id}
+                        key={material.materialId}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setSelectedId(material.id)}
+                        onClick={() => setSelectedId(material.materialId)}
                       >
                         <TableCell className="font-medium">
                           {material.commonName}

@@ -10,10 +10,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     {
         builder.ToTable("users");
 
-        builder.HasKey(u => u.Id);
+        builder.HasKey(u => u.UserId);
 
-        builder.Property(u => u.Id)
-            .HasColumnName("id")
+        builder.Property(u => u.UserId)
+            .HasColumnName("user_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(u => u.Email)

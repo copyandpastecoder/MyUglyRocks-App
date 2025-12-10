@@ -158,9 +158,9 @@ export default function SpecimensPage() {
             <TableBody>
               {specimens?.map((specimen) => (
                 <TableRow
-                  key={specimen.id}
+                  key={specimen.specimenId}
                   className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedId(specimen.id)}
+                  onClick={() => setSelectedId(specimen.specimenId)}
                 >
                   <TableCell className="font-medium">{specimen.commonName}</TableCell>
                   <TableCell className="hidden sm:table-cell text-muted-foreground">

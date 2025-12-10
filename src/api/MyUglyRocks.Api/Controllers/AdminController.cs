@@ -187,7 +187,7 @@ public class AdminController : ControllerBase
         try
         {
             var user = await _adminService.CreateUserAsync(request);
-            return CreatedAtAction(nameof(GetUser), new { userId = user.Id }, user);
+            return CreatedAtAction(nameof(GetUser), new { userId = user.UserId }, user);
         }
         catch (ArgumentException ex)
         {
@@ -311,19 +311,19 @@ public class AdminController : ControllerBase
         [FromBody] CreateSpecimenRequest request)
     {
         var specimen = await _referenceDataService.CreateSpecimenAsync(request);
-        return CreatedAtAction(nameof(GetSpecimen), new { id = specimen.Id }, specimen);
+        return CreatedAtAction(nameof(GetSpecimen), new { specimenId = specimen.SpecimenId }, specimen);
     }
 
     /// <summary>
     /// Get a specific specimen (admin - includes inactive)
     /// </summary>
-    [HttpGet("specimens/{id:guid}")]
+    [HttpGet("specimens/{specimenId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(SpecimenDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<SpecimenDetailDto>> GetSpecimen(Guid id)
+    public async Task<ActionResult<SpecimenDetailDto>> GetSpecimen(Guid specimenId)
     {
-        var specimen = await _referenceDataService.GetSpecimenByIdAsync(id);
+        var specimen = await _referenceDataService.GetSpecimenByIdAsync(specimenId);
         if (specimen == null) return NotFound();
         return Ok(specimen);
     }
@@ -331,17 +331,17 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Update a specimen (admin only)
     /// </summary>
-    [HttpPut("specimens/{id:guid}")]
+    [HttpPut("specimens/{specimenId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(SpecimenDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<SpecimenDetailDto>> UpdateSpecimen(
-        Guid id,
+        Guid specimenId,
         [FromBody] UpdateSpecimenRequest request)
     {
         try
         {
-            var specimen = await _referenceDataService.UpdateSpecimenAsync(id, request);
+            var specimen = await _referenceDataService.UpdateSpecimenAsync(specimenId, request);
             return Ok(specimen);
         }
         catch (InvalidOperationException)
@@ -353,15 +353,15 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Delete a specimen (soft delete - admin only)
     /// </summary>
-    [HttpDelete("specimens/{id:guid}")]
+    [HttpDelete("specimens/{specimenId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteSpecimen(Guid id)
+    public async Task<IActionResult> DeleteSpecimen(Guid specimenId)
     {
         try
         {
-            await _referenceDataService.DeleteSpecimenAsync(id);
+            await _referenceDataService.DeleteSpecimenAsync(specimenId);
             return NoContent();
         }
         catch (InvalidOperationException)
@@ -403,19 +403,19 @@ public class AdminController : ControllerBase
         [FromBody] CreateMaterialRequest request)
     {
         var material = await _referenceDataService.CreateMaterialAsync(request);
-        return CreatedAtAction(nameof(GetMaterial), new { id = material.Id }, material);
+        return CreatedAtAction(nameof(GetMaterial), new { materialId = material.MaterialId }, material);
     }
 
     /// <summary>
     /// Get a specific material (admin - includes inactive)
     /// </summary>
-    [HttpGet("materials/{id:guid}")]
+    [HttpGet("materials/{materialId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(MaterialDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MaterialDetailDto>> GetMaterial(Guid id)
+    public async Task<ActionResult<MaterialDetailDto>> GetMaterial(Guid materialId)
     {
-        var material = await _referenceDataService.GetMaterialByIdAsync(id);
+        var material = await _referenceDataService.GetMaterialByIdAsync(materialId);
         if (material == null) return NotFound();
         return Ok(material);
     }
@@ -423,17 +423,17 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Update a material (admin only)
     /// </summary>
-    [HttpPut("materials/{id:guid}")]
+    [HttpPut("materials/{materialId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(MaterialDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<MaterialDetailDto>> UpdateMaterial(
-        Guid id,
+        Guid materialId,
         [FromBody] UpdateMaterialRequest request)
     {
         try
         {
-            var material = await _referenceDataService.UpdateMaterialAsync(id, request);
+            var material = await _referenceDataService.UpdateMaterialAsync(materialId, request);
             return Ok(material);
         }
         catch (InvalidOperationException)
@@ -445,15 +445,15 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Delete a material (soft delete - admin only)
     /// </summary>
-    [HttpDelete("materials/{id:guid}")]
+    [HttpDelete("materials/{materialId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteMaterial(Guid id)
+    public async Task<IActionResult> DeleteMaterial(Guid materialId)
     {
         try
         {
-            await _referenceDataService.DeleteMaterialAsync(id);
+            await _referenceDataService.DeleteMaterialAsync(materialId);
             return NoContent();
         }
         catch (InvalidOperationException)

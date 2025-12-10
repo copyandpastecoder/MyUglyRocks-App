@@ -40,7 +40,7 @@ public class UserService : IUserService
     {
         var user = await Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         return user?.Adapt<UserProfileDto>();
     }
@@ -48,7 +48,7 @@ public class UserService : IUserService
     public async Task<UserProfileDto?> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
     {
         var user = await Users
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null) return null;
 
@@ -71,7 +71,7 @@ public class UserService : IUserService
             return null;
         }
 
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
         if (user == null) return null;
 
         try
@@ -102,14 +102,15 @@ public class UserService : IUserService
             // Dispose the processed stream
             await processedAvatar.Stream.DisposeAsync();
 
-            // Update user record
-            user.AvatarUrl = avatarUrl;
+            // Update user record with cache-busting timestamp
+            var cacheBustUrl = $"{avatarUrl}?v={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+            user.AvatarUrl = cacheBustUrl;
             user.DateUpdated = DateTime.UtcNow;
             await _context.SaveChangesAsync();
 
-            _logger.LogInformation("Avatar uploaded for user {UserId}: {AvatarUrl}", userId, avatarUrl);
+            _logger.LogInformation("Avatar uploaded for user {UserId}: {AvatarUrl}", userId, cacheBustUrl);
 
-            return avatarUrl;
+            return cacheBustUrl;
         }
         catch (Exception ex)
         {
@@ -254,7 +255,7 @@ public class UserService : IUserService
     public async Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {
         var user = await Users
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null) return false;
 
@@ -273,7 +274,7 @@ public class UserService : IUserService
     public async Task<bool> DeactivateAccountAsync(Guid userId, DeactivateAccountRequest request)
     {
         var user = await Users
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null) return false;
 
@@ -307,7 +308,7 @@ public class UserService : IUserService
     {
         var user = await Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user == null)
             throw new KeyNotFoundException("User not found");
@@ -322,10 +323,10 @@ public class UserService : IUserService
             .CountAsync(p => p.UserId == userId);
 
         var totalVotesReceived = await Votes
-            .CountAsync(v => Posts.Any(p => p.Id == v.PostId && p.UserId == userId));
+            .CountAsync(v => Posts.Any(p => p.PostId == v.PostId && p.UserId == userId));
 
         var totalCommentsReceived = await Comments
-            .CountAsync(c => Posts.Any(p => p.Id == c.PostId && p.UserId == userId));
+            .CountAsync(c => Posts.Any(p => p.PostId == c.PostId && p.UserId == userId));
 
         return new UserStatsDto(
             TotalCycles: totalCycles,

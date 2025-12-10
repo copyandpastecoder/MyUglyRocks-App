@@ -1,6 +1,6 @@
 // User profile types
 export interface UserProfileDto {
-  id: string;
+  userId: string;
   username: string;
   email: string;
   displayName: string | null;

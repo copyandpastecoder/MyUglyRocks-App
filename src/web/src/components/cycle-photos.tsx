@@ -36,11 +36,11 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
 
   // Fetch photos for all stages
   const { data: allPhotos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
-    queryKey: ['cycle-photos', cycleId, stages.map(s => s.id)],
+    queryKey: ['cycle-photos', cycleId, stages.map(s => s.stageRunId)],
     queryFn: async () => {
       const photoPromises = stages.map(async (stage) => {
         try {
-          const photos = await photosApi.getStagePhotos(stage.id);
+          const photos = await photosApi.getStagePhotos(stage.stageRunId);
           return photos.map(p => ({
             ...p,
             stageName: stage.stageName,
@@ -180,7 +180,7 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {allPhotos.map((photo: PhotoDto & { stageName?: string; stageDisplayName?: string }) => (
-                  <TooltipProvider key={photo.id}>
+                  <TooltipProvider key={photo.photoId}>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="relative group aspect-square">
@@ -190,11 +190,11 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                             className="w-full h-full object-cover rounded-lg"
                           />
                           <button
-                            onClick={() => removePhoto(photo.id)}
-                            disabled={deletingPhotoId === photo.id}
+                            onClick={() => removePhoto(photo.photoId)}
+                            disabled={deletingPhotoId === photo.photoId}
                             className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                           >
-                            {deletingPhotoId === photo.id ? (
+                            {deletingPhotoId === photo.photoId ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                               <X className="h-4 w-4" />
