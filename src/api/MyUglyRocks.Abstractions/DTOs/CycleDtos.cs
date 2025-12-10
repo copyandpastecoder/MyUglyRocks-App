@@ -198,7 +198,13 @@ public record PhotoDto(
     string PhotoType,
     string? Caption,
     int SortOrder,
-    DateTime DateCreated
+    DateTime DateCreated,
+    string? ThumbnailUrl = null,
+    string? MediumUrl = null,
+    string? LargeUrl = null,
+    string? BlurHash = null,
+    int? Width = null,
+    int? Height = null
 );
 
 public record SpecimenDto(
@@ -221,4 +227,27 @@ public record MaterialDto(
     int MeshSize,
     bool IsCleaning,
     bool IsActive
+);
+
+/// <summary>
+/// Photo with stage context for cycle photo selection
+/// </summary>
+public record CyclePhotoDto(
+    Guid Id,
+    string Url,
+    string? FileName,
+    string PhotoType,
+    string? Caption,
+    int SortOrder,
+    DateTime DateCreated,
+    string? ThumbnailUrl,
+    string? MediumUrl,
+    string? LargeUrl,
+    string? BlurHash,
+    int? Width,
+    int? Height,
+    // Stage context
+    Guid StageRunId,
+    string StageName,
+    int RunNumber
 );

@@ -130,6 +130,9 @@ public class PostService : IPostService
 
         _context.Set<Post>().Add(post);
 
+        // Save post first to get the ID in the database
+        await _context.SaveChangesAsync();
+
         // Add photos if any
         if (request.PhotoIds.Count > 0)
         {
@@ -153,9 +156,9 @@ public class PostService : IPostService
                     _context.Set<PostPhoto>().Add(postPhoto);
                 }
             }
-        }
 
-        await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+        }
 
         // Invalidate post list caches
         await InvalidatePostListCachesAsync();
@@ -408,7 +411,9 @@ public class PostService : IPostService
             PublishedDate = post.PublishedDate,
             VoteCount = post.VoteCount,
             CommentCount = post.CommentCount,
-            CoverPhotoUrl = coverPhoto?.Photo?.Url,
+            CoverPhotoUrl = coverPhoto?.Photo?.ThumbnailUrl ?? coverPhoto?.Photo?.Url,
+            CoverPhotoThumbnailUrl = coverPhoto?.Photo?.ThumbnailUrl,
+            CoverPhotoBlurHash = coverPhoto?.Photo?.BlurHash,
             PhotoCount = post.PostPhotos.Count,
             Author = new PostAuthorDto
             {
@@ -458,7 +463,13 @@ public class PostService : IPostService
                 PhotoId = pp.PhotoId,
                 Url = pp.Photo.Url,
                 SortOrder = pp.SortOrder,
-                IsCover = pp.IsCover
+                IsCover = pp.IsCover,
+                ThumbnailUrl = pp.Photo.ThumbnailUrl,
+                MediumUrl = pp.Photo.MediumUrl,
+                LargeUrl = pp.Photo.LargeUrl,
+                BlurHash = pp.Photo.BlurHash,
+                Width = pp.Photo.Width,
+                Height = pp.Photo.Height
             })
         };
     }

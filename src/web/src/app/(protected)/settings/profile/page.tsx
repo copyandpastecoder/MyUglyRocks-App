@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -10,13 +10,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Loader2, User as UserIcon } from 'lucide-react';
+import { Camera, Loader2, User as UserIcon } from 'lucide-react';
 
 export default function ProfileSettingsPage() {
   const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['user-profile'],
@@ -49,6 +50,36 @@ export default function ProfileSettingsPage() {
       toast.error('Failed to update profile');
     },
   });
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: userApi.uploadAvatar,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-profile'] });
+      toast.success('Avatar updated successfully');
+    },
+    onError: () => {
+      toast.error('Failed to upload avatar');
+    },
+  });
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    uploadAvatarMutation.mutate(file);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,22 +119,56 @@ export default function ProfileSettingsPage() {
           <div className="flex items-start gap-6">
             {/* Avatar */}
             <div className="flex flex-col items-center gap-2">
-              <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
-                {profile?.avatarUrl ? (
-                  <img
-                    src={profile.avatarUrl}
-                    alt={profile.displayName || profile.username}
-                    className="h-20 w-20 rounded-full object-cover"
-                  />
-                ) : (
-                  <UserIcon className="h-10 w-10 text-muted-foreground" />
-                )}
+              <div className="relative group">
+                <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center overflow-hidden">
+                  {profile?.avatarUrl ? (
+                    <img
+                      src={profile.avatarUrl}
+                      alt={profile.displayName || profile.username}
+                      className="h-20 w-20 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserIcon className="h-10 w-10 text-muted-foreground" />
+                  )}
+                </div>
+                {/* Overlay on hover */}
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadAvatarMutation.isPending}
+                  className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                >
+                  {uploadAvatarMutation.isPending ? (
+                    <Loader2 className="h-6 w-6 text-white animate-spin" />
+                  ) : (
+                    <Camera className="h-6 w-6 text-white" />
+                  )}
+                </button>
               </div>
-              <Button variant="outline" size="sm" disabled>
-                Change Avatar
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploadAvatarMutation.isPending}
+              >
+                {uploadAvatarMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  'Change Avatar'
+                )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">
-                Coming soon
+                Max 5MB, will be cropped to square
               </p>
             </div>
 

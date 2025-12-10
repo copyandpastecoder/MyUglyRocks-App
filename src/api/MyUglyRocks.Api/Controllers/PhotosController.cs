@@ -15,6 +15,7 @@ public class PhotosController : ControllerBase
 {
     private readonly DbContext _context;
     private readonly IStorageService _storageService;
+    private readonly IImageProcessingService _imageProcessingService;
     private readonly ILogger<PhotosController> _logger;
 
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif" };
@@ -23,10 +24,12 @@ public class PhotosController : ControllerBase
     public PhotosController(
         DbContext context,
         IStorageService storageService,
+        IImageProcessingService imageProcessingService,
         ILogger<PhotosController> logger)
     {
         _context = context;
         _storageService = storageService;
+        _imageProcessingService = imageProcessingService;
         _logger = logger;
     }
 
@@ -102,30 +105,79 @@ public class PhotosController : ControllerBase
             _logger.LogDebug("Starting photo upload for stage {StageRunId}, file: {FileName}, size: {Size}",
                 stageRunId, file.FileName, file.Length);
 
-            // Upload to R2
             var folder = $"photos/stages/{stageRunId}";
-            await using var stream = file.OpenReadStream();
-            var url = await _storageService.UploadAsync(stream, file.FileName, folder, cancellationToken);
+            var photoId = Guid.NewGuid();
+            var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
 
-            _logger.LogDebug("R2 upload successful, URL: {Url}", url);
+            // Process image into variants
+            await using var inputStream = file.OpenReadStream();
+            var processed = await _imageProcessingService.ProcessImageAsync(inputStream, file.FileName, cancellationToken);
 
-            // Get the storage key from the URL using Uri parsing
-            var storageKey = new Uri(url).AbsolutePath.TrimStart('/');
+            string? originalUrl = null;
+            string? originalStorageKey = null;
+            string? thumbnailUrl = null;
+            string? thumbnailStorageKey = null;
+            string? mediumUrl = null;
+            string? mediumStorageKey = null;
+            string? largeUrl = null;
+            string? largeStorageKey = null;
+
+            // Upload each variant
+            foreach (var variant in processed.Variants)
+            {
+                var variantKey = $"{baseKey}-{variant.Size}{variant.Extension}";
+                var url = await _storageService.UploadAsync(variant.Stream, $"{baseKey}{variant.Extension}", folder, variantKey, cancellationToken);
+                var storageKey = new Uri(url).AbsolutePath.TrimStart('/');
+
+                switch (variant.Size)
+                {
+                    case "original":
+                        originalUrl = url;
+                        originalStorageKey = storageKey;
+                        break;
+                    case "thumbnail":
+                        thumbnailUrl = url;
+                        thumbnailStorageKey = storageKey;
+                        break;
+                    case "medium":
+                        mediumUrl = url;
+                        mediumStorageKey = storageKey;
+                        break;
+                    case "large":
+                        largeUrl = url;
+                        largeStorageKey = storageKey;
+                        break;
+                }
+
+                // Dispose the stream after upload
+                await variant.Stream.DisposeAsync();
+            }
+
+            _logger.LogDebug("Uploaded {Count} image variants for photo {PhotoId}", processed.Variants.Count, photoId);
 
             // Create photo record
             var sortOrder = stageRun.Photos.Count;
             var photo = new Photo
             {
-                Id = Guid.NewGuid(),
+                Id = photoId,
                 StageRunId = stageRunId,
-                StorageKey = storageKey,
-                Url = url,
+                StorageKey = originalStorageKey ?? $"{folder}/{baseKey}-original.webp",
+                Url = originalUrl ?? largeUrl ?? mediumUrl ?? thumbnailUrl ?? throw new InvalidOperationException("No image variants were created"),
                 FileName = file.FileName,
-                MimeType = file.ContentType,
+                MimeType = "image/webp",
                 FileSizeBytes = file.Length,
+                Width = processed.OriginalWidth,
+                Height = processed.OriginalHeight,
                 PhotoType = parsedPhotoType,
                 Caption = caption,
                 SortOrder = sortOrder,
+                ThumbnailUrl = thumbnailUrl,
+                ThumbnailStorageKey = thumbnailStorageKey,
+                MediumUrl = mediumUrl,
+                MediumStorageKey = mediumStorageKey,
+                LargeUrl = largeUrl,
+                LargeStorageKey = largeStorageKey,
+                BlurHash = processed.BlurHash,
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow
             };
@@ -133,7 +185,8 @@ public class PhotosController : ControllerBase
             await Photos.AddAsync(photo, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Photo uploaded for stage {StageRunId}: {PhotoId}", stageRunId, photo.Id);
+            _logger.LogInformation("Photo uploaded for stage {StageRunId}: {PhotoId} with {VariantCount} variants",
+                stageRunId, photo.Id, processed.Variants.Count);
 
             var dto = new PhotoDto(
                 photo.Id,
@@ -142,7 +195,13 @@ public class PhotosController : ControllerBase
                 photo.PhotoType.ToString(),
                 photo.Caption,
                 photo.SortOrder,
-                photo.DateCreated
+                photo.DateCreated,
+                photo.ThumbnailUrl,
+                photo.MediumUrl,
+                photo.LargeUrl,
+                photo.BlurHash,
+                photo.Width,
+                photo.Height
             );
 
             return Ok(new UploadPhotoResponse(true, dto));
@@ -180,14 +239,22 @@ public class PhotosController : ControllerBase
             return Forbid();
         }
 
-        // Delete from storage
+        // Delete all variants from storage
         try
         {
-            await _storageService.DeleteAsync(photo.StorageKey, cancellationToken);
+            var keysToDelete = new List<string> { photo.StorageKey };
+            if (!string.IsNullOrEmpty(photo.ThumbnailStorageKey))
+                keysToDelete.Add(photo.ThumbnailStorageKey);
+            if (!string.IsNullOrEmpty(photo.MediumStorageKey))
+                keysToDelete.Add(photo.MediumStorageKey);
+            if (!string.IsNullOrEmpty(photo.LargeStorageKey))
+                keysToDelete.Add(photo.LargeStorageKey);
+
+            await _storageService.DeleteManyAsync(keysToDelete, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to delete photo from storage: {StorageKey}", photo.StorageKey);
+            _logger.LogWarning(ex, "Failed to delete photo variants from storage: {StorageKey}", photo.StorageKey);
         }
 
         // Soft delete the record
@@ -234,7 +301,13 @@ public class PhotosController : ControllerBase
                 p.PhotoType.ToString(),
                 p.Caption,
                 p.SortOrder,
-                p.DateCreated
+                p.DateCreated,
+                p.ThumbnailUrl,
+                p.MediumUrl,
+                p.LargeUrl,
+                p.BlurHash,
+                p.Width,
+                p.Height
             ))
             .ToList();
 

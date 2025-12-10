@@ -1274,3 +1274,67 @@ Heartbeat Flow:
 #### Related ADR
 
 - [ADR-006-user-session-analytics.md](decisions/ADR-006-user-session-analytics.md)
+
+---
+
+### Session: 2025-12-09 (Night) - ID Naming Convention Refactoring Plan
+
+#### Overview
+
+Created comprehensive refactoring plan to rename all entity primary keys from `Id` to `{TableName}Id` to match the naming conventions defined in `04-DATA-MODEL.md`.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Refactoring Plan Document | Created detailed 8-phase plan in `docs/plans/refactor-id-to-tablename-id.md` | ✅ |
+| Entity Inventory | Documented all 20 regular entities requiring `{TableName}Id` | ✅ |
+| Association Table Inventory | Identified 3 association tables needing composite PKs (PostPhoto, CycleSpecimen, StageRunBarrel) | ✅ |
+| DTO Mapping | Documented all 28 DTOs requiring ID field renames | ✅ |
+| Service/Controller Inventory | Listed all services (12) and controllers (9) requiring updates | ✅ |
+| Frontend Type Mapping | Documented TypeScript type changes needed | ✅ |
+
+#### Plan Document Structure
+
+| Phase | Description | Scope |
+|-------|-------------|-------|
+| Phase 1 | Backend Entities | Remove `Id` from BaseEntity, add `{TableName}Id` to 20 entities |
+| Phase 2 | Backend DTOs | Update 28 DTOs with new PK names |
+| Phase 3 | EF Core Configuration | Configure HasKey() and composite PKs in DbContext |
+| Phase 4 | Backend Services | Update 12 services with new property references |
+| Phase 5 | Backend Controllers | Update 9 controllers |
+| Phase 6 | Frontend TypeScript Types | Update type definitions |
+| Phase 7 | Frontend Components & Pages | Update all `.id` usages |
+| Phase 8 | Seed Data | Update seed files and SeedDataService |
+
+#### Key Decisions
+
+| Decision | Details |
+|----------|---------|
+| No `Id` anywhere | `Id` should never be used - always `{TableName}Id` |
+| Association tables | Use composite PKs (e.g., `PostId + PhotoId`), no separate `Id` column |
+| Shared key pattern | `UserSettings` uses `UserId` as PK (1:1 with User) |
+| PostPhotoDto | Remove `Id` field entirely - only `PostId` and `PhotoId` needed |
+| Database approach | Drop and reseed - no migration needed |
+| URL parameters | Keep `{id}` in URLs for REST convention - internal code changes only |
+
+#### Files Created
+
+| File | Description |
+|------|-------------|
+| `docs/plans/refactor-id-to-tablename-id.md` | Comprehensive 8-phase refactoring plan with verification checklist |
+
+#### Convention Reference (from 04-DATA-MODEL.md)
+
+- **Primary Keys:** `{TableName}Id` (GUID) - e.g., `UserId`, `CycleId`, `PostId`
+- **Foreign Keys:** `{ReferencedTable}Id` - same as PK of referenced table
+- **Association Tables:** Composite PK of FKs, no separate `Id` column
+
+#### Next Steps
+
+Plan is ready for execution. When approved:
+1. Start with Phase 1 (BaseEntity.cs and all entities)
+2. Proceed through all 8 phases sequentially
+3. Run `dotnet build` and `npm run build` to verify
+4. Drop database and reseed
+5. Test application end-to-end

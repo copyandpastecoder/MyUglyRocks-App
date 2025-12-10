@@ -660,4 +660,49 @@ public class CycleService : ICycleService
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    // Photo operations
+    public async Task<IEnumerable<CyclePhotoDto>> GetCyclePhotosAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cycle = await Cycles
+            .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.Photos.Where(p => !p.IsDeleted))
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(c => c.Id == cycleId && c.UserId == userId && !c.IsDeleted, cancellationToken);
+
+        if (cycle == null)
+            return [];
+
+        // Calculate run numbers for each stage
+        var runNumbers = CalculateRunNumbers(cycle.StageRuns);
+
+        // Flatten photos from all stages with stage context
+        var photos = cycle.StageRuns
+            .Where(s => !s.IsDeleted)
+            .SelectMany(s => s.Photos
+                .Where(p => !p.IsDeleted)
+                .OrderBy(p => p.SortOrder)
+                .Select(p => new CyclePhotoDto(
+                    p.Id,
+                    p.Url,
+                    p.FileName,
+                    p.PhotoType.ToString(),
+                    p.Caption,
+                    p.SortOrder,
+                    p.DateCreated,
+                    p.ThumbnailUrl,
+                    p.MediumUrl,
+                    p.LargeUrl,
+                    p.BlurHash,
+                    p.Width,
+                    p.Height,
+                    s.Id,
+                    s.StageName,
+                    runNumbers.RunNumbers.TryGetValue(s.Id, out var runNum) ? runNum : 1
+                )))
+            .OrderBy(p => p.DateCreated)
+            .ToList();
+
+        return photos;
+    }
 }

@@ -197,6 +197,12 @@ export interface PhotoDto {
   caption: string | null;
   sortOrder: number;
   dateCreated: string;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
+  blurHash: string | null;
+  width: number | null;
+  height: number | null;
 }
 
 export interface SpecimenDto {
@@ -207,4 +213,24 @@ export interface SpecimenDto {
   mohsHardnessMin: number | null;
   mohsHardnessMax: number | null;
   tumblingDifficulty: string | null;
+}
+
+export interface CyclePhotoDto {
+  id: string;
+  url: string;
+  fileName: string | null;
+  photoType: string;
+  caption: string | null;
+  sortOrder: number;
+  dateCreated: string;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
+  blurHash: string | null;
+  width: number | null;
+  height: number | null;
+  // Stage context
+  stageRunId: string;
+  stageName: string;
+  runNumber: number;
 }

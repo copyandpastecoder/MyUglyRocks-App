@@ -108,6 +108,7 @@ try
         return new AmazonS3Client(r2Settings.AccessKeyId, r2Settings.SecretAccessKey, config);
     });
     builder.Services.AddScoped<IStorageService, R2StorageService>();
+    builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
 
     // Configure Hangfire for background jobs
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");

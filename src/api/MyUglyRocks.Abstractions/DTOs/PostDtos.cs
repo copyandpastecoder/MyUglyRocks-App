@@ -26,6 +26,8 @@ public record PostListDto
     public int CommentCount { get; init; }
     public PostAuthorDto Author { get; init; } = null!;
     public string? CoverPhotoUrl { get; init; }
+    public string? CoverPhotoThumbnailUrl { get; init; }
+    public string? CoverPhotoBlurHash { get; init; }
     public int PhotoCount { get; init; }
 }
 
@@ -44,6 +46,12 @@ public record PostPhotoDto
     public required string Url { get; init; }
     public int SortOrder { get; init; }
     public bool IsCover { get; init; }
+    public string? ThumbnailUrl { get; init; }
+    public string? MediumUrl { get; init; }
+    public string? LargeUrl { get; init; }
+    public string? BlurHash { get; init; }
+    public int? Width { get; init; }
+    public int? Height { get; init; }
 }
 
 public record CyclePreviewDto

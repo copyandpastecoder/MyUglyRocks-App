@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { PhotoLightbox, useLightbox } from '@/components/photo-lightbox';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
@@ -26,6 +27,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Maximize2,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { CommentDto } from '@/types/post';
@@ -40,6 +42,7 @@ export default function PostDetailPage() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const lightbox = useLightbox();
 
   const { data: post, isLoading: postLoading } = useQuery({
     queryKey: ['post', postId],
@@ -169,14 +172,23 @@ export default function PostDetailPage() {
       {/* Photo Carousel */}
       {post.photos.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="relative aspect-video bg-black">
+          <div className="relative aspect-video bg-black group">
             {currentPhoto && (
               <img
-                src={currentPhoto.url}
+                src={currentPhoto.mediumUrl || currentPhoto.url}
                 alt={`Photo ${currentPhotoIndex + 1}`}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain cursor-pointer"
+                onClick={() => lightbox.open(currentPhotoIndex)}
               />
             )}
+            {/* Fullscreen button */}
+            <button
+              onClick={() => lightbox.open(currentPhotoIndex)}
+              className="absolute top-2 right-2 p-2 rounded-full bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+              title="View fullscreen"
+            >
+              <Maximize2 className="h-5 w-5" />
+            </button>
             {post.photos.length > 1 && (
               <>
                 <button
@@ -209,6 +221,15 @@ export default function PostDetailPage() {
           </div>
         </Card>
       )}
+
+      {/* Photo Lightbox */}
+      <PhotoLightbox
+        photos={post.photos}
+        initialIndex={lightbox.initialIndex}
+        isOpen={lightbox.isOpen}
+        onClose={lightbox.close}
+        onIndexChange={setCurrentPhotoIndex}
+      />
 
       {/* Actions */}
       <div className="flex items-center gap-4">

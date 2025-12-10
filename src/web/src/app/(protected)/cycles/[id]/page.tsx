@@ -52,6 +52,7 @@ import {
   Copy,
   Sparkles,
   Lightbulb,
+  Eye,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -82,7 +83,7 @@ import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
 import { useSettings } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
-import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto } from '@/types/cycle';
+import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
 
 const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish', 'Custom'];
@@ -189,6 +190,15 @@ export default function CycleDetailPage() {
   const [cleaningRunStageId, setCleaningRunStageId] = useState<string | null>(null);
   const [cleaningRunStageName, setCleaningRunStageName] = useState('');
 
+  // Complete Cycle Dialog State
+  const [isCompleteCycleOpen, setIsCompleteCycleOpen] = useState(false);
+  const [completeCycleFinalQuality, setCompleteCycleFinalQuality] = useState<number>(0);
+  const [completeCycleNotes, setCompleteCycleNotes] = useState('');
+
+  // View Stage Modal State
+  const [isViewStageOpen, setIsViewStageOpen] = useState(false);
+  const [viewStageId, setViewStageId] = useState<string | null>(null);
+
   const { data: cycle, isLoading: cycleLoading } = useQuery({
     queryKey: ['cycle', cycleId],
     queryFn: () => cycleApi.getById(cycleId),
@@ -201,6 +211,13 @@ export default function CycleDetailPage() {
 
   const { data: settings } = useSettings();
   const { data: materials } = useMaterials();
+
+  // Query for viewing stage details
+  const { data: viewStageData, isLoading: viewStageLoading } = useQuery({
+    queryKey: ['stage', viewStageId],
+    queryFn: () => cycleApi.getStageRun(viewStageId!),
+    enabled: !!viewStageId && isViewStageOpen,
+  });
 
   // Auto-open Add Stage dialog when ?addStage=true query param is present
   useEffect(() => {
@@ -321,6 +338,21 @@ export default function CycleDetailPage() {
     },
     onError: () => {
       toast.error('Failed to update stage');
+    },
+  });
+
+  const completeCycleMutation = useMutation({
+    mutationFn: (data: CompleteCycleRequest) => cycleApi.complete(cycleId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
+      queryClient.invalidateQueries({ queryKey: ['cycles'] });
+      toast.success('Cycle completed! You can now share it to the gallery.');
+      setIsCompleteCycleOpen(false);
+      setCompleteCycleFinalQuality(0);
+      setCompleteCycleNotes('');
+    },
+    onError: () => {
+      toast.error('Failed to complete cycle');
     },
   });
 
@@ -802,6 +834,11 @@ export default function CycleDetailPage() {
     setIsCleaningRunOpen(true);
   };
 
+  const openViewStageModal = (stage: StageRunSummaryDto) => {
+    setViewStageId(stage.id);
+    setIsViewStageOpen(true);
+  };
+
   const addMaterial = () => {
     setSelectedMaterials([...selectedMaterials, { materialId: '', displayAmount: '', displayUnit: 'tbsp' }]);
   };
@@ -936,10 +973,16 @@ export default function CycleDetailPage() {
         </div>
         <div className="flex items-center gap-2">
           {cycle.status === 'Active' && (
-            <Button variant="outline" size="sm" onClick={openEditCycleModal}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={openEditCycleModal}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+              <Button variant="default" size="sm" onClick={() => setIsCompleteCycleOpen(true)}>
+                <CheckCircle2 className="mr-2 h-4 w-4" />
+                Complete Cycle
+              </Button>
+            </>
           )}
           {cycle.status === 'Completed' && (
             <Button variant="outline" size="sm" asChild>
@@ -1597,8 +1640,7 @@ export default function CycleDetailPage() {
                   <StageCard
                     key={stage.id}
                     stage={stage}
-                    onDelete={() => deleteStageRunMutation.mutate(stage.id)}
-                    onAddCleaningRun={() => openCleaningRunModal(stage)}
+                    onView={() => openViewStageModal(stage)}
                   />
                 ))}
               </div>
@@ -2039,6 +2081,278 @@ export default function CycleDetailPage() {
         />
       )}
 
+      {/* Complete Cycle Dialog */}
+      <Dialog open={isCompleteCycleOpen} onOpenChange={setIsCompleteCycleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Cycle</DialogTitle>
+            <DialogDescription>
+              Mark this tumbling cycle as complete. You'll be able to share it to the gallery afterwards.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Final Quality Rating (optional)</Label>
+              <p className="text-sm text-muted-foreground">
+                How would you rate the final results?
+              </p>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((rating) => (
+                  <Button
+                    key={rating}
+                    type="button"
+                    variant={completeCycleFinalQuality === rating ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setCompleteCycleFinalQuality(completeCycleFinalQuality === rating ? 0 : rating)}
+                  >
+                    <Star className={`h-4 w-4 ${completeCycleFinalQuality >= rating ? 'fill-current' : ''}`} />
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Notes (optional)</Label>
+              <Textarea
+                value={completeCycleNotes}
+                onChange={(e) => setCompleteCycleNotes(e.target.value)}
+                placeholder="Any final thoughts about this cycle? What worked well, what would you do differently..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCompleteCycleOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={() => completeCycleMutation.mutate({
+              finalQuality: completeCycleFinalQuality > 0 ? completeCycleFinalQuality : undefined,
+              notes: completeCycleNotes || undefined,
+            })} disabled={completeCycleMutation.isPending}>
+              {completeCycleMutation.isPending && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Complete Cycle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Stage Modal */}
+      <Dialog open={isViewStageOpen} onOpenChange={(open) => {
+        setIsViewStageOpen(open);
+        if (!open) setViewStageId(null);
+      }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              {viewStageData ? formatStageDisplayName(viewStageData.stageName, viewStageData.runNumber, viewStageData.totalRuns) : 'Stage Details'}
+            </DialogTitle>
+            <DialogDescription>
+              Completed stage run details
+            </DialogDescription>
+          </DialogHeader>
+          {viewStageLoading ? (
+            <div className="space-y-4 py-4">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : viewStageData ? (
+            <div className="space-y-6 py-4">
+              {/* Timing */}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Started</p>
+                  <p className="font-medium">{new Date(viewStageData.startDateTime).toLocaleString()}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="font-medium">{new Date(viewStageData.endDateTime).toLocaleString()}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Duration</p>
+                  <p className="font-medium">
+                    {viewStageData.durationDays > 0 && `${viewStageData.durationDays}d `}
+                    {viewStageData.durationHours > 0 && `${viewStageData.durationHours}h`}
+                    {viewStageData.durationDays === 0 && viewStageData.durationHours === 0 && '< 1h'}
+                  </p>
+                </div>
+                {viewStageData.resultRating && (
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">Result Rating</p>
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star
+                          key={star}
+                          className={`h-4 w-4 ${star <= viewStageData.resultRating! ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground'}`}
+                        />
+                      ))}
+                      <span className="ml-1 text-sm">{viewStageData.resultRating}/5</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Barrels */}
+              {viewStageData.barrels && viewStageData.barrels.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Barrels Used</p>
+                  <div className="flex flex-wrap gap-2">
+                    {viewStageData.barrels.map((barrel) => (
+                      <Badge key={barrel.id} variant="secondary">
+                        {barrel.nickname || `Barrel #${barrel.barrelNumber}`}
+                        {barrel.capacityLbs && ` (${barrel.capacityLbs}lb)`}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Load Details */}
+              {(viewStageData.loadWeightBeforeGrams || viewStageData.fillLevelPercent || viewStageData.waterLevel || viewStageData.waterAmountMl) && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Load Details</p>
+                  <div className="grid gap-3 sm:grid-cols-2 p-3 bg-muted/50 rounded-lg">
+                    {viewStageData.loadWeightBeforeGrams && (
+                      <div>
+                        <span className="text-sm text-muted-foreground">Load Weight:</span>
+                        <span className="ml-2">{viewStageData.loadWeightBeforeGrams}g</span>
+                      </div>
+                    )}
+                    {viewStageData.fillLevelPercent && (
+                      <div>
+                        <span className="text-sm text-muted-foreground">Fill Level:</span>
+                        <span className="ml-2">{viewStageData.fillLevelPercent}%</span>
+                      </div>
+                    )}
+                    {viewStageData.waterLevel && (
+                      <div>
+                        <span className="text-sm text-muted-foreground">Water Level:</span>
+                        <span className="ml-2">{viewStageData.waterLevel}</span>
+                      </div>
+                    )}
+                    {viewStageData.waterAmountMl && (
+                      <div>
+                        <span className="text-sm text-muted-foreground">Water Amount:</span>
+                        <span className="ml-2">{viewStageData.waterAmountMl}ml</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Materials */}
+              {viewStageData.materials && viewStageData.materials.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Materials Used</p>
+                  <div className="p-3 bg-muted/50 rounded-lg">
+                    <ul className="space-y-1">
+                      {viewStageData.materials.map((mat) => (
+                        <li key={mat.id} className="text-sm flex justify-between">
+                          <span>{mat.materialName}</span>
+                          {mat.displayAmount && (
+                            <span className="text-muted-foreground">
+                              {mat.displayAmount} {mat.displayUnit || ''}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Cleaning Run */}
+              {viewStageData.cleaningRun && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-purple-500" />
+                    Cleaning Run
+                  </p>
+                  <div className="p-3 bg-muted/50 rounded-lg space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duration:</span>
+                      <span>{formatDurationMinutes(viewStageData.cleaningRun.durationMinutes)}</span>
+                    </div>
+                    {viewStageData.cleaningRun.purpose && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Purpose:</span>
+                        <span>{formatCleaningPurpose(viewStageData.cleaningRun.purpose)}</span>
+                      </div>
+                    )}
+                    {viewStageData.cleaningRun.materials && viewStageData.cleaningRun.materials.length > 0 && (
+                      <div>
+                        <span className="text-muted-foreground">Materials:</span>
+                        <ul className="mt-1 ml-4 list-disc text-xs">
+                          {viewStageData.cleaningRun.materials.map((mat, idx) => (
+                            <li key={idx}>
+                              {mat.materialName}
+                              {mat.displayAmount && ` - ${mat.displayAmount} ${mat.displayUnit || ''}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {viewStageData.cleaningRun.notes && (
+                      <div>
+                        <span className="text-muted-foreground">Notes:</span>
+                        <p className="mt-1 text-xs">{viewStageData.cleaningRun.notes}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Next Action */}
+              {viewStageData.nextAction && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Next Action</p>
+                  <p className="text-sm p-3 bg-muted/50 rounded-lg">{viewStageData.nextAction}</p>
+                </div>
+              )}
+
+              {/* Notes */}
+              {viewStageData.notes && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Notes</p>
+                  <p className="text-sm p-3 bg-muted/50 rounded-lg whitespace-pre-wrap">{viewStageData.notes}</p>
+                </div>
+              )}
+
+              {/* Photos */}
+              {viewStageData.photos && viewStageData.photos.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Photos ({viewStageData.photos.length})</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {viewStageData.photos.slice(0, 6).map((photo) => (
+                      <div key={photo.id} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                        <img
+                          src={photo.thumbnailUrl || photo.url}
+                          alt={photo.caption || 'Stage photo'}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  {viewStageData.photos.length > 6 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      +{viewStageData.photos.length - 6} more photos
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsViewStageOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Photos */}
       <CyclePhotos cycleId={cycleId} stages={cycle?.stageRuns || []} />
     </div>
@@ -2060,13 +2374,15 @@ function StageCard({
   onEdit,
   onDelete,
   onAddCleaningRun,
+  onView,
   isCompleting,
 }: {
   stage: StageRunSummaryDto;
   onComplete?: () => void;
   onEdit?: () => void;
-  onDelete: () => void;
+  onDelete?: () => void;
   onAddCleaningRun?: () => void;
+  onView?: () => void;
   isCompleting?: boolean;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -2095,7 +2411,7 @@ function StageCard({
 
   const handleDelete = () => {
     setIsDeleteDialogOpen(false);
-    onDelete();
+    onDelete?.();
   };
 
   return (
@@ -2149,6 +2465,12 @@ function StageCard({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                {!isActive && onView && (
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onView(); }}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Details
+                  </DropdownMenuItem>
+                )}
                 {isActive && onEdit && (
                   <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onEdit(); }}>
                     <Pencil className="mr-2 h-4 w-4" />
@@ -2161,13 +2483,15 @@ function StageCard({
                     Add Cleaning Run
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-600"
-                  onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
+                {onDelete && (
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -2235,9 +2559,11 @@ function StageCard({
                 <div className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-purple-500" />
                   <span className="text-sm font-medium">Cleaning Run</span>
-                  <Badge variant={stage.cleaningRun.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
-                    {stage.cleaningRun.status}
-                  </Badge>
+                  {isActive && (
+                    <Badge variant={stage.cleaningRun.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
+                      {stage.cleaningRun.status}
+                    </Badge>
+                  )}
                 </div>
                 <ChevronDown className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
               </Button>

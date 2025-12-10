@@ -74,19 +74,26 @@ public class PostsController : ControllerBase
     [ProducesResponseType(typeof(PostDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<PostDto>> CreatePost([FromBody] CreatePostRequest request)
+    public async Task<ActionResult<PostDto>> CreatePost([FromBody] CreatePostRequest request, [FromServices] ILogger<PostsController> logger)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue) return Unauthorized();
 
         try
         {
+            logger.LogInformation("Creating post for cycle {CycleId} with {PhotoCount} photos", request.CycleId, request.PhotoIds.Count);
             var post = await _postService.CreatePostAsync(userId.Value, request);
             return CreatedAtAction(nameof(GetPost), new { id = post.Id }, post);
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning(ex, "Invalid operation while creating post for cycle {CycleId}", request.CycleId);
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating post for cycle {CycleId}", request.CycleId);
+            throw;
         }
     }
 

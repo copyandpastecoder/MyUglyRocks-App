@@ -21,6 +21,17 @@ public class Photo : SoftDeletableEntity
     public string? Caption { get; set; }
     public int SortOrder { get; set; }
 
+    // Image variants (WebP optimized)
+    public string? ThumbnailUrl { get; set; }   // 300px max
+    public string? MediumUrl { get; set; }       // 800px max
+    public string? LargeUrl { get; set; }        // 1600px max
+    public string? BlurHash { get; set; }        // Tiny base64 placeholder
+
+    // Storage keys for variants (for cleanup)
+    public string? ThumbnailStorageKey { get; set; }
+    public string? MediumStorageKey { get; set; }
+    public string? LargeStorageKey { get; set; }
+
     // Navigation properties
     public virtual StageRun StageRun { get; set; } = null!;
 }

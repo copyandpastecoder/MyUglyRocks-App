@@ -268,4 +268,16 @@ public class CyclesController : ControllerBase
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Get all photos for a cycle (for post photo selection)
+    /// </summary>
+    [HttpGet("{cycleId:guid}/photos")]
+    [ProducesResponseType(typeof(IEnumerable<CyclePhotoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCyclePhotos(Guid cycleId, CancellationToken cancellationToken)
+    {
+        var photos = await _cycleService.GetCyclePhotosAsync(cycleId, GetUserId(), cancellationToken);
+        return Ok(photos);
+    }
 }
