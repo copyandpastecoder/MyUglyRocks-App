@@ -36,6 +36,9 @@ public class PostsController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
     {
+        // Validate sort parameter against whitelist
+        sort = PaginationHelper.ValidatePostSort(sort);
+
         // Validate pagination parameters to prevent resource exhaustion
         skip = PaginationHelper.ClampSkip(skip);
         take = PaginationHelper.ClampTake(take);
@@ -67,6 +70,10 @@ public class PostsController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
     {
+        // Validate username format
+        if (!PaginationHelper.IsValidUsername(username, out var usernameError))
+            return BadRequest(new { error = usernameError });
+
         // Validate pagination parameters to prevent resource exhaustion
         skip = PaginationHelper.ClampSkip(skip);
         take = PaginationHelper.ClampTake(take);

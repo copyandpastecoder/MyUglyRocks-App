@@ -21,12 +21,23 @@ spec:
         app: myuglyrocks-api
     spec:
       serviceAccountName: myuglyrocks-api
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - name: api
         image: myuglyrocks-api:latest
         imagePullPolicy: Never  # Use local image for dev
         ports:
         - containerPort: 8080
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: false  # .NET needs writable tmp
         env:
         # SECURITY: Use "Production" for deployed environments
         # Change to "Development" only for local debugging (enables Swagger, Hangfire dashboard)

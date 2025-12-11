@@ -16,11 +16,22 @@ spec:
       labels:
         app: redis
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999  # redis user in alpine image
+        runAsGroup: 999
+        fsGroup: 999
       containers:
       - name: redis
         image: redis:7-alpine
         ports:
         - containerPort: 6379
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
         env:
         - name: REDIS_PASSWORD
           valueFrom:

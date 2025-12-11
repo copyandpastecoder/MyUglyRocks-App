@@ -146,6 +146,26 @@ The API includes several security measures that must be maintained:
    - Connection string must include password parameter
    - See Secrets Management section above
 
+5. **Input Validation**
+   - Sort parameters validated against whitelist (`newest`, `votes`, `comments`)
+   - Username parameters validated for format (3-50 chars, alphanumeric + underscore)
+   - See `PaginationHelper.cs` for validation methods
+
+### Kubernetes Security
+
+1. **Pod Security Standards** - All deployments include:
+   - `runAsNonRoot: true` - Prevents running as root
+   - `allowPrivilegeEscalation: false` - Prevents privilege escalation
+   - `capabilities.drop: ALL` - Drops all Linux capabilities
+   - Container-specific `runAsUser` for each service
+
+2. **NetworkPolicy** (`k8s/base/network-policy.yaml`)
+   - Default deny ingress policy
+   - API: accepts traffic from ingress-nginx and web pod only
+   - PostgreSQL: accepts traffic from API pod only
+   - Redis: accepts traffic from API pod only
+   - Prevents lateral movement in case of compromise
+
 ### Security Documentation
 
 See `docs/SECURITY-AUDIT.md` for:

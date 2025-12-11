@@ -29,11 +29,21 @@ spec:
       labels:
         app: postgres
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70  # postgres user in alpine image
+        runAsGroup: 70
+        fsGroup: 70
       containers:
       - name: postgres
         image: postgres:16-alpine
         ports:
         - containerPort: 5432
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         env:
         - name: POSTGRES_DB
           value: "myuglyrocks"

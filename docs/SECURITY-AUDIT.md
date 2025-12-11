@@ -208,7 +208,7 @@ Secrets exposed via environment variables can leak through:
 
 **Severity:** Medium
 **Category:** Input Validation
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `src/api/MyUglyRocks.Api/Controllers/PostsController.cs`
 
@@ -315,7 +315,7 @@ Session heartbeat may not fully validate session ownership.
 
 **Severity:** Medium
 **Category:** Network Security
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected Location:** `k8s/base/`
 
@@ -356,7 +356,7 @@ spec:
 
 **Severity:** Medium
 **Category:** Container Security
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected Files:** All K8s deployment manifests
 
@@ -427,7 +427,7 @@ _logger.LogInformation("Email sent: {Subject} to {UserHash}", subject, HashEmail
 
 **Severity:** Low
 **Category:** Input Validation
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `src/api/MyUglyRocks.Api/Controllers/PostsController.cs`
 
@@ -536,14 +536,14 @@ The following OWASP-related issues were addressed in prior commits:
 - [x] Implement centralized exception handling
 - [x] Add authentication to Hangfire dashboard
 - [x] Enable Redis authentication
-- [ ] Add Pod Security Standards to deployments
+- [x] Add Pod Security Standards to deployments
 
 ### Short-term (2 Weeks)
 - [ ] Configure PostgreSQL SSL/TLS
 - [ ] Implement per-user rate limiting
-- [ ] Add K8s NetworkPolicy
+- [x] Add K8s NetworkPolicy
 - [ ] Implement CSRF token validation
-- [ ] Add input validation to query parameters
+- [x] Add input validation to query parameters (sort, username)
 
 ### Medium-term (1 Month)
 - [ ] Move secrets from env vars to volume mounts
