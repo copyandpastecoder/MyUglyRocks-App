@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatDateTimeLocal, calculateDurationFromDates } from '@/lib/date-utils';
 
 const DURATION_PRESETS = [1, 2, 3, 5, 7, 10];
 
@@ -37,13 +38,6 @@ export function DurationPicker({
     return new Date(start.getTime() + (days * 24 + hours) * 60 * 60 * 1000);
   };
 
-  // Format date for datetime-local input (YYYY-MM-DDTHH:MM)
-  const formatDateTimeLocal = (date: Date | null) => {
-    if (!date) return '';
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  };
-
   // When user picks an end date, calculate and update duration
   const handleEndDateChange = (endDateStr: string) => {
     if (!startDateTime || !endDateStr) return;
@@ -58,11 +52,7 @@ export function DurationPicker({
       return;
     }
 
-    const diffMs = end.getTime() - start.getTime();
-    const totalHours = Math.round(diffMs / (1000 * 60 * 60));
-    const days = Math.floor(totalHours / 24);
-    const hours = totalHours % 24;
-
+    const { days, hours } = calculateDurationFromDates(start, end);
     onDaysChange(String(days));
     onHoursChange(String(hours));
   };

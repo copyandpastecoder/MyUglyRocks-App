@@ -1,5 +1,6 @@
 # PostgreSQL Deployment for MyUglyRocks
 # Matches production setup - single instance with persistent storage
+# SSL/TLS enabled for encrypted connections
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -29,11 +30,37 @@ spec:
       labels:
         app: postgres
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70  # postgres user in alpine image
+        runAsGroup: 70
+        fsGroup: 70
+      initContainers:
+      # Generate SSL certificates if they don't exist
+      - name: generate-ssl-certs
+        image: alpine:3.19
+        command: ["/bin/sh", "/scripts/generate-certs.sh"]
+        securityContext:
+          runAsUser: 0  # Need root to run openssl and set permissions
+          runAsNonRoot: false
+        volumeMounts:
+        - name: ssl-certs
+          mountPath: /etc/postgres/ssl
+        - name: ssl-config
+          mountPath: /scripts
       containers:
       - name: postgres
         image: postgres:16-alpine
+        args:
+          - "-c"
+          - "config_file=/etc/postgres/conf/postgresql.conf"
         ports:
         - containerPort: 5432
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
         env:
         - name: POSTGRES_DB
           value: "myuglyrocks"
@@ -49,6 +76,12 @@ spec:
         volumeMounts:
         - name: postgres-storage
           mountPath: /var/lib/postgresql/data
+        - name: ssl-certs
+          mountPath: /etc/postgres/ssl
+          readOnly: true
+        - name: postgres-conf
+          mountPath: /etc/postgres/conf
+          readOnly: true
         resources:
           requests:
             memory: "256Mi"
@@ -76,6 +109,21 @@ spec:
       - name: postgres-storage
         persistentVolumeClaim:
           claimName: postgres-pvc
+      - name: ssl-certs
+        emptyDir: {}
+      - name: ssl-config
+        configMap:
+          name: postgres-ssl-config
+          defaultMode: 0755
+          items:
+          - key: generate-certs.sh
+            path: generate-certs.sh
+      - name: postgres-conf
+        configMap:
+          name: postgres-ssl-config
+          items:
+          - key: postgresql.conf
+            path: postgresql.conf
 ---
 apiVersion: v1
 kind: Service

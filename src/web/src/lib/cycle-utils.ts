@@ -13,3 +13,14 @@ export function getCycleStatusClass(cycle: { stageCount: number; activeStageCoun
   if (cycle.isOverdue) return 'bg-yellow-500/10 border-yellow-300';
   return 'bg-green-500/10 border-green-500/30';
 }
+
+/**
+ * Format stage display name with run number.
+ * Shows "Run X" only when there are multiple runs of the same stage type.
+ */
+export function formatStageDisplayName(stageName: string, runNumber: number, totalRuns: number): string {
+  if (totalRuns <= 1) {
+    return stageName;
+  }
+  return `${stageName} Run ${runNumber}`;
+}

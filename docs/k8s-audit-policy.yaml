@@ -1,0 +1,75 @@
+# Kubernetes Audit Policy for MyUglyRocks
+# This policy should be configured at the cluster level by the cluster administrator
+#
+# To enable audit logging on your cluster:
+# 1. Save this file as /etc/kubernetes/audit-policy.yaml on the control plane
+# 2. Configure kube-apiserver with:
+#    --audit-policy-file=/etc/kubernetes/audit-policy.yaml
+#    --audit-log-path=/var/log/kubernetes/audit.log
+#    --audit-log-maxage=30
+#    --audit-log-maxbackup=10
+#    --audit-log-maxsize=100
+#
+# For managed Kubernetes (GKE, EKS, AKS), use the cloud provider's audit logging feature
+
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  # Don't log requests to certain non-resource URLs
+  - level: None
+    nonResourceURLs:
+      - /healthz*
+      - /readyz*
+      - /livez*
+      - /metrics
+
+  # Don't log watch requests
+  - level: None
+    verbs: ["watch", "list"]
+
+  # Log secrets access at RequestResponse level (full audit)
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["secrets"]
+    namespaces: ["myuglyrocks"]
+
+  # Log configmaps at Metadata level
+  - level: Metadata
+    resources:
+      - group: ""
+        resources: ["configmaps"]
+    namespaces: ["myuglyrocks"]
+
+  # Log pod exec and attach at RequestResponse level (security-sensitive)
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["pods/exec", "pods/attach", "pods/portforward"]
+    namespaces: ["myuglyrocks"]
+
+  # Log deployment changes at RequestResponse level
+  - level: RequestResponse
+    resources:
+      - group: "apps"
+        resources: ["deployments", "daemonsets", "statefulsets"]
+    verbs: ["create", "update", "patch", "delete"]
+    namespaces: ["myuglyrocks"]
+
+  # Log RBAC changes at RequestResponse level
+  - level: RequestResponse
+    resources:
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "rolebindings", "clusterroles", "clusterrolebindings"]
+    verbs: ["create", "update", "patch", "delete"]
+
+  # Log service account token requests
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["serviceaccounts/token"]
+
+  # Default: log at Metadata level for all other requests
+  - level: Metadata
+    omitStages:
+      - RequestReceived

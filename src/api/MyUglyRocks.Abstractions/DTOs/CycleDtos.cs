@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MyUglyRocks.Abstractions.DTOs;
 
 public record CycleDto(
@@ -44,24 +46,48 @@ public record CycleListDto(
 );
 
 public record CreateCycleRequest(
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(255, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 255 characters")]
     string Name,
+
+    [Required(ErrorMessage = "Start date is required")]
     DateOnly StartDate,
+
+    [Range(1, 5, ErrorMessage = "Difficulty rating must be between 1 and 5")]
     int? DifficultyRating,
+
+    [StringLength(500, ErrorMessage = "Additional specimens must be at most 500 characters")]
     string? AdditionalSpecimens,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes,
+
     Guid[]? SpecimenIds
 );
 
 public record UpdateCycleRequest(
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(255, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 255 characters")]
     string Name,
+
+    [Required(ErrorMessage = "Start date is required")]
     DateOnly StartDate,
+
+    [Range(1, 5, ErrorMessage = "Difficulty rating must be between 1 and 5")]
     int? DifficultyRating,
+
+    [StringLength(500, ErrorMessage = "Additional specimens must be at most 500 characters")]
     string? AdditionalSpecimens,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes
 );
 
 public record CompleteCycleRequest(
+    [Range(1, 5, ErrorMessage = "Final quality must be between 1 and 5")]
     int? FinalQuality,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes
 );
 
@@ -105,53 +131,121 @@ public record StageRunDto(
 );
 
 public record CreateStageRunRequest(
+    [Required(ErrorMessage = "At least one barrel is required")]
+    [MinLength(1, ErrorMessage = "At least one barrel is required")]
     Guid[] BarrelIds,
+
+    [Required(ErrorMessage = "Stage name is required")]
+    [StringLength(50, ErrorMessage = "Stage name must be at most 50 characters")]
     string StageName,
+
+    [Required(ErrorMessage = "Start date/time is required")]
     DateTime StartDateTime,
+
+    [Range(0, 365, ErrorMessage = "Duration days must be between 0 and 365")]
     int DurationDays,
+
+    [Range(0, 23, ErrorMessage = "Duration hours must be between 0 and 23")]
     int DurationHours,
+
     bool ReminderEnabled,
+
+    [Range(0, 365, ErrorMessage = "Remind after days must be between 0 and 365")]
     int? RemindAfterDays,
+
     bool? RemindAtEndOfStage,
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightBeforeGrams,
+
+    [Range(0, 100, ErrorMessage = "Fill level must be between 0 and 100 percent")]
     int? FillLevelPercent,
+
+    [StringLength(50, ErrorMessage = "Water level must be at most 50 characters")]
     string? WaterLevel,
+
+    [Range(0, 10000, ErrorMessage = "Water amount must be between 0 and 10000 ml")]
     int? WaterAmountMl,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes,
+
     IEnumerable<CreateStageMaterialRequest>? Materials,
     CreateCleaningRunRequest? CleaningRun
 );
 
 public record UpdateStageRunRequest(
     Guid[]? BarrelIds,
+
+    [Required(ErrorMessage = "Stage name is required")]
+    [StringLength(50, ErrorMessage = "Stage name must be at most 50 characters")]
     string StageName,
+
+    [Required(ErrorMessage = "Start date/time is required")]
     DateTime StartDateTime,
+
+    [Range(0, 365, ErrorMessage = "Duration days must be between 0 and 365")]
     int DurationDays,
+
+    [Range(0, 23, ErrorMessage = "Duration hours must be between 0 and 23")]
     int DurationHours,
+
     bool ReminderEnabled,
+
+    [Range(0, 365, ErrorMessage = "Remind after days must be between 0 and 365")]
     int? RemindAfterDays,
+
     bool? RemindAtEndOfStage,
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightBeforeGrams,
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightAfterGrams,
+
+    [Range(0, 100, ErrorMessage = "Fill level must be between 0 and 100 percent")]
     int? FillLevelPercent,
+
+    [StringLength(50, ErrorMessage = "Water level must be at most 50 characters")]
     string? WaterLevel,
+
+    [Range(0, 10000, ErrorMessage = "Water amount must be between 0 and 10000 ml")]
     int? WaterAmountMl,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes
 );
 
 public record CompleteStageRunRequest(
+    [Range(1, 5, ErrorMessage = "Result rating must be between 1 and 5")]
     int? ResultRating,
+
+    [Range(1, 5, ErrorMessage = "Shape rounding must be between 1 and 5")]
     int? ResultShapeRounding,
+
+    [Range(1, 5, ErrorMessage = "Scratch level must be between 1 and 5")]
     int? ResultScratchLevel,
+
+    [Range(1, 5, ErrorMessage = "Pitting must be between 1 and 5")]
     int? ResultPitting,
+
+    [Range(1, 5, ErrorMessage = "Shine must be between 1 and 5")]
     int? ResultShine,
+
     bool? IssueScratches,
     bool? IssueChips,
     bool? IssueUnderRounded,
     bool? IssueContamination,
+
+    [StringLength(2000, ErrorMessage = "Lessons learned must be at most 2000 characters")]
     string? LessonsLearned,
+
+    [StringLength(500, ErrorMessage = "Next action must be at most 500 characters")]
     string? NextAction,
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightAfterGrams,
+
     DateTime? ActualEndDateTime
 );
 
@@ -166,10 +260,17 @@ public record CleaningRunDto(
 );
 
 public record CreateCleaningRunRequest(
+    [Range(1, 1440, ErrorMessage = "Duration must be between 1 and 1440 minutes")]
     int DurationMinutes,
+
+    [StringLength(200, ErrorMessage = "Purpose must be at most 200 characters")]
     string? Purpose,
+
     bool ReminderEnabled,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes,
+
     IEnumerable<CreateCleaningMaterialRequest>? Materials
 );
 
@@ -183,8 +284,13 @@ public record StageMaterialDto(
 );
 
 public record CreateStageMaterialRequest(
+    [Required(ErrorMessage = "Material ID is required")]
     Guid MaterialId,
+
+    [Range(0, 100000, ErrorMessage = "Amount must be between 0 and 100000")]
     decimal? DisplayAmount,
+
+    [StringLength(20, ErrorMessage = "Unit must be at most 20 characters")]
     string? DisplayUnit
 );
 
@@ -198,8 +304,13 @@ public record CleaningMaterialDto(
 );
 
 public record CreateCleaningMaterialRequest(
+    [Required(ErrorMessage = "Material ID is required")]
     Guid MaterialId,
+
+    [Range(0, 100000, ErrorMessage = "Amount must be between 0 and 100000")]
     decimal? DisplayAmount,
+
+    [StringLength(20, ErrorMessage = "Unit must be at most 20 characters")]
     string? DisplayUnit
 );
 

@@ -86,6 +86,13 @@ import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
 import { useSettings } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
+import { formatDateTimeLocal, combineDateWithCurrentTime, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
+import { convertMinutesToDaysHoursMinutes, formatDurationMinutes } from '@/lib/duration-utils';
+import { CLEANING_PURPOSES, CLEANING_DURATION_PRESETS, formatCleaningPurpose } from '@/lib/cleaning-constants';
+import { MATERIAL_UNITS, formatMaterialsForSubmission } from '@/lib/material-utils';
+import type { MaterialFormItem } from '@/lib/material-utils';
+import { invalidateCycleQueries } from '@/lib/query-invalidation';
+import { formatStageDisplayName } from '@/lib/cycle-utils';
 import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
 
@@ -93,12 +100,6 @@ const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnis
 const WATER_UNITS = [
   { value: 'ml', label: 'ml' },
   { value: 'floz', label: 'fl oz' },
-];
-const CLEANING_PURPOSES = [
-  { value: 'PostStageClean', label: 'Post-Stage Clean' },
-  { value: 'PrePolishClean', label: 'Pre-Polish Clean' },
-  { value: 'FinalBurnish', label: 'Final Burnish' },
-  { value: 'GritRemoval', label: 'Grit Removal' },
 ];
 
 export default function CycleDetailPage() {
@@ -432,16 +433,9 @@ export default function CycleDetailPage() {
     }
 
     // Validate stage start date is not before cycle start date
-    if (cycle) {
-      const cycleStartDate = new Date(cycle.startDate);
-      const stageStart = new Date(stageStartDateTime);
-      cycleStartDate.setHours(0, 0, 0, 0);
-      const stageStartDateOnly = new Date(stageStart);
-      stageStartDateOnly.setHours(0, 0, 0, 0);
-      if (stageStartDateOnly < cycleStartDate) {
-        toast.error('Stage start date cannot be before the cycle start date');
-        return;
-      }
+    if (cycle && isStageStartBeforeCycleStart(cycle.startDate, stageStartDateTime)) {
+      toast.error('Stage start date cannot be before the cycle start date');
+      return;
     }
 
     // Validate weight before if entered
@@ -507,20 +501,6 @@ export default function CycleDetailPage() {
     });
   };
 
-  // Helper to format date for datetime-local input
-  const formatDateTimeLocal = (date: Date) => {
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  };
-
-  // Helper to combine a date string (YYYY-MM-DD) with current time
-  // This avoids UTC timezone issues when parsing date-only strings
-  const combineDateWithCurrentTime = (dateStr: string) => {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const now = new Date();
-    return new Date(year, month - 1, day, now.getHours(), now.getMinutes());
-  };
-
   const openAddStageModal = async () => {
     resetAddStageForm();
     // First stage uses cycle start date with current time, subsequent stages use "now"
@@ -582,10 +562,10 @@ export default function CycleDetailPage() {
             // Copy cleaning run if present
             if (fullStage.cleaningRun) {
               setAddCleaningRun(true);
-              const cleaningMinutes = fullStage.cleaningRun.durationMinutes;
-              setCleaningDurationDays(String(Math.floor(cleaningMinutes / 1440)));
-              setCleaningDurationHours(String(Math.floor((cleaningMinutes % 1440) / 60)));
-              setCleaningDurationMinutes(String(cleaningMinutes % 60));
+              const { days, hours, mins } = convertMinutesToDaysHoursMinutes(fullStage.cleaningRun.durationMinutes);
+              setCleaningDurationDays(String(days));
+              setCleaningDurationHours(String(hours));
+              setCleaningDurationMinutes(String(mins));
               setCleaningPurpose(fullStage.cleaningRun.purpose || 'PostStageClean');
               setCleaningNotes(fullStage.cleaningRun.notes || '');
               if (fullStage.cleaningRun.materials && fullStage.cleaningRun.materials.length > 0) {
@@ -650,10 +630,10 @@ export default function CycleDetailPage() {
       // Copy cleaning run if present
       if (previousStage.cleaningRun) {
         setAddCleaningRun(true);
-        const cleaningMinutes = previousStage.cleaningRun.durationMinutes;
-        setCleaningDurationDays(String(Math.floor(cleaningMinutes / 1440)));
-        setCleaningDurationHours(String(Math.floor((cleaningMinutes % 1440) / 60)));
-        setCleaningDurationMinutes(String(cleaningMinutes % 60));
+        const { days, hours, mins } = convertMinutesToDaysHoursMinutes(previousStage.cleaningRun.durationMinutes);
+        setCleaningDurationDays(String(days));
+        setCleaningDurationHours(String(hours));
+        setCleaningDurationMinutes(String(mins));
         setCleaningPurpose(previousStage.cleaningRun.purpose || 'PostStageClean');
         setCleaningNotes(previousStage.cleaningRun.notes || '');
         if (previousStage.cleaningRun.materials && previousStage.cleaningRun.materials.length > 0) {
@@ -677,10 +657,7 @@ export default function CycleDetailPage() {
   const openCompleteStageModal = async (stage: StageRunSummaryDto) => {
     const startDate = new Date(stage.startDateTime);
     const endDate = new Date(stage.endDateTime);
-    const durationMs = endDate.getTime() - startDate.getTime();
-    const totalHours = Math.round(durationMs / (1000 * 60 * 60));
-    const days = Math.floor(totalHours / 24);
-    const hours = totalHours % 24;
+    const { days, hours } = calculateDurationFromDates(startDate, endDate);
 
     setCompleteStageId(stage.stageRunId);
     setCompleteStageName(stage.stageName);
@@ -773,10 +750,7 @@ export default function CycleDetailPage() {
   const openEditStageModal = (stage: StageRunSummaryDto) => {
     const startDate = new Date(stage.startDateTime);
     const endDate = new Date(stage.endDateTime);
-    const durationMs = endDate.getTime() - startDate.getTime();
-    const totalHours = Math.round(durationMs / (1000 * 60 * 60));
-    const days = Math.floor(totalHours / 24);
-    const hours = totalHours % 24;
+    const { days, hours } = calculateDurationFromDates(startDate, endDate);
 
     setEditStageId(stage.stageRunId);
     setEditStageName(stage.stageName);
@@ -808,12 +782,7 @@ export default function CycleDetailPage() {
 
     // Validate stage start date is not before cycle start date
     if (cycle && editStageStartDateTime) {
-      const cycleStartDate = new Date(cycle.startDate);
-      const stageStart = new Date(editStageStartDateTime);
-      cycleStartDate.setHours(0, 0, 0, 0);
-      const stageStartDateOnly = new Date(stageStart);
-      stageStartDateOnly.setHours(0, 0, 0, 0);
-      if (stageStartDateOnly < cycleStartDate) {
+      if (isStageStartBeforeCycleStart(cycle.startDate, editStageStartDateTime)) {
         toast.error('Stage start date cannot be before the cycle start date');
         return;
       }
@@ -871,18 +840,8 @@ export default function CycleDetailPage() {
     setCleaningMaterials(updated);
   };
 
-  // Cleaning duration presets (in minutes)
-  const CLEANING_DURATION_PRESETS = [
-    { label: '15 min', minutes: 15 },
-    { label: '30 min', minutes: 30 },
-    { label: '1 hour', minutes: 60 },
-    { label: '1 day', minutes: 1440 },
-  ];
-
   const handleCleaningDurationPreset = (minutes: number) => {
-    const days = Math.floor(minutes / 1440);
-    const hours = Math.floor((minutes % 1440) / 60);
-    const mins = minutes % 60;
+    const { days, hours, mins } = convertMinutesToDaysHoursMinutes(minutes);
     setCleaningDurationDays(String(days));
     setCleaningDurationHours(String(hours));
     setCleaningDurationMinutes(String(mins));
@@ -2457,15 +2416,6 @@ export default function CycleDetailPage() {
   );
 }
 
-// Helper to format stage display name with run number
-// Shows "Run X" only when there are multiple runs of the same stage type
-function formatStageDisplayName(stageName: string, runNumber: number, totalRuns: number): string {
-  if (totalRuns <= 1) {
-    return stageName;
-  }
-  return `${stageName} Run ${runNumber}`;
-}
-
 function StageCard({
   stage,
   onComplete,
@@ -2868,29 +2818,6 @@ function StageCard({
       />
     </>
   );
-}
-
-function formatDurationMinutes(minutes: number): string {
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  const mins = minutes % 60;
-
-  const parts = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  if (mins > 0 || parts.length === 0) parts.push(`${mins}m`);
-
-  return parts.join(' ');
-}
-
-function formatCleaningPurpose(purpose: string): string {
-  const purposeMap: Record<string, string> = {
-    'PostStageClean': 'Post-Stage Clean',
-    'PrePolishClean': 'Pre-Polish Clean',
-    'FinalBurnish': 'Final Burnish',
-    'GritRemoval': 'Grit Removal',
-  };
-  return purposeMap[purpose] || purpose;
 }
 
 function getTimeRemaining(endDate: Date): string {

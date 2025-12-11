@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MyUglyRocks.Abstractions.DTOs;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
+using MyUglyRocks.Core.Validation;
 
 namespace MyUglyRocks.Core.Services;
 
@@ -22,6 +24,10 @@ public class AuthService : IAuthService
 
     private const string PasswordResetKeyPrefix = "pwd_reset:";
     private static readonly TimeSpan PasswordResetTokenExpiry = TimeSpan.FromHours(1);
+
+    // Account lockout settings
+    private const int MaxFailedLoginAttempts = 5;
+    private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
 
     public AuthService(
         DbContext context,
@@ -46,6 +52,54 @@ public class AuthService : IAuthService
 
     public async Task<AuthResult> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
     {
+        // Validate password strength
+        var passwordValidation = ValidationHelper.ValidatePassword(request.Password);
+        if (!passwordValidation.IsValid)
+        {
+            return new AuthResult(false, Error: string.Join("; ", passwordValidation.Errors));
+        }
+
+        // Validate username length
+        var usernameErrors = ValidationHelper.ValidateStringLength(
+            request.Username,
+            "Username",
+            ValidationHelper.StringLimits.UsernameMin,
+            ValidationHelper.StringLimits.UsernameMax,
+            required: true);
+        if (usernameErrors.Count > 0)
+        {
+            return new AuthResult(false, Error: string.Join("; ", usernameErrors));
+        }
+
+        // Validate email
+        if (!ValidationHelper.IsValidEmail(request.Email))
+        {
+            return new AuthResult(false, Error: "Invalid email format");
+        }
+
+        var emailErrors = ValidationHelper.ValidateStringLength(
+            request.Email,
+            "Email",
+            maxLength: ValidationHelper.StringLimits.EmailMax,
+            required: true);
+        if (emailErrors.Count > 0)
+        {
+            return new AuthResult(false, Error: string.Join("; ", emailErrors));
+        }
+
+        // Validate display name length if provided
+        if (!string.IsNullOrEmpty(request.DisplayName))
+        {
+            var displayNameErrors = ValidationHelper.ValidateStringLength(
+                request.DisplayName,
+                "Display name",
+                maxLength: ValidationHelper.StringLimits.DisplayNameMax);
+            if (displayNameErrors.Count > 0)
+            {
+                return new AuthResult(false, Error: string.Join("; ", displayNameErrors));
+            }
+        }
+
         // Check if email already exists
         if (await Users.AnyAsync(u => u.Email.ToLower() == request.Email.ToLower(), cancellationToken))
         {
@@ -95,8 +149,41 @@ public class AuthService : IAuthService
             u => u.Email.ToLower() == request.Email.ToLower(),
             cancellationToken);
 
-        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        // User not found - return generic error to prevent email enumeration
+        if (user == null)
         {
+            return new AuthResult(false, Error: "Invalid email or password");
+        }
+
+        // Check for account lockout first
+        if (user.LockoutEndTime.HasValue && user.LockoutEndTime > DateTime.UtcNow)
+        {
+            var remainingMinutes = (int)Math.Ceiling((user.LockoutEndTime.Value - DateTime.UtcNow).TotalMinutes);
+            _logger.LogWarning("Login attempt for locked account {Email}", PiiMaskingHelper.MaskEmail(user.Email));
+            return new AuthResult(false, Error: $"Account is temporarily locked. Please try again in {remainingMinutes} minute(s).");
+        }
+
+        // Verify password
+        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            // Increment failed login attempts
+            user.FailedLoginAttempts++;
+            user.DateUpdated = DateTime.UtcNow;
+
+            // Check if we should lock the account
+            if (user.FailedLoginAttempts >= MaxFailedLoginAttempts)
+            {
+                user.LockoutEndTime = DateTime.UtcNow.Add(LockoutDuration);
+                _logger.LogWarning("Account {Email} locked after {Attempts} failed login attempts",
+                    PiiMaskingHelper.MaskEmail(user.Email), user.FailedLoginAttempts);
+            }
+            else
+            {
+                _logger.LogInformation("Failed login attempt {Attempts}/{Max} for {Email}",
+                    user.FailedLoginAttempts, MaxFailedLoginAttempts, PiiMaskingHelper.MaskEmail(user.Email));
+            }
+
+            await _context.SaveChangesAsync(cancellationToken);
             return new AuthResult(false, Error: "Invalid email or password");
         }
 
@@ -105,14 +192,9 @@ public class AuthService : IAuthService
             return new AuthResult(false, Error: "Account is deactivated");
         }
 
-        // Check for account lockout
-        if (user.LockoutEndTime.HasValue && user.LockoutEndTime > DateTime.UtcNow)
-        {
-            return new AuthResult(false, Error: "Account is temporarily locked. Please try again later.");
-        }
-
         // Reset failed login attempts on successful login
         user.FailedLoginAttempts = 0;
+        user.LockoutEndTime = null;
         user.DateLastLogin = DateTime.UtcNow;
         user.DateUpdated = DateTime.UtcNow;
         await _context.SaveChangesAsync(cancellationToken);
@@ -242,11 +324,11 @@ public class AuthService : IAuthService
                 resetUrl,
                 cancellationToken);
 
-            _logger.LogInformation("Password reset email sent to {Email}", user.Email);
+            _logger.LogInformation("Password reset email sent to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send password reset email to {Email}", user.Email);
+            _logger.LogError(ex, "Failed to send password reset email to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
             // Remove the token from cache since email failed
             await _cacheService.RemoveAsync(cacheKey, cancellationToken);
             throw;
@@ -257,6 +339,14 @@ public class AuthService : IAuthService
 
     public async Task<bool> ResetPasswordAsync(string token, string newPassword, CancellationToken cancellationToken = default)
     {
+        // Validate password strength before checking token (fail fast)
+        var passwordValidation = ValidationHelper.ValidatePassword(newPassword);
+        if (!passwordValidation.IsValid)
+        {
+            _logger.LogWarning("Password reset failed validation: {Errors}", string.Join("; ", passwordValidation.Errors));
+            return false;
+        }
+
         var cacheKey = $"{PasswordResetKeyPrefix}{token}";
 
         // Atomically retrieve and remove token to prevent replay attacks
@@ -318,7 +408,7 @@ public class AuthService : IAuthService
         catch (Exception ex)
         {
             // Don't fail the reset if notification email fails
-            _logger.LogWarning(ex, "Failed to send password changed notification to {Email}", user.Email);
+            _logger.LogWarning(ex, "Failed to send password changed notification to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
         }
 
         return true;

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MyUglyRocks.Abstractions.DTOs;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Core.Entities;
 using MyUglyRocks.Infrastructure.Data;
 
@@ -62,7 +63,7 @@ public class WaitlistController : ControllerBase
         _context.WaitlistEntries.Add(entry);
         await _context.SaveChangesAsync();
 
-        _logger.LogInformation("New waitlist signup: {Email}", normalizedEmail);
+        _logger.LogInformation("New waitlist signup: {Email}", PiiMaskingHelper.MaskEmail(normalizedEmail));
 
         return Ok(new JoinWaitlistResponse(true));
     }
