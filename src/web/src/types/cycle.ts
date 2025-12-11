@@ -4,7 +4,6 @@ export interface CycleDto {
   startDate: string;
   endDate: string | null;
   status: string;
-  goal: string | null;
   difficultyRating: number | null;
   finalQuality: number | null;
   additionalSpecimens: string | null;
@@ -12,7 +11,21 @@ export interface CycleDto {
   dateCreated: string;
   stageRuns: StageRunSummaryDto[];
   specimens: SpecimenDto[];
+  // Computed fields
+  elapsedDays: number;
+  totalRuntimeHours: number;
+  completedStagesCount: number;
+  activeStageName: string | null;
+  lastUpdated: string | null;
+  weightLossGrams: number | null;
+  weightLossPercent: number | null;
+  photoCount: number;
+  // Gallery info
   postId: string | null;
+  galleryLikes: number;
+  // Tumbler/Barrel info
+  tumblerName: string | null;
+  barrelName: string | null;
 }
 
 export interface CycleListDto {
@@ -21,7 +34,6 @@ export interface CycleListDto {
   startDate: string;
   endDate: string | null;
   status: string;
-  goal: string | null;
   difficultyRating: number | null;
   stageCount: number;
   activeStageCount: number;
@@ -32,7 +44,6 @@ export interface CycleListDto {
 export interface CreateCycleRequest {
   name: string;
   startDate: string;
-  goal?: string;
   difficultyRating?: number;
   additionalSpecimens?: string;
   notes?: string;
@@ -42,7 +53,6 @@ export interface CreateCycleRequest {
 export interface UpdateCycleRequest {
   name: string;
   startDate: string;
-  goal?: string;
   difficultyRating?: number;
   additionalSpecimens?: string;
   notes?: string;
@@ -78,6 +88,7 @@ export interface StageRunDto {
   status: string;
   reminderEnabled: boolean;
   loadWeightBeforeGrams: number | null;
+  loadWeightAfterGrams: number | null;
   fillLevelPercent: number | null;
   waterLevel: string | null;
   waterAmountMl: number | null;

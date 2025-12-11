@@ -74,7 +74,7 @@ export default function TumblersPage() {
         <Button asChild>
           <Link href="/tumblers/new">
             <Plus className="mr-2 h-4 w-4" />
-            Add Tumbler
+            New Tumbler
           </Link>
         </Button>
       </div>

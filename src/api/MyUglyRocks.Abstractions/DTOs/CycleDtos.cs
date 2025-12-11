@@ -6,7 +6,6 @@ public record CycleDto(
     DateOnly StartDate,
     DateOnly? EndDate,
     string Status,
-    string? Goal,
     int? DifficultyRating,
     int? FinalQuality,
     string? AdditionalSpecimens,
@@ -14,7 +13,21 @@ public record CycleDto(
     DateTime DateCreated,
     IEnumerable<StageRunSummaryDto> StageRuns,
     IEnumerable<SpecimenDto> Specimens,
-    Guid? PostId = null
+    // Computed fields
+    int ElapsedDays,
+    int TotalRuntimeHours,
+    int CompletedStagesCount,
+    string? ActiveStageName,
+    DateTime? LastUpdated,
+    decimal? WeightLossGrams,
+    decimal? WeightLossPercent,
+    int PhotoCount,
+    // Gallery info
+    Guid? PostId = null,
+    int GalleryLikes = 0,
+    // Tumbler/Barrel info (from most recent stage)
+    string? TumblerName = null,
+    string? BarrelName = null
 );
 
 public record CycleListDto(
@@ -23,7 +36,6 @@ public record CycleListDto(
     DateOnly StartDate,
     DateOnly? EndDate,
     string Status,
-    string? Goal,
     int? DifficultyRating,
     int StageCount,
     int ActiveStageCount,
@@ -34,7 +46,6 @@ public record CycleListDto(
 public record CreateCycleRequest(
     string Name,
     DateOnly StartDate,
-    string? Goal,
     int? DifficultyRating,
     string? AdditionalSpecimens,
     string? Notes,
@@ -44,7 +55,6 @@ public record CreateCycleRequest(
 public record UpdateCycleRequest(
     string Name,
     DateOnly StartDate,
-    string? Goal,
     int? DifficultyRating,
     string? AdditionalSpecimens,
     string? Notes
@@ -80,6 +90,7 @@ public record StageRunDto(
     string Status,
     bool ReminderEnabled,
     decimal? LoadWeightBeforeGrams,
+    decimal? LoadWeightAfterGrams,
     int? FillLevelPercent,
     string? WaterLevel,
     int? WaterAmountMl,

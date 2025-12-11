@@ -37,7 +37,6 @@ public record CycleCsvRow(
     int? DifficultyRating,
     int? FinalQuality,
     string? Specimens,
-    string? Goal,
     string? Notes,
     int TotalStages,
     int CompletedStages

@@ -197,7 +197,7 @@ export default function SpecimensAdminPage() {
             </div>
             <Button onClick={handleOpenCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Specimen
+              New Specimen
             </Button>
           </div>
         </CardHeader>
@@ -345,7 +345,7 @@ export default function SpecimensAdminPage() {
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedSpecimen ? 'Edit Specimen' : 'Add Specimen'}</DialogTitle>
+            <DialogTitle>{selectedSpecimen ? 'Edit Specimen' : 'New Specimen'}</DialogTitle>
             <DialogDescription>
               {selectedSpecimen ? 'Update specimen details' : 'Add a new specimen to the database'}
             </DialogDescription>

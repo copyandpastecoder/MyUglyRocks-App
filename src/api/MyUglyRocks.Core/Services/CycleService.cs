@@ -48,6 +48,7 @@ public class CycleService : ICycleService
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageRunBarrels)
                     .ThenInclude(srb => srb.Barrel)
+                        .ThenInclude(b => b.Tumbler)
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageMaterials)
                     .ThenInclude(sm => sm.Material)
@@ -65,17 +66,17 @@ public class CycleService : ICycleService
         if (cycle == null)
             return null;
 
-        // Check if there's a post for this cycle
-        var postId = await _context.Set<Post>()
+        // Check if there's a post for this cycle and get likes count
+        var postInfo = await _context.Set<Post>()
             .Where(p => p.CycleId == cycleId && !p.IsDeleted)
-            .Select(p => (Guid?)p.PostId)
+            .Select(p => new { p.PostId, p.VoteCount })
             .FirstOrDefaultAsync(cancellationToken);
 
         // Calculate run numbers for each stage
         var runNumbers = CalculateRunNumbers(cycle.StageRuns);
 
         // Map to DTO with run numbers
-        return MapCycleToDto(cycle, runNumbers, postId);
+        return MapCycleToDto(cycle, runNumbers, postInfo?.PostId, postInfo?.VoteCount ?? 0);
     }
 
     private static (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) CalculateRunNumbers(IEnumerable<StageRun> stageRuns)
@@ -104,10 +105,11 @@ public class CycleService : ICycleService
         return (runNumbers, totalRuns);
     }
 
-    private static CycleDto MapCycleToDto(Cycle cycle, (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) runInfo, Guid? postId = null)
+    private static CycleDto MapCycleToDto(Cycle cycle, (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) runInfo, Guid? postId = null, int galleryLikes = 0)
     {
-        var stageRunSummaries = cycle.StageRuns
-            .Where(s => !s.IsDeleted)
+        var activeStageRuns = cycle.StageRuns.Where(s => !s.IsDeleted).ToList();
+
+        var stageRunSummaries = activeStageRuns
             .OrderBy(s => s.DateCreated)
             .Select(s => new StageRunSummaryDto(
                 s.StageRunId,
@@ -124,13 +126,73 @@ public class CycleService : ICycleService
         var specimens = cycle.CycleSpecimens
             .Select(cs => cs.Specimen.Adapt<SpecimenDto>());
 
+        // Compute elapsed days
+        var endDate = cycle.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var elapsedDays = endDate.DayNumber - cycle.StartDate.DayNumber;
+
+        // Compute total runtime in hours
+        var totalRuntimeHours = activeStageRuns
+            .Where(s => s.Status == StageRunStatus.Completed)
+            .Sum(s => s.DurationDays * 24 + s.DurationHours);
+
+        // Compute completed stages count
+        var completedStagesCount = activeStageRuns.Count(s => s.Status == StageRunStatus.Completed);
+
+        // Get active stage name (if any)
+        var activeStage = activeStageRuns.FirstOrDefault(s => s.Status == StageRunStatus.Active);
+        var activeStageName = activeStage?.StageName;
+
+        // Get last updated time
+        var lastUpdated = activeStageRuns.Any()
+            ? activeStageRuns.Max(s => s.DateUpdated)
+            : cycle.DateUpdated;
+
+        // Compute weight loss
+        decimal? weightLossGrams = null;
+        decimal? weightLossPercent = null;
+        var firstStageWithWeight = activeStageRuns
+            .OrderBy(s => s.DateCreated)
+            .FirstOrDefault(s => s.LoadWeightBeforeGrams.HasValue);
+        var lastStageWithWeight = activeStageRuns
+            .OrderByDescending(s => s.DateCreated)
+            .FirstOrDefault(s => s.LoadWeightAfterGrams.HasValue);
+
+        if (firstStageWithWeight?.LoadWeightBeforeGrams != null && lastStageWithWeight?.LoadWeightAfterGrams != null)
+        {
+            weightLossGrams = firstStageWithWeight.LoadWeightBeforeGrams.Value - lastStageWithWeight.LoadWeightAfterGrams.Value;
+            if (firstStageWithWeight.LoadWeightBeforeGrams > 0)
+            {
+                weightLossPercent = (weightLossGrams / firstStageWithWeight.LoadWeightBeforeGrams.Value) * 100;
+            }
+        }
+
+        // Count photos
+        var photoCount = activeStageRuns.Sum(s => s.Photos.Count(p => !p.IsDeleted));
+
+        // Get tumbler/barrel info from most recent stage
+        string? tumblerName = null;
+        string? barrelName = null;
+        var mostRecentStage = activeStageRuns
+            .OrderByDescending(s => s.DateCreated)
+            .FirstOrDefault();
+        if (mostRecentStage?.StageRunBarrels.Any() == true)
+        {
+            var barrel = mostRecentStage.StageRunBarrels.First().Barrel;
+            barrelName = barrel?.Nickname;
+            if (barrel?.Tumbler != null)
+            {
+                tumblerName = !string.IsNullOrEmpty(barrel.Tumbler.Model)
+                    ? $"{barrel.Tumbler.Brand} {barrel.Tumbler.Model}"
+                    : barrel.Tumbler.Brand;
+            }
+        }
+
         return new CycleDto(
             cycle.CycleId,
             cycle.Name,
             cycle.StartDate,
             cycle.EndDate,
             cycle.Status.ToString(),
-            cycle.Goal,
             cycle.DifficultyRating,
             cycle.FinalQuality,
             cycle.AdditionalSpecimens,
@@ -138,7 +200,18 @@ public class CycleService : ICycleService
             cycle.DateCreated,
             stageRunSummaries,
             specimens,
-            postId
+            elapsedDays,
+            totalRuntimeHours,
+            completedStagesCount,
+            activeStageName,
+            lastUpdated,
+            weightLossGrams,
+            weightLossPercent,
+            photoCount,
+            postId,
+            galleryLikes,
+            tumblerName,
+            barrelName
         );
     }
 
@@ -181,7 +254,6 @@ public class CycleService : ICycleService
 
         cycle.Name = request.Name;
         cycle.StartDate = request.StartDate;
-        cycle.Goal = request.Goal;
         cycle.DifficultyRating = request.DifficultyRating;
         cycle.AdditionalSpecimens = request.AdditionalSpecimens;
         cycle.Notes = request.Notes;
@@ -297,6 +369,7 @@ public class CycleService : ICycleService
             stageRun.Status.ToString(),
             stageRun.ReminderEnabled,
             stageRun.LoadWeightBeforeGrams,
+            stageRun.LoadWeightAfterGrams,
             stageRun.FillLevelPercent,
             stageRun.WaterLevel?.ToString(),
             stageRun.WaterAmountMl,

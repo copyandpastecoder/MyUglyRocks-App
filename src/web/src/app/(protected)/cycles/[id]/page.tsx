@@ -54,6 +54,7 @@ import {
   Sparkles,
   Lightbulb,
   Eye,
+  Image as ImageIcon,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -79,6 +80,7 @@ import {
 } from '@/components/ui/collapsible';
 import Link from 'next/link';
 import { CyclePhotos } from '@/components/cycle-photos';
+import { PhotoUploadModal } from '@/components/photo-upload-modal';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
@@ -173,7 +175,6 @@ export default function CycleDetailPage() {
   const [isEditCycleOpen, setIsEditCycleOpen] = useState(false);
   const [editCycleName, setEditCycleName] = useState('');
   const [editCycleStartDate, setEditCycleStartDate] = useState('');
-  const [editCycleGoal, setEditCycleGoal] = useState('');
   const [editCycleNotes, setEditCycleNotes] = useState('');
 
   // Edit Stage Dialog State
@@ -199,6 +200,9 @@ export default function CycleDetailPage() {
   // View Stage Modal State
   const [isViewStageOpen, setIsViewStageOpen] = useState(false);
   const [viewStageId, setViewStageId] = useState<string | null>(null);
+
+  // Cycle Overview Collapsible State
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
 
   const { data: cycle, isLoading: cycleLoading } = useQuery({
     queryKey: ['cycle', cycleId],
@@ -750,7 +754,6 @@ export default function CycleDetailPage() {
     if (!cycle) return;
     setEditCycleName(cycle.name);
     setEditCycleStartDate(cycle.startDate.split('T')[0]);
-    setEditCycleGoal(cycle.goal || '');
     setEditCycleNotes(cycle.notes || '');
     setIsEditCycleOpen(true);
   };
@@ -763,7 +766,6 @@ export default function CycleDetailPage() {
     updateCycleMutation.mutate({
       name: editCycleName,
       startDate: editCycleStartDate, // Already in YYYY-MM-DD format from date input
-      goal: editCycleGoal || undefined,
       notes: editCycleNotes || undefined,
     });
   };
@@ -956,101 +958,180 @@ export default function CycleDetailPage() {
   const activeStages = cycle.stageRuns.filter(s => s.status === 'Active');
   const completedStages = cycle.stageRuns.filter(s => s.status === 'Completed');
 
+  // Format runtime in a human-readable way
+  const formatRuntime = (hours: number) => {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    if (days > 0) {
+      return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+    }
+    return `${hours}h`;
+  };
+
   return (
     <div className={PAGE_CONTAINER}>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/cycles">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{cycle.name}</h1>
-            <p className="text-muted-foreground">
-              Started {new Date(cycle.startDate).toLocaleDateString()}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {cycle.status === 'Active' && (
-            <>
-              <Button variant="outline" size="sm" onClick={openEditCycleModal}>
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
-              </Button>
-              <Button variant="default" size="sm" onClick={() => setIsCompleteCycleOpen(true)}>
-                <CheckCircle2 className="mr-2 h-4 w-4" />
-                Complete Cycle
-              </Button>
-            </>
-          )}
-          {cycle.status === 'Completed' && (
-            <Button variant="outline" size="sm" asChild>
-              {cycle.postId ? (
-                <Link href={`/gallery/${cycle.postId}`}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  View Gallery Post
-                </Link>
-              ) : (
-                <Link href={`/cycles/${cycleId}/share`}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  Share to Gallery
-                </Link>
-              )}
-            </Button>
-          )}
-          <Badge variant={cycle.status === 'Active' ? 'default' : 'secondary'}>
-            {cycle.status}
-          </Badge>
-        </div>
+      {/* Back button */}
+      <div className="flex items-center gap-2 mb-4">
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/cycles">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <span className="text-muted-foreground">Back to Cycles</span>
       </div>
 
-      {/* Cycle Info Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cycle Overview</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Goal</p>
-            <p className="font-medium">{cycle.goal || 'Not specified'}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Difficulty</p>
-            <p className="font-medium">
-              {cycle.specimens && cycle.specimens.length > 0
-                ? (() => {
-                    const difficulties = cycle.specimens
-                      .map(s => s.tumblingDifficulty)
-                      .filter(Boolean);
-                    if (difficulties.length === 0) return 'Not rated';
-                    // Show the hardest difficulty (Hard > Medium > Easy)
-                    if (difficulties.includes('Hard')) return 'Hard';
-                    if (difficulties.includes('Medium')) return 'Medium';
-                    return 'Easy';
-                  })()
-                : cycle.difficultyRating
-                  ? `${cycle.difficultyRating}/5`
-                  : 'Not rated'}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Specimens</p>
-            <p className="font-medium">
-              {cycle.specimens && cycle.specimens.length > 0
-                ? cycle.specimens.map(s => s.commonName).join(', ')
-                : cycle.additionalSpecimens || 'Not specified'}
-            </p>
-          </div>
-          {cycle.notes && (
-            <div className="md:col-span-3">
-              <p className="text-sm text-muted-foreground">Notes</p>
-              <p className="font-medium">{cycle.notes}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Collapsible Cycle Overview Card */}
+      <Collapsible open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <CardTitle className="text-xl">{cycle.name}</CardTitle>
+                  <CardDescription>
+                    {cycle.status === 'Active' ? (
+                      <>
+                        Day {cycle.elapsedDays} • {cycle.completedStagesCount} stage{cycle.completedStagesCount !== 1 ? 's' : ''} completed
+                        {cycle.activeStageName && ` • Running: ${cycle.activeStageName}`}
+                      </>
+                    ) : (
+                      <>
+                        {cycle.elapsedDays} days • {formatRuntime(cycle.totalRuntimeHours)} runtime • {cycle.completedStagesCount} stages
+                        {cycle.finalQuality && ` • Quality: ${cycle.finalQuality}/5`}
+                      </>
+                    )}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
+                  {cycle.status === 'Active' && (
+                    <>
+                      <Button variant="outline" size="sm" onClick={openEditCycleModal}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Button>
+                      <Button variant="default" size="sm" onClick={() => setIsCompleteCycleOpen(true)}>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Complete
+                      </Button>
+                    </>
+                  )}
+                  {cycle.status === 'Completed' && (
+                    <Button variant="outline" size="sm" asChild>
+                      {cycle.postId ? (
+                        <Link href={`/gallery/${cycle.postId}`}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Post
+                        </Link>
+                      ) : (
+                        <Link href={`/cycles/${cycleId}/share`}>
+                          <Share2 className="mr-2 h-4 w-4" />
+                          Share
+                        </Link>
+                      )}
+                    </Button>
+                  )}
+                  {isOverviewOpen ? (
+                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
+              {/* Row 1: Key stats */}
+              <div>
+                <p className="text-sm text-muted-foreground">Started</p>
+                <p className="font-medium">{new Date(cycle.startDate).toLocaleDateString()}</p>
+              </div>
+              {cycle.status === 'Completed' && cycle.endDate && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="font-medium">{new Date(cycle.endDate).toLocaleDateString()}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Total Runtime</p>
+                <p className="font-medium">{formatRuntime(cycle.totalRuntimeHours)}</p>
+              </div>
+
+              {/* Row 2: Specimens and difficulty */}
+              <div>
+                <p className="text-sm text-muted-foreground">Specimens</p>
+                <p className="font-medium">
+                  {cycle.specimens && cycle.specimens.length > 0
+                    ? cycle.specimens.map(s => s.commonName).join(', ')
+                    : cycle.additionalSpecimens || 'Not specified'}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Difficulty</p>
+                <p className="font-medium">
+                  {cycle.specimens && cycle.specimens.length > 0
+                    ? (() => {
+                        const difficulties = cycle.specimens
+                          .map(s => s.tumblingDifficulty)
+                          .filter(Boolean);
+                        if (difficulties.length === 0) return 'Not rated';
+                        if (difficulties.includes('Hard')) return 'Hard';
+                        if (difficulties.includes('Medium')) return 'Medium';
+                        return 'Easy';
+                      })()
+                    : cycle.difficultyRating
+                      ? `${cycle.difficultyRating}/5`
+                      : 'Not rated'}
+                </p>
+              </div>
+
+              {/* Row 3: Photos */}
+              {cycle.photoCount > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Photos</p>
+                  <p className="font-medium">{cycle.photoCount} photo{cycle.photoCount !== 1 ? 's' : ''}</p>
+                </div>
+              )}
+
+              {/* Tumbler/Barrel info */}
+              {(cycle.tumblerName || cycle.barrelName) && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Equipment</p>
+                  <p className="font-medium">
+                    {[cycle.tumblerName, cycle.barrelName].filter(Boolean).join(' - ')}
+                  </p>
+                </div>
+              )}
+
+              {/* Gallery post info */}
+              {cycle.postId && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Gallery</p>
+                  <p className="font-medium">
+                    {cycle.galleryLikes} like{cycle.galleryLikes !== 1 ? 's' : ''}
+                  </p>
+                </div>
+              )}
+
+              {/* Last updated */}
+              {cycle.lastUpdated && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Last Updated</p>
+                  <p className="font-medium">{new Date(cycle.lastUpdated).toLocaleDateString()}</p>
+                </div>
+              )}
+
+              {/* Notes - full width */}
+              {cycle.notes && (
+                <div className="md:col-span-3">
+                  <p className="text-sm text-muted-foreground">Notes</p>
+                  <p className="font-medium">{cycle.notes}</p>
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Stage Runs */}
       <div className="space-y-4">
@@ -1060,13 +1141,13 @@ export default function CycleDetailPage() {
             <Dialog open={isAddStageOpen} onOpenChange={setIsAddStageOpen}>
               <Button onClick={openAddStageModal}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Stage
+                New Stage
               </Button>
               <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
                 <DialogHeader className="flex-shrink-0">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between pr-8">
                     <div>
-                      <DialogTitle>Add New Stage</DialogTitle>
+                      <DialogTitle>New Stage</DialogTitle>
                       <DialogDescription>
                         Start a new tumbling stage for this cycle
                       </DialogDescription>
@@ -1352,22 +1433,31 @@ export default function CycleDetailPage() {
                     )}
                   </div>
 
-                  {/* Cleaning Run Section */}
-                  <Collapsible open={addCleaningRun} onOpenChange={setAddCleaningRun}>
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4" />
-                          <span>Add Cleaning Run</span>
-                        </div>
-                        {addCleaningRun ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3 space-y-4 border rounded-lg p-4">
+                  {/* Cleaning Run Section - Collapsible Card */}
+                  <div className="border rounded-lg p-3 space-y-3">
+                    <Collapsible open={addCleaningRun} onOpenChange={setAddCleaningRun}>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full justify-between h-auto p-0 hover:bg-transparent"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="h-4 w-4" />
+                            <span className="font-medium">Cleaning Run</span>
+                            {addCleaningRun && (parseInt(cleaningDurationDays) > 0 || parseInt(cleaningDurationHours) > 0 || parseInt(cleaningDurationMinutes) > 0) && (
+                              <span className="text-muted-foreground text-sm">
+                                ({cleaningDurationDays}d {cleaningDurationHours}h {cleaningDurationMinutes}m)
+                              </span>
+                            )}
+                            {!addCleaningRun && (
+                              <span className="text-muted-foreground text-sm">(optional)</span>
+                            )}
+                          </div>
+                          <ChevronDown className={`h-4 w-4 transition-transform ${addCleaningRun ? 'rotate-180' : ''}`} />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3 space-y-4">
                       {/* Cleaning Duration */}
                       <div className="space-y-2">
                         <Label>Cleaning Duration</Label>
@@ -1518,22 +1608,27 @@ export default function CycleDetailPage() {
                           rows={2}
                         />
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
 
-                  {/* Advanced Options - Collapsible */}
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full justify-between"
-                      >
-                        <span>Advanced Options</span>
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3 space-y-4">
+                  {/* Advanced Options - Collapsible Card */}
+                  <div className="border rounded-lg p-3 space-y-3">
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full justify-between h-auto p-0 hover:bg-transparent"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Advanced Options</span>
+                            <span className="text-muted-foreground text-sm">(optional)</span>
+                          </div>
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-3 space-y-4">
                       {/* Load Weight */}
                       <WeightInput
                         label="Load Weight Before"
@@ -1583,8 +1678,9 @@ export default function CycleDetailPage() {
                           </Select>
                         </div>
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
 
                   </div>
                 </div>
@@ -1596,7 +1692,7 @@ export default function CycleDetailPage() {
                     {addStageMutation.isPending && (
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     )}
-                    Start Stage
+                    Create Stage
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -1630,10 +1726,10 @@ export default function CycleDetailPage() {
                   <StageCard
                     key={stage.stageRunId}
                     stage={stage}
+                    cycleId={cycleId}
                     onComplete={() => openCompleteStageModal(stage)}
                     onEdit={() => openEditStageModal(stage)}
                     onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
-                    onAddCleaningRun={() => openCleaningRunModal(stage)}
                     isCompleting={completeStageMutation.isPending}
                   />
                 ))}
@@ -1648,7 +1744,9 @@ export default function CycleDetailPage() {
                   <StageCard
                     key={stage.stageRunId}
                     stage={stage}
+                    cycleId={cycleId}
                     onView={() => openViewStageModal(stage)}
+                    onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
                   />
                 ))}
               </div>
@@ -1661,7 +1759,7 @@ export default function CycleDetailPage() {
       <Dialog open={isCompleteStageOpen} onOpenChange={setIsCompleteStageOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between pr-8">
               <div>
                 <DialogTitle>Complete Stage</DialogTitle>
                 <DialogDescription>
@@ -1952,14 +2050,6 @@ export default function CycleDetailPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label>Goal (optional)</Label>
-              <Input
-                value={editCycleGoal}
-                onChange={(e) => setEditCycleGoal(e.target.value)}
-                placeholder="e.g., Polished cabochons"
-              />
-            </div>
-            <div className="space-y-2">
               <Label>Notes (optional)</Label>
               <Textarea
                 value={editCycleNotes}
@@ -1987,7 +2077,7 @@ export default function CycleDetailPage() {
       <Dialog open={isEditStageOpen} onOpenChange={setIsEditStageOpen}>
         <DialogContent>
           <DialogHeader>
-            <div className="flex items-start justify-between">
+            <div className="flex items-start justify-between pr-8">
               <div>
                 <DialogTitle>Edit Stage</DialogTitle>
                 <DialogDescription>
@@ -2381,19 +2471,25 @@ function StageCard({
   onComplete,
   onEdit,
   onDelete,
-  onAddCleaningRun,
   onView,
   isCompleting,
+  cycleId,
 }: {
   stage: StageRunSummaryDto;
   onComplete?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
-  onAddCleaningRun?: () => void;
   onView?: () => void;
   isCompleting?: boolean;
+  cycleId: string;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [stageDetails, setStageDetails] = useState<StageRunDto | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+
   const isActive = stage.status === 'Active';
   const startDate = new Date(stage.startDateTime);
   const endDate = new Date(stage.endDateTime);
@@ -2411,9 +2507,25 @@ function StageCard({
 
   const timeRemaining = isActive ? getTimeRemaining(endDate) : null;
 
-  const handleCardClick = () => {
-    if (isActive && onEdit) {
-      onEdit();
+  // Load stage details when collapsible is opened
+  const loadStageDetails = async () => {
+    if (stageDetails) return; // Already loaded
+    setIsLoadingDetails(true);
+    try {
+      const details = await cycleApi.getStageRun(stage.stageRunId);
+      setStageDetails(details);
+    } catch (error) {
+      console.error('Failed to load stage details:', error);
+      toast.error('Failed to load stage details');
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const handleDetailsToggle = (open: boolean) => {
+    setIsDetailsOpen(open);
+    if (open) {
+      loadStageDetails();
     }
   };
 
@@ -2422,197 +2534,339 @@ function StageCard({
     onDelete?.();
   };
 
+  const handlePhotoUploadComplete = () => {
+    // Refresh stage details to show new photos
+    setStageDetails(null);
+    loadStageDetails();
+    // Also invalidate cycle query to update photo count
+    queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
+  };
+
+  // Format duration for display
+  const formatDuration = (days: number, hours: number) => {
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    return parts.length > 0 ? parts.join(' ') : '0h';
+  };
+
   return (
-    <Card
-      className={`${isOverdue ? 'border-yellow-300' : ''} ${isActive && onEdit ? 'cursor-pointer transition-colors hover:bg-muted/50' : ''}`}
-      onClick={handleCardClick}
-    >
-      <CardContent className="py-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-4">
-            <div className={`p-2 rounded-full ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
-              {isActive ? (
-                <Play className="h-4 w-4 text-blue-600" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              )}
+    <>
+      <Card className={isOverdue ? 'border-yellow-300' : ''}>
+        <CardContent className="py-4">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-4">
+              <div className={`p-2 rounded-full ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
+                {isActive ? (
+                  <Play className="h-4 w-4 text-blue-600" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                )}
+              </div>
+              <div>
+                <p className="font-medium">{displayName}</p>
+                <p className="text-sm text-muted-foreground">
+                  Started {startDate.toLocaleDateString()}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="font-medium">{displayName}</p>
-              <p className="text-sm text-muted-foreground">
-                Started {startDate.toLocaleDateString()}
+            <div className="flex items-center gap-2">
+              {stage.resultRating && (
+                <Badge variant="outline" className="gap-1">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  {stage.resultRating}/5
+                </Badge>
+              )}
+              {isActive && onEdit && (
+                <Button variant="secondary" size="sm" onClick={onEdit}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Button>
+              )}
+              {isActive && onComplete && (
+                <Button size="sm" onClick={onComplete} disabled={isCompleting}>
+                  {isCompleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Complete'
+                  )}
+                </Button>
+              )}
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {!isActive && onView && (
+                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onView(); }}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View Details
+                    </DropdownMenuItem>
+                  )}
+                  {onDelete && (
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600"
+                      onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Delete Confirmation Dialog */}
+              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Stage?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete &quot;{displayName}&quot;? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDelete}
+                      className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+
+          {/* Progress */}
+          {isActive && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {isOverdue ? (
+                    <span className="text-yellow-600 font-medium">Overdue</span>
+                  ) : (
+                    `Day ${Math.min(currentDay, totalDays)} of ${totalDays}`
+                  )}
+                </span>
+                <span className="text-muted-foreground">
+                  {isOverdue ? 'Ready to complete' : `${timeRemaining} remaining`}
+                </span>
+              </div>
+              <Progress value={progressPercent} className={isOverdue ? '[&>div]:bg-yellow-500' : ''} />
+              <p className="text-xs text-muted-foreground text-right">
+                {Math.round(progressPercent)}% complete
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-            {stage.resultRating && (
-              <Badge variant="outline" className="gap-1">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                {stage.resultRating}/5
-              </Badge>
-            )}
-            {isActive && onAddCleaningRun && (
-              <Button variant="secondary" size="sm" onClick={onAddCleaningRun}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Cleaning Run
-              </Button>
-            )}
-            {isActive && onComplete && (
-              <Button size="sm" onClick={onComplete} disabled={isCompleting}>
-                {isCompleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Complete'
-                )}
-              </Button>
-            )}
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {!isActive && onView && (
-                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onView(); }}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    View Details
-                  </DropdownMenuItem>
-                )}
-                {isActive && onEdit && (
-                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onEdit(); }}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit Duration
-                  </DropdownMenuItem>
-                )}
-                {onAddCleaningRun && (
-                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onAddCleaningRun(); }}>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Add Cleaning Run
-                  </DropdownMenuItem>
-                )}
-                {onDelete && (
-                  <DropdownMenuItem
-                    className="text-red-600 focus:text-red-600"
-                    onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          )}
 
-            {/* Delete Confirmation Dialog */}
-            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete Stage?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to delete &quot;{displayName}&quot;? This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDelete}
-                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-
-        {/* Progress */}
-        {isActive && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                {isOverdue ? (
-                  <span className="text-yellow-600 font-medium">Overdue</span>
-                ) : (
-                  `Day ${Math.min(currentDay, totalDays)} of ${totalDays}`
-                )}
-              </span>
-              <span className="text-muted-foreground">
-                {isOverdue ? 'Ready to complete' : `${timeRemaining} remaining`}
-              </span>
-            </div>
-            <Progress value={progressPercent} className={isOverdue ? '[&>div]:bg-yellow-500' : ''} />
-            <p className="text-xs text-muted-foreground text-right">
-              {Math.round(progressPercent)}% complete
+          {!isActive && (
+            <p className="text-sm text-muted-foreground">
+              Completed {endDate.toLocaleDateString()}
             </p>
-          </div>
-        )}
+          )}
 
-        {!isActive && (
-          <p className="text-sm text-muted-foreground">
-            Completed {endDate.toLocaleDateString()}
-          </p>
-        )}
-
-        {/* Cleaning Run Section */}
-        {stage.cleaningRun && (
-          <Collapsible className="mt-3">
+          {/* Stage Details Collapsible */}
+          <Collapsible open={isDetailsOpen} onOpenChange={handleDetailsToggle} className="mt-3">
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
                 className="w-full justify-between p-2 h-auto"
-                onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-500" />
-                  <span className="text-sm font-medium">Cleaning Run</span>
-                  {isActive && (
-                    <Badge variant={stage.cleaningRun.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
-                      {stage.cleaningRun.status}
-                    </Badge>
-                  )}
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  <span className="text-sm font-medium">Stage Details</span>
                 </div>
-                <ChevronDown className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent onClick={(e) => e.stopPropagation()}>
-              <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Duration:</span>
-                  <span>{formatDurationMinutes(stage.cleaningRun.durationMinutes)}</span>
-                </div>
-                {stage.cleaningRun.purpose && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Purpose:</span>
-                    <span>{formatCleaningPurpose(stage.cleaningRun.purpose)}</span>
+            <CollapsibleContent>
+              <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-3 text-sm">
+                {isLoadingDetails ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
-                )}
-                {stage.cleaningRun.materials && stage.cleaningRun.materials.length > 0 && (
-                  <div>
-                    <span className="text-muted-foreground">Materials:</span>
-                    <ul className="mt-1 ml-4 list-disc text-xs">
-                      {stage.cleaningRun.materials.map((mat, idx) => (
-                        <li key={idx}>
-                          {mat.materialName}
-                          {mat.displayAmount && ` - ${mat.displayAmount} ${mat.displayUnit || ''}`}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {stage.cleaningRun.notes && (
-                  <div>
-                    <span className="text-muted-foreground">Notes:</span>
-                    <p className="mt-1 text-xs">{stage.cleaningRun.notes}</p>
-                  </div>
-                )}
+                ) : stageDetails ? (
+                  <>
+                    {/* Duration */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Duration:</span>
+                      <span>{formatDuration(stageDetails.durationDays, stageDetails.durationHours)}</span>
+                    </div>
+
+                    {/* Barrel */}
+                    {stageDetails.barrels && stageDetails.barrels.length > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Barrel:</span>
+                        <span>
+                          {stageDetails.barrels.map(b =>
+                            b.nickname ? `#${b.barrelNumber} ${b.nickname}` : `#${b.barrelNumber}`
+                          ).join(', ')}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Materials */}
+                    {stageDetails.materials && stageDetails.materials.length > 0 && (
+                      <div>
+                        <span className="text-muted-foreground">Materials:</span>
+                        <ul className="mt-1 ml-4 list-disc text-xs">
+                          {stageDetails.materials.map((mat) => (
+                            <li key={mat.stageMaterialId}>
+                              {mat.materialName}
+                              {mat.displayAmount && ` - ${mat.displayAmount} ${mat.displayUnit || ''}`}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Weight */}
+                    {stageDetails.loadWeightBeforeGrams && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Weight Before:</span>
+                        <span>{stageDetails.loadWeightBeforeGrams}g</span>
+                      </div>
+                    )}
+                    {stageDetails.loadWeightAfterGrams && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Weight After:</span>
+                        <span>
+                          {stageDetails.loadWeightAfterGrams}g
+                          {stageDetails.loadWeightBeforeGrams && stageDetails.loadWeightBeforeGrams > 0 && (
+                            <span className="text-muted-foreground ml-1">
+                              ({((stageDetails.loadWeightBeforeGrams - stageDetails.loadWeightAfterGrams) / stageDetails.loadWeightBeforeGrams * 100).toFixed(1)}% loss)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Fill Level */}
+                    {stageDetails.fillLevelPercent && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Fill Level:</span>
+                        <span>{stageDetails.fillLevelPercent}%</span>
+                      </div>
+                    )}
+
+                    {/* Water Amount */}
+                    {stageDetails.waterAmountMl && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Water:</span>
+                        <span>{stageDetails.waterAmountMl} ml</span>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {stageDetails.notes && (
+                      <div>
+                        <span className="text-muted-foreground">Notes:</span>
+                        <p className="mt-1 text-xs">{stageDetails.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Photos */}
+                    <div className="pt-2 border-t">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-muted-foreground flex items-center gap-2">
+                          <ImageIcon className="h-4 w-4" />
+                          Photos ({stageDetails.photos?.length || 0})
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setUploadModalOpen(true);
+                          }}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
+                          Add
+                        </Button>
+                      </div>
+                      {stageDetails.photos && stageDetails.photos.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                          {stageDetails.photos.map((photo) => (
+                            <div key={photo.photoId} className="relative aspect-square">
+                              <img
+                                src={photo.thumbnailUrl || photo.url}
+                                alt={photo.caption || photo.fileName || 'Photo'}
+                                className="w-full h-full object-cover rounded"
+                              />
+                              <span className="absolute bottom-1 left-1 px-1 py-0.5 bg-black/50 rounded text-white text-[10px] capitalize">
+                                {photo.photoType}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          No photos yet
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Cleaning Run */}
+                    {stage.cleaningRun && (
+                      <div className="pt-2 border-t">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Sparkles className="h-4 w-4 text-purple-500" />
+                          <span className="text-muted-foreground font-medium">Cleaning Run</span>
+                        </div>
+                        <div className="ml-6 space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Duration:</span>
+                            <span>{formatDurationMinutes(stage.cleaningRun.durationMinutes)}</span>
+                          </div>
+                          {stage.cleaningRun.purpose && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Purpose:</span>
+                              <span>{formatCleaningPurpose(stage.cleaningRun.purpose)}</span>
+                            </div>
+                          )}
+                          {stage.cleaningRun.materials && stage.cleaningRun.materials.length > 0 && (
+                            <div>
+                              <span className="text-muted-foreground">Materials:</span>
+                              <ul className="mt-1 ml-4 list-disc text-xs">
+                                {stage.cleaningRun.materials.map((mat, idx) => (
+                                  <li key={idx}>
+                                    {mat.materialName}
+                                    {mat.displayAmount && ` - ${mat.displayAmount} ${mat.displayUnit || ''}`}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                          {stage.cleaningRun.notes && (
+                            <div>
+                              <span className="text-muted-foreground">Notes:</span>
+                              <p className="mt-1 text-xs">{stage.cleaningRun.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : null}
               </div>
             </CollapsibleContent>
           </Collapsible>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {/* Photo Upload Modal */}
+      <PhotoUploadModal
+        open={uploadModalOpen}
+        onOpenChange={setUploadModalOpen}
+        stages={[stage]}
+        onUploadComplete={handlePhotoUploadComplete}
+        defaultStageId={stage.stageRunId}
+      />
+    </>
   );
 }
 

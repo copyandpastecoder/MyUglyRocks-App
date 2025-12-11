@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ interface PhotoUploadModalProps {
   onOpenChange: (open: boolean) => void;
   stages: StageRunSummaryDto[];
   onUploadComplete: () => void;
+  defaultStageId?: string;
 }
 
 type PhotoType = 'before' | 'during' | 'after';
@@ -39,15 +40,23 @@ export function PhotoUploadModal({
   onOpenChange,
   stages,
   onUploadComplete,
+  defaultStageId,
 }: PhotoUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [selectedStageId, setSelectedStageId] = useState<string>('');
+  const [selectedStageId, setSelectedStageId] = useState<string>(defaultStageId || '');
   const [photoType, setPhotoType] = useState<PhotoType>('during');
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState<{ stage?: string; photoType?: string }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync selectedStageId with defaultStageId when modal opens
+  useEffect(() => {
+    if (open && defaultStageId) {
+      setSelectedStageId(defaultStageId);
+    }
+  }, [open, defaultStageId]);
 
   const formatStageDisplayName = (stage: StageRunSummaryDto): string => {
     const statusLabel = stage.status === 'Active' ? ' (Active)' :

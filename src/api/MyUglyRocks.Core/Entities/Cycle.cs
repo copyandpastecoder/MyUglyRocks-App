@@ -15,7 +15,6 @@ public class Cycle : SoftDeletableEntity
     public DateOnly StartDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public CycleStatus Status { get; set; } = CycleStatus.Active;
-    public string? Goal { get; set; }
     public int? DifficultyRating { get; set; } // 1-5
     public int? FinalQuality { get; set; } // 1-5
     public string? AdditionalSpecimens { get; set; }

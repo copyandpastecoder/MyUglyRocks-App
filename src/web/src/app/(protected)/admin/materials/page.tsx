@@ -190,7 +190,7 @@ export default function MaterialsAdminPage() {
             </div>
             <Button onClick={handleOpenCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Material
+              New Material
             </Button>
           </div>
         </CardHeader>
@@ -323,7 +323,7 @@ export default function MaterialsAdminPage() {
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedMaterial ? 'Edit Material' : 'Add Material'}</DialogTitle>
+            <DialogTitle>{selectedMaterial ? 'Edit Material' : 'New Material'}</DialogTitle>
             <DialogDescription>
               {selectedMaterial ? 'Update material details' : 'Add a new tumbling material'}
             </DialogDescription>

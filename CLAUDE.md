@@ -54,23 +54,16 @@ Note: Both services are served via nginx-ingress on port 30443 with path-based r
 
 No port-forward needed - services are directly accessible on the host IP with HTTPS.
 
-#### Option 2: Port Forwarding (Localhost Only)
+#### Option 2: Cloudflare Tunnel (Mobile/External Access)
 
-Port-forwards are **not persistent** - they need to be started each time you restart your machine or K8s cluster:
+For mobile testing with valid SSL certificates:
 
-```bash
-# Localhost only (default)
-kubectl port-forward svc/myuglyrocks-api 5222:80 -n myuglyrocks &
-kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks &
+| Service | URL | Notes |
+|---------|-----|-------|
+| Web + API | https://dev.myuglyrocks.com | Valid SSL, accessible from anywhere |
+| API | https://dev.myuglyrocks.com/api | Same path-based routing as NodePort |
 
-# Network access (for mobile/other devices) - add --address 0.0.0.0
-kubectl port-forward --address 0.0.0.0 svc/myuglyrocks-api 5222:80 -n myuglyrocks &
-kubectl port-forward --address 0.0.0.0 svc/myuglyrocks-web 3000:80 -n myuglyrocks &
-```
-
-**Access URLs (port-forward):**
-- Localhost: https://localhost:3000 (web), https://localhost:5222 (API)
-- Network: https://10.80.80.181:3000 (web), https://10.80.80.181:5222 (API)
+The Cloudflare Tunnel runs as a pod in K8s (`cloudflared` deployment) and routes traffic to nginx-ingress.
 
 ### Rebuilding After Code Changes
 

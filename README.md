@@ -62,55 +62,36 @@ MyUglyRocks-App/
 - [Node.js 20+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop)
 
-### 1. Start Local Services
+### 1. Build Docker Images
 
 ```bash
-# Start PostgreSQL and Redis
-docker-compose up -d
+# Build API and Web images (run from repo root)
+docker build -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
+docker build -t myuglyrocks-web:latest -f src/web/Dockerfile .
 ```
 
-### 2. Run the Backend
+### 2. Deploy to Kubernetes
 
 ```bash
-cd src/api
-dotnet restore
-dotnet build
+# Apply all K8s manifests
+kubectl apply -f k8s/base/
 
-# Run migrations (after creating initial migration)
-# dotnet ef database update -p MyUglyRocks.Infrastructure -s MyUglyRocks.Api
+# Restart deployments to pick up new images
+kubectl rollout restart deployment myuglyrocks-api myuglyrocks-web -n myuglyrocks
 
-# Start the API
-dotnet run --project MyUglyRocks.Api
+# Check pod status
+kubectl get pods -n myuglyrocks
 ```
 
-API will be available at:
-- https://localhost:5222 (HTTPS)
-- API Docs: https://localhost:5222/scalar/v1
+### 3. Access the Application
 
-### 3. Run the Frontend
+| Access Method | URL | Notes |
+|---------------|-----|-------|
+| Local Network | https://10.80.80.181:30443 | Via nginx-ingress NodePort |
+| Mobile/External | https://dev.myuglyrocks.com | Via Cloudflare Tunnel (valid SSL) |
+| API Docs | https://10.80.80.181:30443/scalar/v1 | Scalar OpenAPI docs |
 
-```bash
-cd src/web
-npm install
-
-# Create local environment file (first time only)
-cp .env.local.example .env.local
-
-npm run dev
-```
-
-Frontend will be available at https://localhost:3000
-
-### Port Reference
-
-| Service    | Port  | Description              |
-|------------|-------|--------------------------|
-| Frontend   | 3000  | Next.js dev server (HTTPS) |
-| API (HTTPS)| 5222  | ASP.NET Core API         |
-| PostgreSQL | 5432  | Database (Docker)        |
-| Redis      | 6379  | Cache (Docker)           |
-
-> **Note:** The frontend connects to the API via `NEXT_PUBLIC_API_URL` in `.env.local`. Ensure this matches your API port.
+> **Note:** Both web and API are served via nginx-ingress on port 30443 with path-based routing (`/api` routes to API, `/` routes to web).
 
 ## Development
 

@@ -1,6 +1,6 @@
-@MyUglyRocks.Api_HostAddress = https://localhost:5222
+@MyUglyRocks.Api_HostAddress = https://10.80.80.181:30443/api
 
-GET {{MyUglyRocks.Api_HostAddress}}/weatherforecast/
+GET {{MyUglyRocks.Api_HostAddress}}/health
 Accept: application/json
 
 ###

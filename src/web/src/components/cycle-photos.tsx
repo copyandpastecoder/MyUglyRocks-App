@@ -153,7 +153,7 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                 onClick={() => setUploadModalOpen(true)}
               >
                 <Camera className="mr-2 h-4 w-4" />
-                Add Photo
+                New Photo
               </Button>
             )}
           </div>
