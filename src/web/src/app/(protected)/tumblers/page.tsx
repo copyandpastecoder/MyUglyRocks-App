@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useTumblers, useDeleteTumbler } from '@/hooks';
+import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +47,7 @@ export default function TumblersPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className={PAGE_CONTAINER}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">My Tumblers</h1>
@@ -64,7 +65,7 @@ export default function TumblersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_CONTAINER}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">My Tumblers</h1>
@@ -95,56 +96,45 @@ export default function TumblersPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {tumblers?.map((tumbler: TumblerListDto) => (
-            <Card key={tumbler.tumblerId} className="relative">
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{tumbler.brand}</CardTitle>
-                    <CardDescription>
-                      {tumbler.model || 'No model specified'}
-                    </CardDescription>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Open menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem asChild>
-                        <Link href={`/tumblers/${tumbler.tumblerId}`}>
-                          <Pencil className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-red-600 focus:text-red-600"
-                        onClick={() => handleDelete(tumbler.tumblerId)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge variant={tumbler.tumblerType === 'Rotary' ? 'default' : 'secondary'}>
-                    {tumbler.tumblerType}
-                  </Badge>
-                  <Badge variant="outline">
-                    {tumbler.barrelCount} barrel{tumbler.barrelCount !== 1 ? 's' : ''}
-                  </Badge>
-                </div>
+            <div
+              key={tumbler.tumblerId}
+              className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+            >
+              <Link href={`/tumblers/${tumbler.tumblerId}`} className="flex-1 min-w-0">
+                <p className="font-medium truncate">{tumbler.brand} {tumbler.model}</p>
                 <p className="text-sm text-muted-foreground">
-                  Added {new Date(tumbler.dateCreated).toLocaleDateString()}
+                  {tumbler.tumblerType} · {tumbler.barrelCount} barrel{tumbler.barrelCount !== 1 ? 's' : ''}
                 </p>
-              </CardContent>
-            </Card>
+              </Link>
+              <div className="flex items-center gap-2">
+                <Cylinder className="h-4 w-4 text-muted-foreground" />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">Open menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                      <Link href={`/tumblers/${tumbler.tumblerId}`}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-red-600 focus:text-red-600"
+                      onClick={() => handleDelete(tumbler.tumblerId)}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           ))}
         </div>
       )}

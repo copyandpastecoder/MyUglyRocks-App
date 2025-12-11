@@ -160,7 +160,7 @@ export function PhotoUploadModal({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>Upload Photo</DialogTitle>
           <DialogDescription>

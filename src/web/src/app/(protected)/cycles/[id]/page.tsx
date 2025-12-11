@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cycleApi, tumblerApi } from '@/lib/api';
+import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -956,7 +957,7 @@ export default function CycleDetailPage() {
   const completedStages = cycle.stageRuns.filter(s => s.status === 'Completed');
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_CONTAINER}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
@@ -1061,7 +1062,7 @@ export default function CycleDetailPage() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Stage
               </Button>
-              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+              <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
                 <DialogHeader className="flex-shrink-0">
                   <div className="flex items-start justify-between">
                     <div>
@@ -1658,7 +1659,7 @@ export default function CycleDetailPage() {
 
       {/* Complete Stage Modal */}
       <Dialog open={isCompleteStageOpen} onOpenChange={setIsCompleteStageOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-start justify-between">
               <div>

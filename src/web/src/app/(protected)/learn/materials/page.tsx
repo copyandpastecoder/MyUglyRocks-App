@@ -220,7 +220,7 @@ export default function MaterialsPage() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedId} onOpenChange={(open) => !open && setSelectedId(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           {selectedMaterial && (
             <>
               <DialogHeader>

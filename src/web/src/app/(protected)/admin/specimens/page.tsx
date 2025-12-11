@@ -343,7 +343,7 @@ export default function SpecimensAdminPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{selectedSpecimen ? 'Edit Specimen' : 'Add Specimen'}</DialogTitle>
             <DialogDescription>

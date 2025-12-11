@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCycles, useDeleteCycle, useArchiveCycle } from '@/hooks';
+import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -63,102 +64,63 @@ export default function CyclesPage() {
     archiveMutation.mutate(id);
   };
 
-  const renderCycleCard = (cycle: CycleListDto) => (
-    <Link key={cycle.cycleId} href={`/cycles/${cycle.cycleId}`} className="block">
-      <Card className={`relative hover:shadow-md transition-shadow cursor-pointer ${activeTab === 'Active' ? getCycleStatusClass(cycle) : ''}`}>
-        <CardHeader className="pb-2">
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-lg">{cycle.name}</CardTitle>
-              <CardDescription>
-                Started {new Date(cycle.startDate).toLocaleDateString()}
-                {cycle.endDate && ` • Ended ${new Date(cycle.endDate).toLocaleDateString()}`}
-              </CardDescription>
-            </div>
-            <div onClick={(e) => e.stopPropagation()}>
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.preventDefault()}>
-                    <MoreVertical className="h-4 w-4" />
-                    <span className="sr-only">Open menu</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}`)}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    View/Edit
-                  </DropdownMenuItem>
-                  {cycle.status === 'Active' && (
-                    <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}/complete`)}>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      Complete Cycle
-                    </DropdownMenuItem>
-                  )}
-                  {cycle.status === 'Completed' && (
-                    <DropdownMenuItem onSelect={() => handleArchive(cycle.cycleId)}>
-                      <Archive className="mr-2 h-4 w-4" />
-                      Archive
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-red-600 focus:text-red-600"
-                    onSelect={() => handleDelete(cycle.cycleId)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-2 mb-3">
-          <Badge variant={statusColors[cycle.status] || 'default'}>
-            {cycle.status}
-          </Badge>
-          <Badge variant="outline">
-            {cycle.stageCount} stage{cycle.stageCount !== 1 ? 's' : ''}
-          </Badge>
-          {cycle.activeStageCount > 0 && (
-            <Badge variant="secondary">
-              {cycle.activeStageCount} active
-            </Badge>
-          )}
+  const renderCycleRow = (cycle: CycleListDto) => (
+    <div
+      key={cycle.cycleId}
+      className={`flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors ${activeTab === 'Active' ? getCycleStatusClass(cycle) : 'border-border'}`}
+    >
+      <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
+        <p className="font-medium truncate">{cycle.name}</p>
+        <p className="text-sm text-muted-foreground">
+          {cycle.stageCount} stage{cycle.stageCount !== 1 ? 's' : ''}
+          {cycle.activeStageCount > 0 && ` · ${cycle.activeStageCount} active`}
           {cycle.isOverdue && (
-            <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">
-              <AlertCircle className="mr-1 h-3 w-3" />
-              Overdue
-            </Badge>
+            <span className="text-yellow-600 ml-2">· overdue</span>
           )}
-          {cycle.difficultyRating && (
-            <Badge variant="outline">
-              Difficulty: {cycle.difficultyRating}/5
-            </Badge>
-          )}
-        </div>
-        {cycle.goal && (
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {cycle.goal}
-          </p>
+        </p>
+      </Link>
+      <div className="flex items-center gap-2">
+        {cycle.isOverdue ? (
+          <AlertCircle className="h-4 w-4 text-yellow-600" />
+        ) : (
+          <RotateCcw className="h-4 w-4 text-muted-foreground" />
         )}
-        {cycle.stageCount === 0 && cycle.status === 'Active' && (
-          <Button
-            className="mt-3"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              router.push(`/cycles/${cycle.cycleId}?addStage=true`);
-            }}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add First Stage
-          </Button>
-        )}
-      </CardContent>
-      </Card>
-    </Link>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <MoreVertical className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}`)}>
+              <Pencil className="mr-2 h-4 w-4" />
+              View/Edit
+            </DropdownMenuItem>
+            {cycle.status === 'Active' && (
+              <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}/complete`)}>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Complete Cycle
+              </DropdownMenuItem>
+            )}
+            {cycle.status === 'Completed' && (
+              <DropdownMenuItem onSelect={() => handleArchive(cycle.cycleId)}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              onSelect={() => handleDelete(cycle.cycleId)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 
   if (isLoading) {
@@ -166,7 +128,7 @@ export default function CyclesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_CONTAINER}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Tumbling Cycles</h1>
@@ -211,8 +173,8 @@ export default function CyclesPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {cycles?.map(renderCycleCard)}
+            <div className="space-y-2">
+              {cycles?.map(renderCycleRow)}
             </div>
           )}
         </TabsContent>
