@@ -28,8 +28,14 @@
 
 ### Secrets Management
 - All secrets are stored in Kubernetes secrets (`myuglyrocks-secrets`)
-- Secrets include: database connection, Redis, JWT, R2 storage (including public URL), Resend email API
+- Secrets include: database connection, Redis (with password), JWT, R2 storage (including public URL), Resend email API
 - The `.env` file is only for reference/local tooling, NOT for running the app
+
+**Required secrets for Redis authentication:**
+- `redis-password` - Password for Redis authentication
+- `redis-connection-string` - Must include password: `redis:6379,password=your-redis-password`
+
+See `k8s/base/app-secrets.yaml.example` for the complete list of required secrets.
 
 ### R2 Photo Storage
 - Photos are stored in Cloudflare R2 bucket: `dev-myuglyrocks-media`
@@ -108,6 +114,44 @@ If you see CORS errors like "Cross-Origin Request Blocked", check:
 - `src/web/` - Next.js 16 Frontend
 - `k8s/base/` - Kubernetes manifests
 - `docs/` - Documentation
+
+## Security Guidelines
+
+### API Security Features
+
+The API includes several security measures that must be maintained:
+
+1. **Global Exception Handling** (`src/api/MyUglyRocks.Api/Middleware/GlobalExceptionMiddleware.cs`)
+   - All unhandled exceptions are caught and logged internally with correlation IDs
+   - Generic error messages are returned to clients (no stack traces or internal details)
+   - Only development environment shows exception details
+
+2. **Pagination Limits** (`src/api/MyUglyRocks.Api/Helpers/PaginationHelper.cs`)
+   - All paginated endpoints must use `PaginationHelper` to validate parameters
+   - Maximum page size: 100
+   - Maximum skip: 10,000
+   - Example usage:
+     ```csharp
+     skip = PaginationHelper.ClampSkip(skip);
+     take = PaginationHelper.ClampTake(take);
+     ```
+
+3. **Hangfire Dashboard** (`src/api/MyUglyRocks.Api/Authorization/HangfireAuthorizationFilter.cs`)
+   - Only accessible in Development environment
+   - Requires Admin role authentication
+   - Access at `/hangfire` when authenticated as Admin
+
+4. **Redis Authentication**
+   - Redis requires password authentication via `--requirepass`
+   - Connection string must include password parameter
+   - See Secrets Management section above
+
+### Security Documentation
+
+See `docs/SECURITY-AUDIT.md` for:
+- Full security audit findings
+- Remediation status and checklist
+- Previously fixed OWASP vulnerabilities
 
 ## Additional Guidelines
 
