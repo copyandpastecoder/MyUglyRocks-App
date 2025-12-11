@@ -10,11 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
 import { DashboardSkeleton } from '@/components/skeletons';
 import { CheckCircle2, Cylinder, RotateCcw, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { getCycleStatusClass } from '@/lib/cycle-utils';
+import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -37,69 +37,78 @@ export default function DashboardPage() {
   const activeStageCount = activeCycles?.reduce((acc, cycle) => acc + cycle.activeStageCount, 0) ?? 0;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight text-heading">
-          Welcome back, {user?.displayName || user?.username}!
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Track your rock tumbling journey
-        </p>
-      </div>
+    <PageTransition>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-heading">
+            Welcome back, {user?.displayName || user?.username}!
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Track your rock tumbling journey
+          </p>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Cycles</CardTitle>
-            <RotateCcw className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{activeCycleCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {activeStageCount} active stage{activeStageCount !== 1 ? 's' : ''}
-            </p>
-          </CardContent>
-        </Card>
+        <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <StaggerItem>
+            <Card className="hover:shadow-md hover:-translate-y-0.5">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Active Cycles</CardTitle>
+                <RotateCcw className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{activeCycleCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {activeStageCount} active stage{activeStageCount !== 1 ? 's' : ''}
+                </p>
+              </CardContent>
+            </Card>
+          </StaggerItem>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Completed Cycles</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{completedCycleCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              All time
-            </p>
-          </CardContent>
-        </Card>
+          <StaggerItem>
+            <Card className="hover:shadow-md hover:-translate-y-0.5">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Completed Cycles</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{completedCycleCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  All time
+                </p>
+              </CardContent>
+            </Card>
+          </StaggerItem>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">My Tumblers</CardTitle>
-            <Cylinder className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{tumblerCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Registered machines
-            </p>
-          </CardContent>
-        </Card>
+          <StaggerItem>
+            <Card className="hover:shadow-md hover:-translate-y-0.5">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">My Tumblers</CardTitle>
+                <Cylinder className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{tumblerCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Registered machines
+                </p>
+              </CardContent>
+            </Card>
+          </StaggerItem>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Stages</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{activeStageCount}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Currently running
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          <StaggerItem>
+            <Card className="hover:shadow-md hover:-translate-y-0.5">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Active Stages</CardTitle>
+                <Clock className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <p className="text-3xl font-bold">{activeStageCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Currently running
+                </p>
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        </StaggerContainer>
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -177,6 +186,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+      </div>
+    </PageTransition>
   );
 }
