@@ -56,6 +56,11 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
       return results.flat();
     },
     enabled: stages.length > 0,
+    // Auto-refetch every 2 seconds if any photos are still processing
+    refetchInterval: (query) => {
+      const photos = query.state.data ?? [];
+      return photos.some(p => p.processingStatus === 'Processing') ? 2000 : false;
+    },
   });
 
   useEffect(() => {
@@ -184,11 +189,26 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div className="relative group aspect-square">
-                          <img
-                            src={photo.url}
-                            alt={photo.caption || photo.fileName || 'Photo'}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
+                          {photo.processingStatus === 'Processing' ? (
+                            // Show loading placeholder while processing
+                            <div className="w-full h-full bg-muted rounded-lg flex flex-col items-center justify-center">
+                              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
+                              <span className="text-xs text-muted-foreground">Processing...</span>
+                            </div>
+                          ) : photo.processingStatus === 'Failed' ? (
+                            // Show error state for failed processing
+                            <div className="w-full h-full bg-destructive/10 rounded-lg flex flex-col items-center justify-center">
+                              <CloudOff className="h-8 w-8 text-destructive mb-2" />
+                              <span className="text-xs text-destructive">Processing failed</span>
+                            </div>
+                          ) : (
+                            // Show actual image when completed
+                            <img
+                              src={photo.thumbnailUrl || photo.url}
+                              alt={photo.caption || photo.fileName || 'Photo'}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          )}
                           <button
                             onClick={() => removePhoto(photo.photoId)}
                             disabled={deletingPhotoId === photo.photoId}
@@ -215,6 +235,11 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                       {photo.caption && (
                         <TooltipContent>
                           <p className="max-w-xs">{photo.caption}</p>
+                        </TooltipContent>
+                      )}
+                      {photo.processingStatus === 'Failed' && photo.processingError && (
+                        <TooltipContent>
+                          <p className="max-w-xs text-destructive">{photo.processingError}</p>
                         </TooltipContent>
                       )}
                     </Tooltip>

@@ -1,10 +1,12 @@
 using System.Security.Claims;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
+using MyUglyRocks.Infrastructure.Jobs;
 
 namespace MyUglyRocks.Api.Controllers;
 
@@ -15,7 +17,7 @@ public class PhotosController : ControllerBase
 {
     private readonly DbContext _context;
     private readonly IStorageService _storageService;
-    private readonly IImageProcessingService _imageProcessingService;
+    private readonly IBackgroundJobClient _backgroundJobClient;
     private readonly ILogger<PhotosController> _logger;
 
     private static readonly string[] AllowedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif" };
@@ -24,12 +26,12 @@ public class PhotosController : ControllerBase
     public PhotosController(
         DbContext context,
         IStorageService storageService,
-        IImageProcessingService imageProcessingService,
+        IBackgroundJobClient backgroundJobClient,
         ILogger<PhotosController> logger)
     {
         _context = context;
         _storageService = storageService;
-        _imageProcessingService = imageProcessingService;
+        _backgroundJobClient = backgroundJobClient;
         _logger = logger;
     }
 
@@ -105,79 +107,34 @@ public class PhotosController : ControllerBase
             _logger.LogDebug("Starting photo upload for stage {StageRunId}, file: {FileName}, size: {Size}",
                 stageRunId, file.FileName, file.Length);
 
-            var folder = $"photos/stages/{stageRunId}";
             var photoId = Guid.NewGuid();
+            var folder = $"photos/stages/{stageRunId}";
             var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
 
-            // Process image into variants
-            await using var inputStream = file.OpenReadStream();
-            var processed = await _imageProcessingService.ProcessImageAsync(inputStream, file.FileName, cancellationToken);
-
-            string? originalUrl = null;
-            string? originalStorageKey = null;
-            string? thumbnailUrl = null;
-            string? thumbnailStorageKey = null;
-            string? mediumUrl = null;
-            string? mediumStorageKey = null;
-            string? largeUrl = null;
-            string? largeStorageKey = null;
-
-            // Upload each variant
-            foreach (var variant in processed.Variants)
+            // Read file into memory for background processing
+            byte[] imageData;
+            await using (var inputStream = file.OpenReadStream())
             {
-                var variantKey = $"{baseKey}-{variant.Size}{variant.Extension}";
-                var url = await _storageService.UploadAsync(variant.Stream, $"{baseKey}{variant.Extension}", folder, variantKey, cancellationToken);
-                var storageKey = new Uri(url).AbsolutePath.TrimStart('/');
-
-                switch (variant.Size)
-                {
-                    case "original":
-                        originalUrl = url;
-                        originalStorageKey = storageKey;
-                        break;
-                    case "thumbnail":
-                        thumbnailUrl = url;
-                        thumbnailStorageKey = storageKey;
-                        break;
-                    case "medium":
-                        mediumUrl = url;
-                        mediumStorageKey = storageKey;
-                        break;
-                    case "large":
-                        largeUrl = url;
-                        largeStorageKey = storageKey;
-                        break;
-                }
-
-                // Dispose the stream after upload
-                await variant.Stream.DisposeAsync();
+                using var memoryStream = new MemoryStream();
+                await inputStream.CopyToAsync(memoryStream, cancellationToken);
+                imageData = memoryStream.ToArray();
             }
 
-            _logger.LogDebug("Uploaded {Count} image variants for photo {PhotoId}", processed.Variants.Count, photoId);
-
-            // Create photo record
+            // Create photo record immediately with "Processing" status
             var sortOrder = stageRun.Photos.Count;
             var photo = new Photo
             {
                 PhotoId = photoId,
                 StageRunId = stageRunId,
-                StorageKey = originalStorageKey ?? $"{folder}/{baseKey}-original.webp",
-                Url = originalUrl ?? largeUrl ?? mediumUrl ?? thumbnailUrl ?? throw new InvalidOperationException("No image variants were created"),
-                FileName = file.FileName,
+                StorageKey = $"{folder}/{baseKey}-original.webp",  // Placeholder, updated by job
+                Url = "",  // Will be set by background job
+                FileName = $"{photoId:N}{extension}",
                 MimeType = "image/webp",
                 FileSizeBytes = file.Length,
-                Width = processed.OriginalWidth,
-                Height = processed.OriginalHeight,
                 PhotoType = parsedPhotoType,
                 Caption = caption,
                 SortOrder = sortOrder,
-                ThumbnailUrl = thumbnailUrl,
-                ThumbnailStorageKey = thumbnailStorageKey,
-                MediumUrl = mediumUrl,
-                MediumStorageKey = mediumStorageKey,
-                LargeUrl = largeUrl,
-                LargeStorageKey = largeStorageKey,
-                BlurHash = processed.BlurHash,
+                ProcessingStatus = PhotoProcessingStatus.Processing,
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow
             };
@@ -185,8 +142,11 @@ public class PhotosController : ControllerBase
             await Photos.AddAsync(photo, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Photo uploaded for stage {StageRunId}: {PhotoId} with {VariantCount} variants",
-                stageRunId, photo.PhotoId, processed.Variants.Count);
+            // Enqueue background job for image processing (variants + upload)
+            _backgroundJobClient.Enqueue<PhotoProcessingJob>(
+                job => job.ProcessPhotoAsync(photoId, imageData, file.FileName));
+
+            _logger.LogInformation("Photo {PhotoId} queued for background processing", photoId);
 
             var dto = new PhotoDto(
                 photo.PhotoId,
@@ -201,7 +161,9 @@ public class PhotosController : ControllerBase
                 photo.LargeUrl,
                 photo.BlurHash,
                 photo.Width,
-                photo.Height
+                photo.Height,
+                photo.ProcessingStatus.ToString(),
+                photo.ProcessingError
             );
 
             return Ok(new UploadPhotoResponse(true, dto));
@@ -307,7 +269,9 @@ public class PhotosController : ControllerBase
                 p.LargeUrl,
                 p.BlurHash,
                 p.Width,
-                p.Height
+                p.Height,
+                p.ProcessingStatus.ToString(),
+                p.ProcessingError
             ))
             .ToList();
 

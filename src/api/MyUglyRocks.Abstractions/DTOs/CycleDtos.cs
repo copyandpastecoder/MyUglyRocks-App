@@ -216,7 +216,9 @@ public record PhotoDto(
     string? LargeUrl = null,
     string? BlurHash = null,
     int? Width = null,
-    int? Height = null
+    int? Height = null,
+    string ProcessingStatus = "Completed",  // Processing, Completed, Failed
+    string? ProcessingError = null
 );
 
 public record SpecimenDto(

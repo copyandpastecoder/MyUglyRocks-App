@@ -215,6 +215,8 @@ export interface PhotoDto {
   blurHash: string | null;
   width: number | null;
   height: number | null;
+  processingStatus: 'Processing' | 'Completed' | 'Failed';
+  processingError: string | null;
 }
 
 export interface SpecimenDto {
@@ -241,6 +243,8 @@ export interface CyclePhotoDto {
   blurHash: string | null;
   width: number | null;
   height: number | null;
+  processingStatus: 'Processing' | 'Completed' | 'Failed';
+  processingError: string | null;
   // Stage context
   stageRunId: string;
   stageName: string;

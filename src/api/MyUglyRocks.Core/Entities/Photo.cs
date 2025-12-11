@@ -7,6 +7,13 @@ public enum PhotoType
     After = 2
 }
 
+public enum PhotoProcessingStatus
+{
+    Processing = 0,
+    Completed = 1,
+    Failed = 2
+}
+
 public class Photo : SoftDeletableEntity
 {
     public Guid PhotoId { get; set; }
@@ -21,6 +28,10 @@ public class Photo : SoftDeletableEntity
     public PhotoType PhotoType { get; set; }
     public string? Caption { get; set; }
     public int SortOrder { get; set; }
+
+    // Processing status for background variant generation
+    public PhotoProcessingStatus ProcessingStatus { get; set; } = PhotoProcessingStatus.Processing;
+    public string? ProcessingError { get; set; }
 
     // Image variants (WebP optimized)
     public string? ThumbnailUrl { get; set; }   // 300px max
