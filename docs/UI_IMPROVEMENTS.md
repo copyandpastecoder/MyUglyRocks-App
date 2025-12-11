@@ -290,3 +290,143 @@ const { selectedPhoto, isOpen, openLightbox, closeLightbox, setSelectedIndex, se
 - [ ] Notice blue, green, purple, amber gradient backgrounds
 - [ ] See colored icon containers matching each card's theme
 - [ ] Components ready for integration: EnhancedImage, Lightbox, ProgressRing, StatusDot
+
+---
+
+## Higher Effort Improvements
+
+### 1. Shimmer Skeleton Loading
+
+**Location:** Any loading state throughout the app
+
+**What changed:**
+- Skeleton loaders now have an animated shimmer effect
+- Smooth gradient slides across the skeleton while loading
+- Creates a more polished loading experience
+
+**How it works:**
+- Default `shimmer={true}` on all Skeleton components
+- Uses CSS keyframe animation for the slide effect
+- Can be disabled with `shimmer={false}` for simple pulse
+
+### 2. Route Transitions
+
+**Location:** Available for page-level transitions
+
+**New Components:**
+- `RouteTransition`: Fade + slide up animation on route change
+- `SlideTransition`: Directional slide (left, right, up, down)
+- `ScaleTransition`: Scale + fade for modal-like content
+
+**Usage:**
+```tsx
+import { RouteTransition } from '@/components/ui/route-transition';
+
+// In your layout or page
+<RouteTransition>
+  {children}
+</RouteTransition>
+```
+
+### 3. Interactive Data Visualizations
+
+**Location:** Ready for cycle statistics pages
+
+**New Chart Components:**
+
+1. **CycleProgressChart** - Horizontal bar chart for stage progress
+   - Shows hours per stage
+   - Color-coded: completed vs in-progress
+   - Responsive with tooltips
+
+2. **ActivityChart** - Area chart for activity over time
+   - Dual-line for cycles and stages
+   - Gradient fills
+   - Theme-aware colors
+
+3. **StageDistributionChart** - Donut chart for stage breakdown
+   - Percentage display on hover
+   - Legend with color indicators
+   - Smooth animations
+
+4. **MiniSparkline** - Tiny inline chart for stat cards
+   - Compact (80x30px default)
+   - Great for trends in cards
+   - Customizable colors
+
+### 4. Enhanced Toast Notifications
+
+**Location:** All toast notifications throughout the app
+
+**Improvements:**
+- Rich colors for success/error/warning/info states
+- Glassmorphism effect on toast cards
+- Close button on all toasts
+- 4-second default duration
+- Expandable stacked toasts
+
+**Color variants:**
+- Success: Emerald tint with emerald text
+- Error: Red tint with red text
+- Warning: Amber tint with amber text
+- Info: Blue tint with blue text
+
+**Helper Functions:**
+```tsx
+import { showToast } from '@/components/ui/sonner';
+
+showToast.success('Cycle created!', 'Your new cycle is ready');
+showToast.error('Failed to save', 'Please try again');
+showToast.promise(asyncOperation, {
+  loading: 'Saving...',
+  success: 'Saved successfully!',
+  error: 'Failed to save',
+});
+```
+
+---
+
+## New Components (Higher Effort)
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| RouteTransition | `src/components/ui/route-transition.tsx` | Page route animations |
+| SlideTransition | `src/components/ui/route-transition.tsx` | Directional slide animations |
+| ScaleTransition | `src/components/ui/route-transition.tsx` | Scale + fade animations |
+| CycleProgressChart | `src/components/ui/cycle-stats-chart.tsx` | Stage progress bar chart |
+| ActivityChart | `src/components/ui/cycle-stats-chart.tsx` | Activity area chart |
+| StageDistributionChart | `src/components/ui/cycle-stats-chart.tsx` | Stage donut chart |
+| MiniSparkline | `src/components/ui/cycle-stats-chart.tsx` | Inline trend chart |
+
+---
+
+## Animation Keyframes Added
+
+| Animation | Effect | Duration |
+|-----------|--------|----------|
+| `shimmer` | Background gradient slide | 2s infinite |
+| `shimmer-slide` | Overlay element slide | 1.5s infinite |
+| `fade-in` | Opacity + Y translate | 0.3s |
+| `slide-up` | Larger Y translate | 0.4s |
+| `scale-in` | Scale from 0.95 | 0.2s |
+| `pulse-glow` | Box shadow pulse | 2s infinite |
+
+---
+
+## Final Test Checklist
+
+### Quick Wins
+- [ ] Visit `/dashboard` - see staggered card animations on load
+- [ ] Hover stat cards - see lift effect
+- [ ] Click any button - feel the press feedback
+- [ ] Open any dialog - see blurred background
+- [ ] Change theme in Settings - verify dark themes work
+
+### Medium Effort
+- [ ] Visit `/dashboard` - see gradient colors on stat cards
+- [ ] See colored icon containers matching each card's theme
+
+### Higher Effort
+- [ ] Observe shimmer effect on any loading skeleton
+- [ ] Trigger a toast notification - see rich colors and glassmorphism
+- [ ] Components ready for integration: RouteTransition, Charts
