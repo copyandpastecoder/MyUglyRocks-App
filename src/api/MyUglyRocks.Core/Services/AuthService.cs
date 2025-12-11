@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using MyUglyRocks.Abstractions.DTOs;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
 using MyUglyRocks.Core.Validation;
@@ -158,7 +159,7 @@ public class AuthService : IAuthService
         if (user.LockoutEndTime.HasValue && user.LockoutEndTime > DateTime.UtcNow)
         {
             var remainingMinutes = (int)Math.Ceiling((user.LockoutEndTime.Value - DateTime.UtcNow).TotalMinutes);
-            _logger.LogWarning("Login attempt for locked account {Email}", user.Email);
+            _logger.LogWarning("Login attempt for locked account {Email}", PiiMaskingHelper.MaskEmail(user.Email));
             return new AuthResult(false, Error: $"Account is temporarily locked. Please try again in {remainingMinutes} minute(s).");
         }
 
@@ -174,12 +175,12 @@ public class AuthService : IAuthService
             {
                 user.LockoutEndTime = DateTime.UtcNow.Add(LockoutDuration);
                 _logger.LogWarning("Account {Email} locked after {Attempts} failed login attempts",
-                    user.Email, user.FailedLoginAttempts);
+                    PiiMaskingHelper.MaskEmail(user.Email), user.FailedLoginAttempts);
             }
             else
             {
                 _logger.LogInformation("Failed login attempt {Attempts}/{Max} for {Email}",
-                    user.FailedLoginAttempts, MaxFailedLoginAttempts, user.Email);
+                    user.FailedLoginAttempts, MaxFailedLoginAttempts, PiiMaskingHelper.MaskEmail(user.Email));
             }
 
             await _context.SaveChangesAsync(cancellationToken);
@@ -323,11 +324,11 @@ public class AuthService : IAuthService
                 resetUrl,
                 cancellationToken);
 
-            _logger.LogInformation("Password reset email sent to {Email}", user.Email);
+            _logger.LogInformation("Password reset email sent to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send password reset email to {Email}", user.Email);
+            _logger.LogError(ex, "Failed to send password reset email to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
             // Remove the token from cache since email failed
             await _cacheService.RemoveAsync(cacheKey, cancellationToken);
             throw;
@@ -407,7 +408,7 @@ public class AuthService : IAuthService
         catch (Exception ex)
         {
             // Don't fail the reset if notification email fails
-            _logger.LogWarning(ex, "Failed to send password changed notification to {Email}", user.Email);
+            _logger.LogWarning(ex, "Failed to send password changed notification to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
         }
 
         return true;

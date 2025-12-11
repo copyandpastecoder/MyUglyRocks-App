@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Infrastructure.Configuration;
 using Resend;
@@ -26,7 +27,7 @@ public class EmailService : IEmailService
     {
         if (!_settings.Enabled)
         {
-            _logger.LogInformation("Email sending disabled. Would have sent: {Subject} to {To}", subject, to);
+            _logger.LogInformation("Email sending disabled. Would have sent: {Subject} to {To}", subject, PiiMaskingHelper.MaskEmail(to));
             return;
         }
 
@@ -42,11 +43,11 @@ public class EmailService : IEmailService
             };
 
             await _resend.EmailSendAsync(message, cancellationToken);
-            _logger.LogInformation("Email sent successfully: {Subject} to {To}", subject, to);
+            _logger.LogInformation("Email sent successfully: {Subject} to {To}", subject, PiiMaskingHelper.MaskEmail(to));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send email: {Subject} to {To}", subject, to);
+            _logger.LogError(ex, "Failed to send email: {Subject} to {To}", subject, PiiMaskingHelper.MaskEmail(to));
             throw;
         }
     }

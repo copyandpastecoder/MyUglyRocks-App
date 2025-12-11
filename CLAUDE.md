@@ -151,6 +151,11 @@ The API includes several security measures that must be maintained:
    - Username parameters validated for format (3-50 chars, alphanumeric + underscore)
    - See `PaginationHelper.cs` for validation methods
 
+6. **PII Masking in Logs** (`MyUglyRocks.Abstractions/Helpers/PiiMaskingHelper.cs`)
+   - Email addresses masked as `u***@e***.com`
+   - All auth/email log statements use masking
+   - Prevents PII exposure in log aggregation systems
+
 ### Kubernetes Security
 
 1. **Pod Security Standards** - All deployments include:

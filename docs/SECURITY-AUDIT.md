@@ -401,7 +401,7 @@ FileName = $"{photoId:N}{Path.GetExtension(file.FileName)}"
 
 **Severity:** Low
 **Category:** Data Protection / Compliance
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected Files:**
 - `src/api/MyUglyRocks.Core/Services/AuthService.cs`
@@ -547,10 +547,10 @@ The following OWASP-related issues were addressed in prior commits:
 
 ### Medium-term (1 Month)
 - [ ] Move secrets from env vars to volume mounts
-- [ ] Implement PII masking in logs
+- [x] Implement PII masking in logs
 - [ ] Set up dependency vulnerability scanning
 - [ ] Enhance session security validation
-- [ ] Add resource limits to all deployments
+- [x] Add resource limits to all deployments (already in place)
 
 ---
 
