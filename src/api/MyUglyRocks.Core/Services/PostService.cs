@@ -459,7 +459,6 @@ public class PostService : IPostService
                 Status = post.Cycle.Status.ToString(),
                 StartDate = post.Cycle.StartDate,
                 EndDate = post.Cycle.EndDate,
-                Goal = post.Cycle.Goal,
                 DifficultyRating = post.Cycle.DifficultyRating,
                 FinalQuality = post.Cycle.FinalQuality,
                 StageCount = post.Cycle.StageRuns.Count

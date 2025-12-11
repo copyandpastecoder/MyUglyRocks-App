@@ -61,7 +61,6 @@ public record CyclePreviewDto
     public string Status { get; init; } = "Completed";
     public DateOnly StartDate { get; init; }
     public DateOnly? EndDate { get; init; }
-    public string? Goal { get; init; }
     public int? DifficultyRating { get; init; }
     public int? FinalQuality { get; init; }
     public int StageCount { get; init; }

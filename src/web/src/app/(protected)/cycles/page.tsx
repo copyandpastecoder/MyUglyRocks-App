@@ -150,33 +150,45 @@ export default function CyclesPage() {
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6">
-          {cycles?.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <RotateCcw className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">
-                  No {activeTab.toLowerCase()} cycles
-                </h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  {activeTab === 'Active'
-                    ? 'Start a new tumbling cycle to track your progress'
-                    : `You don't have any ${activeTab.toLowerCase()} cycles yet`}
-                </p>
-                {activeTab === 'Active' && (
-                  <Button asChild>
-                    <Link href="/cycles/new">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Start New Cycle
-                    </Link>
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-2">
-              {cycles?.map(renderCycleRow)}
-            </div>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {activeTab} Cycles
+              </CardTitle>
+              <CardDescription>
+                {activeTab === 'Active' && 'Your currently running cycles'}
+                {activeTab === 'Completed' && 'Cycles that have been completed'}
+                {activeTab === 'Archived' && 'Cycles that have been archived'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {cycles?.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <RotateCcw className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold">
+                    No {activeTab.toLowerCase()} cycles
+                  </h3>
+                  <p className="text-muted-foreground text-center mb-4">
+                    {activeTab === 'Active'
+                      ? 'Start a new tumbling cycle to track your progress'
+                      : `You don't have any ${activeTab.toLowerCase()} cycles yet`}
+                  </p>
+                  {activeTab === 'Active' && (
+                    <Button asChild>
+                      <Link href="/cycles/new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Start New Cycle
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {cycles?.map(renderCycleRow)}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 

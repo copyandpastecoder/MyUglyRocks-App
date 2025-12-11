@@ -244,7 +244,7 @@ export default function ShareCyclePage() {
             </Badge>
           </div>
           <CardDescription>
-            {cycle.stageRuns.length} stages - {cycle.goal || 'No goal specified'}
+            {cycle.stageRuns.length} stages
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3 text-sm">

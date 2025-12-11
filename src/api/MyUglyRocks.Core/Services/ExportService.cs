@@ -59,7 +59,6 @@ public class ExportService : IExportService
             DifficultyRating: c.DifficultyRating,
             FinalQuality: c.FinalQuality,
             Specimens: GetSpecimensString(c),
-            Goal: c.Goal,
             Notes: c.Notes,
             TotalStages: c.StageRuns.Count,
             CompletedStages: c.StageRuns.Count(s => s.Status == StageRunStatus.Completed)

@@ -114,7 +114,7 @@ export default function DashboardPage() {
           <Button asChild>
             <Link href="/cycles/new">
               <Plus className="mr-2 h-4 w-4" />
-              Add Cycle
+              New Cycle
             </Link>
           </Button>
         </CardHeader>

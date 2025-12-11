@@ -90,30 +90,30 @@ export default function LandingPage() {
             Sound Familiar?
           </h2>
           <div className="grid md:grid-cols-2 gap-6 text-left mt-8">
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground">
+            <Card className="py-4">
+              <CardContent className="px-6">
+                <p className="text-muted-foreground italic">
                   "Wait, when did I start this stage? Was it 3 days ago or 5?"
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground">
+            <Card className="py-4">
+              <CardContent className="px-6">
+                <p className="text-muted-foreground italic">
                   "Which barrel has the agates and which has the jasper?"
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground">
+            <Card className="py-4">
+              <CardContent className="px-6">
+                <p className="text-muted-foreground italic">
                   "I can't remember which photo went with which tumbler or which batch."
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <p className="text-muted-foreground">
+            <Card className="py-4">
+              <CardContent className="px-6">
+                <p className="text-muted-foreground italic">
                   "Is this normal? I wish I could see what other tumblers' results look like."
                 </p>
               </CardContent>

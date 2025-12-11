@@ -36,10 +36,6 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
             .HasColumnName("status")
             .HasDefaultValue(CycleStatus.Active);
 
-        builder.Property(c => c.Goal)
-            .HasColumnName("goal")
-            .HasMaxLength(255);
-
         builder.Property(c => c.DifficultyRating)
             .HasColumnName("difficulty_rating");
 

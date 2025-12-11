@@ -55,7 +55,6 @@ export interface CyclePreviewDto {
   status: string;
   startDate: string;
   endDate: string | null;
-  goal: string | null;
   difficultyRating: number | null;
   finalQuality: number | null;
   stageCount: number;

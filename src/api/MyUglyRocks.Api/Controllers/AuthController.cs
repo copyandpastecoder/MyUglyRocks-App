@@ -16,17 +16,20 @@ public class AuthController : ControllerBase
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AuthController> _logger;
     private readonly IWebHostEnvironment _environment;
+    private readonly int _refreshTokenExpirationDays;
 
     public AuthController(
         IAuthService authService,
         IServiceScopeFactory scopeFactory,
         ILogger<AuthController> logger,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IConfiguration configuration)
     {
         _authService = authService;
         _scopeFactory = scopeFactory;
         _logger = logger;
         _environment = environment;
+        _refreshTokenExpirationDays = int.Parse(configuration["Jwt:RefreshTokenExpirationDays"] ?? "90");
     }
 
     [HttpPost("register")]
@@ -231,15 +234,20 @@ public class AuthController : ControllerBase
 
     private void SetRefreshTokenCookie(string token)
     {
+        // SameSite=Lax works because web and API are same-origin via nginx-ingress
+        // Path=/ ensures cookie is sent for all paths including /api
         var cookieOptions = new CookieOptions
         {
             HttpOnly = true,
             Secure = true,
-            SameSite = SameSiteMode.Lax, // Lax allows cookies on top-level navigations (refresh, direct URL)
-            Expires = DateTime.UtcNow.AddDays(7)
+            SameSite = SameSiteMode.Lax,
+            Expires = DateTime.UtcNow.AddDays(_refreshTokenExpirationDays),
+            Path = "/" // Critical: must be "/" not "/api" so cookie works for both web and API
         };
 
         Response.Cookies.Append("refreshToken", token, cookieOptions);
+        _logger.LogDebug("Set refresh token cookie (Path=/, SameSite=Lax, Secure=true, Expires={Expires}, Days={Days})",
+            cookieOptions.Expires, _refreshTokenExpirationDays);
     }
 
     private void ClearRefreshTokenCookie()
@@ -249,7 +257,8 @@ public class AuthController : ControllerBase
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.Lax,
-            Expires = DateTime.UtcNow.AddDays(-1) // Expired in the past
+            Expires = DateTime.UtcNow.AddDays(-1), // Expired in the past
+            Path = "/"
         };
 
         Response.Cookies.Delete("refreshToken", cookieOptions);

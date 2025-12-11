@@ -1753,3 +1753,112 @@ Fixed avatar upload caching issue and implemented gallery post uniqueness per cy
 - Direct URL to share page → redirects to existing post
 
 ---
+
+### Session: 2025-12-10 - Cycle Detail UI Redesign & Stage Card Enhancements
+
+#### Overview
+
+Major UI/UX improvements to the Cycle Detail page including collapsible cards, stage card redesign with lazy-loaded details, weight tracking improvements, and dialog overlap fixes.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Goal Field Removal | Removed `goal` field from database, backend DTOs, and frontend types/UI | ✅ |
+| Cycle Overview Collapsible | Converted Cycle Overview card to collapsible format with key stats visible when collapsed | ✅ |
+| Stage Card Redesign | Redesigned StageCard with collapsible "Stage Details" section containing all details | ✅ |
+| Stage Details Lazy Loading | Stage details fetched via API only when user expands the collapsible | ✅ |
+| Photos Inside Stage Details | Moved photos section inside Stage Details with add button and thumbnail grid | ✅ |
+| Cleaning Run Inside Stage Details | Moved Cleaning Run section inside Stage Details (removed from header and ellipsis menu) | ✅ |
+| Weight After Display | Added `loadWeightAfterGrams` to StageRunDto and display with percentage loss calculation | ✅ |
+| Removed Cycle Weight Loss | Removed weight loss from Cycle Overview (not meaningful when rocks added between stages) | ✅ |
+| Add Stage Modal Improvements | Unified collapsible card styling for Duration, Cleaning Run, and Advanced Options sections | ✅ |
+| Dialog Lightbulb/X Overlap Fix | Fixed overlapping lightbulb icons and close buttons in dialogs by adding `pr-8` padding | ✅ |
+
+#### Technical Details
+
+**Goal Field Removal:**
+- Added EF migration `RemoveGoalFromCycle` to drop column
+- Removed from `CycleDto`, `CreateCycleRequest`, `UpdateCycleRequest`
+- Updated frontend types accordingly
+
+**Stage Card Architecture:**
+```
+StageCard
+├── Header: [Stage Name] [Edit] [Complete] [⋮ Delete only]
+├── Progress Bar
+└── Collapsible Stage Details (lazy loaded)
+    ├── Duration, Barrel, Materials
+    ├── Weight Before/After (with % loss)
+    ├── Fill Level, Water, Notes
+    ├── Photos (grid + Add button)
+    └── Cleaning Run (if exists)
+```
+
+**Collapsible Card Pattern (standardized):**
+```tsx
+<div className="border rounded-lg p-3 space-y-3">
+  <Collapsible>
+    <CollapsibleTrigger asChild>
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full justify-between h-auto p-0 hover:bg-transparent"
+      >
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4" />
+          <span className="font-medium">Label</span>
+          <span className="text-muted-foreground text-sm">(optional)</span>
+        </div>
+        <ChevronDown className="h-4 w-4" />
+      </Button>
+    </CollapsibleTrigger>
+    <CollapsibleContent className="mt-3 space-y-4">
+      {/* Content */}
+    </CollapsibleContent>
+  </Collapsible>
+</div>
+```
+
+**Weight Display in Stage Details:**
+- "Weight Before: 680g"
+- "Weight After: 650g (4.4% loss)" - percentage calculated dynamically
+
+**Dialog Overlap Fix:**
+- Added `pr-8` to `<div className="flex items-start justify-between pr-8">` in DialogHeader
+- Prevents overlap with absolute-positioned close button at `top-4 right-4`
+
+#### Files Modified
+
+**Backend:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs` | Added `LoadWeightAfterGrams` to `StageRunDto` |
+| `src/api/MyUglyRocks.Core/Services/CycleService.cs` | Map `LoadWeightAfterGrams` in DTO constructor |
+| `src/api/MyUglyRocks.Core/Entities/Cycle.cs` | Removed `Goal` property |
+| EF Migration | `RemoveGoalFromCycle` - drops `goal` column |
+
+**Frontend:**
+| File | Description |
+|------|-------------|
+| `src/web/src/types/cycle.ts` | Added `loadWeightAfterGrams` to `StageRunDto` |
+| `src/web/src/app/(protected)/cycles/[id]/page.tsx` | StageCard redesign, collapsible cards, dialog fixes |
+| `src/web/src/components/photo-upload-modal.tsx` | Added `defaultStageId` prop for pre-selecting stage |
+
+#### UI/UX Improvements
+
+**Before:**
+- Stage cards showed all details expanded
+- Cleaning Run was in header and ellipsis menu
+- Weight only showed "before" value
+- Dialogs had overlapping icons
+- Collapsible sections had inconsistent styling
+
+**After:**
+- Stage cards are compact with expandable details
+- Cleaning Run consolidated inside Stage Details
+- Weight shows before, after, and percentage loss
+- Dialog icons properly spaced
+- All collapsible sections use same styling pattern
+
+---

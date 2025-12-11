@@ -1,10 +1,12 @@
 using System.IO.Compression;
+using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
 using Amazon.S3;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
@@ -178,6 +180,18 @@ try
         });
     });
 
+    // Configure forwarded headers for reverse proxy (nginx-ingress, Cloudflare)
+    // This ensures the app sees the original client IP and HTTPS scheme
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+        // Trust proxies in the K8s cluster and Cloudflare
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+        // In K8s, we trust all forwarded headers from the cluster network
+        // Cloudflare also forwards X-Forwarded-* headers
+    });
+
     // Configure response compression
     builder.Services.AddResponseCompression(options =>
     {
@@ -217,6 +231,13 @@ try
     var app = builder.Build();
 
     // Configure the HTTP request pipeline
+    // IMPORTANT: UseForwardedHeaders must be called first to properly handle X-Forwarded-* headers
+    // from reverse proxies (nginx-ingress, Cloudflare). This ensures:
+    // - Request.Scheme is "https" (needed for Secure cookies)
+    // - Request.Host reflects the original host
+    // - HttpContext.Connection.RemoteIpAddress is the client IP, not the proxy IP
+    app.UseForwardedHeaders();
+
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();
 

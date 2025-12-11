@@ -20,7 +20,6 @@ import {
   Heart,
   MessageCircle,
   Calendar,
-  Target,
   Star,
   Send,
   Loader2,
@@ -263,14 +262,7 @@ export default function PostDetailPage() {
         <CardHeader>
           <CardTitle className="text-lg">Cycle Details</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-4">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">Goal</p>
-              <p className="font-medium">{post.cycle.goal || 'Not specified'}</p>
-            </div>
-          </div>
+        <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <div>

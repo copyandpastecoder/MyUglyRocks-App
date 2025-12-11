@@ -247,8 +247,8 @@ export default function NewTumblerPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Add New Tumbler</h1>
-          <p className="text-muted-foreground">Add a new rock tumbler to your collection</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Tumbler</h1>
+          <p className="text-muted-foreground">Add a rock tumbler to your collection</p>
         </div>
       </div>
 
@@ -533,7 +533,7 @@ export default function NewTumblerPage() {
                   {createMutation.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Add Tumbler
+                  Create Tumbler
                 </Button>
               </div>
             </form>
