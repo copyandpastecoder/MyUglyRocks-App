@@ -28,8 +28,10 @@ spec:
         ports:
         - containerPort: 8080
         env:
+        # SECURITY: Use "Production" for deployed environments
+        # Change to "Development" only for local debugging (enables Swagger, Hangfire dashboard)
         - name: ASPNETCORE_ENVIRONMENT
-          value: "Development"
+          value: "Production"
         # Database
         - name: ConnectionStrings__DefaultConnection
           valueFrom:

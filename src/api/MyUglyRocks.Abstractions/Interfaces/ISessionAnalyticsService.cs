@@ -12,17 +12,20 @@ public interface ISessionAnalyticsService
     /// <summary>
     /// Updates session heartbeat (called periodically while user is active)
     /// </summary>
-    Task UpdateHeartbeatAsync(Guid sessionId, CancellationToken cancellationToken = default);
+    /// <returns>True if session exists and belongs to user, false otherwise</returns>
+    Task<bool> UpdateHeartbeatAsync(Guid sessionId, Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Increments page view count for a session
     /// </summary>
-    Task IncrementPageViewAsync(Guid sessionId, CancellationToken cancellationToken = default);
+    /// <returns>True if session exists and belongs to user, false otherwise</returns>
+    Task<bool> IncrementPageViewAsync(Guid sessionId, Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Ends a session (called on logout)
     /// </summary>
-    Task EndSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
+    /// <returns>True if session exists and belongs to user, false otherwise</returns>
+    Task<bool> EndSessionAsync(Guid sessionId, Guid userId, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Gets browser/device analytics for admin dashboard

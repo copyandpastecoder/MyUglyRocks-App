@@ -174,9 +174,16 @@ try
         options.AddPolicy("AllowFrontend", policy =>
         {
             policy.WithOrigins(allowedOrigins)
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
+                .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                .WithHeaders(
+                    "Authorization",
+                    "Content-Type",
+                    "Accept",
+                    "Origin",
+                    "X-Requested-With",
+                    "Cache-Control")
+                .AllowCredentials()
+                .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
         });
     });
 
@@ -249,6 +256,19 @@ try
         context.Response.Headers.Append("X-XSS-Protection", "0");
         context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
         context.Response.Headers.Append("Permissions-Policy", "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()");
+
+        // Content Security Policy - restrictive for API
+        context.Response.Headers.Append("Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'; form-action 'none'");
+
+        // HSTS - only in production with HTTPS
+        if (!app.Environment.IsDevelopment())
+        {
+            // max-age=31536000 (1 year), includeSubDomains, preload
+            context.Response.Headers.Append("Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains; preload");
+        }
+
         await next();
     });
 
