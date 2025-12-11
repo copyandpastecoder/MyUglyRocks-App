@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
@@ -41,6 +42,7 @@ public class PhotosController : ControllerBase
     /// Upload a photo to a stage run
     /// </summary>
     [HttpPost("stage/{stageRunId}")]
+    [EnableRateLimiting("intensive")]
     [ProducesResponseType(typeof(UploadPhotoResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(UploadPhotoResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -102,8 +104,8 @@ public class PhotosController : ControllerBase
 
         try
         {
-            _logger.LogDebug("Starting photo upload for stage {StageRunId}, file: {FileName}, size: {Size}",
-                stageRunId, file.FileName, file.Length);
+            _logger.LogDebug("Starting photo upload for stage {StageRunId}, extension: {Extension}, size: {Size}",
+                stageRunId, extension, file.Length);
 
             var folder = $"photos/stages/{stageRunId}";
             var photoId = Guid.NewGuid();
@@ -163,7 +165,7 @@ public class PhotosController : ControllerBase
                 StageRunId = stageRunId,
                 StorageKey = originalStorageKey ?? $"{folder}/{baseKey}-original.webp",
                 Url = originalUrl ?? largeUrl ?? mediumUrl ?? thumbnailUrl ?? throw new InvalidOperationException("No image variants were created"),
-                FileName = file.FileName,
+                FileName = $"{photoId:N}{extension}",  // Use generated ID, not original filename (security: prevent file system info leak)
                 MimeType = "image/webp",
                 FileSizeBytes = file.Length,
                 Width = processed.OriginalWidth,

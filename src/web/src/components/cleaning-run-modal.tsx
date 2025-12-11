@@ -27,24 +27,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Loader2, Plus, X } from 'lucide-react';
 import { useMaterials } from '@/hooks/use-materials';
+import { CLEANING_PURPOSES, CLEANING_DURATION_PRESETS } from '@/lib/cleaning-constants';
+import { MATERIAL_UNITS, formatMaterialsForSubmission } from '@/lib/material-utils';
+import type { MaterialFormItem } from '@/lib/material-utils';
+import { convertMinutesToDaysHoursMinutes } from '@/lib/duration-utils';
+import { invalidateCycleQueries } from '@/lib/query-invalidation';
 import type { CreateCleaningMaterialRequest } from '@/types/cycle';
-
-// Cleaning purpose options matching the backend enum
-const CLEANING_PURPOSES = [
-  { value: 'PostStageClean', label: 'Post-Stage Clean' },
-  { value: 'PrePolishClean', label: 'Pre-Polish Clean' },
-  { value: 'FinalBurnish', label: 'Final Burnish' },
-  { value: 'GritRemoval', label: 'Grit Removal' },
-];
-
-// Duration presets in minutes
-const DURATION_PRESETS = [
-  { label: '15 min', minutes: 15 },
-  { label: '30 min', minutes: 30 },
-  { label: '1 hour', minutes: 60 },
-  { label: '1 day', minutes: 1440 },
-  { label: '2 days', minutes: 2880 },
-];
 
 interface CleaningRunModalProps {
   open: boolean;
@@ -71,11 +59,7 @@ export function CleaningRunModal({
   const [purpose, setPurpose] = useState<string>('PostStageClean');
   const [notes, setNotes] = useState<string>('');
   const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [selectedMaterials, setSelectedMaterials] = useState<Array<{
-    materialId: string;
-    displayAmount: string;
-    displayUnit: string;
-  }>>([]);
+  const [selectedMaterials, setSelectedMaterials] = useState<MaterialFormItem[]>([]);
 
   const resetForm = () => {
     setDurationDays('0');
@@ -92,13 +76,7 @@ export function CleaningRunModal({
       // Calculate total minutes from days, hours, and minutes
       const totalMinutes = (parseInt(durationDays) || 0) * 1440 + (parseInt(durationHours) || 0) * 60 + (parseInt(durationMinutes) || 0);
 
-      const materialsToSubmit: CreateCleaningMaterialRequest[] = selectedMaterials
-        .filter(m => m.materialId)
-        .map(m => ({
-          materialId: m.materialId,
-          displayAmount: m.displayAmount ? parseFloat(m.displayAmount) : undefined,
-          displayUnit: m.displayUnit || undefined,
-        }));
+      const materialsToSubmit = formatMaterialsForSubmission(selectedMaterials) as CreateCleaningMaterialRequest[];
 
       return cycleApi.addCleaningRun(stageId, {
         durationMinutes: totalMinutes,
@@ -109,8 +87,7 @@ export function CleaningRunModal({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
-      queryClient.invalidateQueries({ queryKey: ['cycles'] });
+      invalidateCycleQueries(queryClient, cycleId);
       toast.success('Cleaning run added');
       onOpenChange(false);
       resetForm();
@@ -134,9 +111,7 @@ export function CleaningRunModal({
   };
 
   const handlePresetClick = (minutes: number) => {
-    const days = Math.floor(minutes / 1440);
-    const hours = Math.floor((minutes % 1440) / 60);
-    const mins = minutes % 60;
+    const { days, hours, mins } = convertMinutesToDaysHoursMinutes(minutes);
     setDurationDays(String(days));
     setDurationHours(String(hours));
     setDurationMinutes(String(mins));
@@ -204,7 +179,7 @@ export function CleaningRunModal({
               </div>
             </div>
             <div className="flex flex-wrap gap-1 mt-2">
-              {DURATION_PRESETS.map((preset) => (
+              {CLEANING_DURATION_PRESETS.map((preset) => (
                 <Button
                   key={preset.minutes}
                   type="button"
@@ -282,12 +257,11 @@ export function CleaningRunModal({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="tbsp">tbsp</SelectItem>
-                        <SelectItem value="tsp">tsp</SelectItem>
-                        <SelectItem value="cup">cup</SelectItem>
-                        <SelectItem value="oz">oz</SelectItem>
-                        <SelectItem value="g">g</SelectItem>
-                        <SelectItem value="ml">ml</SelectItem>
+                        {MATERIAL_UNITS.map((unit) => (
+                          <SelectItem key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Button

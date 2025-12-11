@@ -120,7 +120,7 @@ public class SessionAnalyticsService : ISessionAnalyticsService
         _ => DeviceType.Unknown
     };
 
-    public async Task UpdateHeartbeatAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateHeartbeatAsync(Guid sessionId, Guid userId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -130,53 +130,84 @@ public class SessionAnalyticsService : ISessionAnalyticsService
             if (session == null)
             {
                 _logger.LogDebug("Session {SessionId} not found for heartbeat", sessionId);
-                return;
+                return false;
+            }
+
+            // Verify session belongs to the requesting user (IDOR protection)
+            if (session.UserId != userId)
+            {
+                _logger.LogWarning("User {UserId} attempted to access session {SessionId} belonging to another user", userId, sessionId);
+                return false;
             }
 
             session.SessionEnd = DateTime.UtcNow;
             session.SessionDurationSeconds = (int)(session.SessionEnd.Value - session.SessionStart).TotalSeconds;
 
             await _dbContext.SaveChangesAsync(cancellationToken);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to update heartbeat for session {SessionId}", sessionId);
+            return false;
         }
     }
 
-    public async Task IncrementPageViewAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    public async Task<bool> IncrementPageViewAsync(Guid sessionId, Guid userId, CancellationToken cancellationToken = default)
     {
         try
         {
-            await _dbContext.UserSessions
-                .Where(s => s.UserSessionId == sessionId)
+            // Verify session belongs to the requesting user (IDOR protection)
+            var rowsAffected = await _dbContext.UserSessions
+                .Where(s => s.UserSessionId == sessionId && s.UserId == userId)
                 .ExecuteUpdateAsync(s => s.SetProperty(x => x.PageViewCount, x => x.PageViewCount + 1),
                     cancellationToken);
+
+            if (rowsAffected == 0)
+            {
+                _logger.LogWarning("User {UserId} attempted to increment page view for session {SessionId} - not found or unauthorized", userId, sessionId);
+                return false;
+            }
+
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to increment page view for session {SessionId}", sessionId);
+            return false;
         }
     }
 
-    public async Task EndSessionAsync(Guid sessionId, CancellationToken cancellationToken = default)
+    public async Task<bool> EndSessionAsync(Guid sessionId, Guid userId, CancellationToken cancellationToken = default)
     {
         try
         {
             var session = await _dbContext.UserSessions
                 .FirstOrDefaultAsync(s => s.UserSessionId == sessionId, cancellationToken);
 
-            if (session == null) return;
+            if (session == null)
+            {
+                return false;
+            }
+
+            // Verify session belongs to the requesting user (IDOR protection)
+            if (session.UserId != userId)
+            {
+                _logger.LogWarning("User {UserId} attempted to end session {SessionId} belonging to another user", userId, sessionId);
+                return false;
+            }
 
             session.SessionEnd = DateTime.UtcNow;
             session.SessionDurationSeconds = (int)(session.SessionEnd.Value - session.SessionStart).TotalSeconds;
 
             await _dbContext.SaveChangesAsync(cancellationToken);
             _logger.LogDebug("Ended session {SessionId}", sessionId);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to end session {SessionId}", sessionId);
+            return false;
         }
     }
 

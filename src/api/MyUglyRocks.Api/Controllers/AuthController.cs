@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using MyUglyRocks.Abstractions.DTOs;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Infrastructure.Services;
 
@@ -46,7 +47,7 @@ public class AuthController : ControllerBase
         }
 
         SetRefreshTokenCookie(result.RefreshToken!);
-        _logger.LogInformation("User registered: {Email}", request.Email);
+        _logger.LogInformation("User registered: {Email}", PiiMaskingHelper.MaskEmail(request.Email));
 
         return Ok(result);
     }
@@ -65,7 +66,7 @@ public class AuthController : ControllerBase
         }
 
         SetRefreshTokenCookie(result.RefreshToken!);
-        _logger.LogInformation("User logged in: {Email}", request.Email);
+        _logger.LogInformation("User logged in: {Email}", PiiMaskingHelper.MaskEmail(request.Email));
 
         // Record session analytics (fire-and-forget, non-blocking)
         Guid? sessionId = null;

@@ -52,13 +52,29 @@ if (typeof window !== 'undefined') {
   getApiUrl();
 }
 
-let accessToken: string | null = null;
+// Access token storage using closure pattern for better encapsulation
+// Note: Memory storage is the recommended pattern for SPAs with refresh tokens in HttpOnly cookies
+// The token is intentionally NOT persisted to localStorage/sessionStorage (XSS risk)
+// On page refresh, the token is lost and refreshed via the HttpOnly refresh token cookie
+const tokenStorage = (() => {
+  let accessToken: string | null = null;
+
+  return {
+    set: (token: string | null) => {
+      accessToken = token;
+    },
+    get: () => accessToken,
+    clear: () => {
+      accessToken = null;
+    },
+  };
+})();
 
 export const setAccessToken = (token: string | null) => {
-  accessToken = token;
+  tokenStorage.set(token);
 };
 
-export const getAccessToken = () => accessToken;
+export const getAccessToken = () => tokenStorage.get();
 
 // Request interceptor to ensure config is loaded and add auth header
 api.interceptors.request.use(
@@ -67,8 +83,9 @@ api.interceptors.request.use(
     if (typeof window !== 'undefined' && configPromise) {
       await configPromise;
     }
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    const token = tokenStorage.get();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -93,13 +110,13 @@ api.interceptors.response.use(
       try {
         const response = await api.post<AuthResult>('/auth/refresh');
         if (response.data.success && response.data.accessToken) {
-          setAccessToken(response.data.accessToken);
+          tokenStorage.set(response.data.accessToken);
           originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
           isRefreshing = false;
           return api(originalRequest);
         }
       } catch {
-        setAccessToken(null);
+        tokenStorage.clear();
         isRefreshing = false;
         // Only redirect if not already on login/register/public pages
         if (typeof window !== 'undefined' && !window.location.pathname.match(/^\/(login|register|forgot-password|reset-password|gallery|learn)?$/)) {

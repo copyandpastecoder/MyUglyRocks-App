@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Api.Authorization;
+using MyUglyRocks.Api.Middleware;
 using MyUglyRocks.Core.Mappings;
 using MyUglyRocks.Core.Services;
 using MyUglyRocks.Infrastructure.Configuration;
@@ -32,8 +34,20 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configuration is loaded from environment variables (injected by K8s from secrets)
-    // No external secrets provider needed - K8s handles secret injection
+    // Load secrets from volume mounts (more secure than env vars)
+    // K8s mounts secrets as files to /etc/secrets/
+    var secretsPath = "/etc/secrets";
+    if (Directory.Exists(secretsPath))
+    {
+        builder.Configuration.AddKeyPerFile(secretsPath, optional: true, reloadOnChange: true);
+        Log.Information("Loading secrets from volume mount: {SecretsPath}", secretsPath);
+    }
+    else
+    {
+        Log.Warning("Secrets volume mount not found at {SecretsPath}, falling back to env vars", secretsPath);
+    }
+
+    // Environment variables still work as fallback for local development
 
     // Configure Serilog
     builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -174,9 +188,16 @@ try
         options.AddPolicy("AllowFrontend", policy =>
         {
             policy.WithOrigins(allowedOrigins)
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
+                .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                .WithHeaders(
+                    "Authorization",
+                    "Content-Type",
+                    "Accept",
+                    "Origin",
+                    "X-Requested-With",
+                    "Cache-Control")
+                .AllowCredentials()
+                .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
         });
     });
 
@@ -203,28 +224,68 @@ try
     builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
     builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.SmallestSize);
 
-    // Configure rate limiting
+    // Configure rate limiting with per-user partitioning
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
         // Strict rate limit for authentication endpoints (login, register, password reset)
-        options.AddFixedWindowLimiter("auth", limiterOptions =>
+        // Partitioned by IP address since users aren't authenticated yet
+        options.AddPolicy("auth", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
+        // Per-user rate limit for authenticated API endpoints
+        // Falls back to IP address for unauthenticated requests
+        options.AddPolicy("api", context =>
         {
-            limiterOptions.PermitLimit = 5;
-            limiterOptions.Window = TimeSpan.FromMinutes(1);
-            limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            limiterOptions.QueueLimit = 0;
+            // Try to get user ID from JWT claims
+            var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? context.User?.FindFirst("sub")?.Value;
+
+            // Use user ID if authenticated, otherwise fall back to IP
+            var partitionKey = !string.IsNullOrEmpty(userId)
+                ? $"user:{userId}"
+                : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+            return RateLimitPartition.GetSlidingWindowLimiter(
+                partitionKey: partitionKey,
+                factory: _ => new SlidingWindowRateLimiterOptions
+                {
+                    PermitLimit = 100,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 4,
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                });
         });
 
-        // Standard rate limit for general API endpoints
-        options.AddSlidingWindowLimiter("api", limiterOptions =>
+        // Strict per-user limit for resource-intensive operations (uploads, exports)
+        options.AddPolicy("intensive", context =>
         {
-            limiterOptions.PermitLimit = 100;
-            limiterOptions.Window = TimeSpan.FromMinutes(1);
-            limiterOptions.SegmentsPerWindow = 4;
-            limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            limiterOptions.QueueLimit = 0;
+            var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? context.User?.FindFirst("sub")?.Value;
+
+            var partitionKey = !string.IsNullOrEmpty(userId)
+                ? $"user:{userId}"
+                : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: partitionKey,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 10,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                });
         });
     });
 
@@ -238,6 +299,9 @@ try
     // - HttpContext.Connection.RemoteIpAddress is the client IP, not the proxy IP
     app.UseForwardedHeaders();
 
+    // Global exception handling - must be early in pipeline
+    app.UseGlobalExceptionHandler();
+
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();
 
@@ -249,6 +313,19 @@ try
         context.Response.Headers.Append("X-XSS-Protection", "0");
         context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
         context.Response.Headers.Append("Permissions-Policy", "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()");
+
+        // Content Security Policy - restrictive for API
+        context.Response.Headers.Append("Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'; form-action 'none'");
+
+        // HSTS - only in production with HTTPS
+        if (!app.Environment.IsDevelopment())
+        {
+            // max-age=31536000 (1 year), includeSubDomains, preload
+            context.Response.Headers.Append("Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains; preload");
+        }
+
         await next();
     });
 
@@ -261,8 +338,12 @@ try
             options.Theme = ScalarTheme.Purple;
         });
 
-        // Hangfire Dashboard (only in development)
-        app.MapHangfireDashboard("/hangfire");
+        // Hangfire Dashboard (only in development, requires Admin authentication)
+        app.MapHangfireDashboard("/hangfire", new DashboardOptions
+        {
+            Authorization = new[] { new HangfireAuthorizationFilter() },
+            IsReadOnlyFunc = _ => false
+        });
     }
 
     // Only use HTTPS redirect in production
@@ -272,11 +353,14 @@ try
     }
 
     app.UseCors("AllowFrontend");
+    app.UseCsrfProtection();  // Validate Origin header for state-changing requests
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
 
-    app.MapControllers();
+    // Apply "api" rate limit policy globally to all controllers
+    // Individual endpoints can override with [EnableRateLimiting("auth")] or [EnableRateLimiting("intensive")]
+    app.MapControllers().RequireRateLimiting("api");
 
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))

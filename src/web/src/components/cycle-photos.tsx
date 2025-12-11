@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { photosApi } from '@/lib/api';
+import { formatStageDisplayName } from '@/lib/cycle-utils';
 import type { PhotoDto, StageRunSummaryDto } from '@/types/cycle';
 import { useQuery } from '@tanstack/react-query';
 import { PhotoUploadModal } from './photo-upload-modal';
@@ -25,14 +26,6 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
   const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-
-  // Helper to format stage display name with run number
-  const formatStageDisplayName = (stageName: string, runNumber: number, totalRuns: number): string => {
-    if (totalRuns <= 1) {
-      return stageName;
-    }
-    return `${stageName} Run ${runNumber}`;
-  };
 
   // Fetch photos for all stages
   const { data: allPhotos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({

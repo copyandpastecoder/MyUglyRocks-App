@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
 
@@ -9,6 +10,7 @@ namespace MyUglyRocks.Api.Controllers;
 [ApiController]
 [Route("api/export")]
 [Authorize]
+[EnableRateLimiting("intensive")]
 public class ExportController : ControllerBase
 {
     private readonly IExportService _exportService;
