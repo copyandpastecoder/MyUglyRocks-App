@@ -33,7 +33,7 @@ spec:
           readOnlyRootFilesystem: false  # Next.js needs writable .next
         env:
         - name: API_URL
-          value: "https://10.80.80.181:30443"
+          value: "https://dev.myuglyrocks.com"
         resources:
           requests:
             memory: "128Mi"

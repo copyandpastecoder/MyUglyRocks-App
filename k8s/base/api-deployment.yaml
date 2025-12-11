@@ -47,7 +47,7 @@ spec:
         - name: Email__Enabled
           value: "true"
         - name: Email__BaseUrl
-          value: "https://10.80.80.181:30443"
+          value: "https://dev.myuglyrocks.com"
         # Secrets are mounted as files at /etc/secrets (more secure than env vars)
         # See volumeMounts below
         volumeMounts:
@@ -65,12 +65,18 @@ spec:
           httpGet:
             path: /health
             port: 8080
+            httpHeaders:
+            - name: Host
+              value: localhost
           initialDelaySeconds: 10
           periodSeconds: 5
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
+            httpHeaders:
+            - name: Host
+              value: localhost
           initialDelaySeconds: 30
           periodSeconds: 10
       volumes:

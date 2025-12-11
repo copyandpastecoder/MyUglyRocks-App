@@ -9,22 +9,66 @@
 
 ### Running the Application
 
-1. **Build Docker images:**
+#### First-Time Setup
+
+1. **Create the namespace (if not exists):**
+   ```bash
+   kubectl create namespace myuglyrocks
+   ```
+
+2. **Create infrastructure secrets:**
+   ```bash
+   kubectl create secret generic myuglyrocks-secrets -n myuglyrocks \
+     --from-literal=postgres-password="YOUR_POSTGRES_PASSWORD" \
+     --from-literal=redis-password="YOUR_REDIS_PASSWORD"
+   ```
+
+3. **Create API secrets (volume-mounted):**
+   ```bash
+   kubectl create secret generic myuglyrocks-api-secrets -n myuglyrocks \
+     --from-literal=db-connection-string="Host=postgres;Database=myuglyrocks;Username=postgres;Password=YOUR_POSTGRES_PASSWORD;SSL Mode=Require;Trust Server Certificate=true" \
+     --from-literal=redis-connection-string="redis:6379,password=YOUR_REDIS_PASSWORD" \
+     --from-literal=jwt-secret="YOUR_JWT_SECRET" \
+     --from-literal=r2-account-id="YOUR_R2_ACCOUNT" \
+     --from-literal=r2-access-key-id="YOUR_R2_KEY" \
+     --from-literal=r2-secret-access-key="YOUR_R2_SECRET" \
+     --from-literal=r2-bucket-name="YOUR_BUCKET" \
+     --from-literal=r2-public-url="YOUR_R2_PUBLIC_URL" \
+     --from-literal=resend-api-key="YOUR_RESEND_KEY"
+   ```
+
+4. **Build Docker images:**
    ```bash
    docker build -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
    docker build -t myuglyrocks-web:latest -f src/web/Dockerfile .
    ```
 
-2. **Deploy to Kubernetes:**
+5. **Deploy to Kubernetes:**
    ```bash
    kubectl apply -f k8s/base/
-   kubectl rollout restart deployment myuglyrocks-api -n myuglyrocks
    ```
 
-3. **Check pod status:**
+6. **Scale deployments:**
+   ```bash
+   kubectl scale deployment postgres redis -n myuglyrocks --replicas=1
+   kubectl rollout status deployment postgres redis -n myuglyrocks
+   kubectl scale deployment myuglyrocks-api myuglyrocks-web cloudflared -n myuglyrocks --replicas=1
+   kubectl rollout status deployment myuglyrocks-api myuglyrocks-web cloudflared -n myuglyrocks
+   ```
+
+7. **Check pod status:**
    ```bash
    kubectl get pods -n myuglyrocks
    ```
+
+#### Starting After Setup Complete
+
+If secrets already exist, just:
+```bash
+kubectl apply -f k8s/base/
+kubectl scale deployment postgres redis myuglyrocks-api myuglyrocks-web cloudflared -n myuglyrocks --replicas=1
+kubectl get pods -n myuglyrocks
+```
 
 ### Secrets Management
 
@@ -56,33 +100,18 @@ See `k8s/base/app-secrets.yaml.example` and `k8s/base/api-secrets.yaml.example` 
 - The `R2__PublicUrl` env var is set from K8s secret `r2-public-url`
 - AWSSDK.S3 v4 requires both `DisablePayloadSigning` and `DisableDefaultChecksumValidation` for R2 compatibility
 
-### Access Methods
+### Access URL
 
-There are two ways to access the application:
+All development access goes through Cloudflare Tunnel with valid SSL:
 
-#### Option 1: NodePort Services with HTTPS (Recommended for Network Access)
-
-NodePort services are configured with stable ports that persist across restarts. HTTPS is enabled via mkcert certificates:
-
-| Service | Path | URL |
-|---------|------|-----|
-| Web | / | https://10.80.80.181:30443 |
-| API | /api | https://10.80.80.181:30443/api |
-
-Note: Both services are served via nginx-ingress on port 30443 with path-based routing.
-
-No port-forward needed - services are directly accessible on the host IP with HTTPS.
-
-#### Option 2: Cloudflare Tunnel (Mobile/External Access)
-
-For mobile testing with valid SSL certificates:
-
-| Service | URL | Notes |
-|---------|-----|-------|
-| Web + API | https://dev.myuglyrocks.com | Valid SSL, accessible from anywhere |
-| API | https://dev.myuglyrocks.com/api | Same path-based routing as NodePort |
+| Service | URL |
+|---------|-----|
+| Web | https://dev.myuglyrocks.com |
+| API | https://dev.myuglyrocks.com/api |
 
 The Cloudflare Tunnel runs as a pod in K8s (`cloudflared` deployment) and routes traffic to nginx-ingress.
+
+**Note:** Do NOT use `https://10.80.80.181:30443` - all access should go through the Cloudflare Tunnel URL.
 
 ### Rebuilding After Code Changes
 
@@ -108,18 +137,17 @@ kubectl rollout status deployment myuglyrocks-api myuglyrocks-web -n myuglyrocks
 - Force pod restart: `kubectl delete pod -l app=myuglyrocks-api -n myuglyrocks`
 - If using port-forwards, you may need to restart them after rollout
 
-### CORS Configuration
+### CORS and CSRF Configuration
 
-CORS origins are configured in `appsettings.json` and `appsettings.Development.json`.
+CORS origins are configured in `appsettings.json` under `Cors:AllowedOrigins`.
+The CSRF middleware also reads from the same configuration.
 
-**Important:** When using NodePort services, ensure CORS origins include the HTTPS NodePort URLs:
-- `appsettings.Development.json` is used because K8s sets `ASPNETCORE_ENVIRONMENT=Development`
-- Origins must include `https://10.80.80.181:30443` (web NodePort with HTTPS)
+The primary origin for development is `https://dev.myuglyrocks.com`.
 
-If you see CORS errors like "Cross-Origin Request Blocked", check:
-1. `appsettings.Development.json` has correct origins with NodePort numbers
-2. Rebuild API image with `--no-cache` to pick up config changes
-3. Delete pod to force restart: `kubectl delete pod -l app=myuglyrocks-api -n myuglyrocks`
+If you see CORS errors or 403 "Invalid origin" responses:
+1. Check `appsettings.json` has `https://dev.myuglyrocks.com` in `Cors:AllowedOrigins`
+2. Rebuild API image: `docker build -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .`
+3. Restart pod: `kubectl rollout restart deployment myuglyrocks-api -n myuglyrocks`
 
 ## Project Structure
 

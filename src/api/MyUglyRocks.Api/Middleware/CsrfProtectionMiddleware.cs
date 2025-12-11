@@ -23,7 +23,7 @@ public class CsrfProtectionMiddleware
         _logger = logger;
 
         // Load allowed origins from CORS configuration
-        var corsOrigins = configuration.GetSection("Cors:Origins").Get<string[]>() ?? [];
+        var corsOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
         _allowedOrigins = new HashSet<string>(corsOrigins, StringComparer.OrdinalIgnoreCase);
 
         // Always allow same-origin requests (no Origin header)

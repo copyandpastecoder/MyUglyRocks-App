@@ -8,6 +8,10 @@ metadata:
 data:
   # PostgreSQL configuration for SSL
   postgresql.conf: |
+    # Network Configuration
+    listen_addresses = '*'
+    port = 5432
+
     # SSL Configuration
     ssl = on
     ssl_cert_file = '/etc/postgres/ssl/server.crt'
@@ -37,6 +41,9 @@ data:
     fi
 
     echo "Generating self-signed SSL certificates..."
+
+    # Install openssl
+    apk add --no-cache openssl
 
     # Generate private key
     openssl genrsa -out "$SSL_DIR/server.key" 2048
