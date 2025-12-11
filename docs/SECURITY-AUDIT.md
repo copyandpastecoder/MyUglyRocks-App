@@ -383,7 +383,7 @@ securityContext:
 
 **Severity:** Low
 **Category:** Information Disclosure
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `src/api/MyUglyRocks.Api/Controllers/PhotosController.cs`
 
@@ -446,7 +446,7 @@ if (string.IsNullOrWhiteSpace(username) || username.Length > 255)
 
 **Severity:** Low
 **Category:** Supply Chain Security
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected Files:** All `package.json` and `.csproj` files
 
@@ -548,9 +548,10 @@ The following OWASP-related issues were addressed in prior commits:
 ### Medium-term (1 Month)
 - [ ] Move secrets from env vars to volume mounts
 - [x] Implement PII masking in logs
-- [ ] Set up dependency vulnerability scanning
+- [x] Set up dependency vulnerability scanning
 - [ ] Enhance session security validation
 - [x] Add resource limits to all deployments (already in place)
+- [x] Fix filename information leak
 
 ---
 
