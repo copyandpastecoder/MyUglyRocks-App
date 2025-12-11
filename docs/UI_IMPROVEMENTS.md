@@ -166,3 +166,127 @@ These classes can be used throughout the app for consistent styling:
 | StaggerContainer | `src/components/ui/page-transition.tsx` | Container for staggered child animations |
 | StaggerItem | `src/components/ui/page-transition.tsx` | Individual items that animate in sequence |
 | HoverScale | `src/components/ui/page-transition.tsx` | Hover effect wrapper with scale animation |
+
+---
+
+## Medium Effort Improvements
+
+### 1. Gradient Stat Cards
+
+**Location:** `/dashboard`
+
+**What to look for:**
+- The four stat cards now have subtle gradient backgrounds:
+  - **Active Cycles:** Blue gradient
+  - **Completed Cycles:** Green gradient
+  - **My Tumblers:** Purple gradient
+  - **Active Stages:** Amber gradient
+- Each card has an icon with matching color in a rounded container
+- Subtle gradient from top-left corner fading to transparent
+- Border color matches the gradient accent
+
+### 2. Enhanced Image Component (BlurHash)
+
+**Location:** Available for use in photo galleries (integration ready)
+
+**Features:**
+- BlurHash placeholders while images load
+- Smooth fade-in transition when image loads
+- Optional hover zoom effect
+- Prevents layout shift during loading
+- Click handler for lightbox integration
+
+**How it works:**
+- Shows a BlurHash-based placeholder instantly
+- Image loads in the background
+- Smooth crossfade from placeholder to loaded image
+- Optional `hoverZoom` prop adds scale effect on hover
+
+### 3. Lightbox Component
+
+**Location:** Available for photo viewing (integration ready)
+
+**Features:**
+- Full-screen photo viewing modal
+- Dark overlay with blur effect
+- Keyboard navigation (Escape to close, Arrow keys for prev/next)
+- Previous/Next navigation buttons
+- Download button to save photos
+- Smooth animations on open/close
+- Includes `useLightbox` hook for easy state management
+
+**How to use:**
+```tsx
+import { Lightbox, useLightbox } from '@/components/ui/lightbox';
+
+const { selectedPhoto, isOpen, openLightbox, closeLightbox, setSelectedIndex, selectedIndex } = useLightbox(photos);
+```
+
+### 4. Progress Ring Component
+
+**Location:** Available for progress indicators (integration ready)
+
+**Features:**
+- Circular progress indicator with smooth animations
+- Customizable size, stroke width, and color
+- Two variants:
+  - `ProgressRing`: Full-size with children support
+  - `MiniProgressRing`: Compact 24px inline version
+- SVG-based for crisp rendering at any size
+
+**Gradient variants:** `blue`, `green`, `purple`, `amber`, `rose`, `default`
+
+### 5. Status Dot Component
+
+**Location:** Available for status indicators (integration ready)
+
+**Features:**
+- Animated status indicator dots
+- Pulse animation for processing/active states
+- Size variants: `sm`, `md`, `lg`
+- Status variants:
+  - `default`: Gray
+  - `success`: Green
+  - `warning`: Yellow
+  - `error`: Red
+  - `info`: Blue
+  - `processing`: Primary color with pulse
+
+**Pre-configured StatusIndicator:**
+- `active`: Green with pulse
+- `completed`: Green (no pulse)
+- `pending`: Yellow
+- `failed`: Red
+- `processing`: Primary with pulse
+
+---
+
+## New Components (Medium Effort)
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| StatCard | `src/components/ui/stat-card.tsx` | Gradient stat cards with icons |
+| EnhancedImage | `src/components/ui/enhanced-image.tsx` | BlurHash placeholders + hover zoom |
+| Lightbox | `src/components/ui/lightbox.tsx` | Full-screen photo viewing |
+| ProgressRing | `src/components/ui/progress-ring.tsx` | Circular progress indicators |
+| MiniProgressRing | `src/components/ui/progress-ring.tsx` | Compact inline progress |
+| StatusDot | `src/components/ui/status-dot.tsx` | Animated status indicators |
+| StatusIndicator | `src/components/ui/status-dot.tsx` | Pre-configured status badges |
+
+---
+
+## Updated Quick Test Checklist
+
+### Quick Wins (Original)
+- [ ] Visit `/dashboard` - see staggered card animations on load
+- [ ] Hover stat cards - see lift effect
+- [ ] Click any button - feel the press feedback
+- [ ] Open any dialog - see blurred background
+- [ ] Change theme in Settings - verify dark themes work
+- [ ] Check heading typography across pages
+
+### Medium Effort (New)
+- [ ] Visit `/dashboard` - see gradient colors on stat cards
+- [ ] Notice blue, green, purple, amber gradient backgrounds
+- [ ] See colored icon containers matching each card's theme
+- [ ] Components ready for integration: EnhancedImage, Lightbox, ProgressRing, StatusDot
