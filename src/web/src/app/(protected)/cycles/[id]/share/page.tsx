@@ -64,6 +64,9 @@ export default function ShareCyclePage() {
     enabled: !!cycle && cycle.status === 'Completed',
   });
 
+  // Filter to only show completed photos (not processing or failed)
+  const completedPhotos = photos?.filter(p => p.processingStatus === 'Completed') ?? [];
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -83,13 +86,13 @@ export default function ShareCyclePage() {
     }
   }, [cycle, form, router]);
 
-  // Auto-select all photos and set first as cover when photos load
+  // Auto-select all completed photos and set first as cover when photos load
   useEffect(() => {
-    if (photos && photos.length > 0 && selectedPhotoIds.length === 0) {
-      setSelectedPhotoIds(photos.map(p => p.photoId));
-      setCoverPhotoId(photos[0].photoId);
+    if (completedPhotos.length > 0 && selectedPhotoIds.length === 0) {
+      setSelectedPhotoIds(completedPhotos.map(p => p.photoId));
+      setCoverPhotoId(completedPhotos[0].photoId);
     }
-  }, [photos, selectedPhotoIds.length]);
+  }, [completedPhotos, selectedPhotoIds.length]);
 
   const createPostMutation = useMutation({
     mutationFn: (data: FormValues) =>
@@ -141,10 +144,10 @@ export default function ShareCyclePage() {
   };
 
   const selectAllPhotos = () => {
-    if (photos) {
-      setSelectedPhotoIds(photos.map(p => p.photoId));
-      if (!coverPhotoId && photos.length > 0) {
-        setCoverPhotoId(photos[0].photoId);
+    if (completedPhotos.length > 0) {
+      setSelectedPhotoIds(completedPhotos.map(p => p.photoId));
+      if (!coverPhotoId) {
+        setCoverPhotoId(completedPhotos[0].photoId);
       }
     }
   };
@@ -155,14 +158,14 @@ export default function ShareCyclePage() {
   };
 
   // Group photos by stage
-  const groupedPhotos = photos?.reduce((acc, photo) => {
+  const groupedPhotos = completedPhotos.reduce((acc, photo) => {
     const key = `${photo.stageName} (Run ${photo.runNumber})`;
     if (!acc[key]) {
       acc[key] = [];
     }
     acc[key].push(photo);
     return acc;
-  }, {} as Record<string, CyclePhotoDto[]>) || {};
+  }, {} as Record<string, CyclePhotoDto[]>);
 
   if (isLoading) {
     return (
@@ -291,7 +294,7 @@ export default function ShareCyclePage() {
                 Choose which photos to include in your post. Click the star to set the cover photo.
               </CardDescription>
             </div>
-            {photos && photos.length > 0 && (
+            {completedPhotos.length > 0 && (
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={selectAllPhotos}>
                   Select All
@@ -310,7 +313,7 @@ export default function ShareCyclePage() {
                 <Skeleton key={i} className="aspect-square" />
               ))}
             </div>
-          ) : !photos || photos.length === 0 ? (
+          ) : completedPhotos.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold">No Photos Available</h3>

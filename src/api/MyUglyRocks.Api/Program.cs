@@ -177,6 +177,9 @@ try
     builder.Services.AddScoped<SessionAnalyticsService>();
     builder.Services.AddScoped<ISessionAnalyticsService>(sp => sp.GetRequiredService<SessionAnalyticsService>());
 
+    // Background jobs
+    builder.Services.AddScoped<MyUglyRocks.Infrastructure.Jobs.PhotoProcessingJob>();
+
     // Configure CORS
     // Default origins + config-based origins
     var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();

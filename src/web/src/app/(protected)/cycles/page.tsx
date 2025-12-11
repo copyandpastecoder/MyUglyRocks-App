@@ -67,7 +67,7 @@ export default function CyclesPage() {
   const renderCycleRow = (cycle: CycleListDto) => (
     <div
       key={cycle.cycleId}
-      className={`flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors ${activeTab === 'Active' ? getCycleStatusClass(cycle) : 'border-border'}`}
+      className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${activeTab === 'Active' ? getCycleStatusClass(cycle) : 'bg-card border-border'}`}
     >
       <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
         <p className="font-medium truncate">{cycle.name}</p>
