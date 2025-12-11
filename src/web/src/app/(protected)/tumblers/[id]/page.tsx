@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { tumblerApi } from '@/lib/api';
+import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -215,7 +216,7 @@ export default function EditTumblerPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className={PAGE_CONTAINER}>
         <div className="flex items-center gap-4">
           <Skeleton className="h-10 w-10" />
           <div className="space-y-2">
@@ -230,7 +231,7 @@ export default function EditTumblerPage() {
 
   if (!tumbler) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className={PAGE_CONTAINER}>
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold">Tumbler not found</h2>
           <p className="text-muted-foreground mt-2">This tumbler may have been deleted.</p>
@@ -243,7 +244,7 @@ export default function EditTumblerPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className={PAGE_CONTAINER}>
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/tumblers">

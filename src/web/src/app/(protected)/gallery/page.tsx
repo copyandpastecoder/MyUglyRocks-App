@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { usePosts, useVoteMutation } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
+import { PAGE_CONTAINER } from '@/lib/layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { GalleryGridSkeleton } from '@/components/skeletons';
@@ -41,7 +42,7 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_CONTAINER}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Gallery</h1>
@@ -84,9 +85,9 @@ export default function GalleryPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="space-y-2">
           {posts?.map((post) => (
-            <PostCard
+            <PostRow
               key={post.postId}
               post={post}
               onVote={(hasVoted) => handleVote(post.postId, hasVoted)}
@@ -99,7 +100,7 @@ export default function GalleryPage() {
   );
 }
 
-function PostCard({
+function PostRow({
   post,
   onVote,
   isAuthenticated,
@@ -108,8 +109,6 @@ function PostCard({
   onVote: (hasVoted: boolean) => void;
   isAuthenticated: boolean;
 }) {
-  // For now, we don't know if user has voted without an additional API call
-  // This could be optimized by including userHasVoted in the list response
   const [hasVoted, setHasVoted] = useState(false);
 
   const handleVoteClick = (e: React.MouseEvent) => {
@@ -122,66 +121,53 @@ function PostCard({
   };
 
   return (
-    <Link href={`/gallery/${post.postId}`}>
-      <Card className="overflow-hidden transition-shadow hover:shadow-lg cursor-pointer group">
-        <div className="aspect-square relative bg-muted">
-          {post.coverPhotoUrl ? (
-            <LazyImage
-              src={post.coverPhotoThumbnailUrl || post.coverPhotoUrl}
-              alt={post.title}
-              blurHash={post.coverPhotoBlurHash}
-              wrapperClassName="w-full h-full"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <ImageIcon className="h-16 w-16 text-muted-foreground" />
-            </div>
-          )}
-          {post.photoCount > 1 && (
-            <Badge className="absolute top-2 right-2 bg-black/70">
-              {post.photoCount} photos
-            </Badge>
-          )}
-        </div>
-        <CardContent className="p-4">
-          <h3 className="font-semibold truncate">{post.title}</h3>
-          {post.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-              {post.description}
-            </p>
-          )}
-          <div className="flex items-center justify-between mt-3">
-            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-              {post.author.avatarUrl ? (
-                <img
-                  src={post.author.avatarUrl}
-                  alt={post.author.username}
-                  className="h-5 w-5 rounded-full"
-                />
-              ) : (
-                <User className="h-4 w-4" />
-              )}
-              <span>{post.author.displayName || post.author.username}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={handleVoteClick}
-                className={`flex items-center gap-1 text-sm transition-colors ${
-                  hasVoted ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'
-                }`}
-              >
-                <Heart className={`h-4 w-4 ${hasVoted ? 'fill-current' : ''}`} />
-                <span>{post.voteCount}</span>
-              </button>
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <MessageCircle className="h-4 w-4" />
-                <span>{post.commentCount}</span>
-              </div>
-            </div>
+    <Link
+      href={`/gallery/${post.postId}`}
+      className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+    >
+      {/* Thumbnail */}
+      <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+        {post.coverPhotoUrl ? (
+          <LazyImage
+            src={post.coverPhotoThumbnailUrl || post.coverPhotoUrl}
+            alt={post.title}
+            blurHash={post.coverPhotoBlurHash}
+            wrapperClassName="w-full h-full"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon className="h-6 w-6 text-muted-foreground" />
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate">{post.title}</p>
+        <p className="text-sm text-muted-foreground">
+          {post.photoCount} photo{post.photoCount !== 1 ? 's' : ''}
+          {' · '}
+          {post.author.displayName || post.author.username}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <button
+          onClick={handleVoteClick}
+          className={`flex items-center gap-1 text-sm transition-colors ${
+            hasVoted ? 'text-red-500' : 'text-muted-foreground hover:text-red-500'
+          }`}
+        >
+          <Heart className={`h-4 w-4 ${hasVoted ? 'fill-current' : ''}`} />
+          <span>{post.voteCount}</span>
+        </button>
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          <MessageCircle className="h-4 w-4" />
+          <span>{post.commentCount}</span>
+        </div>
+      </div>
     </Link>
   );
 }

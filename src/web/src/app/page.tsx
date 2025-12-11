@@ -62,7 +62,7 @@ export default function LandingPage() {
 
       {/* Hero Section */}
       <section className="py-4 md:py-6 px-4">
-        <div className="container mx-auto text-center max-w-5xl">
+        <div className="container mx-auto text-center max-w-3xl">
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
             Track Your Rock Tumbling Journey
           </h1>
@@ -85,7 +85,7 @@ export default function LandingPage() {
 
       {/* Problem/Solution Section */}
       <section className="py-16 px-4 bg-muted/50 -mt-8 md:-mt-12">
-        <div className="container mx-auto max-w-4xl text-center">
+        <div className="container mx-auto max-w-3xl text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-4">
             Sound Familiar?
           </h2>
@@ -189,7 +189,7 @@ export default function LandingPage() {
 
       {/* CTA Section */}
       <section className="py-20 px-4 bg-muted/50">
-        <div className="container mx-auto max-w-2xl text-center">
+        <div className="container mx-auto max-w-3xl text-center">
           <h2 className="text-3xl font-bold mb-4">
             Coming Soon
           </h2>

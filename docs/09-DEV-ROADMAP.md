@@ -3,7 +3,7 @@
 ## Document Info
 | Field | Value |
 |-------|-------|
-| Version | 1.9 |
+| Version | 2.0 |
 | Last Updated | 2025-12-10 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
@@ -1123,7 +1123,134 @@ Web Frontend                     nginx-ingress (:30443)               API + R2
 
 ---
 
-## 11. Post-Launch Roadmap
+## 11. Production Deployment Checklist
+
+This checklist covers all steps needed to deploy MyUglyRocks to production on Railway with Cloudflare.
+
+### 11.1 Railway Setup
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Create Railway account and project | ⏳ |
+| 2 | Create PostgreSQL database service | ⏳ |
+| 3 | Create Redis service | ⏳ |
+| 4 | Deploy API service from Docker image or GitHub | ⏳ |
+| 5 | Deploy Web service from Docker image or GitHub | ⏳ |
+| 6 | Configure environment variables (see below) | ⏳ |
+| 7 | Note Railway-provided URLs for API and Web | ⏳ |
+
+**Required Environment Variables (API):**
+```
+ASPNETCORE_ENVIRONMENT=Production
+ConnectionStrings__DefaultConnection={Railway PostgreSQL connection string}
+Redis__ConnectionString={Railway Redis connection string}
+Jwt__Secret={generate 64+ char secret}
+Jwt__Issuer=MyUglyRocks
+Jwt__Audience=MyUglyRocks
+R2__AccountId={Cloudflare account ID}
+R2__AccessKeyId={R2 access key}
+R2__SecretAccessKey={R2 secret key}
+R2__BucketName=myuglyrocks-media
+R2__PublicUrl={R2 public URL - see Cloudflare R2 setup}
+Resend__ApiKey={Resend API key}
+```
+
+**Required Environment Variables (Web):**
+```
+NODE_ENV=production
+API_URL={Railway API URL}/api
+```
+
+### 11.2 Cloudflare R2 Setup (Production Bucket)
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Create new R2 bucket `myuglyrocks-media` (production) | ⏳ |
+| 2 | Enable public access for the bucket | ⏳ |
+| 3 | Note the public URL (format: `pub-{id}.r2.dev`) | ⏳ |
+| 4 | Create new R2 API token with read/write permissions | ⏳ |
+| 5 | (Optional) Configure custom domain for R2 bucket | ⏳ |
+
+### 11.3 Cloudflare Tunnel Setup (Production)
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Go to Cloudflare Zero Trust → Access → Tunnels | ⏳ |
+| 2 | Create new tunnel: `myuglyrocks-prod-tunnel` | ⏳ |
+| 3 | Choose "Cloudflared" connector type | ⏳ |
+| 4 | Note: Railway can run cloudflared as a service OR use Cloudflare's managed connector | ⏳ |
+| 5 | Configure public hostname routes (see below) | ⏳ |
+| 6 | Cloudflare auto-creates DNS records | ⏳ |
+
+**Public Hostname Routes to Configure:**
+
+| Hostname | Service | Notes |
+|----------|---------|-------|
+| `myuglyrocks.com` | Railway Web URL | Main domain |
+| `www.myuglyrocks.com` | Railway Web URL | WWW redirect |
+| `api.myuglyrocks.com` | Railway API URL | (Optional) Direct API access |
+
+**Note:** If Railway provides public URLs with SSL, you may not need Cloudflare Tunnel. Cloudflare can just proxy DNS to Railway URLs. Tunnel is more useful when:
+- Backend is not publicly accessible (e.g., private network)
+- You want Cloudflare's WAF/DDoS protection at the edge
+- You need to hide origin server IPs
+
+### 11.4 DNS Configuration
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Transfer `myuglyrocks.com` DNS to Cloudflare (if not already) | ⏳ |
+| 2 | Configure A/CNAME records pointing to Railway or Tunnel | ⏳ |
+| 3 | Enable Cloudflare proxy (orange cloud) for DDoS protection | ⏳ |
+| 4 | Configure SSL/TLS mode to "Full (strict)" | ⏳ |
+
+### 11.5 CORS Configuration (Production)
+
+Update `appsettings.Production.json`:
+```json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://myuglyrocks.com",
+      "https://www.myuglyrocks.com"
+    ]
+  }
+}
+```
+
+### 11.6 Security Configuration
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Generate new JWT secret (different from dev) | ⏳ |
+| 2 | Verify HTTPS-only cookies in production | ⏳ |
+| 3 | Configure rate limiting rules in Cloudflare | ⏳ |
+| 4 | Enable Cloudflare WAF rules | ⏳ |
+| 5 | Set up Cloudflare bot protection | ⏳ |
+
+### 11.7 Monitoring & Backups
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Set up error monitoring (Sentry or similar) | ⏳ |
+| 2 | Configure Railway database backups | ⏳ |
+| 3 | Set up uptime monitoring (UptimeRobot, Cloudflare Health Checks) | ⏳ |
+| 4 | Configure Cloudflare analytics | ⏳ |
+
+### 11.8 Go-Live Checklist
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Test all critical flows on production | ⏳ |
+| 2 | Verify email sending works (Resend) | ⏳ |
+| 3 | Test photo upload/download from R2 | ⏳ |
+| 4 | Verify SSL certificates are valid | ⏳ |
+| 5 | Test login/logout/password reset flows | ⏳ |
+| 6 | Monitor error logs for first 24 hours | ⏳ |
+
+---
+
+## 12. Post-Launch Roadmap (Future Features)
 
 Features to consider after initial launch:
 
@@ -1143,7 +1270,7 @@ Features to consider after initial launch:
 
 ---
 
-## 12. Next Steps
+## 13. Next Steps
 
 Current focus: **Milestone 6 - Launch Prep**
 
@@ -1164,6 +1291,11 @@ Current focus: **Milestone 6 - Launch Prep**
 - ✅ **Avatar cache busting** - new uploads display immediately with timestamp query param
 - ✅ **Gallery post uniqueness** - one post per cycle, with "View Gallery Post" button when exists
 - ✅ **API parameter naming** - renamed generic `Id` params to entity-specific names
+- ✅ **Global layout constants** - shared `PAGE_CONTAINER` for consistent width across all pages
+- ✅ **Unified max-w-3xl width** - all pages, dialogs, forms now use 768px max-width
+- ✅ **Row-based list layouts** - cycles, gallery, tumblers pages match dashboard style
+- ✅ **Dark mode row visibility** - `bg-card hover:bg-accent` for list item visibility
+- ✅ **Cloudflare Tunnel (dev)** - `dev.myuglyrocks.com` accessible with valid SSL for mobile testing
 
 **Next:**
 1. **Image resizing** (I2.3) - Implement ImageSharp resize on upload
@@ -1171,8 +1303,8 @@ Current focus: **Milestone 6 - Launch Prep**
 3. Complete remaining E2E tests (T6.2-T6.4)
 4. Perform load testing (T6.5)
 5. Complete mobile responsiveness testing (T6.6)
-6. Set up production deployment on Railway (D6.9-D6.16)
-7. Configure custom domain for R2 (production)
+6. Set up production deployment on Railway (see Section 11 checklist)
+7. Configure Cloudflare Tunnel for production
 
 ---
 
@@ -1342,6 +1474,201 @@ Plan is ready for execution. When approved:
 3. Run `dotnet build` and `npm run build` to verify
 4. Drop database and reseed
 5. Test application end-to-end
+
+---
+
+### Session: 2025-12-10 - Content Width Constraints & UI Consistency
+
+#### Overview
+
+Implemented a global layout system with shared constants for consistent content width across all pages. Created `src/web/src/lib/layout.ts` as a single source of truth for page widths. Updated all list pages to use row-based layouts (matching dashboard style) and standardized all widths to `max-w-3xl` (768px) for a focused, Reddit-like experience.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Shared Layout Constants | Created `src/web/src/lib/layout.ts` with `PAGE_CONTAINER`, `PAGE_CONTAINER_TIGHT`, `PAGE_CONTAINER_LOOSE` | ✅ |
+| Global Width: `max-w-3xl` | Changed from `max-w-5xl` (1024px) to `max-w-3xl` (768px) for all pages | ✅ |
+| Row-Based List Pages | Converted cycles, gallery, tumblers list pages from card grids to row lists | ✅ |
+| Row Background Color | Added `bg-card hover:bg-accent` to list rows for visibility in dark mode | ✅ |
+| Dialog/Modal Width | Updated default dialog width from `sm:max-w-lg` to `sm:max-w-3xl` | ✅ |
+| Form Pages | Updated new tumbler, new cycle, share page to use `max-w-3xl` | ✅ |
+| Static Pages | Updated terms, privacy, FAQ pages to use `max-w-3xl` | ✅ |
+| Landing Page | Updated hero and CTA sections to use `max-w-3xl` | ✅ |
+
+#### Technical Details
+
+**Layout Constants (`src/web/src/lib/layout.ts`):**
+```typescript
+// Main content max-width class - change this to adjust all pages
+export const CONTENT_MAX_WIDTH = 'max-w-3xl';  // 768px
+
+// Combined class for page containers (max-width + centering + spacing)
+export const PAGE_CONTAINER = `${CONTENT_MAX_WIDTH} mx-auto space-y-6`;
+export const PAGE_CONTAINER_TIGHT = `${CONTENT_MAX_WIDTH} mx-auto space-y-4`;
+export const PAGE_CONTAINER_LOOSE = `${CONTENT_MAX_WIDTH} mx-auto space-y-8`;
+```
+
+**Row-Based List Items:**
+```tsx
+<div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors">
+  <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
+    <p className="font-medium truncate">{cycle.name}</p>
+    <p className="text-sm text-muted-foreground">...</p>
+  </Link>
+  <DropdownMenu>...</DropdownMenu>
+</div>
+```
+
+#### Files Modified
+
+**Global/UI Components:**
+| File | Change |
+|------|--------|
+| `src/web/src/lib/layout.ts` | Changed `CONTENT_MAX_WIDTH` from `max-w-5xl` to `max-w-3xl` |
+| `src/web/src/components/ui/dialog.tsx` | Default width `sm:max-w-3xl` |
+| `src/web/src/components/ui/alert-dialog.tsx` | Default width `sm:max-w-3xl` |
+
+**List Pages (Row-Based Layout):**
+| File | Change |
+|------|--------|
+| `src/web/src/app/(protected)/cycles/page.tsx` | Row layout with `bg-card`, uses `PAGE_CONTAINER` |
+| `src/web/src/app/(protected)/gallery/page.tsx` | Row layout with thumbnail, uses `PAGE_CONTAINER` |
+| `src/web/src/app/(protected)/tumblers/page.tsx` | Row layout with `bg-card`, uses `PAGE_CONTAINER` |
+
+**Form/Detail Pages:**
+| File | Change |
+|------|--------|
+| `src/web/src/app/(protected)/tumblers/new/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/(protected)/cycles/new/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/(protected)/cycles/[id]/share/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/(protected)/cycles/[id]/page.tsx` | Dialog widths `max-w-3xl` |
+
+**Modals:**
+| File | Change |
+|------|--------|
+| `src/web/src/components/cleaning-run-modal.tsx` | `max-w-3xl` |
+| `src/web/src/components/photo-upload-modal.tsx` | `sm:max-w-3xl` |
+
+**Learn/Admin Pages:**
+| File | Change |
+|------|--------|
+| `src/web/src/app/(protected)/learn/specimens/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/learn/materials/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/learn/faq/page.tsx` | Container `max-w-3xl` |
+| `src/web/src/app/(protected)/learn/faq/[topic]/page.tsx` | Container `max-w-3xl` |
+| `src/web/src/app/(protected)/admin/materials/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/admin/specimens/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/admin/moderation/page.tsx` | Dialog `max-w-3xl` |
+
+**Static/Landing Pages:**
+| File | Change |
+|------|--------|
+| `src/web/src/app/terms/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/privacy/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/page.tsx` | All sections `max-w-3xl` |
+
+#### Width Reference
+
+| Tailwind Class | Width | Use Case |
+|----------------|-------|----------|
+| `max-w-2xl` | 672px | (not used) |
+| `max-w-3xl` | 768px | **All pages, dialogs, forms** |
+| `max-w-4xl` | 896px | (not used) |
+| `max-w-5xl` | 1024px | (previously used) |
+
+#### Benefits
+
+1. **Single source of truth**: Change `CONTENT_MAX_WIDTH` in one place to adjust all pages
+2. **Mobile-friendly**: `max-w-*` classes have no effect on small screens (content fills naturally)
+3. **iOS app ready**: Pattern translates well to SwiftUI's `frame(maxWidth:)`
+4. **Reddit-like UX**: Narrower width (768px) improves readability, similar to Reddit's post content area
+5. **Consistent dialogs**: All modals/dialogs use same width as pages
+6. **Dark mode visibility**: `bg-card hover:bg-accent` makes list rows clearly visible
+
+---
+
+### Session: 2025-12-10 - Cloudflare Tunnel for Mobile Testing
+
+#### Overview
+
+Set up Cloudflare Tunnel running in Kubernetes to enable mobile testing with valid SSL certificates. This provides a permanent development URL (`dev.myuglyrocks.com`) accessible from any device without localhost limitations.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Cloudflared K8s Deployment | Created `k8s/base/cloudflared-deployment.yaml` running cloudflared container | ✅ |
+| Tunnel Token Secret | Created K8s secret `cloudflared-tunnel-token` storing the tunnel token | ✅ |
+| Cloudflare Tunnel Creation | Created `myuglyrocks-dev-tunnel` in Cloudflare Zero Trust dashboard | ✅ |
+| Public Hostname Route | Configured `dev.myuglyrocks.com` → `https://10.80.80.181:30443` | ✅ |
+| TLS Skip Verify | Enabled "No TLS Verify" for self-signed mkcert certificates | ✅ |
+| DNS Auto-Configuration | Cloudflare auto-created CNAME record for `dev.myuglyrocks.com` | ✅ |
+| CORS Configuration | Added `https://dev.myuglyrocks.com` to CORS allowed origins | ✅ |
+
+#### Technical Details
+
+**Cloudflared Deployment (`k8s/base/cloudflared-deployment.yaml`):**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: myuglyrocks
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
+            - --token
+            - $(TUNNEL_TOKEN)
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared-tunnel-token
+                  key: token
+```
+
+**Cloudflare Dashboard Navigation:**
+1. Access -> Tunnels -> Create tunnel
+2. Choose "Cloudflared" connector type
+3. Copy tunnel token, create K8s secret
+4. After tunnel shows HEALTHY: Click tunnel → Public Hostname tab
+5. Add public hostname: `dev.myuglyrocks.com` → `https://10.80.80.181:30443`
+6. Under "Additional application settings" → TLS → Enable "No TLS Verify"
+
+**CORS Configuration (`appsettings.Development.json`):**
+```json
+"Cors": {
+  "AllowedOrigins": [
+    "https://myuglyrocks.local",
+    "https://myuglyrocks.local:30443",
+    "https://10.80.80.181:30443",
+    "https://dev.myuglyrocks.com"
+  ]
+}
+```
+
+#### Access URLs
+
+| Environment | URL | Notes |
+|-------------|-----|-------|
+| Local (NodePort) | https://10.80.80.181:30443 | Direct K8s access with mkcert |
+| Mobile/External | https://dev.myuglyrocks.com | Via Cloudflare Tunnel, valid SSL |
+
+#### Benefits
+
+1. **Valid SSL on Mobile**: Safari/iOS require trusted certificates - Cloudflare provides them
+2. **No Port Forwarding**: Access from any network without router configuration
+3. **Permanent URL**: Stable `dev.myuglyrocks.com` domain for testing
+4. **K8s Native**: Tunnel runs as a pod, restarts automatically with cluster
 
 ---
 

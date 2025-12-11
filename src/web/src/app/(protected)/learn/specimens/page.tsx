@@ -204,7 +204,7 @@ export default function SpecimensPage() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedId} onOpenChange={(open) => !open && setSelectedId(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           {selectedSpecimen && (
             <>
               <DialogHeader>

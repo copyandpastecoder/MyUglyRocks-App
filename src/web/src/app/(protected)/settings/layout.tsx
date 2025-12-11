@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { PAGE_CONTAINER } from '@/lib/layout';
 import { User, Settings, Shield, Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -40,7 +41,7 @@ export default function SettingsLayout({
   const currentPage = settingsNavItems.find((item) => item.href === pathname);
 
   return (
-    <div className="space-y-6">
+    <div className={PAGE_CONTAINER}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Settings</h1>

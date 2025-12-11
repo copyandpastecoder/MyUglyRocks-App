@@ -65,7 +65,9 @@
       "Bash(tree:*)",
       "Bash(Select-Object -Last 20)",
       "Bash(python update_ids.py:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(\"C:\\Program Files (x86)\\cloudflared\\cloudflared.exe\" tunnel --url https://10.80.80.181:30443 --no-tls-verify)",
+      "Bash(kubectl create secret generic:*)"
     ],
     "deny": [],
     "ask": []

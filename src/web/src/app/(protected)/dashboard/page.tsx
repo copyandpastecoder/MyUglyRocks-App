@@ -2,6 +2,7 @@
 
 import { useTumblers, useCycles } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
+import { PAGE_CONTAINER_LOOSE } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -37,7 +38,7 @@ export default function DashboardPage() {
   const activeStageCount = activeCycles?.reduce((acc, cycle) => acc + cycle.activeStageCount, 0) ?? 0;
 
   return (
-    <div className="space-y-8">
+    <div className={PAGE_CONTAINER_LOOSE}>
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-heading">
           Welcome back, {user?.displayName || user?.username}!

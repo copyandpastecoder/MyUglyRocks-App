@@ -247,7 +247,7 @@ export default function ModerationQueuePage() {
         setIsDetailDialogOpen(open);
         if (!open) resetResolveForm();
       }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Review Report</DialogTitle>
             <DialogDescription>
