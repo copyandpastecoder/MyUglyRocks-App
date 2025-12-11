@@ -160,7 +160,7 @@ env:
 
 **Severity:** High
 **Category:** Data in Transit
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `k8s/base/postgres-deployment.yaml`
 
@@ -184,7 +184,7 @@ Database connections are unencrypted within the cluster.
 
 **Severity:** High
 **Category:** Secret Management
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `k8s/base/api-deployment.yaml`
 
@@ -234,7 +234,7 @@ if (!string.IsNullOrEmpty(sort) && !AllowedSortFields.Contains(sort))
 
 **Severity:** Medium
 **Category:** Abuse Prevention
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `src/api/MyUglyRocks.Api/Program.cs`
 
@@ -254,7 +254,7 @@ if (!string.IsNullOrEmpty(sort) && !AllowedSortFields.Contains(sort))
 
 **Severity:** Medium
 **Category:** Cross-Site Request Forgery
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `src/api/MyUglyRocks.Api/Program.cs`
 
@@ -272,7 +272,7 @@ No CSRF token validation for state-changing operations despite `AllowCredentials
 
 **Severity:** Medium
 **Category:** Token Security
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `src/web/src/lib/api.ts`
 
@@ -297,7 +297,7 @@ let accessToken: string | null = null;
 
 **Severity:** Medium
 **Category:** Session Security
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected File:** `src/api/MyUglyRocks.Api/Controllers/SessionController.cs`
 
@@ -478,13 +478,14 @@ No automated dependency vulnerability scanning configured.
 
 **Severity:** Low
 **Category:** Monitoring
-**Status:** Open
+**Status:** 📄 Documented (requires cluster admin)
 
 **Issue:**
 No K8s API audit logging configured at cluster level.
 
 **Remediation:**
 Enable audit logging at Kubernetes cluster level.
+See `docs/k8s-audit-policy.yaml` for recommended audit policy.
 
 ---
 
@@ -492,7 +493,7 @@ Enable audit logging at Kubernetes cluster level.
 
 **Severity:** Low
 **Category:** Availability
-**Status:** Open
+**Status:** ✅ Fixed
 
 **Affected Files:** K8s deployment manifests
 
@@ -539,17 +540,17 @@ The following OWASP-related issues were addressed in prior commits:
 - [x] Add Pod Security Standards to deployments
 
 ### Short-term (2 Weeks)
-- [ ] Configure PostgreSQL SSL/TLS
-- [ ] Implement per-user rate limiting
+- [x] Configure PostgreSQL SSL/TLS
+- [x] Implement per-user rate limiting
 - [x] Add K8s NetworkPolicy
-- [ ] Implement CSRF token validation
+- [x] Implement CSRF token validation
 - [x] Add input validation to query parameters (sort, username)
 
 ### Medium-term (1 Month)
-- [ ] Move secrets from env vars to volume mounts
+- [x] Move secrets from env vars to volume mounts
 - [x] Implement PII masking in logs
 - [x] Set up dependency vulnerability scanning
-- [ ] Enhance session security validation
+- [x] Enhance session security validation
 - [x] Add resource limits to all deployments (already in place)
 - [x] Fix filename information leak
 

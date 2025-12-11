@@ -1,0 +1,56 @@
+# PostgreSQL SSL Configuration
+# Generates self-signed certificates and configures SSL
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-ssl-config
+  namespace: myuglyrocks
+data:
+  # PostgreSQL configuration for SSL
+  postgresql.conf: |
+    # SSL Configuration
+    ssl = on
+    ssl_cert_file = '/etc/postgres/ssl/server.crt'
+    ssl_key_file = '/etc/postgres/ssl/server.key'
+    ssl_prefer_server_ciphers = on
+    ssl_min_protocol_version = 'TLSv1.2'
+
+    # Logging (minimal for security)
+    log_connections = on
+    log_disconnections = on
+    log_hostname = off
+
+  # Script to generate self-signed certificates
+  generate-certs.sh: |
+    #!/bin/sh
+    set -e
+
+    SSL_DIR="/etc/postgres/ssl"
+
+    # Skip if certs already exist
+    if [ -f "$SSL_DIR/server.crt" ] && [ -f "$SSL_DIR/server.key" ]; then
+      echo "SSL certificates already exist, skipping generation"
+      # Ensure correct permissions
+      chmod 600 "$SSL_DIR/server.key"
+      chmod 644 "$SSL_DIR/server.crt"
+      exit 0
+    fi
+
+    echo "Generating self-signed SSL certificates..."
+
+    # Generate private key
+    openssl genrsa -out "$SSL_DIR/server.key" 2048
+
+    # Generate self-signed certificate (valid for 365 days)
+    openssl req -new -x509 \
+      -key "$SSL_DIR/server.key" \
+      -out "$SSL_DIR/server.crt" \
+      -days 365 \
+      -subj "/CN=postgres.myuglyrocks.svc.cluster.local/O=MyUglyRocks/C=US"
+
+    # Set correct permissions (postgres user = 70 in alpine)
+    chmod 600 "$SSL_DIR/server.key"
+    chmod 644 "$SSL_DIR/server.crt"
+    chown 70:70 "$SSL_DIR/server.key" "$SSL_DIR/server.crt"
+
+    echo "SSL certificates generated successfully"

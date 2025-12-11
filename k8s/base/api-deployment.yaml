@@ -43,67 +43,17 @@ spec:
         # Change to "Development" only for local debugging (enables Swagger, Hangfire dashboard)
         - name: ASPNETCORE_ENVIRONMENT
           value: "Production"
-        # Database
-        - name: ConnectionStrings__DefaultConnection
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: db-connection-string
-        # Redis
-        - name: ConnectionStrings__Redis
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: redis-connection-string
-        # JWT
-        - name: Jwt__Secret
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: jwt-secret
-        # R2 Storage
-        - name: R2__AccountId
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: r2-account-id
-        - name: R2__AccessKeyId
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: r2-access-key-id
-        - name: R2__SecretAccessKey
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: r2-secret-access-key
-        - name: R2__BucketName
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: r2-bucket-name
-        - name: R2__PublicUrl
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: r2-public-url
-        # Email
+        # Non-secret configuration (safe as env vars)
         - name: Email__Enabled
           value: "true"
-        - name: Email__ApiKey
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: resend-api-key
         - name: Email__BaseUrl
           value: "https://10.80.80.181:30443"
-        # Admin
-        - name: ADMIN_EMAIL
-          valueFrom:
-            secretKeyRef:
-              name: myuglyrocks-secrets
-              key: admin-email
-              optional: true
+        # Secrets are mounted as files at /etc/secrets (more secure than env vars)
+        # See volumeMounts below
+        volumeMounts:
+        - name: secrets-volume
+          mountPath: /etc/secrets
+          readOnly: true
         resources:
           requests:
             memory: "256Mi"
@@ -123,6 +73,31 @@ spec:
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
+      volumes:
+      - name: secrets-volume
+        secret:
+          secretName: myuglyrocks-api-secrets
+          defaultMode: 0400  # Read-only for owner
+          items:
+          # Map secret keys to .NET configuration format (__ replaces : for nested keys)
+          - key: db-connection-string
+            path: ConnectionStrings__DefaultConnection
+          - key: redis-connection-string
+            path: ConnectionStrings__Redis
+          - key: jwt-secret
+            path: Jwt__Secret
+          - key: r2-account-id
+            path: R2__AccountId
+          - key: r2-access-key-id
+            path: R2__AccessKeyId
+          - key: r2-secret-access-key
+            path: R2__SecretAccessKey
+          - key: r2-bucket-name
+            path: R2__BucketName
+          - key: r2-public-url
+            path: R2__PublicUrl
+          - key: resend-api-key
+            path: Email__ApiKey
 ---
 apiVersion: v1
 kind: Service

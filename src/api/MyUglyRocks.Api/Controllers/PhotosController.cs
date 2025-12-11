@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
@@ -41,6 +42,7 @@ public class PhotosController : ControllerBase
     /// Upload a photo to a stage run
     /// </summary>
     [HttpPost("stage/{stageRunId}")]
+    [EnableRateLimiting("intensive")]
     [ProducesResponseType(typeof(UploadPhotoResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(UploadPhotoResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
