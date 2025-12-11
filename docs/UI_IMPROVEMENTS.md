@@ -430,3 +430,278 @@ showToast.promise(asyncOperation, {
 - [ ] Observe shimmer effect on any loading skeleton
 - [ ] Trigger a toast notification - see rich colors and glassmorphism
 - [ ] Components ready for integration: RouteTransition, Charts
+
+---
+
+## Additional Improvements
+
+### 1. Custom Scrollbar
+
+**Location:** All scrollable areas throughout the app
+
+**What changed:**
+- Scrollbar now uses theme-aware colors
+- Primary color accent on thumb with hover effect
+- Subtle track background
+- 8px width for comfortable interaction
+- Firefox support with `scrollbar-color`
+
+### 2. Focus Ring Enhancement
+
+**Location:** All focusable elements (buttons, inputs, links)
+
+**What changed:**
+- 2px primary-colored focus ring
+- 2px offset for better visibility
+- Only shows for keyboard navigation (`:focus-visible`)
+- Mouse clicks don't trigger focus ring
+
+### 3. Animated Counter
+
+**Location:** Available for statistics display
+
+**Components:**
+- `AnimatedCounter` - Smoothly animates number changes with spring physics
+- `CountUp` - Counts up from start to end on mount
+- `FlipCounter` - Flip animation for each digit change
+
+**Usage:**
+```tsx
+import { AnimatedCounter, CountUp, FlipCounter } from '@/components/ui/animated-counter';
+
+<AnimatedCounter value={42} />
+<CountUp end={1000} separator="," duration={2} />
+<FlipCounter value={99} />
+```
+
+### 4. Empty States
+
+**Location:** Available for empty data views
+
+**Pre-configured variants:**
+- `NoCyclesEmpty` - For empty cycles page
+- `NoTumblersEmpty` - For empty tumblers page
+- `NoPhotosEmpty` - For empty photo galleries
+- `NoSearchResults` - For empty search results
+- `NotFoundEmpty` - For 404 pages
+
+**Usage:**
+```tsx
+import { EmptyState, NoCyclesEmpty } from '@/components/ui/empty-state';
+
+// Custom
+<EmptyState
+  icon={FolderOpen}
+  title="No items"
+  description="Add your first item"
+  action={{ label: "Add Item", onClick: handleAdd }}
+/>
+
+// Pre-configured
+<NoCyclesEmpty onAction={() => router.push('/cycles/new')} />
+```
+
+### 5. Confetti Celebration
+
+**Location:** Available for success moments
+
+**Usage:**
+```tsx
+import { Confetti, useConfetti } from '@/components/ui/confetti';
+
+// With hook
+const { fire, Confetti } = useConfetti();
+<Confetti />
+<Button onClick={fire}>Celebrate!</Button>
+
+// Direct control
+const [active, setActive] = useState(false);
+<Confetti active={active} onComplete={() => setActive(false)} />
+```
+
+### 6. Command Palette (CMD+K)
+
+**Location:** Global keyboard shortcut
+
+**Features:**
+- Press `⌘K` (Mac) or `Ctrl+K` (Windows) to open
+- Quick navigation to all pages
+- Theme switching
+- Create new items
+- Fuzzy search with keywords
+
+**Usage:**
+```tsx
+// Add to your layout
+import { CommandPalette } from '@/components/ui/command-palette';
+
+<CommandPalette />
+```
+
+### 7. Scroll-Triggered Animations
+
+**Location:** Available for any scrollable content
+
+**Components:**
+- `ScrollAnimate` - Single element animation on scroll
+- `ScrollRevealList` - Staggered list animation
+- `Parallax` - Subtle parallax effect
+- `CountOnScroll` - Number counter on scroll into view
+
+**Animation types:** `fadeIn`, `slideUp`, `slideLeft`, `slideRight`, `scale`, `blur`
+
+**Usage:**
+```tsx
+import { ScrollAnimate, ScrollRevealList, Parallax } from '@/components/ui/scroll-animate';
+
+<ScrollAnimate animation="slideUp">
+  <Card>Content</Card>
+</ScrollAnimate>
+
+<ScrollRevealList animation="fadeIn" staggerDelay={0.1}>
+  {items.map(item => <Card key={item.id}>{item.name}</Card>)}
+</ScrollRevealList>
+```
+
+### 8. Breadcrumb Navigation
+
+**Location:** Available for detail pages
+
+**Features:**
+- Auto-generates from URL path
+- Customizable items
+- Home icon option
+- Schema.org structured data variant
+
+**Usage:**
+```tsx
+import { Breadcrumb, BreadcrumbWithSchema } from '@/components/ui/breadcrumb';
+
+// Auto-generated
+<Breadcrumb />
+
+// Custom
+<Breadcrumb
+  items={[
+    { label: 'Cycles', href: '/cycles' },
+    { label: 'My Cycle' },
+  ]}
+/>
+```
+
+### 9. Mobile Bottom Navigation
+
+**Location:** Shows on mobile devices (md: and below)
+
+**Features:**
+- Fixed bottom bar with safe area padding (iOS)
+- Active state indicator with smooth animation
+- Optional center action button
+- Badge support for notifications
+
+**Usage:**
+```tsx
+import { MobileBottomNav, MobileNavSpacer } from '@/components/ui/mobile-nav';
+
+// In layout
+<MobileBottomNav />
+<MobileNavSpacer /> {/* Prevents content from being hidden */}
+
+// With center action
+<MobileBottomNav
+  centerAction={{
+    icon: Plus,
+    onClick: () => router.push('/cycles/new'),
+  }}
+/>
+```
+
+### 10. Floating Action Button (FAB)
+
+**Location:** Available for quick actions
+
+**Variants:**
+- `FloatingActionButton` - Standard FAB with optional expandable actions
+- `ExtendedFAB` - FAB with label
+- `MiniFAB` - Smaller secondary FAB
+
+**Usage:**
+```tsx
+import { FloatingActionButton, ExtendedFAB } from '@/components/ui/floating-action-button';
+
+// Simple FAB
+<FloatingActionButton onClick={() => router.push('/new')} />
+
+// Expandable FAB
+<FloatingActionButton
+  actions={[
+    { icon: Camera, label: 'Add Photo', onClick: handleAddPhoto },
+    { icon: RotateCcw, label: 'New Cycle', onClick: handleNewCycle },
+  ]}
+/>
+
+// Extended FAB with label
+<ExtendedFAB icon={Plus} label="New Cycle" onClick={handleCreate} />
+```
+
+---
+
+## New Components (Additional)
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| AnimatedCounter | `animated-counter.tsx` | Spring-animated number display |
+| CountUp | `animated-counter.tsx` | Count up animation on mount |
+| FlipCounter | `animated-counter.tsx` | Flip animation per digit |
+| EmptyState | `empty-state.tsx` | Friendly empty data displays |
+| NoCyclesEmpty | `empty-state.tsx` | Pre-configured for cycles |
+| NoTumblersEmpty | `empty-state.tsx` | Pre-configured for tumblers |
+| NoPhotosEmpty | `empty-state.tsx` | Pre-configured for photos |
+| Confetti | `confetti.tsx` | Celebration particle animation |
+| CommandPalette | `command-palette.tsx` | CMD+K quick actions |
+| ScrollAnimate | `scroll-animate.tsx` | Animate on scroll into view |
+| ScrollRevealList | `scroll-animate.tsx` | Staggered list animation |
+| Parallax | `scroll-animate.tsx` | Parallax scroll effect |
+| CountOnScroll | `scroll-animate.tsx` | Counter on scroll |
+| Breadcrumb | `breadcrumb.tsx` | Navigation breadcrumbs |
+| MobileBottomNav | `mobile-nav.tsx` | Mobile bottom tab bar |
+| FloatingActionButton | `floating-action-button.tsx` | Material Design FAB |
+| ExtendedFAB | `floating-action-button.tsx` | FAB with label |
+| MiniFAB | `floating-action-button.tsx` | Small secondary FAB |
+
+---
+
+## CSS Additions
+
+| Feature | Description |
+|---------|-------------|
+| Custom Scrollbar | Theme-aware scrollbar styling |
+| Focus Ring | Enhanced keyboard focus indicators |
+| Firefox Support | `scrollbar-width` and `scrollbar-color` |
+
+---
+
+## Complete Test Checklist
+
+### Quick Wins
+- [ ] Visit `/dashboard` - see staggered card animations on load
+- [ ] Hover stat cards - see lift effect
+- [ ] Click any button - feel the press feedback
+- [ ] Open any dialog - see blurred background
+- [ ] Change theme in Settings - verify dark themes work
+
+### Medium Effort
+- [ ] Visit `/dashboard` - see gradient colors on stat cards
+- [ ] See colored icon containers matching each card's theme
+
+### Higher Effort
+- [ ] Observe shimmer effect on any loading skeleton
+- [ ] Trigger a toast notification - see rich colors and glassmorphism
+- [ ] Components ready: RouteTransition, Charts
+
+### Additional Improvements
+- [ ] Scroll page - see custom scrollbar styling
+- [ ] Tab through elements - see focus ring on keyboard nav
+- [ ] Press `⌘K` / `Ctrl+K` - see command palette open
+- [ ] On mobile - see bottom navigation bar
+- [ ] Components ready: AnimatedCounter, EmptyState, Confetti, ScrollAnimate, Breadcrumb, FAB
