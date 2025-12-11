@@ -1,6 +1,9 @@
 // Query keys and cache configuration
 export { queryKeys, cacheConfig } from '@/lib/query-keys';
 
+// Material list management
+export { useMaterialList } from './use-material-list';
+
 // Specimens hooks
 export { useSpecimens, useSpecimen, useBarrelNicknames } from './use-specimens';
 
