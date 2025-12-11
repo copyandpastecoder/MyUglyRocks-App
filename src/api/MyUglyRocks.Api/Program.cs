@@ -12,6 +12,8 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Api.Authorization;
+using MyUglyRocks.Api.Middleware;
 using MyUglyRocks.Core.Mappings;
 using MyUglyRocks.Core.Services;
 using MyUglyRocks.Infrastructure.Configuration;
@@ -245,6 +247,9 @@ try
     // - HttpContext.Connection.RemoteIpAddress is the client IP, not the proxy IP
     app.UseForwardedHeaders();
 
+    // Global exception handling - must be early in pipeline
+    app.UseGlobalExceptionHandler();
+
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();
 
@@ -281,8 +286,12 @@ try
             options.Theme = ScalarTheme.Purple;
         });
 
-        // Hangfire Dashboard (only in development)
-        app.MapHangfireDashboard("/hangfire");
+        // Hangfire Dashboard (only in development, requires Admin authentication)
+        app.MapHangfireDashboard("/hangfire", new DashboardOptions
+        {
+            Authorization = new[] { new HangfireAuthorizationFilter() },
+            IsReadOnlyFunc = _ => false
+        });
     }
 
     // Only use HTTPS redirect in production

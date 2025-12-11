@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Api.Helpers;
 
 namespace MyUglyRocks.Api.Controllers;
 
@@ -77,6 +78,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var reports = await _adminService.GetReportsAsync(status, page, pageSize);
         return Ok(reports);
     }
@@ -157,6 +162,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var users = await _adminService.GetUsersAsync(search, role, isActive, page, pageSize);
         return Ok(users);
     }
@@ -295,6 +304,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var specimens = await _referenceDataService.GetSpecimensPaginatedAsync(
             search, materialType, isActive, page, pageSize);
         return Ok(specimens);
@@ -387,6 +400,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var materials = await _referenceDataService.GetMaterialsPaginatedAsync(
             search, category, isActive, page, pageSize);
         return Ok(materials);
