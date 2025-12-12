@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -71,17 +70,16 @@ export default function LandingPage() {
             upload before/after photos, and share your results with the community.
           </p>
           <div className="my-0 py-0">
-            {/* unoptimized: Skip Next.js on-demand image processing which causes
-                5+ second delays. The source is already an optimized 139KB WEBP.
-                priority: Still preloads the image for above-the-fold content. */}
-            <Image
+            {/* Using plain img tag to avoid Next.js image processing delays.
+                The source is already an optimized 139KB WEBP file. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src="/images/header-cartoon-no-background.webp"
               alt="Ugly rocks going into a tumbler and coming out beautiful"
               width={900}
               height={400}
               className="mx-auto w-full max-w-3xl h-auto"
-              priority
-              unoptimized
+              fetchPriority="high"
             />
           </div>
         </div>
