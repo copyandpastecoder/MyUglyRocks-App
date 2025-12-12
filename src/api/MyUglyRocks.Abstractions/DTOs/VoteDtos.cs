@@ -2,7 +2,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 
 public record VoteDto
 {
-    public Guid Id { get; init; }
+    public Guid VoteId { get; init; }
     public Guid PostId { get; init; }
     public Guid UserId { get; init; }
     public DateTime DateCreated { get; init; }

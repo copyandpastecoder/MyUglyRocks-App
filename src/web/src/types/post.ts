@@ -1,6 +1,6 @@
 // Post types
 export interface PostDto {
-  id: string;
+  postId: string;
   userId: string;
   cycleId: string;
   title: string;
@@ -15,7 +15,7 @@ export interface PostDto {
 }
 
 export interface PostListDto {
-  id: string;
+  postId: string;
   title: string;
   description: string | null;
   publishedDate: string;
@@ -27,14 +27,14 @@ export interface PostListDto {
 }
 
 export interface PostAuthorDto {
-  id: string;
+  userId: string;
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
 }
 
 export interface PostPhotoDto {
-  id: string;
+  postPhotoId: string;
   photoId: string;
   url: string;
   sortOrder: number;
@@ -42,7 +42,7 @@ export interface PostPhotoDto {
 }
 
 export interface CyclePreviewDto {
-  id: string;
+  cycleId: string;
   name: string;
   status: string;
   startDate: string;
@@ -68,7 +68,7 @@ export interface UpdatePostRequest {
 
 // Vote types
 export interface VoteDto {
-  id: string;
+  voteId: string;
   postId: string;
   userId: string;
   dateCreated: string;
@@ -82,7 +82,7 @@ export interface VoteCountDto {
 
 // Comment types
 export interface CommentDto {
-  id: string;
+  commentId: string;
   postId: string;
   parentCommentId: string | null;
   content: string;
@@ -94,7 +94,7 @@ export interface CommentDto {
 }
 
 export interface CommentAuthorDto {
-  id: string;
+  userId: string;
   username: string;
   displayName: string | null;
   avatarUrl: string | null;

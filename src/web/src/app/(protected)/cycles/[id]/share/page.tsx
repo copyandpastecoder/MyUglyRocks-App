@@ -75,7 +75,7 @@ export default function ShareCyclePage() {
       }),
     onSuccess: (post) => {
       toast.success('Post created! Your rocks are now in the gallery.');
-      router.push(`/gallery/${post.id}`);
+      router.push(`/gallery/${post.postId}`);
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create post');

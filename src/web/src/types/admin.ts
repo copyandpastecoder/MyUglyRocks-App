@@ -1,6 +1,6 @@
 // Comment Report types
 export interface CommentReportDto {
-  id: string;
+  commentReportId: string;
   commentId: string;
   commentContent: string;
   commentAuthorUsername: string;
@@ -17,7 +17,7 @@ export interface CommentReportDto {
 }
 
 export interface CommentReportListDto {
-  id: string;
+  commentReportId: string;
   commentExcerpt: string;
   commentAuthorUsername: string;
   reportedByUsername: string;
@@ -34,7 +34,7 @@ export interface ResolveReportRequest {
 
 // User Management types
 export interface AdminUserDto {
-  id: string;
+  userId: string;
   username: string;
   email: string;
   displayName: string | null;
@@ -49,7 +49,7 @@ export interface AdminUserDto {
 }
 
 export interface AdminUserListDto {
-  id: string;
+  userId: string;
   username: string;
   email: string;
   displayName: string | null;

@@ -10,15 +10,18 @@ public static class MappingConfig
     {
         // User mappings
         TypeAdapterConfig<User, UserDto>.NewConfig()
+            .Map(dest => dest.UserId, src => src.Id)
             .Map(dest => dest.Role, src => src.Role.ToString());
 
         // Tumbler mappings
         TypeAdapterConfig<Tumbler, TumblerDto>.NewConfig()
+            .Map(dest => dest.TumblerId, src => src.Id)
             .Map(dest => dest.TumblerType, src => src.TumblerType.ToString())
             .Map(dest => dest.MotorCapacityLbs, src => src.MotorCapacityLbs ?? (src.TumblerModel != null ? src.TumblerModel.MotorCapacityLbs : null))
             .Map(dest => dest.IsMotorCapacityEditable, src => src.TumblerModel == null || src.TumblerModel.IsCustomEntry);
 
         TypeAdapterConfig<Tumbler, TumblerListDto>.NewConfig()
+            .Map(dest => dest.TumblerId, src => src.Id)
             .Map(dest => dest.TumblerType, src => src.TumblerType.ToString())
             .Map(dest => dest.BarrelCount, src => src.Barrels.Count);
 
@@ -32,6 +35,7 @@ public static class MappingConfig
 
         // Barrel mappings
         TypeAdapterConfig<Barrel, BarrelDto>.NewConfig()
+            .Map(dest => dest.BarrelId, src => src.Id)
             .Map(dest => dest.IsMounted, src => src.StageRunBarrels.Any(srb => srb.StageRun != null && srb.StageRun.Status == StageRunStatus.Active));
 
         TypeAdapterConfig<CreateBarrelRequest, Barrel>.NewConfig()
@@ -42,13 +46,16 @@ public static class MappingConfig
 
         // TumblerModel mappings
         TypeAdapterConfig<TumblerModel, TumblerModelDto>.NewConfig()
+            .Map(dest => dest.TumblerModelId, src => src.Id)
             .Map(dest => dest.TumblerType, src => src.TumblerType.ToString());
 
         // Cycle mappings
         TypeAdapterConfig<Cycle, CycleDto>.NewConfig()
+            .Map(dest => dest.CycleId, src => src.Id)
             .Map(dest => dest.Status, src => src.Status.ToString());
 
         TypeAdapterConfig<Cycle, CycleListDto>.NewConfig()
+            .Map(dest => dest.CycleId, src => src.Id)
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.StageCount, src => src.StageRuns.Count)
             .Map(dest => dest.ActiveStageCount, src => src.StageRuns.Count(s => s.Status == StageRunStatus.Active));
@@ -66,6 +73,7 @@ public static class MappingConfig
 
         // StageRun mappings
         TypeAdapterConfig<StageRun, StageRunDto>.NewConfig()
+            .Map(dest => dest.StageRunId, src => src.Id)
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.WaterLevel, src => src.WaterLevel != null ? src.WaterLevel.ToString() : null)
             .Map(dest => dest.NextAction, src => src.NextAction != null ? src.NextAction.ToString() : null)
@@ -73,6 +81,7 @@ public static class MappingConfig
             .Map(dest => dest.Barrels, src => src.StageRunBarrels.Where(srb => srb.Barrel != null).Select(srb => srb.Barrel));
 
         TypeAdapterConfig<StageRun, StageRunSummaryDto>.NewConfig()
+            .Map(dest => dest.StageRunId, src => src.Id)
             .Map(dest => dest.Status, src => src.Status.ToString());
 
         TypeAdapterConfig<CreateStageRunRequest, StageRun>.NewConfig()
@@ -84,6 +93,7 @@ public static class MappingConfig
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.CycleId)
             .Ignore(dest => dest.Status)
+            .Ignore(dest => dest.RunNumber)
             .Ignore(dest => dest.EndDateTime)
             .Ignore(dest => dest.IsDeleted)
             .Ignore(dest => dest.DateDeleted)
@@ -91,6 +101,7 @@ public static class MappingConfig
 
         // CleaningRun mappings
         TypeAdapterConfig<CleaningRun, CleaningRunDto>.NewConfig()
+            .Map(dest => dest.CleaningRunId, src => src.Id)
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.Purpose, src => src.Purpose != null ? src.Purpose.ToString() : null)
             .Map(dest => dest.Materials, src => src.CleaningMaterials);
@@ -107,21 +118,26 @@ public static class MappingConfig
 
         // Material mappings
         TypeAdapterConfig<StageMaterial, StageMaterialDto>.NewConfig()
+            .Map(dest => dest.StageMaterialId, src => src.Id)
             .Map(dest => dest.MaterialName, src => src.Material != null ? src.Material.CommonName : null);
 
         TypeAdapterConfig<CleaningMaterial, CleaningMaterialDto>.NewConfig()
+            .Map(dest => dest.CleaningMaterialId, src => src.Id)
             .Map(dest => dest.MaterialName, src => src.Material != null ? src.Material.CommonName : null);
 
         TypeAdapterConfig<Material, MaterialDto>.NewConfig()
+            .Map(dest => dest.MaterialId, src => src.Id)
             .Map(dest => dest.Category, src => src.Category.ToString())
             .Map(dest => dest.UsageType, src => src.UsageType != null ? src.UsageType.ToString() : null);
 
         // Photo mappings
         TypeAdapterConfig<Photo, PhotoDto>.NewConfig()
+            .Map(dest => dest.PhotoId, src => src.Id)
             .Map(dest => dest.PhotoType, src => src.PhotoType.ToString());
 
         // Specimen mappings (simple DTO for embedding in cycles)
         TypeAdapterConfig<Specimen, SpecimenDto>.NewConfig()
+            .Map(dest => dest.SpecimenId, src => src.Id)
             .Map(dest => dest.MaterialType, src => src.MaterialType.ToString())
             .Map(dest => dest.TumblingDifficulty, src => src.TumblingDifficulty != null
                 ? src.TumblingDifficulty.ToString()
@@ -129,12 +145,14 @@ public static class MappingConfig
 
         // Specimen detail mapping (for reference data API)
         TypeAdapterConfig<Specimen, SpecimenDetailDto>.NewConfig()
+            .Map(dest => dest.SpecimenId, src => src.Id)
             .Map(dest => dest.MaterialType, src => src.MaterialType.ToString())
             .Map(dest => dest.TumblingDifficulty, src => src.TumblingDifficulty != null
                 ? src.TumblingDifficulty.ToString()
                 : null);
 
         TypeAdapterConfig<Specimen, SpecimenListDto>.NewConfig()
+            .Map(dest => dest.SpecimenId, src => src.Id)
             .Map(dest => dest.MaterialType, src => src.MaterialType.ToString())
             .Map(dest => dest.TumblingDifficulty, src => src.TumblingDifficulty != null
                 ? src.TumblingDifficulty.ToString()
@@ -142,12 +160,36 @@ public static class MappingConfig
 
         // Material list mapping
         TypeAdapterConfig<Material, MaterialListDto>.NewConfig()
+            .Map(dest => dest.MaterialId, src => src.Id)
             .Map(dest => dest.Category, src => src.Category.ToString())
             .Map(dest => dest.UsageType, src => src.UsageType != null ? src.UsageType.ToString() : null);
 
         // Material detail mapping (for reference data API)
         TypeAdapterConfig<Material, MaterialDetailDto>.NewConfig()
+            .Map(dest => dest.MaterialId, src => src.Id)
             .Map(dest => dest.Category, src => src.Category.ToString())
             .Map(dest => dest.UsageType, src => src.UsageType != null ? src.UsageType.ToString() : null);
+
+        // UserProfile mapping
+        TypeAdapterConfig<User, UserProfileDto>.NewConfig()
+            .Map(dest => dest.UserId, src => src.Id);
+
+        // Vote mapping
+        TypeAdapterConfig<Vote, VoteDto>.NewConfig()
+            .Map(dest => dest.VoteId, src => src.Id);
+
+        // Comment report mappings
+        TypeAdapterConfig<CommentReport, CommentReportDto>.NewConfig()
+            .Map(dest => dest.CommentReportId, src => src.Id);
+
+        TypeAdapterConfig<CommentReport, CommentReportListDto>.NewConfig()
+            .Map(dest => dest.CommentReportId, src => src.Id);
+
+        // Admin user mappings
+        TypeAdapterConfig<User, AdminUserDto>.NewConfig()
+            .Map(dest => dest.UserId, src => src.Id);
+
+        TypeAdapterConfig<User, AdminUserListDto>.NewConfig()
+            .Map(dest => dest.UserId, src => src.Id);
     }
 }

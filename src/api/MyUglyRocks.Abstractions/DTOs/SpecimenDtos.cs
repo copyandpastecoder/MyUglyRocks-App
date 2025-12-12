@@ -2,7 +2,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 
 public record SpecimenDetailDto
 {
-    public Guid Id { get; init; }
+    public Guid SpecimenId { get; init; }
     public required string CommonName { get; init; }
     public string? ScientificName { get; init; }
     public string? Alias { get; init; }
@@ -20,7 +20,7 @@ public record SpecimenDetailDto
 
 public record SpecimenListDto
 {
-    public Guid Id { get; init; }
+    public Guid SpecimenId { get; init; }
     public required string CommonName { get; init; }
     public string? Alias { get; init; }
     public string? Variety { get; init; }

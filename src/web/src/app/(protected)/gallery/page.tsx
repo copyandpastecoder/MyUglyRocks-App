@@ -86,9 +86,9 @@ export default function GalleryPage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts?.map((post) => (
             <PostCard
-              key={post.id}
+              key={post.postId}
               post={post}
-              onVote={(hasVoted) => handleVote(post.id, hasVoted)}
+              onVote={(hasVoted) => handleVote(post.postId, hasVoted)}
               isAuthenticated={isAuthenticated}
             />
           ))}
@@ -121,7 +121,7 @@ function PostCard({
   };
 
   return (
-    <Link href={`/gallery/${post.id}`}>
+    <Link href={`/gallery/${post.postId}`}>
       <Card className="overflow-hidden transition-shadow hover:shadow-lg cursor-pointer group">
         <div className="aspect-square relative bg-muted">
           {post.coverPhotoUrl ? (

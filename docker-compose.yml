@@ -11,6 +11,8 @@ services:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_STRING:-Host=postgres;Database=myuglyrocks;Username=postgres;Password=postgres}
       - ConnectionStrings__Redis=${REDIS_CONNECTION_STRING:-redis:6379}
       - Jwt__Secret=${JWT_SECRET}
+      - DEMO_USER_EMAIL=demo@myuglyrocks.com
+      - DEMO_USER_PASSWORD=DemoPassword123!
     depends_on:
       postgres:
         condition: service_healthy

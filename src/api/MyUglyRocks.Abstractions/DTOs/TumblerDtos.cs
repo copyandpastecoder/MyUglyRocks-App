@@ -1,7 +1,7 @@
 namespace MyUglyRocks.Abstractions.DTOs;
 
 public record TumblerDto(
-    Guid Id,
+    Guid TumblerId,
     string Brand,
     string? Model,
     string TumblerType,
@@ -14,7 +14,7 @@ public record TumblerDto(
 );
 
 public record TumblerListDto(
-    Guid Id,
+    Guid TumblerId,
     string Brand,
     string? Model,
     string TumblerType,
@@ -42,7 +42,7 @@ public record UpdateTumblerRequest(
 );
 
 public record BarrelDto(
-    Guid Id,
+    Guid BarrelId,
     int BarrelNumber,
     string? Nickname,
     decimal? CapacityLbs,
@@ -70,7 +70,7 @@ public record UpdateBarrelRequest(
 );
 
 public record TumblerModelDto(
-    Guid Id,
+    Guid TumblerModelId,
     string Brand,
     string Model,
     string TumblerType,

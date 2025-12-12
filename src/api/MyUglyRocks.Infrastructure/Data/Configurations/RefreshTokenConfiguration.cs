@@ -13,7 +13,7 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
         builder.HasKey(rt => rt.Id);
 
         builder.Property(rt => rt.Id)
-            .HasColumnName("id")
+            .HasColumnName("refresh_token_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(rt => rt.UserId)

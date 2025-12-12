@@ -2,7 +2,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 
 public record CommentDto
 {
-    public Guid Id { get; init; }
+    public Guid CommentId { get; init; }
     public Guid PostId { get; init; }
     public Guid? ParentCommentId { get; init; }
     public required string Content { get; init; }
@@ -15,7 +15,7 @@ public record CommentDto
 
 public record CommentAuthorDto
 {
-    public Guid Id { get; init; }
+    public Guid UserId { get; init; }
     public required string Username { get; init; }
     public string? DisplayName { get; init; }
     public string? AvatarUrl { get; init; }

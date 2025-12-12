@@ -51,7 +51,11 @@
       "Bash(kubectl delete:*)",
       "Bash(kubectl patch:*)",
       "Bash(timeout /t 10 /nobreak)",
-      "Bash(kubectl port-forward:*)"
+      "Bash(kubectl port-forward:*)",
+      "Bash(kubectl scale:*)",
+      "Bash(curl:*)",
+      "Bash(kubectl run:*)",
+      "Bash(timeout /t 3 /nobreak)"
     ],
     "deny": [],
     "ask": []

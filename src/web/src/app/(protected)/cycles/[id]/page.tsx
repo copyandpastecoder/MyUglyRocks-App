@@ -62,8 +62,18 @@ import { useMaterials } from '@/hooks/use-materials';
 import type { StageRunSummaryDto, CreateStageMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
 
-const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish'];
+const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish', 'Custom'];
 const DURATION_PRESETS = [3, 5, 7, 10, 14];
+
+// Helper to format stage display name with run number only if there are multiple runs of that stage type
+function formatStageDisplayName(stage: StageRunSummaryDto, allStageRuns: StageRunSummaryDto[]): string {
+  const runsOfSameType = allStageRuns.filter(s => s.stageName === stage.stageName);
+  if (runsOfSameType.length > 1) {
+    return `${stage.stageName} Run ${stage.runNumber}`;
+  }
+  return stage.stageName;
+}
+
 const WATER_LEVELS = [
   { value: 'JustCovering', label: 'Just covering' },
   { value: 'Halfway', label: 'Halfway' },
@@ -333,7 +343,7 @@ export default function CycleDetailPage() {
   };
 
   const openCompleteStageModal = (stage: StageRunSummaryDto) => {
-    setCompleteStageId(stage.id);
+    setCompleteStageId(stage.stageRunId);
     setCompleteStageName(stage.stageName);
     setIsCompleteStageOpen(true);
   };
@@ -397,7 +407,7 @@ export default function CycleDetailPage() {
     const days = Math.floor(totalHours / 24);
     const hours = totalHours % 24;
 
-    setEditStageId(stage.id);
+    setEditStageId(stage.stageRunId);
     setEditStageName(stage.stageName);
     setEditStageStartDateTime(stage.startDateTime.slice(0, 16)); // Format for datetime-local input
     setEditStageDurationDays(String(days));
@@ -456,7 +466,7 @@ export default function CycleDetailPage() {
       ? t.barrels.filter(b => b.isActive).map(b => ({
           ...b,
           tumblerName: `${t.brand} ${t.model || ''}`.trim(),
-          tumblerId: t.id,
+          tumblerId: t.tumblerId,
         }))
       : []
   ) || [];
@@ -707,7 +717,7 @@ export default function CycleDetailPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 {materials?.map(m => (
-                                  <SelectItem key={m.id} value={m.id}>
+                                  <SelectItem key={m.materialId} value={m.materialId}>
                                     {m.commonName}
                                   </SelectItem>
                                 ))}
@@ -873,14 +883,14 @@ export default function CycleDetailPage() {
                         </p>
                       ) : (
                         allBarrels.map(barrel => (
-                          <div key={barrel.id} className="flex items-center space-x-2">
+                          <div key={barrel.barrelId} className="flex items-center space-x-2">
                             <Checkbox
-                              id={barrel.id}
-                              checked={selectedBarrelIds.includes(barrel.id)}
-                              onCheckedChange={() => toggleBarrel(barrel.id)}
+                              id={barrel.barrelId}
+                              checked={selectedBarrelIds.includes(barrel.barrelId)}
+                              onCheckedChange={() => toggleBarrel(barrel.barrelId)}
                             />
                             <label
-                              htmlFor={barrel.id}
+                              htmlFor={barrel.barrelId}
                               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                             >
                               {barrel.tumblerName} - Barrel #{barrel.barrelNumber}
@@ -942,11 +952,12 @@ export default function CycleDetailPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">Active</h3>
                 {activeStages.map((stage: StageRunSummaryDto) => (
                   <StageCard
-                    key={stage.id}
+                    key={stage.stageRunId}
                     stage={stage}
+                    allStageRuns={cycle.stageRuns}
                     onComplete={() => openCompleteStageModal(stage)}
                     onEdit={() => openEditStageModal(stage)}
-                    onDelete={() => deleteStageRunMutation.mutate(stage.id)}
+                    onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
                     isCompleting={completeStageMutation.isPending}
                   />
                 ))}
@@ -959,9 +970,10 @@ export default function CycleDetailPage() {
                 <h3 className="text-sm font-medium text-muted-foreground">Completed</h3>
                 {completedStages.map((stage: StageRunSummaryDto) => (
                   <StageCard
-                    key={stage.id}
+                    key={stage.stageRunId}
                     stage={stage}
-                    onDelete={() => deleteStageRunMutation.mutate(stage.id)}
+                    allStageRuns={cycle.stageRuns}
+                    onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
                   />
                 ))}
               </div>
@@ -1333,12 +1345,14 @@ export default function CycleDetailPage() {
 
 function StageCard({
   stage,
+  allStageRuns,
   onComplete,
   onEdit,
   onDelete,
   isCompleting,
 }: {
   stage: StageRunSummaryDto;
+  allStageRuns: StageRunSummaryDto[];
   onComplete?: () => void;
   onEdit?: () => void;
   onDelete: () => void;
@@ -1361,94 +1375,73 @@ function StageCard({
   const timeRemaining = isActive ? getTimeRemaining(endDate) : null;
 
   return (
-    <Card className={isOverdue ? 'border-yellow-300' : ''}>
-      <CardContent className="py-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-4">
-            <div className={`p-2 rounded-full ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
-              {isActive ? (
-                <Play className="h-4 w-4 text-blue-600" />
-              ) : (
-                <CheckCircle2 className="h-4 w-4 text-green-600" />
-              )}
-            </div>
-            <div>
-              <p className="font-medium">{stage.stageName}</p>
-              <p className="text-sm text-muted-foreground">
-                Started {startDate.toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {stage.resultRating && (
-              <Badge variant="outline" className="gap-1">
-                <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                {stage.resultRating}/5
-              </Badge>
-            )}
-            {isActive && onComplete && (
-              <Button size="sm" onClick={onComplete} disabled={isCompleting}>
-                {isCompleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Complete'
-                )}
-              </Button>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {isActive && onEdit && (
-                  <DropdownMenuItem onClick={onEdit}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit Duration
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem
-                  className="text-red-600 focus:text-red-600"
-                  onClick={onDelete}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg border ${isOverdue ? 'border-yellow-500/50 bg-yellow-500/5' : 'border-border bg-card'}`}>
+      {/* Status Icon */}
+      <div className={`p-1.5 rounded-full shrink-0 ${isActive ? 'bg-blue-500/10' : 'bg-green-500/10'}`}>
+        {isActive ? (
+          <Play className="h-3.5 w-3.5 text-blue-500" />
+        ) : (
+          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+        )}
+      </div>
+
+      {/* Stage Name & Date */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm truncate">{formatStageDisplayName(stage, allStageRuns)}</span>
+          {stage.resultRating && (
+            <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
+              <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+              {stage.resultRating}
+            </span>
+          )}
         </div>
+        <p className="text-xs text-muted-foreground">
+          {isActive
+            ? (isOverdue ? 'Overdue' : `Day ${Math.min(currentDay, totalDays)}/${totalDays} · ${timeRemaining}`)
+            : `${startDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} → ${endDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`
+          }
+        </p>
+      </div>
 
-        {/* Progress */}
-        {isActive && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                {isOverdue ? (
-                  <span className="text-yellow-600 font-medium">Overdue</span>
-                ) : (
-                  `Day ${Math.min(currentDay, totalDays)} of ${totalDays}`
-                )}
-              </span>
-              <span className="text-muted-foreground">
-                {isOverdue ? 'Ready to complete' : `${timeRemaining} remaining`}
-              </span>
-            </div>
-            <Progress value={progressPercent} className={isOverdue ? '[&>div]:bg-yellow-500' : ''} />
-            <p className="text-xs text-muted-foreground text-right">
-              {Math.round(progressPercent)}% complete
-            </p>
-          </div>
-        )}
+      {/* Progress bar for active */}
+      {isActive && (
+        <div className="w-20 shrink-0">
+          <Progress value={progressPercent} className={`h-1.5 ${isOverdue ? '[&>div]:bg-yellow-500' : ''}`} />
+        </div>
+      )}
 
-        {!isActive && (
-          <p className="text-sm text-muted-foreground">
-            Completed {endDate.toLocaleDateString()}
-          </p>
+      {/* Actions */}
+      <div className="flex items-center gap-1 shrink-0">
+        {isActive && onComplete && (
+          <Button size="sm" variant="outline" className="h-7 text-xs px-2" onClick={onComplete} disabled={isCompleting}>
+            {isCompleting ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Done'}
+          </Button>
         )}
-      </CardContent>
-    </Card>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7">
+              <MoreVertical className="h-3.5 w-3.5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {isActive && onEdit && (
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              className="text-red-600 focus:text-red-600"
+              onClick={onDelete}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
   );
 }
 

@@ -13,7 +13,7 @@ public class TumblerConfiguration : IEntityTypeConfiguration<Tumbler>
         builder.HasKey(t => t.Id);
 
         builder.Property(t => t.Id)
-            .HasColumnName("id")
+            .HasColumnName("tumbler_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(t => t.UserId)
@@ -89,7 +89,7 @@ public class TumblerModelConfiguration : IEntityTypeConfiguration<TumblerModel>
         builder.HasKey(tm => tm.Id);
 
         builder.Property(tm => tm.Id)
-            .HasColumnName("id")
+            .HasColumnName("tumbler_model_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(tm => tm.Brand)
@@ -155,7 +155,7 @@ public class BarrelConfiguration : IEntityTypeConfiguration<Barrel>
         builder.HasKey(b => b.Id);
 
         builder.Property(b => b.Id)
-            .HasColumnName("id")
+            .HasColumnName("barrel_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(b => b.TumblerId)
@@ -228,7 +228,7 @@ public class BarrelNicknameConfiguration : IEntityTypeConfiguration<BarrelNickna
         builder.HasKey(bn => bn.Id);
 
         builder.Property(bn => bn.Id)
-            .HasColumnName("id")
+            .HasColumnName("barrel_nickname_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(bn => bn.Name)

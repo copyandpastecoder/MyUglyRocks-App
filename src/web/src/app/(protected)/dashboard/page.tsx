@@ -91,38 +91,8 @@ export default function DashboardPage() {
           </StaggerItem>
         </StaggerContainer>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>
-              Common tasks to get you started
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
-            <Button asChild>
-              <Link href="/cycles/new">
-                <Plus className="mr-2 h-4 w-4" />
-                New Cycle
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/tumblers/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Tumbler
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/cycles">
-                View All Cycles
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Active Cycles Preview */}
-        <Card>
+      {/* Active Cycles Preview */}
+      <Card>
           <CardHeader>
             <CardTitle>Active Cycles</CardTitle>
             <CardDescription>
@@ -134,8 +104,8 @@ export default function DashboardPage() {
               <div className="space-y-2">
                 {activeCycles.slice(0, 6).map(cycle => (
                   <Link
-                    key={cycle.id}
-                    href={`/cycles/${cycle.id}`}
+                    key={cycle.cycleId}
+                    href={`/cycles/${cycle.cycleId}`}
                     className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${getCycleStatusClass(cycle)}`}
                   >
                     <div>
@@ -166,7 +136,6 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
-      </div>
       </div>
     </PageTransition>
   );

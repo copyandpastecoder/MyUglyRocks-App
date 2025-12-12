@@ -60,11 +60,17 @@ public class SeedDataService
     public async Task SeedAllAsync()
     {
         await EnsureSystemUserAsync();
-        await EnsureTestUserAsync();
         await SeedSpecimensAsync();
         await SeedMaterialsAsync();
         await SeedTumblerModelsAsync();
         await SeedBarrelNicknamesAsync();
+        await SeedDemoUserAsync();
+    }
+
+    private async Task SeedDemoUserAsync()
+    {
+        var demoSeedService = new DemoUserSeedService(_context, _logger);
+        await demoSeedService.SeedDemoUserAsync();
     }
 
     private async Task EnsureSystemUserAsync()
@@ -85,33 +91,6 @@ public class SeedDataService
             });
             await _context.SaveChangesAsync();
             _logger.LogInformation("Created system user for seed data");
-        }
-    }
-
-    private async Task EnsureTestUserAsync()
-    {
-        if (!await _context.Users.AnyAsync(u => u.Id == TestUserId))
-        {
-            var now = DateTime.UtcNow;
-            _context.Users.Add(new User
-            {
-                Id = TestUserId,
-                Username = "testuser",
-                Email = "test@myuglyrocks.local",
-                // Password: "Test123!" - pre-hashed for convenience
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"),
-                DisplayName = "Test User",
-                EmailVerified = true,
-                DateEmailVerified = now,
-                Role = UserRole.User,
-                IsActive = true,
-                OnboardingCompleted = true,
-                DateOnboardingCompleted = now,
-                DateCreated = now,
-                DateUpdated = now
-            });
-            await _context.SaveChangesAsync();
-            _logger.LogInformation("Created test user (test@myuglyrocks.local / Test123!)");
         }
     }
 

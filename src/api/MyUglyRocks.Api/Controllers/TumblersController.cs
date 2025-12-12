@@ -55,7 +55,7 @@ public class TumblersController : ControllerBase
     public async Task<IActionResult> CreateTumbler([FromBody] CreateTumblerRequest request, CancellationToken cancellationToken)
     {
         var tumbler = await _tumblerService.CreateTumblerAsync(GetUserId(), request, cancellationToken);
-        return CreatedAtAction(nameof(GetTumbler), new { id = tumbler.Id }, tumbler);
+        return CreatedAtAction(nameof(GetTumbler), new { id = tumbler.TumblerId }, tumbler);
     }
 
     /// <summary>

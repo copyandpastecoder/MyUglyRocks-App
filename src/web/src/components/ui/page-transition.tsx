@@ -24,8 +24,8 @@ const pageVariants = {
 };
 
 const pageTransition = {
-  type: 'tween',
-  ease: 'easeOut',
+  type: 'tween' as const,
+  ease: 'easeOut' as const,
   duration: 0.2,
 };
 
@@ -63,8 +63,8 @@ const itemVariants = {
     opacity: 1,
     y: 0,
     transition: {
-      type: 'tween',
-      ease: 'easeOut',
+      type: 'tween' as const,
+      ease: 'easeOut' as const,
       duration: 0.2,
     },
   },

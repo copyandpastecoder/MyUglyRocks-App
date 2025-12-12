@@ -34,47 +34,65 @@ spec:
         - name: ConnectionStrings__DefaultConnection
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: db-connection-string
         # Redis
         - name: ConnectionStrings__Redis
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: redis-connection-string
         # JWT
         - name: Jwt__Secret
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: jwt-secret
         # R2 Storage
         - name: R2__AccountId
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: r2-account-id
         - name: R2__AccessKeyId
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: r2-access-key-id
         - name: R2__SecretAccessKey
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: r2-secret-access-key
         - name: R2__BucketName
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: r2-bucket-name
+        - name: R2__PublicUrl
+          valueFrom:
+            secretKeyRef:
+              name: myuglyrocks-api-secrets
+              key: r2-public-url
         # Email
         - name: Email__ApiKey
           valueFrom:
             secretKeyRef:
-              name: myuglyrocks-secrets
+              name: myuglyrocks-api-secrets
               key: resend-api-key
+        # Demo User (for seeding)
+        - name: DEMO_USER_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: myuglyrocks-api-secrets
+              key: demo-user-email
+              optional: true
+        - name: DEMO_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: myuglyrocks-api-secrets
+              key: demo-user-password
+              optional: true
         resources:
           requests:
             memory: "256Mi"
@@ -82,17 +100,24 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          failureThreshold: 60  # Allow 5 minutes for startup (seeding can take a while)
         readinessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 10
+          initialDelaySeconds: 5
           periodSeconds: 5
         livenessProbe:
           httpGet:
             path: /health
             port: 8080
-          initialDelaySeconds: 30
+          initialDelaySeconds: 10
           periodSeconds: 10
 ---
 apiVersion: v1

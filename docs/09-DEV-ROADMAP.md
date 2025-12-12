@@ -943,13 +943,13 @@ Implemented full Kubernetes deployment for local development, matching productio
 | `src/api/MyUglyRocks.Api/Configuration/AkeylessConfigurationProvider.cs` | No longer needed |
 | `k8s/base/akeyless-gateway.yaml` | No longer needed |
 
-#### Access URLs (with port-forward)
+#### Access URLs (via Cloudflare Tunnel)
 
-| Service | URL | Command |
-|---------|-----|---------|
-| Web | http://localhost:3000 | `kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks` |
-| API | http://localhost:5000 | `kubectl port-forward svc/myuglyrocks-api 5000:80 -n myuglyrocks` |
-| PostgreSQL | localhost:5432 | `kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks` |
+| Service | URL | Notes |
+|---------|-----|-------|
+| Web | https://dev.myuglyrocks.com | Via Cloudflare tunnel |
+| API | https://dev.myuglyrocks.com/api | Via Cloudflare tunnel |
+| PostgreSQL | N/A | Use `kubectl exec` to access (see CLAUDE.md) |
 
 #### Secrets Management
 

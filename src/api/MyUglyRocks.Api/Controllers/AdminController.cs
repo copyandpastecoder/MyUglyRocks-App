@@ -268,7 +268,7 @@ public class AdminController : ControllerBase
         [FromBody] CreateSpecimenRequest request)
     {
         var specimen = await _referenceDataService.CreateSpecimenAsync(request);
-        return CreatedAtAction(nameof(GetSpecimen), new { id = specimen.Id }, specimen);
+        return CreatedAtAction(nameof(GetSpecimen), new { id = specimen.SpecimenId }, specimen);
     }
 
     /// <summary>
@@ -360,7 +360,7 @@ public class AdminController : ControllerBase
         [FromBody] CreateMaterialRequest request)
     {
         var material = await _referenceDataService.CreateMaterialAsync(request);
-        return CreatedAtAction(nameof(GetMaterial), new { id = material.Id }, material);
+        return CreatedAtAction(nameof(GetMaterial), new { id = material.MaterialId }, material);
     }
 
     /// <summary>

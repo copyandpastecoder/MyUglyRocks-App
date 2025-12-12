@@ -402,7 +402,7 @@ public class PostService : IPostService
 
         return new PostListDto
         {
-            Id = post.Id,
+            PostId = post.Id,
             Title = post.Title,
             Description = post.Description,
             PublishedDate = post.PublishedDate,
@@ -412,7 +412,7 @@ public class PostService : IPostService
             PhotoCount = post.PostPhotos.Count,
             Author = new PostAuthorDto
             {
-                Id = post.User.Id,
+                UserId = post.User.Id,
                 Username = post.User.Username,
                 DisplayName = post.User.DisplayName,
                 AvatarUrl = post.User.AvatarUrl
@@ -424,7 +424,7 @@ public class PostService : IPostService
     {
         return new PostDto
         {
-            Id = post.Id,
+            PostId = post.Id,
             UserId = post.UserId,
             CycleId = post.CycleId,
             Title = post.Title,
@@ -435,14 +435,14 @@ public class PostService : IPostService
             CommentCount = post.CommentCount,
             Author = new PostAuthorDto
             {
-                Id = post.User.Id,
+                UserId = post.User.Id,
                 Username = post.User.Username,
                 DisplayName = post.User.DisplayName,
                 AvatarUrl = post.User.AvatarUrl
             },
             Cycle = new CyclePreviewDto
             {
-                Id = post.Cycle.Id,
+                CycleId = post.Cycle.Id,
                 Name = post.Cycle.Name,
                 Status = post.Cycle.Status.ToString(),
                 StartDate = post.Cycle.StartDate,
@@ -454,7 +454,7 @@ public class PostService : IPostService
             },
             Photos = post.PostPhotos.OrderBy(pp => pp.SortOrder).Select(pp => new PostPhotoDto
             {
-                Id = pp.Id,
+                PostPhotoId = pp.Id,
                 PhotoId = pp.PhotoId,
                 Url = pp.Photo.Url,
                 SortOrder = pp.SortOrder,
@@ -467,7 +467,7 @@ public class PostService : IPostService
     {
         return new CommentDto
         {
-            Id = comment.Id,
+            CommentId = comment.Id,
             PostId = comment.PostId,
             ParentCommentId = comment.ParentCommentId,
             Content = comment.Content,
@@ -476,7 +476,7 @@ public class PostService : IPostService
             DateCreated = comment.DateCreated,
             Author = new CommentAuthorDto
             {
-                Id = comment.User.Id,
+                UserId = comment.User.Id,
                 Username = comment.User.Username,
                 DisplayName = comment.User.DisplayName,
                 AvatarUrl = comment.User.AvatarUrl

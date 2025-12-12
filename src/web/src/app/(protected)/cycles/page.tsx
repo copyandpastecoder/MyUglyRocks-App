@@ -62,7 +62,7 @@ export default function CyclesPage() {
   };
 
   const renderCycleCard = (cycle: CycleListDto) => (
-    <Card key={cycle.id} className={`relative ${activeTab === 'Active' ? getCycleStatusClass(cycle) : ''}`}>
+    <Card key={cycle.cycleId} className={`relative ${activeTab === 'Active' ? getCycleStatusClass(cycle) : ''}`}>
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
           <div>
@@ -81,21 +81,21 @@ export default function CyclesPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem asChild>
-                <Link href={`/cycles/${cycle.id}`}>
+                <Link href={`/cycles/${cycle.cycleId}`}>
                   <Pencil className="mr-2 h-4 w-4" />
                   View/Edit
                 </Link>
               </DropdownMenuItem>
               {cycle.status === 'Active' && (
                 <DropdownMenuItem asChild>
-                  <Link href={`/cycles/${cycle.id}/complete`}>
+                  <Link href={`/cycles/${cycle.cycleId}/complete`}>
                     <CheckCircle className="mr-2 h-4 w-4" />
                     Complete Cycle
                   </Link>
                 </DropdownMenuItem>
               )}
               {cycle.status === 'Completed' && (
-                <DropdownMenuItem onClick={() => handleArchive(cycle.id)}>
+                <DropdownMenuItem onClick={() => handleArchive(cycle.cycleId)}>
                   <Archive className="mr-2 h-4 w-4" />
                   Archive
                 </DropdownMenuItem>
@@ -103,7 +103,7 @@ export default function CyclesPage() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-red-600 focus:text-red-600"
-                onClick={() => handleDelete(cycle.id)}
+                onClick={() => handleDelete(cycle.cycleId)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete

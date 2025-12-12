@@ -1,7 +1,7 @@
 export type UserRole = 'Admin' | 'Moderator' | 'User';
 
 export interface User {
-  id: string;
+  userId: string;
   email: string;
   username: string;
   displayName?: string;

@@ -82,7 +82,7 @@ public class PostsController : ControllerBase
         try
         {
             var post = await _postService.CreatePostAsync(userId.Value, request);
-            return CreatedAtAction(nameof(GetPost), new { id = post.Id }, post);
+            return CreatedAtAction(nameof(GetPost), new { id = post.PostId }, post);
         }
         catch (InvalidOperationException ex)
         {

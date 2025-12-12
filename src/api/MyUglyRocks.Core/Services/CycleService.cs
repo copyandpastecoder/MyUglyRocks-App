@@ -200,6 +200,11 @@ public class CycleService : ICycleService
         stageRun.DateCreated = DateTime.UtcNow;
         stageRun.DateUpdated = DateTime.UtcNow;
 
+        // Calculate RunNumber: count existing non-deleted stages with the same name + 1
+        var existingRunCount = await StageRuns
+            .CountAsync(s => s.CycleId == cycleId && s.StageName == request.StageName && !s.IsDeleted, cancellationToken);
+        stageRun.RunNumber = existingRunCount + 1;
+
         // Add barrels
         if (request.BarrelIds?.Any() == true)
         {

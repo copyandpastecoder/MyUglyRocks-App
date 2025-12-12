@@ -103,7 +103,7 @@ public class AdminService : IAdminService
         if (report == null) return null;
 
         return new CommentReportDto(
-            Id: report.Id,
+            CommentReportId: report.Id,
             CommentId: report.CommentId,
             CommentContent: report.Comment.Content,
             CommentAuthorUsername: report.Comment.User.Username,
@@ -156,7 +156,7 @@ public class AdminService : IAdminService
         var resolvedByUser = await Users.FindAsync(resolvedByUserId);
 
         return new CommentReportDto(
-            Id: report.Id,
+            CommentReportId: report.Id,
             CommentId: report.CommentId,
             CommentContent: report.Comment.Content,
             CommentAuthorUsername: report.Comment.User.Username,
@@ -228,7 +228,7 @@ public class AdminService : IAdminService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(u => new AdminUserListDto(
-                u.Id,
+                u.Id,  // UserId
                 u.Username,
                 u.Email,
                 u.DisplayName,
@@ -258,7 +258,7 @@ public class AdminService : IAdminService
         var totalComments = await Comments.CountAsync(c => c.UserId == userId && !c.IsDeleted);
 
         return new AdminUserDto(
-            Id: user.Id,
+            UserId: user.Id,
             Username: user.Username,
             Email: user.Email,
             DisplayName: user.DisplayName,

@@ -171,6 +171,7 @@ export function ActivityChart({ data, title = 'Activity Overview', description }
 interface StageDistributionData {
   name: string;
   value: number;
+  [key: string]: string | number;
 }
 
 interface StageDistributionChartProps {

@@ -584,8 +584,8 @@ A single stage execution within a cycle.
 - `LoadWeightBeforeGrams`/`LoadWeightAfterGrams`: Stored in grams, displayed per user's `MeasurementSystem` preference (oz for Imperial, g for Metric)
 - `RemindAfterDays` and `RemindAtEndOfStage` are mutually exclusive reminder options
 
-**Calculated Fields (not stored in DB):**
-- `RunNumber` - Calculated on read: counts active (non-deleted) stages with same `StageName` within the cycle, ordered by `DateCreated`. Example: "Stage 1 Run 2" means second active run of "Stage 1". Recalculates automatically when stages are deleted.
+**Run Tracking:**
+- `RunNumber` - Integer stored in DB, set when stage run is created. Counts existing non-deleted stages with same `StageName` within the cycle + 1. Example: "Coarse Run 2" means second run of "Coarse" stage. Default value is 1. UI displays just the stage name for RunNumber=1, and appends "Run N" for subsequent runs.
 
 **Enum - StageRunStatus:**
 ```csharp

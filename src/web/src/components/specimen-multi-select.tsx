@@ -74,7 +74,7 @@ export function SpecimenMultiSelect({
   }, [specimens, searchQuery]);
 
   const selectedSpecimens = React.useMemo(() => {
-    return specimens.filter((s) => selectedIds.includes(s.id));
+    return specimens.filter((s) => selectedIds.includes(s.specimenId));
   }, [specimens, selectedIds]);
 
   // Calculate hardness warning when specimens have >1 difference in max hardness
@@ -224,12 +224,12 @@ export function SpecimenMultiSelect({
                 </div>
 
                 {filteredSpecimens.map((specimen) => {
-                  const isSelected = selectedIds.includes(specimen.id);
+                  const isSelected = selectedIds.includes(specimen.specimenId);
                   return (
                     <CommandItem
-                      key={specimen.id}
-                      value={specimen.id}
-                      onSelect={() => handleToggle(specimen.id)}
+                      key={specimen.specimenId}
+                      value={specimen.specimenId}
+                      onSelect={() => handleToggle(specimen.specimenId)}
                       className="flex items-center gap-2 cursor-pointer"
                     >
                       <Checkbox
@@ -262,7 +262,7 @@ export function SpecimenMultiSelect({
         <div className="flex flex-wrap gap-1.5">
           {selectedSpecimens.map((specimen) => (
             <Badge
-              key={specimen.id}
+              key={specimen.specimenId}
               variant="secondary"
               className="flex items-center gap-1 pr-1 bg-primary/25 text-foreground border border-primary/50"
             >
@@ -276,7 +276,7 @@ export function SpecimenMultiSelect({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleRemove(specimen.id);
+                  handleRemove(specimen.specimenId);
                 }}
                 className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
               >

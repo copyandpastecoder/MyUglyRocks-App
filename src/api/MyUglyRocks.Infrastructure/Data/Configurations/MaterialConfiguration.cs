@@ -13,7 +13,7 @@ public class SpecimenConfiguration : IEntityTypeConfiguration<Specimen>
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Id)
-            .HasColumnName("id")
+            .HasColumnName("specimen_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.CommonName)
@@ -156,7 +156,7 @@ public class MaterialConfiguration : IEntityTypeConfiguration<Material>
         builder.HasKey(m => m.Id);
 
         builder.Property(m => m.Id)
-            .HasColumnName("id")
+            .HasColumnName("material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(m => m.CommonName)
@@ -245,7 +245,7 @@ public class StageMaterialConfiguration : IEntityTypeConfiguration<StageMaterial
         builder.HasKey(sm => sm.Id);
 
         builder.Property(sm => sm.Id)
-            .HasColumnName("id")
+            .HasColumnName("stage_material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(sm => sm.StageRunId)
@@ -316,7 +316,7 @@ public class CleaningMaterialConfiguration : IEntityTypeConfiguration<CleaningMa
         builder.HasKey(cm => cm.Id);
 
         builder.Property(cm => cm.Id)
-            .HasColumnName("id")
+            .HasColumnName("cleaning_material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cm => cm.CleaningRunId)
@@ -387,7 +387,7 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
         builder.HasKey(us => us.Id);
 
         builder.Property(us => us.Id)
-            .HasColumnName("id")
+            .HasColumnName("user_settings_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(us => us.UserId)

@@ -13,7 +13,7 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.Id)
-            .HasColumnName("id")
+            .HasColumnName("cycle_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(c => c.UserId)
@@ -97,7 +97,7 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Id)
-            .HasColumnName("id")
+            .HasColumnName("stage_run_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.CycleId)
@@ -108,6 +108,10 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
             .HasColumnName("stage_name")
             .HasMaxLength(100)
             .IsRequired();
+
+        builder.Property(s => s.RunNumber)
+            .HasColumnName("run_number")
+            .HasDefaultValue(1);
 
         builder.Property(s => s.StartDateTime)
             .HasColumnName("start_date_time")
@@ -127,7 +131,8 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
 
         builder.Property(s => s.Status)
             .HasColumnName("status")
-            .HasDefaultValue(StageRunStatus.Active);
+            .HasDefaultValue(StageRunStatus.Active)
+            .HasSentinel(StageRunStatus.Active);
 
         builder.Property(s => s.ReminderEnabled)
             .HasColumnName("reminder_enabled")
@@ -244,7 +249,7 @@ public class CleaningRunConfiguration : IEntityTypeConfiguration<CleaningRun>
         builder.HasKey(cr => cr.Id);
 
         builder.Property(cr => cr.Id)
-            .HasColumnName("id")
+            .HasColumnName("cleaning_run_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cr => cr.StageRunId)
@@ -305,7 +310,7 @@ public class PhotoConfiguration : IEntityTypeConfiguration<Photo>
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.Id)
-            .HasColumnName("id")
+            .HasColumnName("photo_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(p => p.StageRunId)

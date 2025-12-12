@@ -13,7 +13,7 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.HasKey(p => p.Id);
 
         builder.Property(p => p.Id)
-            .HasColumnName("id")
+            .HasColumnName("post_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(p => p.UserId)
@@ -111,7 +111,7 @@ public class PostPhotoConfiguration : IEntityTypeConfiguration<PostPhoto>
         builder.HasKey(pp => pp.Id);
 
         builder.Property(pp => pp.Id)
-            .HasColumnName("id")
+            .HasColumnName("post_photo_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(pp => pp.PostId)
@@ -171,7 +171,7 @@ public class VoteConfiguration : IEntityTypeConfiguration<Vote>
         builder.HasKey(v => v.Id);
 
         builder.Property(v => v.Id)
-            .HasColumnName("id")
+            .HasColumnName("vote_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(v => v.PostId)
@@ -225,7 +225,7 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
         builder.HasKey(c => c.Id);
 
         builder.Property(c => c.Id)
-            .HasColumnName("id")
+            .HasColumnName("comment_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(c => c.PostId)
@@ -312,7 +312,7 @@ public class CommentReportConfiguration : IEntityTypeConfiguration<CommentReport
         builder.HasKey(r => r.Id);
 
         builder.Property(r => r.Id)
-            .HasColumnName("id")
+            .HasColumnName("comment_report_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(r => r.CommentId)

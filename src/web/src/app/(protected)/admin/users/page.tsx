@@ -117,9 +117,9 @@ export default function UserManagementPage() {
   });
 
   const userDetailQuery = useQuery({
-    queryKey: ['admin', 'user', selectedUser?.id],
-    queryFn: () => adminApi.getUser(selectedUser!.id),
-    enabled: !!selectedUser?.id && isDetailDialogOpen,
+    queryKey: ['admin', 'user', selectedUser?.userId],
+    queryFn: () => adminApi.getUser(selectedUser!.userId),
+    enabled: !!selectedUser?.userId && isDetailDialogOpen,
   });
 
   const changeRoleMutation = useMutation({
@@ -128,7 +128,7 @@ export default function UserManagementPage() {
     onSuccess: () => {
       toast.success('User role updated successfully');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.userId] });
       setIsRoleDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -145,7 +145,7 @@ export default function UserManagementPage() {
     onSuccess: () => {
       toast.success('User has been banned');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.userId] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
       setIsBanDialogOpen(false);
       setBanReason('');
@@ -161,7 +161,7 @@ export default function UserManagementPage() {
     onSuccess: () => {
       toast.success('User has been unbanned');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.userId] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
     },
     onError: () => {
@@ -187,13 +187,13 @@ export default function UserManagementPage() {
 
   const handleChangeRole = () => {
     if (!selectedUser) return;
-    changeRoleMutation.mutate({ userId: selectedUser.id, role: newRole });
+    changeRoleMutation.mutate({ userId: selectedUser.userId, role: newRole });
   };
 
   const handleBanUser = () => {
     if (!selectedUser) return;
     banUserMutation.mutate({
-      userId: selectedUser.id,
+      userId: selectedUser.userId,
       reason: banReason || undefined,
       deleteContent,
     });
@@ -283,7 +283,7 @@ export default function UserManagementPage() {
                   {users?.items.map((user) => {
                     const RoleIcon = roleIcon[user.role] || Shield;
                     return (
-                      <TableRow key={user.id}>
+                      <TableRow key={user.userId}>
                         <TableCell>
                           <div>
                             <p className="font-medium">{user.username}</p>
@@ -343,7 +343,7 @@ export default function UserManagementPage() {
                                   Ban User
                                 </DropdownMenuItem>
                               ) : (
-                                <DropdownMenuItem onClick={() => handleUnbanUser(user.id)}>
+                                <DropdownMenuItem onClick={() => handleUnbanUser(user.userId)}>
                                   Unban User
                                 </DropdownMenuItem>
                               )}

@@ -11,8 +11,8 @@ RUN npm ci
 # Copy source code
 COPY src/web/ .
 
-# Set API URL for build
-ARG NEXT_PUBLIC_API_URL=http://myuglyrocks-api
+# Set API URL for build (empty = use relative URLs through ingress)
+ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build the app

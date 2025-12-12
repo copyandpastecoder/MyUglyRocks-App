@@ -20,7 +20,7 @@ const variants = {
     y: 0,
     transition: {
       duration: 0.3,
-      ease: [0.25, 0.1, 0.25, 1], // Custom easing for smoother feel
+      ease: [0.25, 0.1, 0.25, 1] as const, // Custom easing for smoother feel
     },
   },
   exit: {
@@ -28,7 +28,7 @@ const variants = {
     y: -10,
     transition: {
       duration: 0.2,
-      ease: [0.25, 0.1, 0.25, 1],
+      ease: [0.25, 0.1, 0.25, 1] as const,
     },
   },
 };
@@ -66,22 +66,22 @@ export function RouteTransition({ children, className, mode = 'wait' }: RouteTra
 const slideVariants = {
   left: {
     initial: { opacity: 0, x: -30 },
-    enter: { opacity: 1, x: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+    enter: { opacity: 1, x: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
     exit: { opacity: 0, x: 30, transition: { duration: 0.2 } },
   },
   right: {
     initial: { opacity: 0, x: 30 },
-    enter: { opacity: 1, x: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+    enter: { opacity: 1, x: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
     exit: { opacity: 0, x: -30, transition: { duration: 0.2 } },
   },
   up: {
     initial: { opacity: 0, y: 30 },
-    enter: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+    enter: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
     exit: { opacity: 0, y: -30, transition: { duration: 0.2 } },
   },
   down: {
     initial: { opacity: 0, y: -30 },
-    enter: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' } },
+    enter: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
     exit: { opacity: 0, y: 30, transition: { duration: 0.2 } },
   },
 };
@@ -122,7 +122,7 @@ const scaleVariants = {
     scale: 1,
     transition: {
       duration: 0.25,
-      ease: [0.25, 0.1, 0.25, 1],
+      ease: [0.25, 0.1, 0.25, 1] as const,
     },
   },
   exit: {
