@@ -68,7 +68,7 @@ export default function SpecimensPage() {
 
       {/* Search and Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -135,62 +135,64 @@ export default function SpecimensPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[300px]">Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Family</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Hardness</TableHead>
-                <TableHead>Difficulty</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {specimens?.map((specimen) => (
-                <TableRow
-                  key={specimen.specimenId}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedId(specimen.specimenId)}
-                >
-                  <TableCell className="font-medium">{specimen.commonName}</TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground">
-                    {specimen.rockFamily || '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {specimen.materialType}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {specimen.mohsHardnessMin != null ? (
-                      <Badge variant="outline" className="text-xs">
-                        {specimen.mohsHardnessMin}
-                        {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
-                          ? `-${specimen.mohsHardnessMax}`
-                          : ''}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {specimen.tumblingDifficulty ? (
-                      <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
-                        {specimen.tumblingDifficulty}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
+        <Card>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Family</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Hardness</TableHead>
+                  <TableHead>Difficulty</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="px-4 py-2 border-t text-sm text-muted-foreground">
-            {specimens?.length} specimens
-          </div>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {specimens?.map((specimen) => (
+                  <TableRow
+                    key={specimen.specimenId}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedId(specimen.specimenId)}
+                  >
+                    <TableCell className="font-medium">{specimen.commonName}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                      {specimen.rockFamily || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {specimen.materialType}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {specimen.mohsHardnessMin != null ? (
+                        <Badge variant="outline" className="text-xs">
+                          {specimen.mohsHardnessMin}
+                          {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
+                            ? `-${specimen.mohsHardnessMax}`
+                            : ''}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {specimen.tumblingDifficulty ? (
+                        <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
+                          {specimen.tumblingDifficulty}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="pt-4 text-sm text-muted-foreground">
+              {specimens?.length} specimens
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Detail Dialog */}
