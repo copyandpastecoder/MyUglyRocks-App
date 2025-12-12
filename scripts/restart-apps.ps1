@@ -1,54 +1,70 @@
 <#
 .SYNOPSIS
-    Restarts the MyUglyRocks API and Web deployments in Kubernetes.
+    Rebuilds and restarts the MyUglyRocks API and Web deployments in Kubernetes.
 
 .DESCRIPTION
-    This script scales down the API and Web deployments to 0 replicas,
-    then scales them back up to 1 replica each. Useful for picking up
-    new Docker images or resetting the applications.
-
+    This script rebuilds Docker images from source code and restarts the deployments.
+    By default, it rebuilds images to ensure the latest code is deployed.
     Also starts a port-forward for PostgreSQL so you can connect from DataGrip.
 
 .PARAMETER SkipApi
-    Skip restarting the API deployment.
+    Skip rebuilding and restarting the API deployment.
 
 .PARAMETER SkipWeb
-    Skip restarting the Web deployment.
+    Skip rebuilding and restarting the Web deployment.
 
-.PARAMETER RebuildImages
-    Rebuild Docker images before restarting (requires running from repo root).
+.PARAMETER SkipBuild
+    Skip rebuilding Docker images (just restart pods with existing images).
+
+.PARAMETER NoCache
+    Build Docker images without using cache (forces complete rebuild).
 
 .PARAMETER NoPortForward
     Skip starting the PostgreSQL port-forward.
 
 .EXAMPLE
+ # Rebuild & restart (DEFAULT)
+.   D:\MyUglyRocks-App\scripts\restart-apps.ps1    
+
+ # Force fresh build from scratch
+.   D:\MyUglyRocks-App\scripts\restart-apps.ps1 -NoCache
+
+  # Just restart (old behavior)
+.   D:\MyUglyRocks-App\scripts\restart-apps.ps1 -SkipBuild
+
+.EXAMPLE
     .\restart-apps.ps1
-    Or D:\MyRepo\MyUglyRocks-App\scripts\restart-apps.ps1
-    # Restarts both API and Web, starts DB port-forward
+    # Rebuilds both images and restarts both apps (DEFAULT)
+
+.EXAMPLE
+    .\restart-apps.ps1 -SkipBuild
+    # Just restarts pods without rebuilding (uses existing images)
+
+.EXAMPLE
+    .\restart-apps.ps1 -NoCache
+    # Rebuilds images from scratch (no Docker cache)
 
 .EXAMPLE
     .\restart-apps.ps1 -SkipWeb
-    # Restarts only the API
-
-.EXAMPLE
-    .\restart-apps.ps1 -RebuildImages
-    # Rebuilds images and restarts both apps
+    # Rebuilds and restarts only the API
 
 .EXAMPLE
     .\restart-apps.ps1 -NoPortForward
-    # Restarts apps but doesn't start DB port-forward
+    # Rebuilds and restarts but doesn't start DB port-forward
 #>
 
 param(
     [switch]$SkipApi,
     [switch]$SkipWeb,
-    [switch]$RebuildImages,
+    [switch]$SkipBuild,
+    [switch]$NoCache,
     [switch]$NoPortForward
 )
 
 $ErrorActionPreference = "Stop"
 $Namespace = "myuglyrocks"
-$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+# Script is in scripts/ folder, so repo root is one level up
+$RepoRoot = Split-Path -Parent $PSScriptRoot
 
 Write-Host "`n========================================" -ForegroundColor Cyan
 Write-Host "  MyUglyRocks App Restart Script" -ForegroundColor Cyan
@@ -67,32 +83,7 @@ if (-not $nsExists) {
     exit 1
 }
 
-# Rebuild images if requested
-if ($RebuildImages) {
-    Write-Host "Rebuilding Docker images..." -ForegroundColor Yellow
-
-    Push-Location $RepoRoot
-    try {
-        if (-not $SkipApi) {
-            Write-Host "`n  Building API image..." -ForegroundColor Gray
-            docker build -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
-            if ($LASTEXITCODE -ne 0) { throw "API image build failed" }
-            Write-Host "  API image built successfully" -ForegroundColor Green
-        }
-
-        if (-not $SkipWeb) {
-            Write-Host "`n  Building Web image..." -ForegroundColor Gray
-            docker build -t myuglyrocks-web:latest -f src/web/Dockerfile .
-            if ($LASTEXITCODE -ne 0) { throw "Web image build failed" }
-            Write-Host "  Web image built successfully" -ForegroundColor Green
-        }
-    }
-    finally {
-        Pop-Location
-    }
-}
-
-# Determine which deployments to restart
+# Determine which deployments to work with
 $deployments = @()
 if (-not $SkipApi) { $deployments += "myuglyrocks-api" }
 if (-not $SkipWeb) { $deployments += "myuglyrocks-web" }
@@ -102,22 +93,58 @@ if ($deployments.Count -eq 0) {
     exit 0
 }
 
-Write-Host "Restarting deployments: $($deployments -join ', ')" -ForegroundColor Yellow
+# Build Docker images (default behavior)
+if (-not $SkipBuild) {
+    Write-Host "Rebuilding Docker images..." -ForegroundColor Yellow
 
-# Scale down
-Write-Host "`nScaling down..." -ForegroundColor Gray
+    $buildArgs = @()
+    if ($NoCache) {
+        $buildArgs += "--no-cache"
+        Write-Host "  (Using --no-cache for fresh build)" -ForegroundColor Gray
+    }
+
+    Push-Location $RepoRoot
+    try {
+        if (-not $SkipApi) {
+            Write-Host "`n  Building API image..." -ForegroundColor Gray
+            $cmd = "docker build $($buildArgs -join ' ') -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile ."
+            Invoke-Expression $cmd
+            if ($LASTEXITCODE -ne 0) { throw "API image build failed" }
+            Write-Host "  API image built successfully" -ForegroundColor Green
+        }
+
+        if (-not $SkipWeb) {
+            Write-Host "`n  Building Web image..." -ForegroundColor Gray
+            $cmd = "docker build $($buildArgs -join ' ') -t myuglyrocks-web:latest -f src/web/Dockerfile ."
+            Invoke-Expression $cmd
+            if ($LASTEXITCODE -ne 0) { throw "Web image build failed" }
+            Write-Host "  Web image built successfully" -ForegroundColor Green
+        }
+    }
+    finally {
+        Pop-Location
+    }
+} else {
+    Write-Host "Skipping image rebuild (-SkipBuild specified)" -ForegroundColor Yellow
+}
+
+Write-Host "`nRestarting deployments: $($deployments -join ', ')" -ForegroundColor Yellow
+
+# Delete existing pods to force fresh pull of local images
+Write-Host "`nDeleting existing pods (forces fresh image load)..." -ForegroundColor Gray
 foreach ($deployment in $deployments) {
-    Write-Host "  Scaling $deployment to 0 replicas" -ForegroundColor Gray
-    kubectl scale deployment $deployment -n $Namespace --replicas=0 2>&1 | Out-Null
+    Write-Host "  Deleting pods for $deployment..." -ForegroundColor Gray
+    # Suppress warning about immediate deletion not waiting for termination
+    # Using Start-Process to avoid PowerShell treating stderr as error
+    $null = Start-Process -FilePath "kubectl" -ArgumentList "delete", "pods", "-l", "app=$deployment", "-n", $Namespace, "--force", "--grace-period=0" -NoNewWindow -Wait -PassThru
 }
 
 # Wait a moment for pods to terminate
-Start-Sleep -Seconds 2
+Start-Sleep -Seconds 3
 
-# Scale up
-Write-Host "`nScaling up..." -ForegroundColor Gray
+# Ensure deployments are scaled to 1
+Write-Host "`nEnsuring deployments are scaled up..." -ForegroundColor Gray
 foreach ($deployment in $deployments) {
-    Write-Host "  Scaling $deployment to 1 replica" -ForegroundColor Gray
     kubectl scale deployment $deployment -n $Namespace --replicas=1 2>&1 | Out-Null
 }
 
@@ -125,7 +152,7 @@ foreach ($deployment in $deployments) {
 Write-Host "`nWaiting for deployments to be ready..." -ForegroundColor Gray
 foreach ($deployment in $deployments) {
     Write-Host "  Waiting for $deployment..." -ForegroundColor Gray
-    kubectl rollout status deployment $deployment -n $Namespace --timeout=120s
+    kubectl rollout status deployment $deployment -n $Namespace --timeout=180s
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  WARNING: $deployment rollout may have issues" -ForegroundColor Yellow
     } else {
@@ -152,7 +179,7 @@ if (-not $NoPortForward) {
     }
 
     # Start port-forward in background
-    $job = Start-Job -ScriptBlock {
+    $null = Start-Job -ScriptBlock {
         kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks 2>&1
     }
 
