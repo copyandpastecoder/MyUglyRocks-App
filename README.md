@@ -87,11 +87,10 @@ kubectl get pods -n myuglyrocks
 
 | Access Method | URL | Notes |
 |---------------|-----|-------|
-| Local Network | https://10.80.80.181:30443 | Via nginx-ingress NodePort |
-| Mobile/External | https://dev.myuglyrocks.com | Via Cloudflare Tunnel (valid SSL) |
-| API Docs | https://10.80.80.181:30443/scalar/v1 | Scalar OpenAPI docs |
+| Development | https://dev.myuglyrocks.com | Via Cloudflare Tunnel (valid SSL) |
+| API Docs | https://dev.myuglyrocks.com/scalar/v1 | Scalar OpenAPI docs |
 
-> **Note:** Both web and API are served via nginx-ingress on port 30443 with path-based routing (`/api` routes to API, `/` routes to web).
+> **Note:** All access goes through the Cloudflare Tunnel. Both web and API are served via nginx-ingress with path-based routing (`/api` routes to API, `/` routes to web).
 
 ## Development
 

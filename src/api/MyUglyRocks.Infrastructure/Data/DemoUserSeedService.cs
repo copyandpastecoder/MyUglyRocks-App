@@ -125,7 +125,6 @@ public class DemoUserSeedService
             DateFormat = DateFormat.MMDDYYYY,
             TimeFormat = TimeFormat.TwelveHour,
             Timezone = "America/New_York",
-            TrackingMode = TrackingMode.Detailed,
             DateCreated = now.AddMonths(-12),
             DateUpdated = now
         };
@@ -394,7 +393,6 @@ public class DemoUserSeedService
                 Name = cycleName,
                 StartDate = cycleStartDate,
                 Status = CycleStatus.Active,
-                Goal = detailLevel == DetailLevel.Full ? GetRandomGoal() : null,
                 Notes = detailLevel != DetailLevel.Min ? GetRandomNotes() : null,
                 DateCreated = currentDate,
                 DateUpdated = currentDate

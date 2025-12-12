@@ -36,7 +36,7 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 # API URL is now set at runtime via K8s deployment, not build time
-# Default fallback - will be overridden by NEXT_PUBLIC_API_URL env var
-ENV NEXT_PUBLIC_API_URL="https://localhost:5000"
+# Empty = use relative URLs through ingress (recommended for K8s)
+ENV NEXT_PUBLIC_API_URL=""
 
 CMD ["node", "server.js"]

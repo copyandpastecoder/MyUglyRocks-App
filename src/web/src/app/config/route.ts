@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // For local/NodePort access, use the configured API_URL
+  // For local/NodePort access, use the configured API_URL (empty = relative URLs)
   return NextResponse.json({
-    apiUrl: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000',
+    apiUrl: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '',
   });
 }

@@ -48,6 +48,19 @@ spec:
           value: "true"
         - name: Email__BaseUrl
           value: "https://dev.myuglyrocks.com"
+        # Demo user credentials for seeding
+        - name: DEMO_USER_EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: myuglyrocks-api-secrets
+              key: demo-user-email
+              optional: true
+        - name: DEMO_USER_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: myuglyrocks-api-secrets
+              key: demo-user-password
+              optional: true
         # Secrets are mounted as files at /etc/secrets (more secure than env vars)
         # See volumeMounts below
         volumeMounts:
