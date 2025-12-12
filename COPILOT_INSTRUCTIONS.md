@@ -1,5 +1,18 @@
 # GitHub Copilot Instructions
 
+# Copilot Instructions
+
+## Project Context
+- This is a Next.js 15 + .NET 9 application
+- We use React hooks with TypeScript
+- React JSX uses camelCase for HTML attributes (e.g., `fetchPriority` not `fetchpriority`)
+
+## Code Review Guidelines
+- Don't suggest lowercase HTML attributes in JSX - React uses camelCase
+- useMemo for return objects is acceptable for referential stability
+- We intentionally use plain img tags for some images to bypass Next.js processing
+
+
 ## Branching and Merging Workflow
 
 This project uses a three-tier branching strategy:

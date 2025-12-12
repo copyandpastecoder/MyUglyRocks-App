@@ -64,35 +64,81 @@ public class DemoUserSeedService
 
         var userExists = await _context.Users.AnyAsync(u => u.UserId == DemoUserId);
         var hasCycles = await _context.Cycles.AnyAsync(c => c.UserId == DemoUserId);
+        var hasStageRuns = await _context.StageRuns.AnyAsync(sr =>
+            _context.Cycles.Any(c => c.CycleId == sr.CycleId && c.UserId == DemoUserId));
 
-        if (userExists && hasCycles)
+        if (userExists && hasCycles && hasStageRuns)
         {
-            _logger.LogInformation("Demo user and cycles already exist, skipping");
+            _logger.LogInformation("Demo user with complete data already exists, skipping");
             return;
+        }
+
+        // If partial data exists, clean it up and start fresh
+        if (userExists || hasCycles)
+        {
+            _logger.LogInformation("Found incomplete demo user data, cleaning up...");
+            await CleanupIncompleteDataAsync();
         }
 
         _logger.LogInformation("Seeding demo user data...");
 
-        // Create demo user if needed
-        if (!userExists)
-        {
-            await CreateDemoUserAsync();
-        }
+        // Create demo user
+        await CreateDemoUserAsync();
 
-        // Create tumblers and barrels if needed
-        var hasTumblers = await _context.Tumblers.AnyAsync(t => t.UserId == DemoUserId);
-        if (!hasTumblers)
-        {
-            await CreateTumblersAsync();
-        }
+        // Create tumblers and barrels
+        await CreateTumblersAsync();
 
-        // Create 12 months of cycles if needed
-        if (!hasCycles)
-        {
-            await CreateCyclesAsync();
-        }
+        // Create 12 months of cycles with stage runs
+        await CreateCyclesAsync();
 
         _logger.LogInformation("Demo user seeding complete");
+    }
+
+    private async Task CleanupIncompleteDataAsync()
+    {
+        // Delete in order of dependencies using raw SQL for efficiency
+        await _context.Database.ExecuteSqlRawAsync(@"
+            DELETE FROM photos WHERE stage_run_id IN (
+                SELECT sr.stage_run_id FROM stage_runs sr
+                JOIN cycles c ON sr.cycle_id = c.cycle_id
+                WHERE c.user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM cleaning_materials WHERE cleaning_run_id IN (
+                SELECT cr.cleaning_run_id FROM cleaning_runs cr
+                JOIN stage_runs sr ON cr.stage_run_id = sr.stage_run_id
+                JOIN cycles c ON sr.cycle_id = c.cycle_id
+                WHERE c.user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM cleaning_runs WHERE stage_run_id IN (
+                SELECT sr.stage_run_id FROM stage_runs sr
+                JOIN cycles c ON sr.cycle_id = c.cycle_id
+                WHERE c.user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM stage_materials WHERE stage_run_id IN (
+                SELECT sr.stage_run_id FROM stage_runs sr
+                JOIN cycles c ON sr.cycle_id = c.cycle_id
+                WHERE c.user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM stage_run_barrels WHERE stage_run_id IN (
+                SELECT sr.stage_run_id FROM stage_runs sr
+                JOIN cycles c ON sr.cycle_id = c.cycle_id
+                WHERE c.user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM stage_runs WHERE cycle_id IN (
+                SELECT cycle_id FROM cycles WHERE user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM cycle_specimens WHERE cycle_id IN (
+                SELECT cycle_id FROM cycles WHERE user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM cycles WHERE user_id = '00000000-0000-0000-0000-000000000003';
+            DELETE FROM barrels WHERE tumbler_id IN (
+                SELECT tumbler_id FROM tumblers WHERE user_id = '00000000-0000-0000-0000-000000000003'
+            );
+            DELETE FROM tumblers WHERE user_id = '00000000-0000-0000-0000-000000000003';
+            DELETE FROM user_settings WHERE user_id = '00000000-0000-0000-0000-000000000003';
+            DELETE FROM users WHERE user_id = '00000000-0000-0000-0000-000000000003';
+        ");
+        _logger.LogInformation("Cleaned up incomplete demo user data");
     }
 
     private async Task CreateDemoUserAsync()
