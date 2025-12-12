@@ -2531,12 +2531,12 @@ function StageCard({
             <p className="text-xs text-muted-foreground">
               {isActive ? (
                 isOverdue ? (
-                  <span className="text-yellow-600">Overdue · Ready to complete</span>
+                  <span className="text-yellow-600">Started {startDate.toLocaleDateString()} · Overdue</span>
                 ) : (
-                  <>Day {Math.max(1, Math.min(currentDay, totalDays))}/{totalDays} · {timeRemaining}</>
+                  <>Started {startDate.toLocaleDateString()} · Day {Math.max(1, Math.min(currentDay, totalDays))}/{totalDays}</>
                 )
               ) : (
-                <>Completed {endDate.toLocaleDateString()}</>
+                <>{startDate.toLocaleDateString()} → {endDate.toLocaleDateString()}</>
               )}
             </p>
           </div>

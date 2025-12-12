@@ -72,15 +72,18 @@ kubectl get pods -n myuglyrocks
 
 #### Quick Restart Script
 
-To quickly restart the API and Web apps (and start PostgreSQL port-forward for DataGrip):
+To rebuild and restart the API and Web apps (and start PostgreSQL port-forward for DataGrip):
 ```powershell
 .\scripts\restart-apps.ps1
 ```
 
+**By default, this rebuilds Docker images from source code** to ensure latest changes are deployed.
+
 Options:
-- `-SkipApi` - Skip restarting the API
-- `-SkipWeb` - Skip restarting the Web app
-- `-RebuildImages` - Rebuild Docker images before restarting
+- `-SkipApi` - Skip rebuilding/restarting the API
+- `-SkipWeb` - Skip rebuilding/restarting the Web app
+- `-SkipBuild` - Skip rebuilding images (just restart pods with existing images)
+- `-NoCache` - Build images without Docker cache (forces complete rebuild)
 - `-NoPortForward` - Don't start PostgreSQL port-forward
 
 ### Secrets Management
