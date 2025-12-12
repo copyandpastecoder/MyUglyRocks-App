@@ -58,7 +58,7 @@ export default function SpecimensPage() {
   const { data: selectedSpecimen } = useSpecimen(selectedId);
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Rock & Mineral Database</h1>
         <p className="text-muted-foreground">
