@@ -2502,49 +2502,52 @@ function StageCard({
 
   return (
     <>
-      <Card className={isOverdue ? 'border-yellow-300' : ''}>
-        <CardContent className="py-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-4">
-              <div className={`p-2 rounded-full ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
+      <Card className={`gap-0 py-0 ${isOverdue ? 'border-yellow-300' : ''}`}>
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className={`p-1.5 sm:p-2 rounded-full shrink-0 ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
                 {isActive ? (
-                  <Play className="h-4 w-4 text-blue-600" />
+                  <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
                 ) : (
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                  <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
                 )}
               </div>
-              <div>
-                <p className="font-medium">{displayName}</p>
-                <p className="text-sm text-muted-foreground">
+              <div className="min-w-0">
+                <p className="font-medium text-sm sm:text-base truncate">{displayName}</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   Started {startDate.toLocaleDateString()}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {stage.resultRating && (
-                <Badge variant="outline" className="gap-1">
+                <Badge variant="outline" className="gap-1 text-xs px-1.5 py-0.5">
                   <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                   {stage.resultRating}/5
                 </Badge>
               )}
               {isActive && onEdit && (
-                <Button variant="secondary" size="sm" onClick={onEdit}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
+                <Button variant="secondary" size="sm" onClick={onEdit} className="h-7 px-2 sm:px-3">
+                  <Pencil className="h-3.5 w-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Edit</span>
                 </Button>
               )}
               {isActive && onComplete && (
-                <Button size="sm" onClick={onComplete} disabled={isCompleting}>
+                <Button size="sm" onClick={onComplete} disabled={isCompleting} className="h-7 px-2 sm:px-3">
                   {isCompleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    'Complete'
+                    <>
+                      <CheckCircle2 className="h-3.5 w-3.5 sm:hidden" />
+                      <span className="hidden sm:inline">Complete</span>
+                    </>
                   )}
                 </Button>
               )}
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -2592,8 +2595,8 @@ function StageCard({
 
           {/* Progress */}
           {isActive && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
+            <div className="space-y-0.5 sm:space-y-1">
+              <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-muted-foreground">
                   {isOverdue ? (
                     <span className="text-yellow-600 font-medium">Overdue</span>
@@ -2602,38 +2605,35 @@ function StageCard({
                   )}
                 </span>
                 <span className="text-muted-foreground">
-                  {isOverdue ? 'Ready to complete' : `${timeRemaining} remaining`}
+                  {isOverdue ? 'Ready' : `${timeRemaining}`}
                 </span>
               </div>
-              <Progress value={progressPercent} className={isOverdue ? '[&>div]:bg-yellow-500' : ''} />
-              <p className="text-xs text-muted-foreground text-right">
-                {Math.round(progressPercent)}% complete
-              </p>
+              <Progress value={progressPercent} className={`h-1.5 sm:h-2 ${isOverdue ? '[&>div]:bg-yellow-500' : ''}`} />
             </div>
           )}
 
           {!isActive && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Completed {endDate.toLocaleDateString()}
             </p>
           )}
 
           {/* Stage Details Collapsible */}
-          <Collapsible open={isDetailsOpen} onOpenChange={handleDetailsToggle} className="mt-3">
+          <Collapsible open={isDetailsOpen} onOpenChange={handleDetailsToggle} className="mt-2">
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-between p-2 h-auto"
+                className="w-full justify-between px-1 py-1 h-auto"
               >
-                <div className="flex items-center gap-2">
-                  <ChevronDown className="h-4 w-4 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
-                  <span className="text-sm font-medium">Stage Details</span>
+                <div className="flex items-center gap-1.5">
+                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
+                  <span className="text-xs sm:text-sm font-medium">Details</span>
                 </div>
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-3 text-sm">
+              <div className="mt-1.5 p-2 sm:p-3 bg-muted/50 rounded-lg space-y-2 text-xs sm:text-sm">
                 {isLoadingDetails ? (
                   <div className="flex items-center justify-center py-4">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -2719,27 +2719,27 @@ function StageCard({
                     )}
 
                     {/* Photos */}
-                    <div className="pt-2 border-t">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-muted-foreground flex items-center gap-2">
-                          <ImageIcon className="h-4 w-4" />
+                    <div className="pt-1.5 border-t">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                          <ImageIcon className="h-3.5 w-3.5" />
                           Photos ({stageDetails.photos?.length || 0})
                         </span>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2"
+                          className="h-6 px-1.5 text-xs"
                           onClick={(e) => {
                             e.stopPropagation();
                             setUploadModalOpen(true);
                           }}
                         >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Add
+                          <Plus className="h-3 w-3" />
+                          <span className="hidden sm:inline ml-1">Add</span>
                         </Button>
                       </div>
                       {stageDetails.photos && stageDetails.photos.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 sm:grid-cols-3 gap-1.5">
                           {stageDetails.photos.map((photo) => (
                             <div key={photo.photoId} className="relative aspect-square">
                               <img
@@ -2747,14 +2747,14 @@ function StageCard({
                                 alt={photo.caption || photo.fileName || 'Photo'}
                                 className="w-full h-full object-cover rounded"
                               />
-                              <span className="absolute bottom-1 left-1 px-1 py-0.5 bg-black/50 rounded text-white text-[10px] capitalize">
+                              <span className="absolute bottom-0.5 left-0.5 px-1 py-0.5 bg-black/50 rounded text-white text-[8px] capitalize">
                                 {photo.photoType}
                               </span>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground text-center py-2">
+                        <p className="text-xs text-muted-foreground text-center py-1.5">
                           No photos yet
                         </p>
                       )}
@@ -2762,12 +2762,12 @@ function StageCard({
 
                     {/* Cleaning Run */}
                     {stage.cleaningRun && (
-                      <div className="pt-2 border-t">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Sparkles className="h-4 w-4 text-purple-500" />
-                          <span className="text-muted-foreground font-medium">Cleaning Run</span>
+                      <div className="pt-1.5 border-t">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                          <span className="text-muted-foreground font-medium text-xs">Cleaning</span>
                         </div>
-                        <div className="ml-6 space-y-1">
+                        <div className="ml-5 space-y-0.5">
                           <div className="flex justify-between">
                             <span className="text-muted-foreground">Duration:</span>
                             <span>{formatDurationMinutes(stage.cleaningRun.durationMinutes)}</span>

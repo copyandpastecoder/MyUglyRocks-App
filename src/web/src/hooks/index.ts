@@ -1,6 +1,24 @@
 // Query keys and cache configuration
 export { queryKeys, cacheConfig } from '@/lib/query-keys';
 
+// Shared utility hooks
+export {
+  useCrudMutation,
+  useCrudMutationWithId,
+  useDeleteMutation,
+} from './use-crud-mutation';
+
+export {
+  useModalState,
+  useModalStates,
+  useConfirmDialog,
+} from './use-modal-state';
+
+export {
+  usePagination,
+  useSearchFilterPagination,
+} from './use-pagination';
+
 // Material list management
 export { useMaterialList } from './use-material-list';
 
