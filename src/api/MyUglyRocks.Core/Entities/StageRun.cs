@@ -31,6 +31,7 @@ public class StageRun : SoftDeletableEntity
 
     // Basic info
     public required string StageName { get; set; }
+    public int RunNumber { get; set; } = 1; // Which run of this stage (1st, 2nd, etc.)
     public StageRunStatus Status { get; set; } = StageRunStatus.Active;
 
     // Timing

@@ -69,6 +69,13 @@ public class SeedDataService
         await SeedMaterialsAsync();
         await SeedTumblerModelsAsync();
         await SeedBarrelNicknamesAsync();
+        await SeedDemoUserAsync();
+    }
+
+    private async Task SeedDemoUserAsync()
+    {
+        var demoSeedService = new DemoUserSeedService(_context, _logger);
+        await demoSeedService.SeedDemoUserAsync();
     }
 
     private async Task EnsureSystemUserAsync()

@@ -62,7 +62,7 @@ public class DemoUserSeedService
             return;
         }
 
-        var userExists = await _context.Users.AnyAsync(u => u.Id == DemoUserId);
+        var userExists = await _context.Users.AnyAsync(u => u.UserId == DemoUserId);
         var hasCycles = await _context.Cycles.AnyAsync(c => c.UserId == DemoUserId);
 
         if (userExists && hasCycles)
@@ -100,7 +100,7 @@ public class DemoUserSeedService
         var now = DateTime.UtcNow;
         var user = new User
         {
-            Id = DemoUserId,
+            UserId = DemoUserId,
             Username = "DemoUser",
             Email = _demoEmail!,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(_demoPassword!),
@@ -156,7 +156,7 @@ public class DemoUserSeedService
         // Tumbler 1: Rotary, 2 barrels @ 3lb each, Stage 1 only
         var tumbler1 = new Tumbler
         {
-            Id = Tumbler1Id,
+            TumblerId = Tumbler1Id,
             UserId = DemoUserId,
             Brand = "Lortone",
             Model = "33B",
@@ -171,7 +171,7 @@ public class DemoUserSeedService
 
         var t1b1 = new Barrel
         {
-            Id = Tumbler1Barrel1Id,
+            BarrelId = Tumbler1Barrel1Id,
             TumblerId = Tumbler1Id,
             BarrelNumber = 1,
             Nickname = nicknameList[0],
@@ -185,7 +185,7 @@ public class DemoUserSeedService
 
         var t1b2 = new Barrel
         {
-            Id = Tumbler1Barrel2Id,
+            BarrelId = Tumbler1Barrel2Id,
             TumblerId = Tumbler1Id,
             BarrelNumber = 2,
             Nickname = nicknameList[1],
@@ -202,7 +202,7 @@ public class DemoUserSeedService
         // Barrel 2: Stages 1-5
         var tumbler2 = new Tumbler
         {
-            Id = Tumbler2Id,
+            TumblerId = Tumbler2Id,
             UserId = DemoUserId,
             Brand = "Lortone",
             Model = "QT66",
@@ -217,7 +217,7 @@ public class DemoUserSeedService
 
         var t2b1 = new Barrel
         {
-            Id = Tumbler2Barrel1Id,
+            BarrelId = Tumbler2Barrel1Id,
             TumblerId = Tumbler2Id,
             BarrelNumber = 1,
             Nickname = nicknameList[2],
@@ -231,7 +231,7 @@ public class DemoUserSeedService
 
         var t2b2 = new Barrel
         {
-            Id = Tumbler2Barrel2Id,
+            BarrelId = Tumbler2Barrel2Id,
             TumblerId = Tumbler2Id,
             BarrelNumber = 2,
             Nickname = nicknameList[3],
@@ -245,7 +245,7 @@ public class DemoUserSeedService
         // Tumbler 3: Lot-o-Tumbler Vibratory, 1 barrel @ 4.5lb, Stages 2-5 only
         var tumbler3 = new Tumbler
         {
-            Id = Tumbler3Id,
+            TumblerId = Tumbler3Id,
             UserId = DemoUserId,
             Brand = "Lot-o-Tumbler",
             Model = "Single Barrel",
@@ -260,7 +260,7 @@ public class DemoUserSeedService
 
         var t3b1 = new Barrel
         {
-            Id = Tumbler3Barrel1Id,
+            BarrelId = Tumbler3Barrel1Id,
             TumblerId = Tumbler3Id,
             BarrelNumber = 1,
             Nickname = nicknameList[4],
@@ -389,7 +389,7 @@ public class DemoUserSeedService
 
             var cycle = new Cycle
             {
-                Id = cycleId,
+                CycleId = cycleId,
                 UserId = DemoUserId,
                 Name = cycleName,
                 StartDate = cycleStartDate,
@@ -410,7 +410,7 @@ public class DemoUserSeedService
                     cycleSpecimens.Add(new CycleSpecimen
                     {
                         CycleId = cycleId,
-                        SpecimenId = specimen.Id,
+                        SpecimenId = specimen.SpecimenId,
                         DateCreated = currentDate,
                         DateUpdated = currentDate
                     });
@@ -454,7 +454,7 @@ public class DemoUserSeedService
 
                     var stageRun = new StageRun
                     {
-                        Id = stageRunId,
+                        StageRunId = stageRunId,
                         CycleId = cycleId,
                         StageName = stageName,
                         RunNumber = runNumber,
@@ -525,9 +525,9 @@ public class DemoUserSeedService
                     {
                         stageMaterials.Add(new StageMaterial
                         {
-                            Id = Guid.NewGuid(),
+                            StageMaterialId = Guid.NewGuid(),
                             StageRunId = stageRunId,
-                            MaterialId = material.Id,
+                            MaterialId = material.MaterialId,
                             DisplayAmount = _random.Next(2, 5),
                             DisplayUnit = "tbsp",
                             AmountGrams = _random.Next(30, 75),
@@ -546,7 +546,7 @@ public class DemoUserSeedService
                         var cleaningRunId = Guid.NewGuid();
                         cleaningRuns.Add(new CleaningRun
                         {
-                            Id = cleaningRunId,
+                            CleaningRunId = cleaningRunId,
                             StageRunId = stageRunId,
                             DurationMinutes = _random.Next(15, 60),
                             Purpose = stageName == "Polish" ? CleaningPurpose.FinalBurnish : CleaningPurpose.PostStageClean,
@@ -559,9 +559,9 @@ public class DemoUserSeedService
 
                         cleaningMaterials.Add(new CleaningMaterial
                         {
-                            Id = Guid.NewGuid(),
+                            CleaningMaterialId = Guid.NewGuid(),
                             CleaningRunId = cleaningRunId,
-                            MaterialId = cleaningMaterial.Id,
+                            MaterialId = cleaningMaterial.MaterialId,
                             DisplayAmount = 1,
                             DisplayUnit = "tbsp",
                             AmountGrams = 15,
