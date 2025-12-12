@@ -1,5 +1,42 @@
 # Deployment Notes - Action Required
 
+## Rate Limiting Configuration
+
+The API uses a sliding window rate limiter to prevent abuse while allowing normal usage patterns.
+
+### Current Limits
+
+| Endpoint Type | Limit | Window |
+|--------------|-------|--------|
+| General API | 600 requests | per minute |
+| Intensive Operations (uploads, exports) | 30 requests | per minute |
+
+### How It Works
+
+- **Authenticated users**: Rate limited by user ID
+- **Anonymous users**: Rate limited by IP address
+- **Sliding window**: Smoother than fixed window, allows bursts up to limit
+- **429 Response**: Returned when limit exceeded, includes `Retry-After` header
+
+### Adjusting Limits
+
+Edit `src/api/MyUglyRocks.Api/Program.cs` rate limiter configuration:
+
+```csharp
+// General API limit
+PermitLimit = 600,  // requests per window
+Window = TimeSpan.FromMinutes(1),
+SegmentsPerWindow = 6,  // 10-second segments
+
+// Intensive operations
+PermitLimit = 30,
+Window = TimeSpan.FromMinutes(1),
+```
+
+After changes, rebuild and redeploy the API.
+
+---
+
 ## API Secrets Migration (Security Fix #6)
 
 API secrets are now mounted as files instead of environment variables. This is more secure.

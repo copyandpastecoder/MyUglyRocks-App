@@ -23,6 +23,7 @@
 
 .EXAMPLE
     .\restart-apps.ps1
+    Or D:\MyRepo\MyUglyRocks-App\scripts\restart-apps.ps1
     # Restarts both API and Web, starts DB port-forward
 
 .EXAMPLE
