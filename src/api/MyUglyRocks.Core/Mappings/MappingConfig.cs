@@ -86,6 +86,7 @@ public static class MappingConfig
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.CycleId)
             .Ignore(dest => dest.Status)
+            .Ignore(dest => dest.RunNumber)
             .Ignore(dest => dest.EndDateTime)
             .Ignore(dest => dest.IsDeleted)
             .Ignore(dest => dest.DateDeleted)
@@ -151,5 +152,19 @@ public static class MappingConfig
         TypeAdapterConfig<Material, MaterialDetailDto>.NewConfig()
             .Map(dest => dest.Category, src => src.Category.ToString())
             .Map(dest => dest.UsageType, src => src.UsageType != null ? src.UsageType.ToString() : null);
+
+        // UserProfile mapping
+        TypeAdapterConfig<User, UserProfileDto>.NewConfig()
+            .Map(dest => dest.Role, src => src.Role.ToString());
+
+        // Vote mapping (auto-maps VoteId, PostId, UserId)
+        TypeAdapterConfig<Vote, VoteDto>.NewConfig();
+
+        // Admin user mappings
+        TypeAdapterConfig<User, AdminUserDto>.NewConfig()
+            .Map(dest => dest.Role, src => src.Role.ToString());
+
+        TypeAdapterConfig<User, AdminUserListDto>.NewConfig()
+            .Map(dest => dest.Role, src => src.Role.ToString());
     }
 }
