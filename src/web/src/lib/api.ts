@@ -15,11 +15,11 @@ async function fetchConfig(): Promise<string> {
       return config.apiUrl;
     } catch {
       // Fallback to build-time value or default
-      return process.env.NEXT_PUBLIC_API_URL || '';
+      return process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
     }
   }
   // On server, use env directly
-  return process.env.NEXT_PUBLIC_API_URL || '';
+  return process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 }
 
 // Get API URL (cached after first fetch)
@@ -37,10 +37,10 @@ export async function getApiUrl(): Promise<string> {
 }
 
 // Initialize with build-time value, will be updated at runtime
-const initialApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+const initialApiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://localhost:5000';
 
 export const api = axios.create({
-  baseURL: `${initialApiUrl}/api`,
+  baseURL: initialApiUrl ? `${initialApiUrl}/api` : '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
