@@ -111,35 +111,32 @@ export function useModalStates<TModals extends Record<string, unknown>>(
     () => Object.fromEntries(keys.map((k) => [k, null]))
   );
 
-  // Memoize handlers to maintain referential stability
-  // Only recreated when openStates or dataStates change
-  const modalHandlers = useMemo(() => {
-    const handlers: Record<string, ModalState<unknown>> = {};
+  // Create handlers for each modal
+  // Note: Handlers are recreated when state changes, which is necessary
+  // since they need access to current isOpen/data values
+  const modalHandlers: Record<string, ModalState<unknown>> = {};
 
-    keys.forEach((key) => {
-      const keyStr = key as string;
+  keys.forEach((key) => {
+    const keyStr = key as string;
 
-      handlers[keyStr] = {
-        isOpen: openStates[keyStr] ?? false,
-        data: dataStates[keyStr] ?? null,
-        open: (data?: unknown) => {
-          setDataStates((prev) => ({ ...prev, [keyStr]: data ?? null }));
-          setOpenStates((prev) => ({ ...prev, [keyStr]: true }));
-        },
-        close: () => {
-          setOpenStates((prev) => ({ ...prev, [keyStr]: false }));
-          setTimeout(() => {
-            setDataStates((prev) => ({ ...prev, [keyStr]: null }));
-          }, 200);
-        },
-        toggle: () => {
-          setOpenStates((prev) => ({ ...prev, [keyStr]: !prev[keyStr] }));
-        },
-      };
-    });
-
-    return handlers;
-  }, [keys, openStates, dataStates]);
+    modalHandlers[keyStr] = {
+      isOpen: openStates[keyStr] ?? false,
+      data: dataStates[keyStr] ?? null,
+      open: (data?: unknown) => {
+        setDataStates((prev) => ({ ...prev, [keyStr]: data ?? null }));
+        setOpenStates((prev) => ({ ...prev, [keyStr]: true }));
+      },
+      close: () => {
+        setOpenStates((prev) => ({ ...prev, [keyStr]: false }));
+        setTimeout(() => {
+          setDataStates((prev) => ({ ...prev, [keyStr]: null }));
+        }, 200);
+      },
+      toggle: () => {
+        setOpenStates((prev) => ({ ...prev, [keyStr]: !prev[keyStr] }));
+      },
+    };
+  });
 
   // Utility functions
   const isAnyOpen = useCallback(() => {
