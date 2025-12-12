@@ -86,7 +86,7 @@ export function DataTable<T>({
   if (isLoading) {
     return (
       <div className={cn('space-y-4', className)}>
-        {[...Array(skeletonRows)].map((_, i) => (
+        {Array.from({ length: skeletonRows }, (_, i) => (
           <Skeleton key={i} className="h-16 w-full" />
         ))}
       </div>
