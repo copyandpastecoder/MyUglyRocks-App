@@ -78,6 +78,7 @@ export default function LandingPage() {
               height={400}
               className="mx-auto w-full max-w-3xl h-auto"
               priority
+              unoptimized
             />
           </div>
         </div>
