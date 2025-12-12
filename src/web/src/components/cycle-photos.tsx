@@ -5,9 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Camera } from 'lucide-react';
 import { toast } from 'sonner';
-import { photosApi } from '@/lib/api';
+import { cycleApi, photosApi } from '@/lib/api';
 import { formatStageDisplayName } from '@/lib/cycle-utils';
-import type { PhotoDto, StageRunSummaryDto } from '@/types/cycle';
+import type { CyclePhotoDto, StageRunSummaryDto } from '@/types/cycle';
 import { useQuery } from '@tanstack/react-query';
 import { PhotoUploadModal } from './photo-upload-modal';
 import {
@@ -27,26 +27,21 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-  // Fetch photos for all stages
+  // Fetch all photos for the cycle in a single request
   const { data: allPhotos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
-    queryKey: ['cycle-photos', cycleId, stages.map(s => s.stageRunId)],
+    queryKey: ['cycle-photos', cycleId],
     queryFn: async () => {
-      const photoPromises = stages.map(async (stage) => {
-        try {
-          const photos = await photosApi.getStagePhotos(stage.stageRunId);
-          return photos.map(p => ({
-            ...p,
-            stageName: stage.stageName,
-            stageRunNumber: stage.runNumber,
-            stageTotalRuns: stage.totalRuns,
-            stageDisplayName: formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns)
-          }));
-        } catch {
-          return [];
-        }
-      });
-      const results = await Promise.all(photoPromises);
-      return results.flat();
+      const photos = await cycleApi.getPhotos(cycleId);
+      // Find totalRuns for each stage to format display name
+      const stageTotalsMap = stages.reduce((acc, s) => {
+        acc[s.stageRunId] = s.totalRuns;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return photos.map(p => ({
+        ...p,
+        stageDisplayName: formatStageDisplayName(p.stageName, p.runNumber, stageTotalsMap[p.stageRunId] ?? 1)
+      }));
     },
     enabled: stages.length > 0,
     // Auto-refetch every 2 seconds if any photos are still processing
@@ -177,7 +172,7 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {allPhotos.map((photo: PhotoDto & { stageName?: string; stageDisplayName?: string }) => (
+                {allPhotos.map((photo: CyclePhotoDto & { stageDisplayName?: string }) => (
                   <TooltipProvider key={photo.photoId}>
                     <Tooltip>
                       <TooltipTrigger asChild>

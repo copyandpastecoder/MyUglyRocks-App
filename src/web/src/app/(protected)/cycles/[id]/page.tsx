@@ -2502,136 +2502,119 @@ function StageCard({
 
   return (
     <>
-      <Card className={`gap-0 py-0 ${isOverdue ? 'border-yellow-300' : ''}`}>
-        <CardContent className="p-3 sm:p-4">
-          {/* Header row: icon + name + menu */}
-          <div className="flex items-center gap-2 sm:gap-3 mb-1">
-            <div className={`p-1.5 sm:p-2 rounded-full shrink-0 ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
-              {isActive ? (
-                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
-              ) : (
-                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="font-medium text-sm sm:text-base">{displayName}</p>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Started {startDate.toLocaleDateString()}
-              </p>
-            </div>
-            {/* Action buttons */}
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-              {stage.resultRating && (
-                <Badge variant="outline" className="gap-1 text-xs px-1.5 py-0.5">
-                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  {stage.resultRating}/5
-                </Badge>
-              )}
-              {isActive && onEdit && (
-                <Button variant="secondary" size="sm" onClick={onEdit} className="h-7 px-2 sm:px-3">
-                  <Pencil className="h-3.5 w-3.5 sm:mr-1.5" />
-                  <span className="hidden sm:inline">Edit</span>
-                </Button>
-              )}
-              {isActive && onComplete && (
-                <Button size="sm" onClick={onComplete} disabled={isCompleting} className="h-7 px-2 sm:px-3">
-                  {isCompleting ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
-                      <span className="hidden sm:inline">Complete</span>
-                    </>
-                  )}
-                </Button>
-              )}
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {!isActive && onView && (
-                    <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onView(); }}>
-                      <Eye className="mr-2 h-4 w-4" />
-                      View Details
-                    </DropdownMenuItem>
-                  )}
-                  {onDelete && (
-                    <DropdownMenuItem
-                      className="text-red-600 focus:text-red-600"
-                      onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+      <div className={`p-2.5 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer ${isOverdue ? 'border-yellow-300 bg-yellow-50/50' : 'bg-card'}`}>
+        {/* Main row: icon + name + progress + actions - clickable to toggle details */}
+        <div
+          className="flex items-center gap-2"
+          onClick={() => handleDetailsToggle(!isDetailsOpen)}
+        >
+          <div className={`p-1.5 rounded-full shrink-0 ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
+            {isActive ? (
+              <Play className="h-3 w-3 text-blue-600" />
+            ) : (
+              <CheckCircle2 className="h-3 w-3 text-green-600" />
+            )}
           </div>
 
-          {/* Delete Confirmation Dialog */}
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Stage?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Are you sure you want to delete &quot;{displayName}&quot;? This action cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDelete}
-                  className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          {/* Name and status */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-sm truncate">{displayName}</p>
+              {stage.resultRating && (
+                <Badge variant="outline" className="gap-0.5 text-[10px] px-1 py-0 h-4">
+                  <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
+                  {stage.resultRating}
+                </Badge>
+              )}
+              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isDetailsOpen ? 'rotate-180' : ''}`} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isActive ? (
+                isOverdue ? (
+                  <span className="text-yellow-600">Overdue · Ready to complete</span>
+                ) : (
+                  <>Day {Math.max(1, Math.min(currentDay, totalDays))}/{totalDays} · {timeRemaining}</>
+                )
+              ) : (
+                <>Completed {endDate.toLocaleDateString()}</>
+              )}
+            </p>
+          </div>
 
-          {/* Progress */}
+          {/* Progress bar (active only) */}
           {isActive && (
-            <div className="space-y-0.5 sm:space-y-1">
-              <div className="flex justify-between text-xs sm:text-sm">
-                <span className="text-muted-foreground">
-                  {isOverdue ? (
-                    <span className="text-yellow-600 font-medium">Overdue</span>
-                  ) : (
-                    `Day ${Math.max(1, Math.min(currentDay, totalDays))} of ${totalDays}`
-                  )}
-                </span>
-                <span className="text-muted-foreground">
-                  {isOverdue ? 'Ready to complete' : timeRemaining}
-                </span>
-              </div>
-              <Progress value={progressPercent} className={`h-1.5 sm:h-2 ${isOverdue ? '[&>div]:bg-yellow-500' : ''}`} />
+            <div className="w-16 sm:w-24 shrink-0">
+              <Progress value={progressPercent} className={`h-1.5 ${isOverdue ? '[&>div]:bg-yellow-500' : ''}`} />
             </div>
           )}
 
-          {!isActive && (
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              Completed {endDate.toLocaleDateString()}
-            </p>
-          )}
-
-          {/* Stage Details Collapsible */}
-          <Collapsible open={isDetailsOpen} onOpenChange={handleDetailsToggle} className="mt-2">
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-between px-1 py-1 h-auto"
-              >
-                <div className="flex items-center gap-1.5">
-                  <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 [[data-state=open]>&]:rotate-180" />
-                  <span className="text-xs sm:text-sm font-medium">Details</span>
-                </div>
+          {/* Action buttons - stop propagation so clicks don't toggle details */}
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {isActive && onEdit && (
+              <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 w-7 p-0">
+                <Pencil className="h-3.5 w-3.5" />
               </Button>
-            </CollapsibleTrigger>
+            )}
+            {isActive && onComplete && (
+              <Button size="sm" onClick={onComplete} disabled={isCompleting} className="h-7 px-2">
+                {isCompleting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                )}
+              </Button>
+            )}
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7">
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {!isActive && onView && (
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onView(); }}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Details
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    className="text-red-600 focus:text-red-600"
+                    onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Stage?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete &quot;{displayName}&quot;? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Stage Details Collapsible */}
+        <Collapsible open={isDetailsOpen} onOpenChange={handleDetailsToggle}>
+          <CollapsibleTrigger className="hidden" />
             <CollapsibleContent>
               <div className="mt-1.5 p-2 sm:p-3 bg-muted/50 rounded-lg space-y-2 text-xs sm:text-sm">
                 {isLoadingDetails ? (
@@ -2805,8 +2788,7 @@ function StageCard({
               </div>
             </CollapsibleContent>
           </Collapsible>
-        </CardContent>
-      </Card>
+      </div>
 
       {/* Photo Upload Modal */}
       <PhotoUploadModal

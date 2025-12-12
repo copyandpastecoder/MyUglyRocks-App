@@ -17,7 +17,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("ProductVersion", "9.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -281,9 +281,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("stage_run_id");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
                         .HasColumnName("status");
 
                     b.HasKey("CleaningRunId");
@@ -508,9 +506,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("start_date");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
                         .HasColumnName("status");
 
                     b.Property<Guid>("UserId")
@@ -732,6 +728,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<int>("PhotoType")
                         .HasColumnType("integer")
                         .HasColumnName("photo_type");
+
+                    b.Property<string>("ProcessingError")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ProcessingStatus")
+                        .HasColumnType("integer");
 
                     b.Property<int>("SortOrder")
                         .ValueGeneratedOnAdd()
@@ -1318,6 +1320,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("result_shine");
 
+                    b.Property<int>("RunNumber")
+                        .HasColumnType("integer");
+
                     b.Property<string>("StageName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1329,9 +1334,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("start_date_time");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(1)
                         .HasColumnName("status");
 
                     b.Property<int?>("WaterAmountMl")

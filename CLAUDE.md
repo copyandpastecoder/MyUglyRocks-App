@@ -70,6 +70,19 @@ kubectl scale deployment postgres redis myuglyrocks-api myuglyrocks-web cloudfla
 kubectl get pods -n myuglyrocks
 ```
 
+#### Quick Restart Script
+
+To quickly restart the API and Web apps (and start PostgreSQL port-forward for DataGrip):
+```powershell
+.\scripts\restart-apps.ps1
+```
+
+Options:
+- `-SkipApi` - Skip restarting the API
+- `-SkipWeb` - Skip restarting the Web app
+- `-RebuildImages` - Rebuild Docker images before restarting
+- `-NoPortForward` - Don't start PostgreSQL port-forward
+
 ### Secrets Management
 
 **Two secrets are used:**

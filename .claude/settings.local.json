@@ -67,7 +67,9 @@
       "Bash(python update_ids.py:*)",
       "Bash(python:*)",
       "Bash(\"C:\\Program Files (x86)\\cloudflared\\cloudflared.exe\" tunnel --url https://10.80.80.181:30443 --no-tls-verify)",
-      "Bash(kubectl create secret generic:*)"
+      "Bash(kubectl create secret generic:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDMiLCJlbWFpbCI6ImRlbW9AbXl1Z2x5cm9ja3MuY29tIiwidXNlcm5hbWUiOiJEZW1vVXNlciIsImp0aSI6IjljMTU1NGMzLTk5NjYtNDNhYS05ZjQ2LTk0Y2MzNjVlNzM1NyIsImlhdCI6MTc2NTU0NDYxMCwiZXhwIjoxNzY1NTQ1NTEwLCJpc3MiOiJNeVVnbHlSb2NrcyIsImF1ZCI6Ik15VWdseVJvY2tzIn0.KwepUNYTB280syf9LW5wncKpIDqZxhXaUJnd65R6P_0\" curl -s \"https://dev.myuglyrocks.com/api/cycles/be4d5e92-b55f-488e-87e1-b772ba740e14\" -H \"Authorization: Bearer $TOKEN\" -H \"Origin: https://dev.myuglyrocks.com\")",
+      "Bash(paste:*)"
     ],
     "deny": [],
     "ask": []

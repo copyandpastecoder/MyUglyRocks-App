@@ -80,7 +80,7 @@ spec:
             port: 8080
             httpHeaders:
             - name: Host
-              value: localhost
+              value: dev.myuglyrocks.com
           initialDelaySeconds: 10
           periodSeconds: 5
         livenessProbe:
@@ -89,9 +89,11 @@ spec:
             port: 8080
             httpHeaders:
             - name: Host
-              value: localhost
-          initialDelaySeconds: 30
+              value: dev.myuglyrocks.com
+          initialDelaySeconds: 60
           periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
       volumes:
       - name: secrets-volume
         secret:

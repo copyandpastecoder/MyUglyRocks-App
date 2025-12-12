@@ -33,8 +33,8 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
             .HasColumnName("end_date");
 
         builder.Property(c => c.Status)
-            .HasColumnName("status")
-            .HasDefaultValue(CycleStatus.Active);
+            .HasColumnName("status");
+        // Note: No database default - entity has C# default of Active
 
         builder.Property(c => c.DifficultyRating)
             .HasColumnName("difficulty_rating");
@@ -122,8 +122,9 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
             .IsRequired();
 
         builder.Property(s => s.Status)
-            .HasColumnName("status")
-            .HasDefaultValue(StageRunStatus.Active);
+            .HasColumnName("status");
+        // Note: No database default - entity has C# default of Active, and we need
+        // to be able to explicitly set Planned status (CLR default 0) during seeding
 
         builder.Property(s => s.ReminderEnabled)
             .HasColumnName("reminder_enabled")
@@ -255,8 +256,8 @@ public class CleaningRunConfiguration : IEntityTypeConfiguration<CleaningRun>
             .HasColumnName("purpose");
 
         builder.Property(cr => cr.Status)
-            .HasColumnName("status")
-            .HasDefaultValue(CleaningRunStatus.Active);
+            .HasColumnName("status");
+        // Note: No database default - entity has C# default of Active
 
         builder.Property(cr => cr.ReminderEnabled)
             .HasColumnName("reminder_enabled")

@@ -262,9 +262,13 @@ try
                 partitionKey: partitionKey,
                 factory: _ => new SlidingWindowRateLimiterOptions
                 {
-                    PermitLimit = 100,
+                    // 600 requests/minute per user allows heavy usage:
+                    // - Cycle detail page: ~20 requests (photos per stage + details)
+                    // - Navigating cycles: ~30 views per minute possible
+                    // - Plenty of headroom for normal usage patterns
+                    PermitLimit = 600,
                     Window = TimeSpan.FromMinutes(1),
-                    SegmentsPerWindow = 4,
+                    SegmentsPerWindow = 6, // 10-second segments for smoother burst handling
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0
                 });
@@ -284,7 +288,8 @@ try
                 partitionKey: partitionKey,
                 factory: _ => new FixedWindowRateLimiterOptions
                 {
-                    PermitLimit = 10,
+                    // 30 intensive operations per minute (uploads, exports, etc.)
+                    PermitLimit = 30,
                     Window = TimeSpan.FromMinutes(1),
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0
@@ -357,8 +362,8 @@ try
 
     app.UseCors("AllowFrontend");
     app.UseCsrfProtection();  // Validate Origin header for state-changing requests
-    app.UseRateLimiter();
     app.UseAuthentication();
+    app.UseRateLimiter();  // Rate limiter AFTER auth so it can access user claims
     app.UseAuthorization();
 
     // Apply "api" rate limit policy globally to all controllers

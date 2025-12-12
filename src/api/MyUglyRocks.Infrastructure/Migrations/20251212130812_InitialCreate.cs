@@ -15,7 +15,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "tumbler_models",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    tumbler_model_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     brand = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     model = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     tumbler_type = table.Column<int>(type: "integer", nullable: false),
@@ -30,14 +30,14 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tumbler_models", x => x.id);
+                    table.PrimaryKey("PK_tumbler_models", x => x.tumbler_model_id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "users",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    user_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     username = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     password_hash = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
@@ -61,14 +61,14 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_users", x => x.id);
+                    table.PrimaryKey("PK_users", x => x.user_id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "WaitlistEntries",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    waitlist_entry_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
                     IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: true),
                     UserAgent = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
@@ -79,50 +79,49 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_WaitlistEntries", x => x.Id);
+                    table.PrimaryKey("PK_WaitlistEntries", x => x.waitlist_entry_id);
                 });
 
             migrationBuilder.CreateTable(
                 name: "barrel_nicknames",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    barrel_nickname_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     category = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     is_active = table.Column<bool>(type: "boolean", nullable: false, defaultValue: true),
                     user_created = table.Column<Guid>(type: "uuid", nullable: true),
                     user_updated = table.Column<Guid>(type: "uuid", nullable: true),
-                    CreatedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
-                    UpdatedByUserId = table.Column<Guid>(type: "uuid", nullable: true),
                     date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()")
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_barrel_nicknames", x => x.id);
+                    table.PrimaryKey("PK_barrel_nicknames", x => x.barrel_nickname_id);
                     table.ForeignKey(
-                        name: "FK_barrel_nicknames_users_CreatedByUserId",
-                        column: x => x.CreatedByUserId,
+                        name: "FK_barrel_nicknames_users_user_created",
+                        column: x => x.user_created,
                         principalTable: "users",
-                        principalColumn: "id");
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_barrel_nicknames_users_UpdatedByUserId",
-                        column: x => x.UpdatedByUserId,
+                        name: "FK_barrel_nicknames_users_user_updated",
+                        column: x => x.user_updated,
                         principalTable: "users",
-                        principalColumn: "id");
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.SetNull);
                 });
 
             migrationBuilder.CreateTable(
                 name: "cycles",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    cycle_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     name = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
                     start_date = table.Column<DateOnly>(type: "date", nullable: false),
                     end_date = table.Column<DateOnly>(type: "date", nullable: true),
-                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
-                    goal = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     difficulty_rating = table.Column<int>(type: "integer", nullable: true),
                     final_quality = table.Column<int>(type: "integer", nullable: true),
                     additional_specimens = table.Column<string>(type: "text", nullable: true),
@@ -134,12 +133,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_cycles", x => x.id);
+                    table.PrimaryKey("PK_cycles", x => x.cycle_id);
                     table.ForeignKey(
                         name: "FK_cycles_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -147,7 +146,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "materials",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    material_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     common_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     category = table.Column<int>(type: "integer", nullable: false),
                     material_type = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
@@ -165,18 +164,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_materials", x => x.id);
+                    table.PrimaryKey("PK_materials", x => x.material_id);
                     table.ForeignKey(
                         name: "FK_materials_users_user_created",
                         column: x => x.user_created,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_materials_users_user_updated",
                         column: x => x.user_updated,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -184,7 +183,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "refresh_tokens",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    refresh_token_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     token = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     date_expires = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
@@ -198,18 +197,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_refresh_tokens", x => x.id);
+                    table.PrimaryKey("PK_refresh_tokens", x => x.refresh_token_id);
                     table.ForeignKey(
                         name: "FK_refresh_tokens_refresh_tokens_replaced_by_token_id",
                         column: x => x.replaced_by_token_id,
                         principalTable: "refresh_tokens",
-                        principalColumn: "id",
+                        principalColumn: "refresh_token_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_refresh_tokens_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -217,7 +216,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "specimens",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    specimen_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     common_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     scientific_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     alias = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
@@ -239,18 +238,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_specimens", x => x.id);
+                    table.PrimaryKey("PK_specimens", x => x.specimen_id);
                     table.ForeignKey(
                         name: "FK_specimens_users_user_created",
                         column: x => x.user_created,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_specimens_users_user_updated",
                         column: x => x.user_updated,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -258,7 +257,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "tumblers",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    tumbler_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: true),
                     tumbler_model_id = table.Column<Guid>(type: "uuid", nullable: true),
                     brand = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
@@ -273,18 +272,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_tumblers", x => x.id);
+                    table.PrimaryKey("PK_tumblers", x => x.tumbler_id);
                     table.ForeignKey(
                         name: "FK_tumblers_tumbler_models_tumbler_model_id",
                         column: x => x.tumbler_model_id,
                         principalTable: "tumbler_models",
-                        principalColumn: "id",
+                        principalColumn: "tumbler_model_id",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_tumblers_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -292,7 +291,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "user_settings",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     measurement_system = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     date_format = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
@@ -322,12 +320,51 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_user_settings", x => x.id);
+                    table.PrimaryKey("PK_user_settings", x => x.user_id);
                     table.ForeignKey(
                         name: "FK_user_settings_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserSessions",
+                columns: table => new
+                {
+                    user_session_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserAgent = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
+                    BrowserName = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    BrowserVersion = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    BrowserMajorVersion = table.Column<int>(type: "integer", nullable: true),
+                    OsName = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    OsVersion = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    DeviceType = table.Column<int>(type: "integer", nullable: false),
+                    ScreenWidth = table.Column<int>(type: "integer", nullable: true),
+                    ScreenHeight = table.Column<int>(type: "integer", nullable: true),
+                    SupportsWebP = table.Column<bool>(type: "boolean", nullable: true),
+                    SupportsAvif = table.Column<bool>(type: "boolean", nullable: true),
+                    Country = table.Column<string>(type: "character varying(2)", maxLength: 2, nullable: true),
+                    Timezone = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
+                    Language = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: true),
+                    ReferrerDomain = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    SessionStart = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    SessionEnd = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    SessionDurationSeconds = table.Column<int>(type: "integer", nullable: true),
+                    PageViewCount = table.Column<int>(type: "integer", nullable: false),
+                    DateCreated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DateUpdated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserSessions", x => x.user_session_id);
+                    table.ForeignKey(
+                        name: "FK_UserSessions_users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "users",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -335,7 +372,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "posts",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    post_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     cycle_id = table.Column<Guid>(type: "uuid", nullable: false),
                     title = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
@@ -351,18 +388,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_posts", x => x.id);
+                    table.PrimaryKey("PK_posts", x => x.post_id);
                     table.ForeignKey(
                         name: "FK_posts_cycles_cycle_id",
                         column: x => x.cycle_id,
                         principalTable: "cycles",
-                        principalColumn: "id",
+                        principalColumn: "cycle_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_posts_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -370,10 +407,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "stage_runs",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    stage_run_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     cycle_id = table.Column<Guid>(type: "uuid", nullable: false),
                     stage_name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 1),
+                    RunNumber = table.Column<int>(type: "integer", nullable: false),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     start_date_time = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     duration_days = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
                     duration_hours = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
@@ -408,12 +446,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_stage_runs", x => x.id);
+                    table.PrimaryKey("PK_stage_runs", x => x.stage_run_id);
                     table.ForeignKey(
                         name: "FK_stage_runs_cycles_cycle_id",
                         column: x => x.cycle_id,
                         principalTable: "cycles",
-                        principalColumn: "id",
+                        principalColumn: "cycle_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -433,13 +471,13 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         name: "FK_cycle_specimens_cycles_cycle_id",
                         column: x => x.cycle_id,
                         principalTable: "cycles",
-                        principalColumn: "id",
+                        principalColumn: "cycle_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_cycle_specimens_specimens_specimen_id",
                         column: x => x.specimen_id,
                         principalTable: "specimens",
-                        principalColumn: "id",
+                        principalColumn: "specimen_id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -447,7 +485,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "barrels",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    barrel_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     tumbler_id = table.Column<Guid>(type: "uuid", nullable: false),
                     barrel_number = table.Column<int>(type: "integer", nullable: false),
                     nickname = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
@@ -463,12 +501,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_barrels", x => x.id);
+                    table.PrimaryKey("PK_barrels", x => x.barrel_id);
                     table.ForeignKey(
                         name: "FK_barrels_tumblers_tumbler_id",
                         column: x => x.tumbler_id,
                         principalTable: "tumblers",
-                        principalColumn: "id",
+                        principalColumn: "tumbler_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -476,7 +514,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "comments",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    comment_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     post_id = table.Column<Guid>(type: "uuid", nullable: false),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     parent_comment_id = table.Column<Guid>(type: "uuid", nullable: true),
@@ -490,24 +528,24 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_comments", x => x.id);
+                    table.PrimaryKey("PK_comments", x => x.comment_id);
                     table.ForeignKey(
                         name: "FK_comments_comments_parent_comment_id",
                         column: x => x.parent_comment_id,
                         principalTable: "comments",
-                        principalColumn: "id",
+                        principalColumn: "comment_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_comments_posts_post_id",
                         column: x => x.post_id,
                         principalTable: "posts",
-                        principalColumn: "id",
+                        principalColumn: "post_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_comments_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -515,7 +553,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "votes",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    vote_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     post_id = table.Column<Guid>(type: "uuid", nullable: false),
                     user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
@@ -523,18 +561,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_votes", x => x.id);
+                    table.PrimaryKey("PK_votes", x => x.vote_id);
                     table.ForeignKey(
                         name: "FK_votes_posts_post_id",
                         column: x => x.post_id,
                         principalTable: "posts",
-                        principalColumn: "id",
+                        principalColumn: "post_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_votes_users_user_id",
                         column: x => x.user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -542,11 +580,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "cleaning_runs",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    cleaning_run_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     stage_run_id = table.Column<Guid>(type: "uuid", nullable: false),
                     duration_minutes = table.Column<int>(type: "integer", nullable: false),
                     purpose = table.Column<int>(type: "integer", nullable: true),
-                    status = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    status = table.Column<int>(type: "integer", nullable: false),
                     reminder_enabled = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
                     date_reminder_sent = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     result_notes = table.Column<string>(type: "text", nullable: true),
@@ -556,12 +594,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_cleaning_runs", x => x.id);
+                    table.PrimaryKey("PK_cleaning_runs", x => x.cleaning_run_id);
                     table.ForeignKey(
                         name: "FK_cleaning_runs_stage_runs_stage_run_id",
                         column: x => x.stage_run_id,
                         principalTable: "stage_runs",
-                        principalColumn: "id",
+                        principalColumn: "stage_run_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -569,7 +607,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "photos",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    photo_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     stage_run_id = table.Column<Guid>(type: "uuid", nullable: false),
                     storage_key = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
                     url = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
@@ -581,6 +619,15 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     photo_type = table.Column<int>(type: "integer", nullable: false),
                     Caption = table.Column<string>(type: "text", nullable: true),
                     sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
+                    ProcessingStatus = table.Column<int>(type: "integer", nullable: false),
+                    ProcessingError = table.Column<string>(type: "text", nullable: true),
+                    ThumbnailUrl = table.Column<string>(type: "text", nullable: true),
+                    MediumUrl = table.Column<string>(type: "text", nullable: true),
+                    LargeUrl = table.Column<string>(type: "text", nullable: true),
+                    BlurHash = table.Column<string>(type: "text", nullable: true),
+                    ThumbnailStorageKey = table.Column<string>(type: "text", nullable: true),
+                    MediumStorageKey = table.Column<string>(type: "text", nullable: true),
+                    LargeStorageKey = table.Column<string>(type: "text", nullable: true),
                     date_created = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     date_updated = table.Column<DateTime>(type: "timestamp with time zone", nullable: false, defaultValueSql: "now()"),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false, defaultValue: false),
@@ -588,12 +635,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_photos", x => x.id);
+                    table.PrimaryKey("PK_photos", x => x.photo_id);
                     table.ForeignKey(
                         name: "FK_photos_stage_runs_stage_run_id",
                         column: x => x.stage_run_id,
                         principalTable: "stage_runs",
-                        principalColumn: "id",
+                        principalColumn: "stage_run_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -601,7 +648,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "stage_materials",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    stage_material_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     stage_run_id = table.Column<Guid>(type: "uuid", nullable: false),
                     material_id = table.Column<Guid>(type: "uuid", nullable: false),
                     display_amount = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
@@ -615,18 +662,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_stage_materials", x => x.id);
+                    table.PrimaryKey("PK_stage_materials", x => x.stage_material_id);
                     table.ForeignKey(
                         name: "FK_stage_materials_materials_material_id",
                         column: x => x.material_id,
                         principalTable: "materials",
-                        principalColumn: "id",
+                        principalColumn: "material_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_stage_materials_stage_runs_stage_run_id",
                         column: x => x.stage_run_id,
                         principalTable: "stage_runs",
-                        principalColumn: "id",
+                        principalColumn: "stage_run_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -644,13 +691,13 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         name: "FK_stage_run_barrels_barrels_barrel_id",
                         column: x => x.barrel_id,
                         principalTable: "barrels",
-                        principalColumn: "id",
+                        principalColumn: "barrel_id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_stage_run_barrels_stage_runs_stage_run_id",
                         column: x => x.stage_run_id,
                         principalTable: "stage_runs",
-                        principalColumn: "id",
+                        principalColumn: "stage_run_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -658,7 +705,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "comment_reports",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    comment_report_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     comment_id = table.Column<Guid>(type: "uuid", nullable: false),
                     reported_by_user_id = table.Column<Guid>(type: "uuid", nullable: false),
                     reason = table.Column<int>(type: "integer", nullable: false),
@@ -672,24 +719,24 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_comment_reports", x => x.id);
+                    table.PrimaryKey("PK_comment_reports", x => x.comment_report_id);
                     table.ForeignKey(
                         name: "FK_comment_reports_comments_comment_id",
                         column: x => x.comment_id,
                         principalTable: "comments",
-                        principalColumn: "id",
+                        principalColumn: "comment_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_comment_reports_users_reported_by_user_id",
                         column: x => x.reported_by_user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_comment_reports_users_resolved_by_user_id",
                         column: x => x.resolved_by_user_id,
                         principalTable: "users",
-                        principalColumn: "id",
+                        principalColumn: "user_id",
                         onDelete: ReferentialAction.SetNull);
                 });
 
@@ -697,7 +744,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "cleaning_materials",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
+                    cleaning_material_id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     cleaning_run_id = table.Column<Guid>(type: "uuid", nullable: false),
                     material_id = table.Column<Guid>(type: "uuid", nullable: false),
                     display_amount = table.Column<decimal>(type: "numeric(10,2)", precision: 10, scale: 2, nullable: true),
@@ -711,18 +758,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_cleaning_materials", x => x.id);
+                    table.PrimaryKey("PK_cleaning_materials", x => x.cleaning_material_id);
                     table.ForeignKey(
                         name: "FK_cleaning_materials_cleaning_runs_cleaning_run_id",
                         column: x => x.cleaning_run_id,
                         principalTable: "cleaning_runs",
-                        principalColumn: "id",
+                        principalColumn: "cleaning_run_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_cleaning_materials_materials_material_id",
                         column: x => x.material_id,
                         principalTable: "materials",
-                        principalColumn: "id",
+                        principalColumn: "material_id",
                         onDelete: ReferentialAction.Restrict);
                 });
 
@@ -730,7 +777,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "post_photos",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false, defaultValueSql: "gen_random_uuid()"),
                     post_id = table.Column<Guid>(type: "uuid", nullable: false),
                     photo_id = table.Column<Guid>(type: "uuid", nullable: false),
                     sort_order = table.Column<int>(type: "integer", nullable: false, defaultValue: 0),
@@ -740,25 +786,20 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_post_photos", x => x.id);
+                    table.PrimaryKey("PK_post_photos", x => new { x.post_id, x.photo_id });
                     table.ForeignKey(
                         name: "FK_post_photos_photos_photo_id",
                         column: x => x.photo_id,
                         principalTable: "photos",
-                        principalColumn: "id",
+                        principalColumn: "photo_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_post_photos_posts_post_id",
                         column: x => x.post_id,
                         principalTable: "posts",
-                        principalColumn: "id",
+                        principalColumn: "post_id",
                         onDelete: ReferentialAction.Cascade);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "IX_barrel_nicknames_CreatedByUserId",
-                table: "barrel_nicknames",
-                column: "CreatedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "ix_barrel_nicknames_is_active",
@@ -772,9 +813,14 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_barrel_nicknames_UpdatedByUserId",
+                name: "IX_barrel_nicknames_user_created",
                 table: "barrel_nicknames",
-                column: "UpdatedByUserId");
+                column: "user_created");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_barrel_nicknames_user_updated",
+                table: "barrel_nicknames",
+                column: "user_updated");
 
             migrationBuilder.CreateIndex(
                 name: "ix_barrels_is_active",
@@ -1074,12 +1120,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 column: "user_id");
 
             migrationBuilder.CreateIndex(
-                name: "ix_user_settings_user_id",
-                table: "user_settings",
-                column: "user_id",
-                unique: true);
-
-            migrationBuilder.CreateIndex(
                 name: "ix_users_email",
                 table: "users",
                 column: "email",
@@ -1095,6 +1135,16 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 table: "users",
                 column: "username",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSessions_SessionStart",
+                table: "UserSessions",
+                column: "SessionStart");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSessions_UserId",
+                table: "UserSessions",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "ix_votes_post_id",
@@ -1148,6 +1198,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "user_settings");
+
+            migrationBuilder.DropTable(
+                name: "UserSessions");
 
             migrationBuilder.DropTable(
                 name: "votes");

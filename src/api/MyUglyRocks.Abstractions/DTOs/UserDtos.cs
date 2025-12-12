@@ -11,6 +11,7 @@ public record UserProfileDto(
     string? Bio,
     string? AvatarUrl,
     bool EmailVerified,
+    string Role,
     DateTime DateCreated
 );
 
