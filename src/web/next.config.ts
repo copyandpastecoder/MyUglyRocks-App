@@ -9,8 +9,8 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   output: "standalone",
 
-  // Allow LAN access for mobile testing
-  allowedDevOrigins: ["https://10.80.80.181:30443", "https://dev.myuglyrocks.com"],
+  // Allow dev access
+  allowedDevOrigins: ["https://dev.myuglyrocks.com"],
 
   // Optimize images
   images: {

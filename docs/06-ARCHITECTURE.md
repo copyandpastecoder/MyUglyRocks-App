@@ -883,7 +883,8 @@ import { useFocusTrap } from '@/lib/hooks/use-focus-trap';
 # .env.example
 
 # Public (exposed to browser)
-NEXT_PUBLIC_API_URL=https://localhost:5000/api/v1
+# Empty = use relative URLs through ingress (recommended for K8s)
+NEXT_PUBLIC_API_URL=
 NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL=https://images.myuglyrocks.com
 
 # Server-only (never exposed to client)
@@ -2514,7 +2515,7 @@ test.describe('Cycle Creation', () => {
 // appsettings.Testing.json
 {
   "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Database=myuglyrocks_test;..."
+    "DefaultConnection": "Host=postgres;Database=myuglyrocks_test;..."
   },
   "Jwt": {
     "Secret": "test-secret-key-for-testing-only-32-chars"

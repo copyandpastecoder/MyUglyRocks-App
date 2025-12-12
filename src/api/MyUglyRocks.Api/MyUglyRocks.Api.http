@@ -1,4 +1,4 @@
-@MyUglyRocks.Api_HostAddress = https://10.80.80.181:30443/api
+@MyUglyRocks.Api_HostAddress = https://dev.myuglyrocks.com/api
 
 GET {{MyUglyRocks.Api_HostAddress}}/health
 Accept: application/json

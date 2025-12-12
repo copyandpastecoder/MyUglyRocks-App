@@ -264,8 +264,9 @@ Rejected because:
 ### Environment Variables
 
 ```env
-# .env.local
-NEXT_PUBLIC_API_URL=https://localhost:5000/api/v1
+# .env.local (for K8s deployment)
+# Empty = use relative URLs through ingress (recommended)
+NEXT_PUBLIC_API_URL=
 NEXT_PUBLIC_MEDIA_URL=https://media.myuglyrocks.com
 ```
 

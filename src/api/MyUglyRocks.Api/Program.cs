@@ -136,7 +136,7 @@ try
     builder.Services.AddHangfireServer();
 
     // Configure Redis caching
-    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
     builder.Services.AddStackExchangeRedisCache(options =>
     {
         options.Configuration = redisConnection;
@@ -183,7 +183,7 @@ try
     // Configure CORS
     // Default origins + config-based origins
     var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-    var defaultOrigins = new[] { "https://myuglyrocks.local:30443", "https://10.80.80.181:30443" };
+    var defaultOrigins = new[] { "https://myuglyrocks.local:30443", "https://dev.myuglyrocks.com" };
     var allowedOrigins = configOrigins != null && configOrigins.Length > 0 ? configOrigins : defaultOrigins;
     Log.Information("Configured CORS origins: {Origins}", string.Join(", ", allowedOrigins));
     builder.Services.AddCors(options =>

@@ -125,7 +125,6 @@ public class DemoUserSeedService
             DateFormat = DateFormat.MMDDYYYY,
             TimeFormat = TimeFormat.TwelveHour,
             Timezone = "America/New_York",
-            TrackingMode = TrackingMode.Detailed,
             DateCreated = now.AddMonths(-12),
             DateUpdated = now
         };
@@ -394,7 +393,6 @@ public class DemoUserSeedService
                 Name = cycleName,
                 StartDate = cycleStartDate,
                 Status = CycleStatus.Active,
-                Goal = detailLevel == DetailLevel.Full ? GetRandomGoal() : null,
                 Notes = detailLevel != DetailLevel.Min ? GetRandomNotes() : null,
                 DateCreated = currentDate,
                 DateUpdated = currentDate
@@ -762,7 +760,7 @@ public class DemoUserSeedService
 
         return new Photo
         {
-            Id = Guid.NewGuid(),
+            PhotoId = Guid.NewGuid(),
             StageRunId = stageRunId,
             StorageKey = $"demo/{stageRunId}/{photoType.ToString().ToLower()}/{fileName}",
             // Use placehold.co for actual working placeholder images

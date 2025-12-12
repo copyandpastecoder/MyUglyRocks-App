@@ -943,13 +943,13 @@ Implemented full Kubernetes deployment for local development, matching productio
 | `src/api/MyUglyRocks.Api/Configuration/AkeylessConfigurationProvider.cs` | No longer needed |
 | `k8s/base/akeyless-gateway.yaml` | No longer needed |
 
-#### Access URLs (with port-forward)
+#### Access URLs (via Cloudflare Tunnel)
 
-| Service | URL | Command |
-|---------|-----|---------|
-| Web | https://localhost:3000 | `kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks` |
-| API | https://localhost:5000 | `kubectl port-forward svc/myuglyrocks-api 5000:80 -n myuglyrocks` |
-| PostgreSQL | localhost:5432 | `kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks` |
+| Service | URL | Notes |
+|---------|-----|-------|
+| Web | https://dev.myuglyrocks.com | Via Cloudflare tunnel |
+| API | https://dev.myuglyrocks.com/api | Via Cloudflare tunnel |
+| PostgreSQL | N/A | Use `kubectl exec` to access |
 
 #### Secrets Management
 
@@ -1008,26 +1008,17 @@ Configured K8s NodePort services for network-accessible development and fixed CO
 #### Technical Details
 
 - **Root Cause of CORS Issue**:
-  - `appsettings.Development.json` had `https://10.80.80.181:3000` but NodePort was 30000
-  - Since K8s deployment uses `ASPNETCORE_ENVIRONMENT=Development`, this file overrides base config
-  - Fixed by changing port to 30000
+  - CORS configuration needed to match the access URL
+  - Now using Cloudflare Tunnel for all access via `dev.myuglyrocks.com`
 
 - **Files Modified**:
-  - `src/api/MyUglyRocks.Api/appsettings.Development.json` - Fixed CORS origin port
   - `src/api/MyUglyRocks.Api/appsettings.json` - Updated CORS origins
   - `k8s/base/api-deployment.yaml` - NodePort 30001
   - `k8s/base/web-deployment.yaml` - NodePort 30000
   - `src/web/src/components/specimen-multi-select.tsx` - UX improvement
 
-- **NodePort Configuration**:
-  | Service | NodePort | Internal Port |
-  |---------|----------|---------------|
-  | Web | 30000 | 3000 |
-  | API | 30001 | 8080 |
-
-- **Access URLs (NodePort)**:
-  - Web: `https://10.80.80.181:30000`
-  - API: `https://10.80.80.181:30001`
+- **Access URL**:
+  - All access via Cloudflare Tunnel: `https://dev.myuglyrocks.com`
 
 - **Docker Rebuild Commands**:
   ```bash
@@ -1110,8 +1101,8 @@ Web Frontend                     nginx-ingress (:30443)               API + R2
 
 | Service | URL |
 |---------|-----|
-| Web (HTTPS) | https://10.80.80.181:30443 |
-| API (HTTPS) | https://10.80.80.181:30443/api |
+| Web (HTTPS) | https://dev.myuglyrocks.com |
+| API (HTTPS) | https://dev.myuglyrocks.com/api |
 | R2 Public | https://pub-b409015555184d2ea808e87b602b1da5.r2.dev |
 
 #### Key Learnings
@@ -1601,7 +1592,7 @@ Set up Cloudflare Tunnel running in Kubernetes to enable mobile testing with val
 | Cloudflared K8s Deployment | Created `k8s/base/cloudflared-deployment.yaml` running cloudflared container | ✅ |
 | Tunnel Token Secret | Created K8s secret `cloudflared-tunnel-token` storing the tunnel token | ✅ |
 | Cloudflare Tunnel Creation | Created `myuglyrocks-dev-tunnel` in Cloudflare Zero Trust dashboard | ✅ |
-| Public Hostname Route | Configured `dev.myuglyrocks.com` → `https://10.80.80.181:30443` | ✅ |
+| Public Hostname Route | Configured `dev.myuglyrocks.com` → nginx-ingress | ✅ |
 | TLS Skip Verify | Enabled "No TLS Verify" for self-signed mkcert certificates | ✅ |
 | DNS Auto-Configuration | Cloudflare auto-created CNAME record for `dev.myuglyrocks.com` | ✅ |
 | CORS Configuration | Added `https://dev.myuglyrocks.com` to CORS allowed origins | ✅ |
@@ -1641,16 +1632,14 @@ spec:
 2. Choose "Cloudflared" connector type
 3. Copy tunnel token, create K8s secret
 4. After tunnel shows HEALTHY: Click tunnel → Public Hostname tab
-5. Add public hostname: `dev.myuglyrocks.com` → `https://10.80.80.181:30443`
+5. Add public hostname: `dev.myuglyrocks.com` → nginx-ingress service
 6. Under "Additional application settings" → TLS → Enable "No TLS Verify"
 
-**CORS Configuration (`appsettings.Development.json`):**
+**CORS Configuration (`appsettings.json`):**
 ```json
 "Cors": {
   "AllowedOrigins": [
-    "https://myuglyrocks.local",
     "https://myuglyrocks.local:30443",
-    "https://10.80.80.181:30443",
     "https://dev.myuglyrocks.com"
   ]
 }
@@ -1660,8 +1649,7 @@ spec:
 
 | Environment | URL | Notes |
 |-------------|-----|-------|
-| Local (NodePort) | https://10.80.80.181:30443 | Direct K8s access with mkcert |
-| Mobile/External | https://dev.myuglyrocks.com | Via Cloudflare Tunnel, valid SSL |
+| Development | https://dev.myuglyrocks.com | Via Cloudflare Tunnel, valid SSL |
 
 #### Benefits
 
