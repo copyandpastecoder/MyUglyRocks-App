@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 /**
  * State and handlers for a single modal
@@ -55,8 +55,11 @@ export function useModalState<T = undefined>(): ModalState<T> {
     setIsOpen((prev) => !prev);
   }, []);
 
-  // Return object directly - callbacks are stable via useCallback
-  return { isOpen, data, open, close, toggle };
+  // Memoize return object to maintain referential stability
+  return useMemo(
+    () => ({ isOpen, data, open, close, toggle }),
+    [isOpen, data, open, close, toggle]
+  );
 }
 
 /**
@@ -108,33 +111,35 @@ export function useModalStates<TModals extends Record<string, unknown>>(
     () => Object.fromEntries(keys.map((k) => [k, null]))
   );
 
-  // Create handlers for each modal
-  // Note: Handlers are recreated when any modal's state changes, but this is
-  // acceptable for typical usage (few modals per component). For heavy usage,
-  // consider using individual useModalState hooks instead.
-  const modalHandlers: Record<string, ModalState<unknown>> = {};
+  // Memoize handlers to maintain referential stability
+  // Only recreated when openStates or dataStates change
+  const modalHandlers = useMemo(() => {
+    const handlers: Record<string, ModalState<unknown>> = {};
 
-  keys.forEach((key) => {
-    const keyStr = key as string;
+    keys.forEach((key) => {
+      const keyStr = key as string;
 
-    modalHandlers[keyStr] = {
-      isOpen: openStates[keyStr] ?? false,
-      data: dataStates[keyStr] ?? null,
-      open: (data?: unknown) => {
-        setDataStates((prev) => ({ ...prev, [keyStr]: data ?? null }));
-        setOpenStates((prev) => ({ ...prev, [keyStr]: true }));
-      },
-      close: () => {
-        setOpenStates((prev) => ({ ...prev, [keyStr]: false }));
-        setTimeout(() => {
-          setDataStates((prev) => ({ ...prev, [keyStr]: null }));
-        }, 200);
-      },
-      toggle: () => {
-        setOpenStates((prev) => ({ ...prev, [keyStr]: !prev[keyStr] }));
-      },
-    };
-  });
+      handlers[keyStr] = {
+        isOpen: openStates[keyStr] ?? false,
+        data: dataStates[keyStr] ?? null,
+        open: (data?: unknown) => {
+          setDataStates((prev) => ({ ...prev, [keyStr]: data ?? null }));
+          setOpenStates((prev) => ({ ...prev, [keyStr]: true }));
+        },
+        close: () => {
+          setOpenStates((prev) => ({ ...prev, [keyStr]: false }));
+          setTimeout(() => {
+            setDataStates((prev) => ({ ...prev, [keyStr]: null }));
+          }, 200);
+        },
+        toggle: () => {
+          setOpenStates((prev) => ({ ...prev, [keyStr]: !prev[keyStr] }));
+        },
+      };
+    });
+
+    return handlers;
+  }, [keys, openStates, dataStates]);
 
   // Utility functions
   const isAnyOpen = useCallback(() => {

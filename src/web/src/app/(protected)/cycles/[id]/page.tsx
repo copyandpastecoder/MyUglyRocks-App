@@ -2504,22 +2504,22 @@ function StageCard({
     <>
       <Card className={`gap-0 py-0 ${isOverdue ? 'border-yellow-300' : ''}`}>
         <CardContent className="p-3 sm:p-4">
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <div className={`p-1.5 sm:p-2 rounded-full shrink-0 ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
-                {isActive ? (
-                  <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
-                ) : (
-                  <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="font-medium text-sm sm:text-base truncate">{displayName}</p>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Started {startDate.toLocaleDateString()}
-                </p>
-              </div>
+          {/* Header row: icon + name + menu */}
+          <div className="flex items-center gap-2 sm:gap-3 mb-1">
+            <div className={`p-1.5 sm:p-2 rounded-full shrink-0 ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
+              {isActive ? (
+                <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
+              )}
             </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium text-sm sm:text-base">{displayName}</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Started {startDate.toLocaleDateString()}
+              </p>
+            </div>
+            {/* Action buttons */}
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               {stage.resultRating && (
                 <Badge variant="outline" className="gap-1 text-xs px-1.5 py-0.5">
@@ -2539,7 +2539,7 @@ function StageCard({
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
                     <>
-                      <CheckCircle2 className="h-3.5 w-3.5 sm:hidden" />
+                      <CheckCircle2 className="h-3.5 w-3.5 sm:mr-1.5" />
                       <span className="hidden sm:inline">Complete</span>
                     </>
                   )}
@@ -2569,28 +2569,28 @@ function StageCard({
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-
-              {/* Delete Confirmation Dialog */}
-              <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Stage?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete &quot;{displayName}&quot;? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={handleDelete}
-                      className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
-                    >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Stage?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete &quot;{displayName}&quot;? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           {/* Progress */}
@@ -2601,11 +2601,11 @@ function StageCard({
                   {isOverdue ? (
                     <span className="text-yellow-600 font-medium">Overdue</span>
                   ) : (
-                    `Day ${Math.min(currentDay, totalDays)} of ${totalDays}`
+                    `Day ${Math.max(1, Math.min(currentDay, totalDays))} of ${totalDays}`
                   )}
                 </span>
                 <span className="text-muted-foreground">
-                  {isOverdue ? 'Ready' : `${timeRemaining}`}
+                  {isOverdue ? 'Ready to complete' : timeRemaining}
                 </span>
               </div>
               <Progress value={progressPercent} className={`h-1.5 sm:h-2 ${isOverdue ? '[&>div]:bg-yellow-500' : ''}`} />
