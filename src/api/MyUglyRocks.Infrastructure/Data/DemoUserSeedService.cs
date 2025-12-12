@@ -762,7 +762,7 @@ public class DemoUserSeedService
 
         return new Photo
         {
-            Id = Guid.NewGuid(),
+            PhotoId = Guid.NewGuid(),
             StageRunId = stageRunId,
             StorageKey = $"demo/{stageRunId}/{photoType.ToString().ToLower()}/{fileName}",
             // Use placehold.co for actual working placeholder images
