@@ -78,3 +78,34 @@ Use `react-hook-form` with `zod` for validation.
 ### Data Fetching
 
 Use `@tanstack/react-query` hooks in `src/hooks/`.
+
+### Select Components with Async Values
+
+**IMPORTANT:** Radix UI Select (shadcn/ui) has a known issue where it doesn't properly display values that are set asynchronously after the component mounts.
+
+**The Problem:**
+When a Select's `value` prop changes after initial render (e.g., from API data loading), the displayed value may not update even though the internal value is correct.
+
+**The Fix:**
+Add `key={value}` to force React to remount the Select when the value changes:
+
+```tsx
+// BAD - value may not display after async load
+<Select value={field.value} onValueChange={field.onChange}>
+
+// GOOD - forces remount when value changes
+<Select value={field.value} onValueChange={field.onChange} key={field.value}>
+```
+
+**When to apply this fix:**
+- Form fields populated from API data (edit pages)
+- Selects where value is set from async state
+- Any Select that shows a placeholder when it should show a value
+
+**When NOT needed:**
+- Filter dropdowns with local state and default values
+- Selects where value is set synchronously before mount
+
+**Future improvement:** Create a `FormSelect` wrapper component that includes `key={value}` automatically. See existing Selects with this fix in:
+- `tumblers/[id]/page.tsx`
+- `tumblers/new/page.tsx`

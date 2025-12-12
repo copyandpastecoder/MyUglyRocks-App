@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCycles, useDeleteCycle, useArchiveCycle } from '@/hooks';
+import { useCycles, useDeleteCycle } from '@/hooks';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FullPageSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, RotateCcw, MoreVertical, Pencil, Trash2, CheckCircle, Archive, AlertCircle } from 'lucide-react';
+import { Plus, RotateCcw, MoreVertical, Pencil, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,13 +28,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
-import { getCycleStatusClass } from '@/lib/cycle-utils';
+import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
 import type { CycleListDto } from '@/types/cycle';
 
-const statusColors: Record<string, 'default' | 'secondary' | 'outline'> = {
+const statusColors: Record<string, 'default' | 'secondary'> = {
   Active: 'default',
   Completed: 'secondary',
-  Archived: 'outline',
 };
 
 export default function CyclesPage() {
@@ -42,11 +41,10 @@ export default function CyclesPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('Active');
 
-  // Active cycles: oldest first (ASC), Completed/Archived: newest first (DESC)
+  // Active cycles: oldest first (ASC), Completed: newest first (DESC)
   const sortOrder = activeTab === 'Active' ? 'asc' : 'desc';
   const { data: cycles, isLoading } = useCycles(activeTab, sortOrder);
   const deleteMutation = useDeleteCycle();
-  const archiveMutation = useArchiveCycle();
 
   const handleDelete = (id: string) => {
     setDeleteId(id);
@@ -60,11 +58,16 @@ export default function CyclesPage() {
     }
   };
 
-  const handleArchive = (id: string) => {
-    archiveMutation.mutate(id);
-  };
+  const renderCycleRow = (cycle: CycleListDto) => {
+    const progressText = cycle.activeStageCount > 0 && cycle.activeStageStartDateTime && cycle.activeStageDurationEstimateEndDate
+      ? getStageProgressText(
+          new Date(cycle.activeStageStartDateTime),
+          new Date(cycle.activeStageDurationEstimateEndDate),
+          cycle.activeStageDaysOverdue
+        )
+      : null;
 
-  const renderCycleRow = (cycle: CycleListDto) => (
+    return (
     <div
       key={cycle.cycleId}
       className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${activeTab === 'Active' ? getCycleStatusClass(cycle) : 'bg-card border-border'}`}
@@ -73,9 +76,12 @@ export default function CyclesPage() {
         <p className="font-medium truncate">{cycle.name}</p>
         <p className="text-sm text-muted-foreground">
           {cycle.stageCount} stage{cycle.stageCount !== 1 ? 's' : ''}
-          {cycle.activeStageCount > 0 && ` · ${cycle.activeStageCount} active`}
-          {cycle.isOverdue && (
-            <span className="text-yellow-600 ml-2">· overdue</span>
+          {progressText && (
+            cycle.isOverdue ? (
+              <span className="text-yellow-600"> · {progressText}</span>
+            ) : (
+              <span> · {progressText}</span>
+            )
           )}
         </p>
       </Link>
@@ -103,12 +109,6 @@ export default function CyclesPage() {
                 Complete Cycle
               </DropdownMenuItem>
             )}
-            {cycle.status === 'Completed' && (
-              <DropdownMenuItem onSelect={() => handleArchive(cycle.cycleId)}>
-                <Archive className="mr-2 h-4 w-4" />
-                Archive
-              </DropdownMenuItem>
-            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-red-600 focus:text-red-600"
@@ -121,7 +121,8 @@ export default function CyclesPage() {
         </DropdownMenu>
       </div>
     </div>
-  );
+  )};
+
 
   if (isLoading) {
     return <FullPageSkeleton withTabs cardCount={3} />;
@@ -146,7 +147,6 @@ export default function CyclesPage() {
         <TabsList>
           <TabsTrigger value="Active">Active</TabsTrigger>
           <TabsTrigger value="Completed">Completed</TabsTrigger>
-          <TabsTrigger value="Archived">Archived</TabsTrigger>
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6">
@@ -158,7 +158,6 @@ export default function CyclesPage() {
               <CardDescription>
                 {activeTab === 'Active' && 'Your currently running cycles'}
                 {activeTab === 'Completed' && 'Cycles that have been completed'}
-                {activeTab === 'Archived' && 'Cycles that have been archived'}
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -109,6 +109,7 @@ public class TumblerService : ITumblerService
         tumbler.Brand = request.Brand;
         tumbler.Model = request.Model;
         tumbler.TumblerType = Enum.Parse<TumblerType>(request.TumblerType, true);
+        tumbler.MotorCapacityLbs = request.MotorCapacityLbs;
         tumbler.Notes = request.Notes;
         tumbler.IsActive = request.IsActive;
         tumbler.DateUpdated = DateTime.UtcNow;

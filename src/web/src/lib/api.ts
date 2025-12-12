@@ -272,11 +272,6 @@ export const cycleApi = {
     return response.data;
   },
 
-  archive: async (id: string): Promise<CycleDto> => {
-    const response = await api.post<CycleDto>(`/cycles/${id}/archive`);
-    return response.data;
-  },
-
   // Stage Run operations
   getStageRun: async (id: string): Promise<StageRunDto> => {
     const response = await api.get<StageRunDto>(`/cycles/stages/${id}`);

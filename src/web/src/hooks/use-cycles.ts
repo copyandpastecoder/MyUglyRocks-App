@@ -8,7 +8,7 @@ import type { CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, Crea
 
 /**
  * Hook to fetch all cycles with optional status filter
- * @param status - Filter by cycle status (Active, Completed, Archived)
+ * @param status - Filter by cycle status (Active, Completed)
  * @param sortOrder - Sort by startDate: 'asc' (oldest first) or 'desc' (newest first)
  */
 export function useCycles(status?: string, sortOrder: 'asc' | 'desc' = 'desc') {
@@ -123,25 +123,6 @@ export function useCompleteCycle() {
     },
     onError: () => {
       toast.error('Failed to complete cycle');
-    },
-  });
-}
-
-/**
- * Hook for archiving cycles
- */
-export function useArchiveCycle() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => cycleApi.archive(id),
-    onSuccess: (_data, id) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.detail(id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.cycles.lists() });
-      toast.success('Cycle archived');
-    },
-    onError: () => {
-      toast.error('Failed to archive cycle');
     },
   });
 }

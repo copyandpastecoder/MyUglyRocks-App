@@ -68,7 +68,6 @@ export {
   useUpdateCycle,
   useDeleteCycle,
   useCompleteCycle,
-  useArchiveCycle,
   useAddStageRun,
   useCompleteStageRun,
   useDeleteStageRun,

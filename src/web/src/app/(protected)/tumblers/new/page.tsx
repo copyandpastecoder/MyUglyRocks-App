@@ -318,7 +318,7 @@ export default function NewTumblerPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type</FormLabel>
-                    <Select value={field.value} disabled>
+                    <Select value={field.value} disabled key={field.value}>
                       <FormControl>
                         <SelectTrigger className="bg-muted">
                           <SelectValue placeholder="Auto-populated from model" />

@@ -104,21 +104,6 @@ public class CyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Archive a cycle
-    /// </summary>
-    [HttpPost("{cycleId:guid}/archive")]
-    [ProducesResponseType(typeof(CycleDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> ArchiveCycle(Guid cycleId, CancellationToken cancellationToken)
-    {
-        var cycle = await _cycleService.ArchiveCycleAsync(cycleId, GetUserId(), cancellationToken);
-        if (cycle == null)
-            return NotFound();
-
-        return Ok(cycle);
-    }
-
-    /// <summary>
     /// Add a stage run to a cycle
     /// </summary>
     [HttpPost("{cycleId:guid}/stages")]

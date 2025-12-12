@@ -16,10 +16,10 @@
 - `social` (or expanded gallery): creating posts from cycles, voting, commenting, reporting abuse, visibility expectations.
 - `admin`: reports queue, specimen suggestions, user actions (warn/ban/unban), what each action does (from wireframe 09-admin.md). **⚠️ ADMIN-ONLY: This topic must be hidden from non-admin users. Requires role check before displaying.**
 - `auth`: sign up/login, email verification, password reset, session/device tracking note (UserSession analytics).
-- `faq`: top "How do I…?" Q&A (start a cycle, add photos to past stage, archive vs. complete, fix upload/CORS errors, add materials/cleaning runs, dull polish/scratches).
+- `faq`: top "How do I…?" Q&A (start a cycle, add photos to past stage, fix upload/CORS errors, add materials/cleaning runs, dull polish/scratches).
 
 2) Existing topic refinements
-- `cycles`: archive vs. complete, editing/renaming, specimen tagging, recipe tips, abandoned flows.
+- `cycles`: editing/renaming, specimen tagging, recipe tips, abandoned flows.
 - `stages`: materials/cleaning runs callouts, completion checklist, extend stage guidance.
 - `gallery`: clarify how stage photos become gallery posts; privacy/visibility notes.
 - `settings`: notifications, units, profile visibility, security basics.
@@ -74,7 +74,7 @@ const visibleTopics = Object.entries(helpTopics).filter(
 ## Future Enhancements
 
 ### Contextual Help Triggers
-Add small `?` icons next to key UI elements (photo upload button, Archive button, etc.) that jump directly to the relevant help section. More discoverable than relying on users to open the help panel manually.
+Add small `?` icons next to key UI elements (photo upload button, etc.) that jump directly to the relevant help section. More discoverable than relying on users to open the help panel manually.
 
 ### Help Search
 As topics grow, add keyword search within the help panel. Low priority for initial release but valuable as content expands.
@@ -110,8 +110,8 @@ Track which help topics are viewed most frequently. Data can:
 - **gallery**: how stage photos become gallery posts; privacy/visibility; browsing tips; link to social for interaction features.
 - **admin** (admin-only): reports queue; specimen suggestions moderation; warn/ban/unban behaviors; link to wireframe 09-admin.md; note audit/logging expectations.
 - **auth**: signup/login steps; email verification; password reset; session/device tracking note; link to FAQ for login issues.
-- **faq**: “start a cycle”; “add photos to past stage”; “archive vs complete”; “fix upload/CORS errors”; “add materials/cleaning runs”; “dull polish/scratches” fixes.
-- **cycles**: archive vs complete; edit/rename; specimen tagging; recipe tips; abandoned flows handling.
+- **faq**: "start a cycle"; "add photos to past stage"; "fix upload/CORS errors"; "add materials/cleaning runs"; "dull polish/scratches" fixes.
+- **cycles**: edit/rename; specimen tagging; recipe tips; abandoned flows handling.
 - **stages**: materials/cleaning runs callouts; completion checklist; extending a stage safely.
 - **settings**: notifications; units; profile visibility; security basics.
 
@@ -119,7 +119,7 @@ Track which help topics are viewed most frequently. Data can:
 - Keep sections scannable (bullets, short steps).
 - Cross-link FAQ from troubleshooting snippets; avoid duplicating long fixes.
 - Prefer concrete examples (e.g., “Stage 2 requires at least 1 photo before completion”).
-- Add contextual `?` affordances near high-friction actions (upload, archive, report).
+- Add contextual `?` affordances near high-friction actions (upload, report).
 
 ## Pending Code Review (to align plan with current implementation)
 - Verify structure of `help-content.ts` (types, topic keys, any existing metadata) before adding `requiresRole`, `category/tags`, and new topics.

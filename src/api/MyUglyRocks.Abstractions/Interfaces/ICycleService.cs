@@ -10,7 +10,6 @@ public interface ICycleService
     Task<CycleDto?> UpdateCycleAsync(Guid cycleId, Guid userId, UpdateCycleRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default);
     Task<CycleDto?> CompleteCycleAsync(Guid cycleId, Guid userId, CompleteCycleRequest request, CancellationToken cancellationToken = default);
-    Task<CycleDto?> ArchiveCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default);
 
     // Stage Run operations
     Task<StageRunDto?> GetStageRunAsync(Guid stageRunId, Guid userId, CancellationToken cancellationToken = default);

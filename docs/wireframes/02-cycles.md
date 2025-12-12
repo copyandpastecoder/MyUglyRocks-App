@@ -38,7 +38,7 @@ The Cycles section is the core of the application. Users create cycles to track 
 │   My Cycles                                               [ + New Cycle ]       │
 │                                                                                 │
 │   ┌─────────────────────────────────────────────────────────────────────────┐  │
-│   │  Status: [All ▼]  [Active]  [Completed]  [Archived]     Sort: [Recent ▼] │  │
+│   │  Status: [All ▼]  [Active]  [Completed]               Sort: [Recent ▼] │  │
 │   │                                                                          │  │
 │   │  🔍 Search cycles...                         Filter by specimen: [All ▼] │  │
 │   └─────────────────────────────────────────────────────────────────────────┘  │
@@ -135,7 +135,7 @@ The Cycles section is the core of the application. Users create cycles to track 
 ```
 Desktop:
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ Status: [All ▼]  [Active]  [Completed]  [Archived]      Sort: [Recent ▼]    │
+│ Status: [All ▼]  [Active]  [Completed]                  Sort: [Recent ▼]    │
 │                                                                              │
 │ 🔍 Search by name...                            Filter by specimen: [All ▼] │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -155,7 +155,7 @@ Mobile (search expanded):
 
 | Filter | Options |
 |--------|---------|
-| Status | All, Active, Completed, Archived |
+| Status | All, Active, Completed |
 | Sort | Recent (default), Oldest, Name A-Z, Name Z-A |
 | Specimen | All, or specific specimen from user's history |
 | Tags | Multi-select from user's tags (shown as chips) |
@@ -825,7 +825,7 @@ When user clicks "+ Add custom specimen":
 interface CycleListItem {
   cycleId: string;
   name: string;
-  status: 'Active' | 'Completed' | 'Archived';
+  status: 'Active' | 'Completed';
   startDate: string;
   endDate?: string;
   goal?: string;                  // "Nice polish", "Shaping only", etc.
@@ -850,7 +850,7 @@ interface CycleListItem {
 interface CycleDetail {
   cycleId: string;
   name: string;
-  status: 'Active' | 'Completed' | 'Archived';
+  status: 'Active' | 'Completed';
   startDate: string;
   endDate?: string;
   goal?: string;                  // User's objective for this cycle

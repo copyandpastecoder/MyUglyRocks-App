@@ -234,7 +234,7 @@ Enable breadcrumb navigation on nested pages:
 
 | Page | Parameter | Values | Default |
 |------|-----------|--------|---------|
-| `/cycles` | `status` | `active`, `completed`, `archived`, `all` | `all` |
+| `/cycles` | `status` | `active`, `completed`, `all` | `all` |
 | `/cycles` | `sort` | `recent`, `oldest`, `name` | `recent` |
 | `/cycles` | `specimen` | `{specimenId}` | none |
 | `/gallery` | `sort` | `newest`, `uglyrocks`, `comments` | `newest` |

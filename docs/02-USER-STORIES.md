@@ -174,11 +174,11 @@ Priority levels:
 **So that** I can find and manage them
 
 **Acceptance Criteria:**
-- [ ] List shows all cycles (Active, Completed, Archived)
+- [ ] List shows all cycles (Active, Completed)
 - [ ] Default sort: most recent activity first
 - [ ] Each cycle shows: name, status, specimens, date, stage count
 - [ ] Clicking a cycle opens the detail view
-- [ ] Visual distinction between Active/Completed/Archived
+- [ ] Visual distinction between Active/Completed
 
 ---
 
@@ -224,20 +224,7 @@ Priority levels:
 
 ---
 
-### CYC-06: Archive Cycle (P0)
-**As a** user
-**I want** to archive old cycles
-**So that** they don't clutter my main list
-
-**Acceptance Criteria:**
-- [ ] "Archive" button on completed cycles
-- [ ] Archived cycles hidden from default view
-- [ ] Filter/toggle to show archived cycles
-- [ ] Can unarchive if needed
-
----
-
-### CYC-07: Delete Cycle (P0)
+### CYC-06: Delete Cycle (P0)
 **As a** user
 **I want** to delete a cycle
 **So that** I can remove unwanted records

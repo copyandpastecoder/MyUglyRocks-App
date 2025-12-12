@@ -42,7 +42,11 @@ public record CycleListDto(
     int StageCount,
     int ActiveStageCount,
     bool IsOverdue,
-    DateTime DateCreated
+    DateTime DateCreated,
+    // Active stage progress info (null if no active stages)
+    DateTime? ActiveStageStartDateTime = null,
+    DateTime? ActiveStageDurationEstimateEndDate = null,
+    int? ActiveStageDaysOverdue = null
 );
 
 public record CreateCycleRequest(
@@ -97,7 +101,8 @@ public record StageRunSummaryDto(
     int RunNumber,
     int TotalRuns,
     DateTime StartDateTime,
-    DateTime EndDateTime,
+    DateTime? EndDateTime,  // Actual end - only set when completed/aborted
+    DateTime? DurationEstimateEndDate,  // Calculated estimate based on duration
     string Status,
     int? ResultRating,
     CleaningRunDto? CleaningRun
@@ -112,7 +117,8 @@ public record StageRunDto(
     DateTime StartDateTime,
     int DurationDays,
     int DurationHours,
-    DateTime EndDateTime,
+    DateTime? EndDateTime,  // Actual end - only set when completed/aborted
+    DateTime? DurationEstimateEndDate,  // Calculated estimate based on duration
     string Status,
     bool ReminderEnabled,
     decimal? LoadWeightBeforeGrams,
