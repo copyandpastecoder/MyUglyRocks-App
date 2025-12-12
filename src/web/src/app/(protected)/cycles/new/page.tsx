@@ -147,7 +147,7 @@ export default function NewCyclePage() {
   const hasTumblers = tumblers && tumblers.length > 0;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/cycles">

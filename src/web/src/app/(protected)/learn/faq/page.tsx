@@ -119,7 +119,7 @@ export default function FAQPage() {
   const helpTopics = getMainHelpTopics();
 
   return (
-    <div className="space-y-8 max-w-3xl mx-auto">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
