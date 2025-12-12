@@ -136,7 +136,7 @@ try
     builder.Services.AddHangfireServer();
 
     // Configure Redis caching
-    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
     builder.Services.AddStackExchangeRedisCache(options =>
     {
         options.Configuration = redisConnection;
