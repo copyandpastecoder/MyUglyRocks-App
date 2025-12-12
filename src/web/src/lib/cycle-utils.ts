@@ -24,3 +24,39 @@ export function formatStageDisplayName(stageName: string, runNumber: number, tot
   }
   return `${stageName} Run ${runNumber}`;
 }
+
+/**
+ * Get progress text for an active stage based on timing.
+ * Returns: "Day X of Y", "Due Tomorrow", "Due Today", or "X days overdue"
+ */
+export function getStageProgressText(
+  startDateTime: Date,
+  estimateEndDate: Date,
+  daysOverdue?: number | null
+): string {
+  const now = new Date();
+
+  // Calculate total days and current day
+  const totalDuration = estimateEndDate.getTime() - startDateTime.getTime();
+  const elapsed = now.getTime() - startDateTime.getTime();
+  const totalDays = Math.max(1, Math.ceil(totalDuration / (1000 * 60 * 60 * 24)));
+  const currentDay = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
+
+  // Check if overdue (past the estimate end date)
+  if (estimateEndDate < now) {
+    const actualDaysOverdue = daysOverdue ?? Math.floor((now.getTime() - estimateEndDate.getTime()) / (1000 * 60 * 60 * 24));
+    if (actualDaysOverdue === 0) {
+      return 'Due Today';
+    }
+    return `${actualDaysOverdue} day${actualDaysOverdue === 1 ? '' : 's'} overdue`;
+  }
+
+  // Check if due tomorrow (last day of duration)
+  const clampedDay = Math.max(1, Math.min(currentDay, totalDays));
+  if (clampedDay === totalDays) {
+    return 'Due Tomorrow';
+  }
+
+  // Still in progress
+  return `Day ${clampedDay} of ${totalDays}`;
+}

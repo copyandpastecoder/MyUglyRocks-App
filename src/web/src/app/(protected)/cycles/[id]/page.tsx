@@ -92,7 +92,7 @@ import { CLEANING_PURPOSES, CLEANING_DURATION_PRESETS, formatCleaningPurpose } f
 import { MATERIAL_UNITS, formatMaterialsForSubmission } from '@/lib/material-utils';
 import type { MaterialFormItem } from '@/lib/material-utils';
 import { invalidateCycleQueries } from '@/lib/query-invalidation';
-import { formatStageDisplayName } from '@/lib/cycle-utils';
+import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
 import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
 
@@ -526,9 +526,12 @@ export default function CycleDetailPage() {
             // Auto-populate from the repeated stage (excluding advanced options)
             setStageName(fullStage.stageName);
 
-            // Set start date to previous stage's end date
-            const previousEndDate = new Date(fullStage.endDateTime);
-            setStageStartDateTime(formatDateTimeLocal(previousEndDate));
+            // Set start date to previous stage's end date (use estimate as fallback)
+            const endDateString = fullStage.endDateTime ?? fullStage.durationEstimateEndDate;
+            if (endDateString) {
+              const previousEndDate = new Date(endDateString);
+              setStageStartDateTime(formatDateTimeLocal(previousEndDate));
+            }
 
             // Copy barrels
             if (fullStage.barrels && fullStage.barrels.length > 0) {
@@ -599,9 +602,12 @@ export default function CycleDetailPage() {
       // Fetch full details of the previous stage
       const previousStage: StageRunDto = await cycleApi.getStageRun(previousStageSummary.stageRunId);
 
-      // Set start date to previous stage's end date
-      const previousEndDate = new Date(previousStage.endDateTime);
-      setStageStartDateTime(formatDateTimeLocal(previousEndDate));
+      // Set start date to previous stage's end date (use estimate as fallback)
+      const endDateString = previousStage.endDateTime ?? previousStage.durationEstimateEndDate;
+      if (endDateString) {
+        const previousEndDate = new Date(endDateString);
+        setStageStartDateTime(formatDateTimeLocal(previousEndDate));
+      }
 
       // Copy barrels
       if (previousStage.barrels && previousStage.barrels.length > 0) {
@@ -656,7 +662,9 @@ export default function CycleDetailPage() {
 
   const openCompleteStageModal = async (stage: StageRunSummaryDto) => {
     const startDate = new Date(stage.startDateTime);
-    const endDate = new Date(stage.endDateTime);
+    // Use durationEstimateEndDate for active stages (endDateTime is null until completed)
+    const endDateString = stage.endDateTime ?? stage.durationEstimateEndDate;
+    const endDate = endDateString ? new Date(endDateString) : new Date();
     const { days, hours } = calculateDurationFromDates(startDate, endDate);
 
     setCompleteStageId(stage.stageRunId);
@@ -749,7 +757,9 @@ export default function CycleDetailPage() {
 
   const openEditStageModal = (stage: StageRunSummaryDto) => {
     const startDate = new Date(stage.startDateTime);
-    const endDate = new Date(stage.endDateTime);
+    // Use durationEstimateEndDate for active/planned stages (endDateTime is null until completed)
+    const endDateString = stage.endDateTime ?? stage.durationEstimateEndDate;
+    const endDate = endDateString ? new Date(endDateString) : new Date();
     const { days, hours } = calculateDurationFromDates(startDate, endDate);
 
     setEditStageId(stage.stageRunId);
@@ -915,6 +925,7 @@ export default function CycleDetailPage() {
   }
 
   const activeStages = cycle.stageRuns.filter(s => s.status === 'Active');
+  const plannedStages = cycle.stageRuns.filter(s => s.status === 'Planned');
   const completedStages = cycle.stageRuns.filter(s => s.status === 'Completed');
 
   // Format runtime in a human-readable way
@@ -1695,6 +1706,24 @@ export default function CycleDetailPage() {
               </div>
             )}
 
+            {/* Planned Stages */}
+            {plannedStages.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-muted-foreground">Planned</h3>
+                {plannedStages.map((stage: StageRunSummaryDto) => (
+                  <StageCard
+                    key={stage.stageRunId}
+                    stage={stage}
+                    cycleId={cycleId}
+                    onEdit={() => openEditStageModal(stage)}
+                    onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
+                    isPlanned
+                    canStartEarly={activeStages.length === 0}
+                  />
+                ))}
+              </div>
+            )}
+
             {/* Completed Stages */}
             {completedStages.length > 0 && (
               <div className="space-y-2">
@@ -2226,7 +2255,11 @@ export default function CycleDetailPage() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="font-medium">{new Date(viewStageData.endDateTime).toLocaleString()}</p>
+                  <p className="font-medium">
+                    {viewStageData.endDateTime
+                      ? new Date(viewStageData.endDateTime).toLocaleString()
+                      : 'In Progress'}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Duration</p>
@@ -2422,16 +2455,24 @@ function StageCard({
   onEdit,
   onDelete,
   onView,
+  onStartEarly,
   isCompleting,
+  isStartingEarly,
   cycleId,
+  isPlanned,
+  canStartEarly,
 }: {
   stage: StageRunSummaryDto;
   onComplete?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onView?: () => void;
+  onStartEarly?: () => void;
   isCompleting?: boolean;
+  isStartingEarly?: boolean;
   cycleId: string;
+  isPlanned?: boolean;
+  canStartEarly?: boolean;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -2442,20 +2483,25 @@ function StageCard({
 
   const isActive = stage.status === 'Active';
   const startDate = new Date(stage.startDateTime);
-  const endDate = new Date(stage.endDateTime);
+  // Use durationEstimateEndDate for active/planned stages, endDateTime for completed
+  const effectiveEndDate = stage.endDateTime
+    ? new Date(stage.endDateTime)
+    : stage.durationEstimateEndDate
+      ? new Date(stage.durationEstimateEndDate)
+      : null;
   const now = new Date();
-  const isOverdue = isActive && endDate < now;
+  const isOverdue = isActive && effectiveEndDate && effectiveEndDate < now;
   const displayName = formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns);
 
-  // Calculate progress
-  const totalDuration = endDate.getTime() - startDate.getTime();
+  // Calculate progress (only if we have an end date)
+  const totalDuration = effectiveEndDate ? effectiveEndDate.getTime() - startDate.getTime() : 0;
   const elapsed = now.getTime() - startDate.getTime();
-  const progressPercent = isActive ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100)) : 100;
+  const progressPercent = isActive && totalDuration > 0 ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100)) : (stage.status === 'Completed' ? 100 : 0);
 
-  const totalDays = Math.ceil(totalDuration / (1000 * 60 * 60 * 24));
+  const totalDays = totalDuration > 0 ? Math.ceil(totalDuration / (1000 * 60 * 60 * 24)) : 0;
   const currentDay = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
 
-  const timeRemaining = isActive ? getTimeRemaining(endDate) : null;
+  const timeRemaining = isActive && effectiveEndDate ? getTimeRemaining(effectiveEndDate) : null;
 
   // Load stage details when collapsible is opened
   const loadStageDetails = async () => {
@@ -2502,14 +2548,24 @@ function StageCard({
 
   return (
     <>
-      <div className={`p-2.5 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer ${isOverdue ? 'border-yellow-300 bg-yellow-50/50' : 'bg-card'}`}>
+      <div className={`p-2.5 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer ${
+        isOverdue ? 'border-yellow-300 bg-yellow-50/50' :
+        isPlanned ? 'border-dashed border-muted-foreground/50 bg-muted/30' :
+        'bg-card'
+      }`}>
         {/* Main row: icon + name + progress + actions - clickable to toggle details */}
         <div
           className="flex items-center gap-2"
           onClick={() => handleDetailsToggle(!isDetailsOpen)}
         >
-          <div className={`p-1.5 rounded-full shrink-0 ${isActive ? 'bg-blue-100' : 'bg-green-100'}`}>
-            {isActive ? (
+          <div className={`p-1.5 rounded-full shrink-0 ${
+            isPlanned ? 'bg-slate-100' :
+            isActive ? 'bg-blue-100' :
+            'bg-green-100'
+          }`}>
+            {isPlanned ? (
+              <Clock className="h-3 w-3 text-slate-500" />
+            ) : isActive ? (
               <Play className="h-3 w-3 text-blue-600" />
             ) : (
               <CheckCircle2 className="h-3 w-3 text-green-600" />
@@ -2519,7 +2575,12 @@ function StageCard({
           {/* Name and status */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-medium text-sm truncate">{displayName}</p>
+              <p className={`font-medium text-sm truncate ${isPlanned ? 'text-muted-foreground' : ''}`}>{displayName}</p>
+              {isPlanned && (
+                <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
+                  Scheduled
+                </Badge>
+              )}
               {stage.resultRating && (
                 <Badge variant="outline" className="gap-0.5 text-[10px] px-1 py-0 h-4">
                   <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400" />
@@ -2529,14 +2590,20 @@ function StageCard({
               <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isDetailsOpen ? 'rotate-180' : ''}`} />
             </div>
             <p className="text-xs text-muted-foreground">
-              {isActive ? (
-                isOverdue ? (
-                  <span className="text-yellow-600">Started {startDate.toLocaleDateString()} · Overdue</span>
-                ) : (
-                  <>Started {startDate.toLocaleDateString()} · Day {Math.max(1, Math.min(currentDay, totalDays))}/{totalDays}</>
-                )
+              {isPlanned ? (
+                <>Scheduled for {startDate.toLocaleDateString()}{effectiveEndDate && <> · ~{totalDays}d duration</>}</>
+              ) : isActive && effectiveEndDate ? (
+                (() => {
+                  const progressText = getStageProgressText(startDate, effectiveEndDate);
+                  const isOverdueText = progressText.includes('overdue') || progressText === 'Due Today';
+                  return isOverdueText ? (
+                    <span className="text-yellow-600">Started {startDate.toLocaleDateString()} · {progressText}</span>
+                  ) : (
+                    <>Started {startDate.toLocaleDateString()} · {progressText}</>
+                  );
+                })()
               ) : (
-                <>{startDate.toLocaleDateString()} → {endDate.toLocaleDateString()}</>
+                <>{startDate.toLocaleDateString()}{effectiveEndDate && <> → {effectiveEndDate.toLocaleDateString()}</>}</>
               )}
             </p>
           </div>
@@ -2550,7 +2617,8 @@ function StageCard({
 
           {/* Action buttons - stop propagation so clicks don't toggle details */}
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            {isActive && onEdit && (
+            {/* Edit button for active and planned stages */}
+            {(isActive || isPlanned) && onEdit && (
               <Button variant="ghost" size="sm" onClick={onEdit} className="h-7 w-7 p-0">
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -2627,6 +2695,18 @@ function StageCard({
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Duration:</span>
                       <span>{formatDuration(stageDetails.durationDays, stageDetails.durationHours)}</span>
+                    </div>
+
+                    {/* End Date - show estimate for active, actual for completed */}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">End Date:</span>
+                      <span>
+                        {stageDetails.endDateTime
+                          ? new Date(stageDetails.endDateTime).toLocaleDateString()
+                          : stageDetails.durationEstimateEndDate
+                            ? `~${new Date(stageDetails.durationEstimateEndDate).toLocaleDateString()}`
+                            : '-'}
+                      </span>
                     </div>
 
                     {/* Barrel */}

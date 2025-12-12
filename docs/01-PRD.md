@@ -135,7 +135,7 @@ These features are required for initial launch:
 | Feature | Description |
 |---------|-------------|
 | User Authentication | Register, login, logout, password reset |
-| Cycle Management | Create, view, edit, complete, archive cycles |
+| Cycle Management | Create, view, edit, complete, delete cycles |
 | Specimen Selection | Select rocks from curated list + free-text additions |
 | Stage Run Tracking | Add stages with tumbler, duration, materials, notes |
 | Photo Upload | Upload before/during/after photos per stage |

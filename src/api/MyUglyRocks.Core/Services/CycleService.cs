@@ -118,6 +118,7 @@ public class CycleService : ICycleService
                 runInfo.TotalRuns.GetValueOrDefault(s.StageName.ToLowerInvariant(), 1),
                 s.StartDateTime,
                 s.EndDateTime,
+                s.DurationEstimateEndDate,
                 s.Status.ToString(),
                 s.ResultRating,
                 s.CleaningRun?.Adapt<CleaningRunDto>()
@@ -299,21 +300,6 @@ public class CycleService : ICycleService
         return await GetCycleAsync(cycleId, userId, cancellationToken);
     }
 
-    public async Task<CycleDto?> ArchiveCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
-    {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
-
-        if (cycle == null)
-            return null;
-
-        cycle.Status = CycleStatus.Archived;
-        cycle.DateUpdated = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return await GetCycleAsync(cycleId, userId, cancellationToken);
-    }
-
     // Stage Run operations
     public async Task<StageRunDto?> GetStageRunAsync(Guid stageRunId, Guid userId, CancellationToken cancellationToken = default)
     {
@@ -366,6 +352,7 @@ public class CycleService : ICycleService
             stageRun.DurationDays,
             stageRun.DurationHours,
             stageRun.EndDateTime,
+            stageRun.DurationEstimateEndDate,
             stageRun.Status.ToString(),
             stageRun.ReminderEnabled,
             stageRun.LoadWeightBeforeGrams,
@@ -386,18 +373,45 @@ public class CycleService : ICycleService
 
     public async Task<StageRunDto?> AddStageRunAsync(Guid cycleId, Guid userId, CreateStageRunRequest request, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles
+            .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
+            .FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return null;
 
+        // Find if there's an existing Active stage
+        var activeStage = cycle.StageRuns
+            .Where(s => s.Status == StageRunStatus.Active)
+            .OrderBy(s => s.DurationEstimateEndDate)
+            .FirstOrDefault();
+
+        var now = DateTime.UtcNow;
+        var newStageStartDateTime = request.StartDateTime;
+
+        // Validate: Cannot create a stage with StartDateTime before active stage's estimated end
+        if (activeStage != null && activeStage.DurationEstimateEndDate.HasValue)
+        {
+            if (newStageStartDateTime < activeStage.DurationEstimateEndDate.Value)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot create stage with start date {newStageStartDateTime:g} before the active stage ends at {activeStage.DurationEstimateEndDate.Value:g}");
+            }
+        }
+
+        // Determine status: Active if no existing Active stage AND StartDateTime <= now, otherwise Planned
+        var newStatus = (activeStage == null && newStageStartDateTime <= now)
+            ? StageRunStatus.Active
+            : StageRunStatus.Planned;
+
         var stageRun = request.Adapt<StageRun>();
         stageRun.StageRunId = Guid.NewGuid();
         stageRun.CycleId = cycleId;
-        stageRun.EndDateTime = stageRun.StartDateTime
+        stageRun.EndDateTime = null;  // Only set on completion/abort
+        stageRun.DurationEstimateEndDate = stageRun.StartDateTime
             .AddDays(request.DurationDays)
             .AddHours(request.DurationHours);
-        stageRun.Status = StageRunStatus.Active;
+        stageRun.Status = newStatus;
         stageRun.DateCreated = DateTime.UtcNow;
         stageRun.DateUpdated = DateTime.UtcNow;
 
@@ -480,12 +494,12 @@ public class CycleService : ICycleService
         await _context.SaveChangesAsync(cancellationToken);
 
         // Schedule stage reminder if enabled
-        if (stageRun.ReminderEnabled)
+        if (stageRun.ReminderEnabled && stageRun.DurationEstimateEndDate.HasValue)
         {
             DateTime reminderTime;
             if (stageRun.RemindAtEndOfStage == true)
             {
-                reminderTime = stageRun.EndDateTime;
+                reminderTime = stageRun.DurationEstimateEndDate.Value;
             }
             else if (stageRun.RemindAfterDays.HasValue)
             {
@@ -494,7 +508,7 @@ public class CycleService : ICycleService
             else
             {
                 // Default: remind at end of stage
-                reminderTime = stageRun.EndDateTime;
+                reminderTime = stageRun.DurationEstimateEndDate.Value;
             }
 
             await _notificationService.ScheduleStageReminderAsync(stageRun.StageRunId, reminderTime, cancellationToken);
@@ -517,9 +531,13 @@ public class CycleService : ICycleService
         stageRun.StartDateTime = request.StartDateTime;
         stageRun.DurationDays = request.DurationDays;
         stageRun.DurationHours = request.DurationHours;
-        stageRun.EndDateTime = request.StartDateTime
-            .AddDays(request.DurationDays)
-            .AddHours(request.DurationHours);
+        // Only update DurationEstimateEndDate if stage is not completed
+        if (stageRun.Status != StageRunStatus.Completed)
+        {
+            stageRun.DurationEstimateEndDate = request.StartDateTime
+                .AddDays(request.DurationDays)
+                .AddHours(request.DurationHours);
+        }
         stageRun.ReminderEnabled = request.ReminderEnabled;
         stageRun.RemindAfterDays = request.RemindAfterDays;
         stageRun.RemindAtEndOfStage = request.RemindAtEndOfStage;
@@ -577,6 +595,7 @@ public class CycleService : ICycleService
     {
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
+                .ThenInclude(c => c.StageRuns.Where(sr => !sr.IsDeleted))
             .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null)
@@ -598,13 +617,26 @@ public class CycleService : ICycleService
             : null;
         stageRun.LoadWeightAfterGrams = request.LoadWeightAfterGrams;
 
-        // Update end date if provided (allows user to specify actual completion date)
-        if (request.ActualEndDateTime.HasValue)
-        {
-            stageRun.EndDateTime = request.ActualEndDateTime.Value;
-        }
+        // Set actual end date and clear estimate
+        stageRun.EndDateTime = request.ActualEndDateTime ?? DateTime.UtcNow;
+        stageRun.DurationEstimateEndDate = null;  // Clear estimate on completion
 
         stageRun.DateUpdated = DateTime.UtcNow;
+
+        // Auto-promote the next Planned stage to Active
+        // Find the next Planned stage with the earliest StartDateTime <= now
+        var now = DateTime.UtcNow;
+        var nextStageToPromote = stageRun.Cycle.StageRuns
+            .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned && s.StartDateTime <= now)
+            .OrderBy(s => s.StartDateTime)
+            .ThenBy(s => s.DateCreated)
+            .FirstOrDefault();
+
+        if (nextStageToPromote != null)
+        {
+            nextStageToPromote.Status = StageRunStatus.Active;
+            nextStageToPromote.DateUpdated = DateTime.UtcNow;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

@@ -193,7 +193,7 @@ This document defines the development milestones for building MyUglyRocks. Each 
 | B2.9 | PUT /api/cycles/:id - Update cycle | D2.2 | ✅ |
 | B2.10 | DELETE /api/cycles/:id - Soft delete cycle | D2.2 | ✅ |
 | B2.11 | POST /api/cycles/:id/complete - Complete cycle | D2.2 | ✅ |
-| B2.12 | POST /api/cycles/:id/archive - Archive cycle | D2.2 | ✅ |
+| B2.12 | ~~POST /api/cycles/:id/archive~~ | - | ❌ Removed |
 
 #### Stage Run API
 | Task | Description | Dependencies | Status |
@@ -236,7 +236,7 @@ This document defines the development milestones for building MyUglyRocks. Each 
 | P2.7 | New cycle page (/cycles/new) | B2.7 | ✅ |
 | P2.8 | Cycle detail page (/cycles/:id) | B2.8 | ✅ |
 | P2.9 | Edit cycle page (/cycles/:id/edit) | B2.9 | ⏭️ M3 |
-| P2.10 | Complete/archive cycle actions | B2.11, B2.12 | ✅ |
+| P2.10 | Complete cycle action | B2.11 | ✅ |
 
 #### Frontend - Stage Runs
 | Task | Description | Dependencies | Status |
@@ -269,14 +269,14 @@ This document defines the development milestones for building MyUglyRocks. Each 
 - [ ] User can add materials to stages *(UI deferred to M3)*
 - [ ] User can add cleaning runs to stages *(UI deferred to M3)*
 - [x] Dashboard shows active cycles with progress
-- [x] Cycle list has working tabs (Active/Completed/Archived)
+- [x] Cycle list has working tabs (Active/Completed)
 - [x] All forms have proper validation
 - [x] Mobile-responsive layouts
 
 ### 3.3 Deliverables
 
 - ✅ Complete tumbler management (list, create, edit, delete)
-- ✅ Complete cycle management (list, create, detail, complete, archive, delete)
+- ✅ Complete cycle management (list, create, detail, complete, delete)
 - ✅ Stage run management (add, complete, delete from cycle detail)
 - ✅ Photo upload placeholder UI (R2 integration pending)
 - ✅ Dashboard with active cycles and stats

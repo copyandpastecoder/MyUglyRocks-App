@@ -53,7 +53,22 @@ public static class MappingConfig
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.StageCount, src => src.StageRuns.Count)
             .Map(dest => dest.ActiveStageCount, src => src.StageRuns.Count(s => s.Status == StageRunStatus.Active))
-            .Map(dest => dest.IsOverdue, src => src.StageRuns.Any(s => s.Status == StageRunStatus.Active && s.EndDateTime < DateTime.UtcNow));
+            .Map(dest => dest.IsOverdue, src => src.StageRuns.Any(s => s.Status == StageRunStatus.Active && s.DurationEstimateEndDate < DateTime.UtcNow))
+            .Map(dest => dest.ActiveStageStartDateTime, src => src.StageRuns
+                .Where(s => s.Status == StageRunStatus.Active)
+                .OrderBy(s => s.DurationEstimateEndDate)
+                .Select(s => (DateTime?)s.StartDateTime)
+                .FirstOrDefault())
+            .Map(dest => dest.ActiveStageDurationEstimateEndDate, src => src.StageRuns
+                .Where(s => s.Status == StageRunStatus.Active)
+                .OrderBy(s => s.DurationEstimateEndDate)
+                .Select(s => s.DurationEstimateEndDate)
+                .FirstOrDefault())
+            .Map(dest => dest.ActiveStageDaysOverdue, src => src.StageRuns
+                .Where(s => s.Status == StageRunStatus.Active && s.DurationEstimateEndDate < DateTime.UtcNow)
+                .OrderBy(s => s.DurationEstimateEndDate)
+                .Select(s => (int?)((DateTime.UtcNow.Date - s.DurationEstimateEndDate!.Value.Date).Days))
+                .FirstOrDefault());
 
         TypeAdapterConfig<CreateCycleRequest, Cycle>.NewConfig()
             .Ignore(dest => dest.CycleId)
@@ -166,5 +181,8 @@ public static class MappingConfig
 
         TypeAdapterConfig<User, AdminUserListDto>.NewConfig()
             .Map(dest => dest.Role, src => src.Role.ToString());
+
+        // Compile all configurations to ensure they're applied
+        TypeAdapterConfig.GlobalSettings.Compile();
     }
 }

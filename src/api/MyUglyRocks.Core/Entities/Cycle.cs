@@ -3,8 +3,7 @@ namespace MyUglyRocks.Core.Entities;
 public enum CycleStatus
 {
     Active = 0,
-    Completed = 1,
-    Archived = 2
+    Completed = 1
 }
 
 public class Cycle : SoftDeletableEntity

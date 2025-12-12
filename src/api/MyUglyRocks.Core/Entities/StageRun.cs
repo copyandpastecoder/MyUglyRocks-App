@@ -38,7 +38,8 @@ public class StageRun : SoftDeletableEntity
     public DateTime StartDateTime { get; set; }
     public int DurationDays { get; set; }
     public int DurationHours { get; set; }
-    public DateTime EndDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }  // Actual end date - only set on completion/abort
+    public DateTime? DurationEstimateEndDate { get; set; }  // Calculated estimate based on StartDateTime + Duration
 
     // Reminder settings
     public bool ReminderEnabled { get; set; }

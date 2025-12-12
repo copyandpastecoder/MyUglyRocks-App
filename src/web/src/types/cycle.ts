@@ -39,6 +39,10 @@ export interface CycleListDto {
   activeStageCount: number;
   isOverdue: boolean;
   dateCreated: string;
+  // Active stage progress info (null if no active stages)
+  activeStageStartDateTime: string | null;
+  activeStageDurationEstimateEndDate: string | null;
+  activeStageDaysOverdue: number | null;
 }
 
 export interface CreateCycleRequest {
@@ -69,7 +73,8 @@ export interface StageRunSummaryDto {
   runNumber: number;
   totalRuns: number;
   startDateTime: string;
-  endDateTime: string;
+  endDateTime: string | null; // Actual end - only set when completed/aborted
+  durationEstimateEndDate: string | null; // Calculated estimate based on duration
   status: string;
   resultRating: number | null;
   cleaningRun: CleaningRunDto | null;
@@ -84,7 +89,8 @@ export interface StageRunDto {
   startDateTime: string;
   durationDays: number;
   durationHours: number;
-  endDateTime: string;
+  endDateTime: string | null; // Actual end - only set when completed/aborted
+  durationEstimateEndDate: string | null; // Calculated estimate based on duration
   status: string;
   reminderEnabled: boolean;
   loadWeightBeforeGrams: number | null;

@@ -465,6 +465,7 @@ public class DemoUserSeedService
             var stageRunDate = currentDate;
             var stageIndex = 0;
             var maxStage = isAbandoned ? _random.Next(1, 3) : 5; // Abandoned cycles stop early
+            var hasActiveStage = false; // Track if we've already assigned an Active stage to this cycle
 
             foreach (var (stageName, stageBarrelId, isVibratory) in GetWorkflowStages(workflow, barrelId))
             {
@@ -479,20 +480,32 @@ public class DemoUserSeedService
                 for (int runNumber = 1; runNumber <= numberOfRuns; runNumber++)
                 {
                     var runStartDate = stageRunDate;
-                    var runEndDate = runStartDate.AddDays(durationDaysPerRun);
+                    var estimatedEndDate = runStartDate.AddDays(durationDaysPerRun);
+
+                    // Don't create future stages - break if start date is in the future
+                    if (runStartDate > now)
+                    {
+                        break;
+                    }
 
                     // Determine status based on dates
-                    bool isCompleted = runEndDate < now && !isAbandoned;
-                    bool isCurrentlyActive = runStartDate <= now && runEndDate >= now && !isAbandoned;
-                    bool isPlanned = runStartDate > now;
+                    // Only ONE stage can be Active per cycle - others become Planned
+                    bool isCompleted = estimatedEndDate < now && !isAbandoned;
+                    bool wouldBeActive = runStartDate <= now && estimatedEndDate >= now && !isAbandoned;
+                    bool isCurrentlyActive = wouldBeActive && !hasActiveStage; // Only if we haven't assigned an active stage yet
 
                     StageRunStatus stageStatus;
                     if (isCompleted)
                         stageStatus = StageRunStatus.Completed;
                     else if (isCurrentlyActive)
+                    {
                         stageStatus = StageRunStatus.Active;
+                        hasActiveStage = true; // Mark that we've assigned the active stage
+                    }
+                    else if (wouldBeActive)
+                        stageStatus = StageRunStatus.Planned; // Would be active but another stage is already active
                     else
-                        stageStatus = StageRunStatus.Planned;
+                        stageStatus = StageRunStatus.Completed; // If not active and not future, it's completed
 
                     var stageRunId = Guid.NewGuid();
 
@@ -506,13 +519,16 @@ public class DemoUserSeedService
                         StartDateTime = runStartDate,
                         DurationDays = durationDaysPerRun,
                         DurationHours = 0,
-                        EndDateTime = runEndDate,
-                        DateCreated = runStartDate > now ? now : runStartDate,
-                        DateUpdated = isCompleted ? runEndDate : now
+                        // EndDateTime: only set for completed/aborted stages, null while active/planned
+                        EndDateTime = isCompleted ? estimatedEndDate : null,
+                        // DurationEstimateEndDate: calculated estimate while active or planned, null when completed
+                        DurationEstimateEndDate = !isCompleted ? estimatedEndDate : null,
+                        DateCreated = runStartDate,
+                        DateUpdated = isCompleted ? estimatedEndDate : now
                     };
 
-                    // Add detailed fields based on detail level - only for started stages (not planned/future)
-                    if (detailLevel != DetailLevel.Min && !isPlanned)
+                    // Add detailed fields based on detail level
+                    if (detailLevel != DetailLevel.Min)
                     {
                         stageRun.LoadWeightBeforeGrams = _random.Next(800, 2000);
                         stageRun.FillLevelPercent = _random.Next(60, 85);
@@ -526,7 +542,7 @@ public class DemoUserSeedService
                         }
                     }
 
-                    if (detailLevel == DetailLevel.Full && !isPlanned)
+                    if (detailLevel == DetailLevel.Full)
                     {
                         stageRun.BarrelRpm = isVibratory ? null : _random.Next(20, 35);
                         stageRun.IsRpmEstimated = !isVibratory;
@@ -597,8 +613,8 @@ public class DemoUserSeedService
                             Status = CleaningRunStatus.Completed,
                             ReminderEnabled = false,
                             ResultNotes = detailLevel == DetailLevel.Full ? "Rocks cleaned thoroughly" : null,
-                            DateCreated = runEndDate,
-                            DateUpdated = runEndDate
+                            DateCreated = estimatedEndDate,
+                            DateUpdated = estimatedEndDate
                         });
 
                         cleaningMaterials.Add(new CleaningMaterial
@@ -610,8 +626,8 @@ public class DemoUserSeedService
                             DisplayUnit = "tbsp",
                             AmountGrams = 15,
                             SortOrder = 1,
-                            DateCreated = runEndDate,
-                            DateUpdated = runEndDate
+                            DateCreated = estimatedEndDate,
+                            DateUpdated = estimatedEndDate
                         });
                     }
 
@@ -632,18 +648,18 @@ public class DemoUserSeedService
                         // Stage 5 - After photo
                         else if (stageName == "Polish" && isCompleted)
                         {
-                            photos.Add(CreatePlaceholderPhoto(stageRunId, PhotoType.After, "stage5_after", runEndDate));
+                            photos.Add(CreatePlaceholderPhoto(stageRunId, PhotoType.After, "stage5_after", estimatedEndDate));
                         }
                     }
 
                     // Update barrel availability
-                    if (barrelAvailability[stageBarrelId] < runEndDate)
+                    if (barrelAvailability[stageBarrelId] < estimatedEndDate)
                     {
-                        barrelAvailability[stageBarrelId] = runEndDate;
+                        barrelAvailability[stageBarrelId] = estimatedEndDate;
                     }
 
                     // Move to next run's start date
-                    stageRunDate = runEndDate;
+                    stageRunDate = estimatedEndDate;
                 } // end for loop (runNumber)
             }
 
@@ -657,7 +673,7 @@ public class DemoUserSeedService
             }
             else if (isAbandoned)
             {
-                cycle.Status = CycleStatus.Archived;
+                cycle.Status = CycleStatus.Completed;
                 cycle.Notes = (cycle.Notes ?? "") + " [ABANDONED - rocks had too many fractures]";
             }
 

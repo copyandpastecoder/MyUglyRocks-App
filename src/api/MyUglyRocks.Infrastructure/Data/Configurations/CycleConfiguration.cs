@@ -118,8 +118,12 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
             .HasDefaultValue(0);
 
         builder.Property(s => s.EndDateTime)
-            .HasColumnName("end_date_time")
-            .IsRequired();
+            .HasColumnName("end_date_time");
+        // Note: Now nullable - only set on completion/abort
+
+        builder.Property(s => s.DurationEstimateEndDate)
+            .HasColumnName("duration_estimate_end_date");
+        // Note: Calculated estimate based on StartDateTime + Duration
 
         builder.Property(s => s.Status)
             .HasColumnName("status");

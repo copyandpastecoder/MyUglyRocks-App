@@ -4,7 +4,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 public record ExportCyclesRequest(
     DateOnly? StartDate = null,
     DateOnly? EndDate = null,
-    string? Status = null // Active, Completed, Archived, or null for all
+    string? Status = null // Active, Completed, or null for all
 );
 
 public record FullExportRequest(
@@ -49,7 +49,8 @@ public record StageCsvRow(
     string StageName,
     string Status,
     DateTime StartDateTime,
-    DateTime EndDateTime,
+    DateTime? EndDateTime,
+    DateTime? DurationEstimateEndDate,
     int DurationDays,
     int DurationHours,
     string? BarrelName,

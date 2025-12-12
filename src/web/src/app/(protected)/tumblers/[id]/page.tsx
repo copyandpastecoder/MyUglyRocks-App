@@ -49,7 +49,10 @@ const formSchema = z.object({
   brand: z.string().min(1, 'Brand is required').max(100),
   model: z.string().max(100).optional(),
   tumblerType: z.enum(['Rotary', 'Vibratory']),
-  motorCapacityLbs: z.string().optional().transform((val) => val ? parseFloat(val) : undefined),
+  motorCapacityLbs: z.union([z.string(), z.number()]).optional().transform((val) => {
+    if (val === undefined || val === null || val === '') return undefined;
+    return typeof val === 'number' ? val : parseFloat(val);
+  }),
   notes: z.string().max(1000).optional(),
   isActive: z.boolean(),
 });
@@ -304,7 +307,11 @@ export default function EditTumblerPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      key={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select tumbler type" />
