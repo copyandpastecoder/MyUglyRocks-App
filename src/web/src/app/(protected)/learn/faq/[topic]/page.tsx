@@ -45,7 +45,7 @@ export default function TopicHelpPage({ params }: TopicPageProps) {
     .filter(Boolean) || [];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Breadcrumb */}
       <Breadcrumb>
         <BreadcrumbList>

@@ -33,7 +33,7 @@ export function AppShell({ children }: AppShellProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto bg-background p-6">
-          <div className="max-w-5xl mx-auto">
+          <div className="max-w-3xl mx-auto">
             {children}
           </div>
         </main>
