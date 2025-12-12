@@ -13,8 +13,9 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["https://dev.myuglyrocks.com"],
 
   // Optimize images
+  // Note: AVIF removed - encoding is too slow on-demand and WEBP provides excellent compression
   images: {
-    formats: ["image/avif", "image/webp"],
+    formats: ["image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
   },
