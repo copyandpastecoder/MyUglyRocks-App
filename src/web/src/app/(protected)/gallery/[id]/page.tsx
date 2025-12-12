@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUpdateComment } from '@/hooks/use-posts';
 import { postApi } from '@/lib/api';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { useAuth } from '@/providers/auth-provider';
@@ -28,6 +29,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
+  Pencil,
+  X,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { CommentDto } from '@/types/post';
@@ -356,6 +360,7 @@ export default function PostDetailPage() {
                 <CommentItem
                   key={comment.commentId}
                   comment={comment}
+                  postId={postId}
                   onReply={(id) => setReplyingTo(id)}
                   currentUserId={user?.userId}
                 />
@@ -370,16 +375,54 @@ export default function PostDetailPage() {
 
 function CommentItem({
   comment,
+  postId,
   onReply,
   currentUserId,
   depth = 0,
 }: {
   comment: CommentDto;
+  postId: string;
   onReply: (id: string) => void;
   currentUserId?: string;
   depth?: number;
 }) {
   const maxDepth = 3;
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(comment.content);
+  const updateComment = useUpdateComment(postId);
+
+  const isOwnComment = currentUserId && comment.author.userId === currentUserId;
+
+  const handleSaveEdit = () => {
+    if (!editContent.trim() || editContent === comment.content) {
+      setIsEditing(false);
+      setEditContent(comment.content);
+      return;
+    }
+
+    updateComment.mutate(
+      { commentId: comment.commentId, data: { content: editContent.trim() } },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+          toast.success('Comment updated');
+        },
+        onError: () => {
+          toast.error('Failed to update comment');
+        },
+      }
+    );
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditContent(comment.content);
+  };
+
+  // Update local state if comment content changes (e.g., after refresh)
+  useEffect(() => {
+    setEditContent(comment.content);
+  }, [comment.content]);
 
   return (
     <div className={depth > 0 ? 'ml-8 border-l-2 pl-4' : ''}>
@@ -402,16 +445,70 @@ function CommentItem({
               <span className="text-xs text-muted-foreground">(edited)</span>
             )}
           </div>
-          <p className="text-sm">{comment.content}</p>
-          {depth < maxDepth && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={() => onReply(comment.commentId)}
-            >
-              Reply
-            </Button>
+
+          {isEditing ? (
+            <div className="space-y-2">
+              <Textarea
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                rows={3}
+                className="text-sm"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={handleSaveEdit}
+                  disabled={updateComment.isPending || !editContent.trim()}
+                >
+                  {updateComment.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <Check className="h-3 w-3 mr-1" />
+                  )}
+                  Save
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={handleCancelEdit}
+                  disabled={updateComment.isPending}
+                >
+                  <X className="h-3 w-3 mr-1" />
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm">{comment.content}</p>
+              <div className="flex gap-1">
+                {depth < maxDepth && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => onReply(comment.commentId)}
+                  >
+                    Reply
+                  </Button>
+                )}
+                {isOwnComment && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={() => setIsEditing(true)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -421,6 +518,7 @@ function CommentItem({
             <CommentItem
               key={reply.commentId}
               comment={reply}
+              postId={postId}
               onReply={onReply}
               currentUserId={currentUserId}
               depth={depth + 1}
