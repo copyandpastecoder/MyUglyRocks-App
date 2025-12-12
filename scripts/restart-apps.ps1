@@ -23,16 +23,6 @@
     Skip starting the PostgreSQL port-forward.
 
 .EXAMPLE
- # Rebuild & restart (DEFAULT)
-.   D:\MyUglyRocks-App\scripts\restart-apps.ps1    
-
- # Force fresh build from scratch
-.   D:\MyUglyRocks-App\scripts\restart-apps.ps1 -NoCache
-
-  # Just restart (old behavior)
-.   D:\MyUglyRocks-App\scripts\restart-apps.ps1 -SkipBuild
-
-.EXAMPLE
     .\restart-apps.ps1
     # Rebuilds both images and restarts both apps (DEFAULT)
 
@@ -107,16 +97,14 @@ if (-not $SkipBuild) {
     try {
         if (-not $SkipApi) {
             Write-Host "`n  Building API image..." -ForegroundColor Gray
-            $cmd = "docker build $($buildArgs -join ' ') -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile ."
-            Invoke-Expression $cmd
+            & docker build @buildArgs -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
             if ($LASTEXITCODE -ne 0) { throw "API image build failed" }
             Write-Host "  API image built successfully" -ForegroundColor Green
         }
 
         if (-not $SkipWeb) {
             Write-Host "`n  Building Web image..." -ForegroundColor Gray
-            $cmd = "docker build $($buildArgs -join ' ') -t myuglyrocks-web:latest -f src/web/Dockerfile ."
-            Invoke-Expression $cmd
+            & docker build @buildArgs -t myuglyrocks-web:latest -f src/web/Dockerfile .
             if ($LASTEXITCODE -ne 0) { throw "Web image build failed" }
             Write-Host "  Web image built successfully" -ForegroundColor Green
         }
@@ -130,22 +118,11 @@ if (-not $SkipBuild) {
 
 Write-Host "`nRestarting deployments: $($deployments -join ', ')" -ForegroundColor Yellow
 
-# Delete existing pods to force fresh pull of local images
-Write-Host "`nDeleting existing pods (forces fresh image load)..." -ForegroundColor Gray
+# Perform rolling restart for graceful pod replacement
+Write-Host "`nPerforming rolling restart..." -ForegroundColor Gray
 foreach ($deployment in $deployments) {
-    Write-Host "  Deleting pods for $deployment..." -ForegroundColor Gray
-    # Suppress warning about immediate deletion not waiting for termination
-    # Using Start-Process to avoid PowerShell treating stderr as error
-    $null = Start-Process -FilePath "kubectl" -ArgumentList "delete", "pods", "-l", "app=$deployment", "-n", $Namespace, "--force", "--grace-period=0" -NoNewWindow -Wait -PassThru
-}
-
-# Wait a moment for pods to terminate
-Start-Sleep -Seconds 3
-
-# Ensure deployments are scaled to 1
-Write-Host "`nEnsuring deployments are scaled up..." -ForegroundColor Gray
-foreach ($deployment in $deployments) {
-    kubectl scale deployment $deployment -n $Namespace --replicas=1 2>&1 | Out-Null
+    Write-Host "  Restarting $deployment..." -ForegroundColor Gray
+    kubectl rollout restart deployment $deployment -n $Namespace
 }
 
 # Wait for rollout
