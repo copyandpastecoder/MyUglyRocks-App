@@ -33,15 +33,6 @@ import { Search, Gem, AlertCircle } from 'lucide-react';
 const MATERIAL_TYPES = ['Rock', 'Mineral', 'Gemstone', 'Fossil', 'Glass', 'Other'];
 const DIFFICULTY_LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
 
-function getHardnessColor(min: number | null, max: number | null): string {
-  if (min == null) return 'bg-muted text-muted-foreground';
-  const hardness = max ? (min + max) / 2 : min;
-  if (hardness <= 3) return 'bg-green-100 text-green-800';
-  if (hardness <= 5) return 'bg-yellow-100 text-yellow-800';
-  if (hardness <= 7) return 'bg-orange-100 text-orange-800';
-  return 'bg-red-100 text-red-800';
-}
-
 function getDifficultyColor(difficulty: string | null): string {
   switch (difficulty?.toLowerCase()) {
     case 'easy': return 'bg-green-100 text-green-800';
@@ -67,7 +58,7 @@ export default function SpecimensPage() {
   const { data: selectedSpecimen } = useSpecimen(selectedId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Rock & Mineral Database</h1>
         <p className="text-muted-foreground">
@@ -173,7 +164,7 @@ export default function SpecimensPage() {
                   </TableCell>
                   <TableCell>
                     {specimen.mohsHardnessMin != null ? (
-                      <Badge className={getHardnessColor(specimen.mohsHardnessMin, specimen.mohsHardnessMax)}>
+                      <Badge variant="outline" className="text-xs">
                         {specimen.mohsHardnessMin}
                         {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
                           ? `-${specimen.mohsHardnessMax}`
@@ -216,7 +207,7 @@ export default function SpecimensPage() {
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline">{selectedSpecimen.materialType}</Badge>
-                  <Badge className={getHardnessColor(selectedSpecimen.mohsHardnessMin, selectedSpecimen.mohsHardnessMax)}>
+                  <Badge variant="outline">
                     Mohs: {selectedSpecimen.mohsHardnessMin}
                     {selectedSpecimen.mohsHardnessMax && selectedSpecimen.mohsHardnessMax !== selectedSpecimen.mohsHardnessMin
                       ? `-${selectedSpecimen.mohsHardnessMax}`
