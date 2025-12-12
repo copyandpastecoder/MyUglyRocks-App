@@ -178,32 +178,35 @@ export function useSearchFilterPagination<TFilters extends Record<string, unknow
   const [search, setSearchState] = useState('');
   const [filters, setFiltersState] = useState<TFilters>(initialFilters);
 
+  // Extract reset to avoid recreating callbacks when pagination object changes
+  const { reset } = pagination;
+
   const setSearch = useCallback((newSearch: string) => {
     setSearchState(newSearch);
-    pagination.reset();
-  }, [pagination]);
+    reset();
+  }, [reset]);
 
   const setFilter = useCallback(
     <K extends keyof TFilters>(key: K, value: TFilters[K]) => {
       setFiltersState((prev) => ({ ...prev, [key]: value }));
-      pagination.reset();
+      reset();
     },
-    [pagination]
+    [reset]
   );
 
   const setFilters = useCallback(
     (newFilters: Partial<TFilters>) => {
       setFiltersState((prev) => ({ ...prev, ...newFilters }));
-      pagination.reset();
+      reset();
     },
-    [pagination]
+    [reset]
   );
 
   const clearFilters = useCallback(() => {
     setSearchState('');
     setFiltersState(initialFilters);
-    pagination.reset();
-  }, [initialFilters, pagination]);
+    reset();
+  }, [initialFilters, reset]);
 
   return {
     ...pagination,

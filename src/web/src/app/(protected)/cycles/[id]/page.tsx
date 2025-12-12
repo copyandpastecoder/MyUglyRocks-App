@@ -2739,7 +2739,7 @@ function StageCard({
                         </Button>
                       </div>
                       {stageDetails.photos && stageDetails.photos.length > 0 ? (
-                        <div className="grid grid-cols-4 sm:grid-cols-3 gap-1.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                           {stageDetails.photos.map((photo) => (
                             <div key={photo.photoId} className="relative aspect-square">
                               <img
