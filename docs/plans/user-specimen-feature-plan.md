@@ -1,5 +1,61 @@
 # User Specimen Feature Plan
 
+## Implementation Status
+
+> **Status: Code Complete - Migration Required**
+>
+> Last Updated: 2024-12-13
+
+### Completed
+- [x] Backend entity: `UserSpecimen` with soft delete support
+- [x] EF Core configuration with indexes and query filters
+- [x] DTOs: `UserSpecimenDto`, `UserSpecimenListDto`, `CreateUserSpecimenRequest`, `UpdateUserSpecimenRequest`
+- [x] `IUserSpecimenService` interface and `UserSpecimenService` implementation
+- [x] `UserSpecimensController` with all endpoints
+- [x] Service registration in `Program.cs`
+- [x] Updated `CycleSpecimen` entity to support both system and user specimens (XOR)
+- [x] Updated `InventorySpecimen` entity to support both system and user specimens (XOR)
+- [x] Updated `CycleService` to handle both specimen types in `CreateCycleAsync` and `GetCycleAsync`
+- [x] Updated `CycleDtos` with `UserSpecimenIds` in request and `Source`/`UserId` in `SpecimenDto`
+- [x] Frontend TypeScript types (`src/web/src/types/user-specimen.ts`)
+- [x] API client functions (`userSpecimenApi` in `api.ts`)
+- [x] Query keys and React Query hooks (`use-user-specimens.ts`)
+- [x] Updated `specimen-multi-select.tsx` with grouped sections (Your Specimens / Reference Specimens)
+- [x] My Specimens settings page (`/settings/specimens`)
+- [x] Navigation link in settings layout (Gem icon)
+- [x] Frontend `CreateCycleRequest` updated with `userSpecimenIds`
+
+### TODO - Required Before Running
+1. **Create EF Core Migration**:
+   ```bash
+   cd src/api/MyUglyRocks.Infrastructure
+   dotnet ef migrations add AddInventoryAndUserSpecimen --startup-project ../MyUglyRocks.Api
+   dotnet ef database update --startup-project ../MyUglyRocks.Api
+   ```
+
+   The migration will:
+   - Create `user_specimens` table
+   - Create `inventory`, `inventory_specimens`, `inventory_photos` tables
+   - Add `cycle_specimen_id` column to `cycle_specimens` (new primary key)
+   - Make `specimen_id` nullable in `cycle_specimens`
+   - Add `user_specimen_id` column to `cycle_specimens`
+   - Add XOR check constraints
+
+### TODO - Future Enhancements (Not Critical)
+- [ ] Quick add modal for inline specimen creation during cycle/inventory creation
+- [ ] "Start from existing" feature to copy fields from system specimen
+- [ ] Duplicate warning UX (warn if name matches system specimen)
+- [ ] Combined search endpoint on `/api/specimens/search` (currently on `/api/user-specimens/search`)
+- [ ] Seed data for demo user
+- [ ] Update cycles/new page to use new specimen picker with user specimens
+
+### Breaking Changes
+- `CycleSpecimen` now uses `CycleSpecimenId` as primary key instead of composite key (`CycleId`, `SpecimenId`)
+- `SpecimenId` in `CycleSpecimen` and `InventorySpecimen` is now nullable
+- Existing cycle specimens will need the new `cycle_specimen_id` populated during migration
+
+---
+
 ## Overview
 
 Add a `UserSpecimen` table that mirrors the system `Specimen` table, allowing users to create their own custom specimen entries when the rock/mineral they have isn't in the reference data.
