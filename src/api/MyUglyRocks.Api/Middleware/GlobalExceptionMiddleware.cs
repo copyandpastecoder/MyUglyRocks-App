@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using MyUglyRocks.Abstractions.Helpers;
 
 namespace MyUglyRocks.Api.Middleware;
 
@@ -44,7 +45,7 @@ public class GlobalExceptionMiddleware
         // Log the full exception internally
         _logger.LogError(exception,
             "Unhandled exception occurred. CorrelationId: {CorrelationId}, Path: {Path}, Method: {Method}",
-            correlationId, context.Request.Path, context.Request.Method);
+            correlationId, PiiMaskingHelper.SanitizeForLog(context.Request.Path), context.Request.Method);
 
         // Determine status code based on exception type
         var (statusCode, message) = exception switch
