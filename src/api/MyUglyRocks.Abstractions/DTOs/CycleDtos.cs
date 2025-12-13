@@ -70,7 +70,11 @@ public record CreateCycleRequest(
     [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes,
 
-    Guid[]? SpecimenIds
+    /// <summary>System specimen IDs (from reference data)</summary>
+    Guid[]? SpecimenIds,
+
+    /// <summary>User specimen IDs (custom user-created specimens)</summary>
+    Guid[]? UserSpecimenIds
 );
 
 public record UpdateCycleRequest(
@@ -349,7 +353,11 @@ public record SpecimenDto(
     string MaterialType,
     decimal? MohsHardnessMin,
     decimal? MohsHardnessMax,
-    string? TumblingDifficulty
+    string? TumblingDifficulty,
+    /// <summary>Source: "system" for reference specimens, "user" for custom user specimens</summary>
+    string Source = "system",
+    /// <summary>Only set for user specimens - the user who created it</summary>
+    Guid? UserId = null
 );
 
 public record MaterialDto(

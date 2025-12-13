@@ -132,6 +132,8 @@ public class CycleService : ICycleService
                 .ThenInclude(s => s.Photos.Where(p => !p.IsDeleted))
             .Include(c => c.CycleSpecimens)
                 .ThenInclude(cs => cs.Specimen)
+            .Include(c => c.CycleSpecimens)
+                .ThenInclude(cs => cs.UserSpecimen)
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId && !c.IsDeleted, cancellationToken);
 
@@ -197,7 +199,31 @@ public class CycleService : ICycleService
             ));
 
         var specimens = cycle.CycleSpecimens
-            .Select(cs => cs.Specimen.Adapt<SpecimenDto>());
+            .Select(cs => cs.Specimen != null
+                ? new SpecimenDto(
+                    cs.Specimen.SpecimenId,
+                    cs.Specimen.CommonName,
+                    cs.Specimen.ScientificName,
+                    cs.Specimen.MaterialType.ToString(),
+                    cs.Specimen.MohsHardnessMin,
+                    cs.Specimen.MohsHardnessMax,
+                    cs.Specimen.TumblingDifficulty?.ToString(),
+                    "system",
+                    null)
+                : cs.UserSpecimen != null
+                    ? new SpecimenDto(
+                        cs.UserSpecimen.UserSpecimenId,
+                        cs.UserSpecimen.CommonName,
+                        cs.UserSpecimen.ScientificName,
+                        cs.UserSpecimen.MaterialType.ToString(),
+                        cs.UserSpecimen.MohsHardnessMin,
+                        cs.UserSpecimen.MohsHardnessMax,
+                        cs.UserSpecimen.TumblingDifficulty?.ToString(),
+                        "user",
+                        cs.UserSpecimen.UserId)
+                    : null)
+            .Where(s => s != null)
+            .Cast<SpecimenDto>();
 
         // Compute elapsed days
         var endDate = cycle.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
@@ -297,7 +323,7 @@ public class CycleService : ICycleService
         cycle.DateCreated = DateTime.UtcNow;
         cycle.DateUpdated = DateTime.UtcNow;
 
-        // Add specimens if provided
+        // Add system specimens if provided
         if (request.SpecimenIds?.Any() == true)
         {
             foreach (var specimenId in request.SpecimenIds)
@@ -306,6 +332,23 @@ public class CycleService : ICycleService
                 {
                     CycleId = cycle.CycleId,
                     SpecimenId = specimenId,
+                    UserSpecimenId = null,
+                    DateCreated = DateTime.UtcNow,
+                    DateUpdated = DateTime.UtcNow
+                });
+            }
+        }
+
+        // Add user specimens if provided
+        if (request.UserSpecimenIds?.Any() == true)
+        {
+            foreach (var userSpecimenId in request.UserSpecimenIds)
+            {
+                cycle.CycleSpecimens.Add(new CycleSpecimen
+                {
+                    CycleId = cycle.CycleId,
+                    SpecimenId = null,
+                    UserSpecimenId = userSpecimenId,
                     DateCreated = DateTime.UtcNow,
                     DateUpdated = DateTime.UtcNow
                 });
