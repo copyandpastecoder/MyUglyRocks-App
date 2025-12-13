@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Allowlist of known public domains that should use same-origin API URLs
+const ALLOWED_PUBLIC_HOSTS = [
+  'dev.myuglyrocks.com',
+  'www.myuglyrocks.com',
+  'myuglyrocks.com',
+];
+
 // Runtime config endpoint - reads environment variables at runtime
 // This allows changing API_URL without rebuilding the Docker image
 //
@@ -7,15 +14,28 @@ import { NextRequest, NextResponse } from 'next/server';
 // we return the same origin as the API URL to ensure cookies work correctly.
 // The nginx-ingress handles routing /api to the API service.
 export async function GET(request: NextRequest) {
-  // Get the origin from the request headers
-  const origin = request.headers.get('origin');
-  const host = request.headers.get('host');
+  // Get the host from request headers (strip port if present)
+  const hostHeader = request.headers.get('host');
+  const host = hostHeader?.split(':')[0]?.toLowerCase();
 
-  // If accessing via a known public domain, use that as the API URL
+  // Parse origin to extract hostname (handles full URLs like "https://dev.myuglyrocks.com")
+  const originHeader = request.headers.get('origin');
+  let originHost: string | null = null;
+  if (originHeader) {
+    try {
+      originHost = new URL(originHeader).hostname.toLowerCase();
+    } catch {
+      // Invalid origin URL, ignore
+    }
+  }
+
+  // If accessing via a known public domain (exact match), use that as the API URL
   // This ensures cookies stay same-origin (critical for SameSite=Lax)
-  if (host?.includes('dev.myuglyrocks.com') || origin?.includes('dev.myuglyrocks.com')) {
+  if ((host && ALLOWED_PUBLIC_HOSTS.includes(host)) ||
+      (originHost && ALLOWED_PUBLIC_HOSTS.includes(originHost))) {
+    const matchedHost = host && ALLOWED_PUBLIC_HOSTS.includes(host) ? host : originHost;
     return NextResponse.json({
-      apiUrl: 'https://dev.myuglyrocks.com',
+      apiUrl: `https://${matchedHost}`,
     });
   }
 
