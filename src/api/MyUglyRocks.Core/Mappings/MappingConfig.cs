@@ -87,7 +87,7 @@ public static class MappingConfig
             .Map(dest => dest.WaterLevel, src => src.WaterLevel != null ? src.WaterLevel.ToString() : null)
             .Map(dest => dest.NextAction, src => src.NextAction != null ? src.NextAction.ToString() : null)
             .Map(dest => dest.Materials, src => src.StageMaterials)
-            .Map(dest => dest.Barrels, src => src.StageRunBarrels.Where(srb => srb.Barrel != null).Select(srb => srb.Barrel));
+            .Map(dest => dest.Barrels, src => src.StageRunBarrels.Where(srb => srb.Barrel != null).Select(srb => srb.Barrel!));
 
         TypeAdapterConfig<StageRun, StageRunSummaryDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString());
