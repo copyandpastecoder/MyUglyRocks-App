@@ -1,0 +1,24 @@
+# CodeQL Model Extension: Mark custom sanitization methods as neutralizing tainted data
+# This tells CodeQL that PiiMaskingHelper methods sanitize/neutralize user input
+# making it safe for logging (prevents log forging CWE-117 and PII exposure)
+
+extensions:
+  # Mark these methods as neutralizing taint (sanitizers)
+  - addsTo:
+      pack: codeql/csharp-all
+      extensible: neutralModel
+    data:
+      # SanitizeForLog: removes all control characters, safe for logging
+      - ["MyUglyRocks.Abstractions.Helpers", "PiiMaskingHelper", False, "SanitizeForLog", "(System.String)", "Argument[0]", "log-injection", "manual"]
+
+      # MaskEmail: masks email addresses, safe for logging
+      - ["MyUglyRocks.Abstractions.Helpers", "PiiMaskingHelper", False, "MaskEmail", "(System.String)", "Argument[0]", "log-injection", "manual"]
+
+      # MaskUsername: masks usernames, safe for logging
+      - ["MyUglyRocks.Abstractions.Helpers", "PiiMaskingHelper", False, "MaskUsername", "(System.String)", "Argument[0]", "log-injection", "manual"]
+
+      # MaskIpAddress: masks IP addresses, safe for logging
+      - ["MyUglyRocks.Abstractions.Helpers", "PiiMaskingHelper", False, "MaskIpAddress", "(System.String)", "Argument[0]", "log-injection", "manual"]
+
+      # HashEmail: hashes email for correlation, safe for logging
+      - ["MyUglyRocks.Abstractions.Helpers", "PiiMaskingHelper", False, "HashEmail", "(System.String)", "Argument[0]", "log-injection", "manual"]
