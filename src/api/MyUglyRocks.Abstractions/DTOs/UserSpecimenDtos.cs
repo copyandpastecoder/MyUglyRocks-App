@@ -39,36 +39,36 @@ public record CreateUserSpecimenRequest(
     string CommonName,
 
     [StringLength(100, ErrorMessage = "Scientific name must be at most 100 characters")]
-    string? ScientificName,
+    string? ScientificName = null,
 
     [StringLength(255, ErrorMessage = "Alias must be at most 255 characters")]
-    string? Alias,
+    string? Alias = null,
 
     [StringLength(100, ErrorMessage = "Rock family must be at most 100 characters")]
-    string? RockFamily,
+    string? RockFamily = null,
 
     [StringLength(100, ErrorMessage = "Species must be at most 100 characters")]
-    string? Species,
+    string? Species = null,
 
     [StringLength(100, ErrorMessage = "Variety must be at most 100 characters")]
-    string? Variety,
+    string? Variety = null,
 
     string MaterialType = "Rock",
 
     [Range(1.0, 10.0, ErrorMessage = "Mohs hardness min must be between 1.0 and 10.0")]
-    decimal? MohsHardnessMin,
+    decimal? MohsHardnessMin = null,
 
     [Range(1.0, 10.0, ErrorMessage = "Mohs hardness max must be between 1.0 and 10.0")]
-    decimal? MohsHardnessMax,
+    decimal? MohsHardnessMax = null,
 
-    string? TumblingDifficulty,
+    string? TumblingDifficulty = null,
 
     [StringLength(255, ErrorMessage = "Recommended grit sequence must be at most 255 characters")]
-    string? RecommendedGritSequence,
+    string? RecommendedGritSequence = null,
 
-    string? SpecialConsiderations,
+    string? SpecialConsiderations = null,
 
-    string? Notes,
+    string? Notes = null,
 
     bool IsPublic = false,
 
@@ -81,36 +81,36 @@ public record UpdateUserSpecimenRequest(
     string CommonName,
 
     [StringLength(100, ErrorMessage = "Scientific name must be at most 100 characters")]
-    string? ScientificName,
+    string? ScientificName = null,
 
     [StringLength(255, ErrorMessage = "Alias must be at most 255 characters")]
-    string? Alias,
+    string? Alias = null,
 
     [StringLength(100, ErrorMessage = "Rock family must be at most 100 characters")]
-    string? RockFamily,
+    string? RockFamily = null,
 
     [StringLength(100, ErrorMessage = "Species must be at most 100 characters")]
-    string? Species,
+    string? Species = null,
 
     [StringLength(100, ErrorMessage = "Variety must be at most 100 characters")]
-    string? Variety,
+    string? Variety = null,
 
     string MaterialType = "Rock",
 
     [Range(1.0, 10.0, ErrorMessage = "Mohs hardness min must be between 1.0 and 10.0")]
-    decimal? MohsHardnessMin,
+    decimal? MohsHardnessMin = null,
 
     [Range(1.0, 10.0, ErrorMessage = "Mohs hardness max must be between 1.0 and 10.0")]
-    decimal? MohsHardnessMax,
+    decimal? MohsHardnessMax = null,
 
-    string? TumblingDifficulty,
+    string? TumblingDifficulty = null,
 
     [StringLength(255, ErrorMessage = "Recommended grit sequence must be at most 255 characters")]
-    string? RecommendedGritSequence,
+    string? RecommendedGritSequence = null,
 
-    string? SpecialConsiderations,
+    string? SpecialConsiderations = null,
 
-    string? Notes,
+    string? Notes = null,
 
     bool IsPublic = false
 );
