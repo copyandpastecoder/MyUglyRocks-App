@@ -89,4 +89,24 @@ public static class PiiMaskingHelper
 
         return "[masked-ip]";
     }
+
+    /// <summary>
+    /// Sanitizes user input for safe logging to prevent log forging attacks (CWE-117).
+    /// Removes all control characters (ASCII 0x00-0x1F and 0x7F) that could
+    /// be used to inject fake log entries.
+    /// </summary>
+    public static string SanitizeForLog(string? input)
+    {
+        if (string.IsNullOrEmpty(input))
+            return "[empty]";
+
+        // Remove all control characters (ASCII 0x00-0x1F and 0x7F)
+        var sb = new StringBuilder(input.Length);
+        foreach (var c in input)
+        {
+            if (!char.IsControl(c))
+                sb.Append(c);
+        }
+        return sb.ToString();
+    }
 }

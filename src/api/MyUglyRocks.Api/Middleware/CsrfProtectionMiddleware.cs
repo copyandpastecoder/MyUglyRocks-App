@@ -1,3 +1,5 @@
+using MyUglyRocks.Abstractions.Helpers;
+
 namespace MyUglyRocks.Api.Middleware;
 
 /// <summary>
@@ -51,8 +53,8 @@ public class CsrfProtectionMiddleware
                 _logger.LogWarning(
                     "CSRF: Blocked request from disallowed origin. Method={Method}, Path={Path}, Origin={Origin}, IP={IP}",
                     context.Request.Method,
-                    context.Request.Path,
-                    origin,
+                    PiiMaskingHelper.SanitizeForLog(context.Request.Path),
+                    PiiMaskingHelper.SanitizeForLog(origin),
                     context.Connection.RemoteIpAddress);
 
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;
@@ -68,8 +70,8 @@ public class CsrfProtectionMiddleware
                 _logger.LogWarning(
                     "CSRF: Blocked request from disallowed referer. Method={Method}, Path={Path}, Referer={Referer}, IP={IP}",
                     context.Request.Method,
-                    context.Request.Path,
-                    referer,
+                    PiiMaskingHelper.SanitizeForLog(context.Request.Path),
+                    PiiMaskingHelper.SanitizeForLog(referer),
                     context.Connection.RemoteIpAddress);
 
                 context.Response.StatusCode = StatusCodes.Status403Forbidden;

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats.Webp;
@@ -34,7 +35,7 @@ public class ImageProcessingService : IImageProcessingService
         var originalHeight = image.Height;
 
         _logger.LogDebug("Processing image {FileName}: {Width}x{Height}",
-            fileName, originalWidth, originalHeight);
+            PiiMaskingHelper.SanitizeForLog(fileName), originalWidth, originalHeight);
 
         var variants = new List<ImageVariant>();
 
@@ -76,7 +77,7 @@ public class ImageProcessingService : IImageProcessingService
         using var image = await Image.LoadAsync(inputStream, cancellationToken);
 
         _logger.LogDebug("Processing avatar {FileName}: {Width}x{Height} -> {TargetSize}",
-            fileName, image.Width, image.Height, $"{size}x{size}");
+            PiiMaskingHelper.SanitizeForLog(fileName), image.Width, image.Height, $"{size}x{size}");
 
         // Crop to square from center, then resize
         var minDimension = Math.Min(image.Width, image.Height);

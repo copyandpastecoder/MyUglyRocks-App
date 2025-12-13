@@ -2,6 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Infrastructure.Configuration;
 
@@ -68,13 +69,13 @@ public class R2StorageService : IStorageService
             await _s3Client.PutObjectAsync(request, cancellationToken);
 
             var publicUrl = GetPublicUrl(fullKey);
-            _logger.LogInformation("File uploaded to R2: {Key} -> {Url}", fullKey, publicUrl);
+            _logger.LogInformation("File uploaded to R2: {Key} -> {Url}", PiiMaskingHelper.SanitizeForLog(fullKey), publicUrl);
 
             return publicUrl;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload file to R2: {Key}", fullKey);
+            _logger.LogError(ex, "Failed to upload file to R2: {Key}", PiiMaskingHelper.SanitizeForLog(fullKey));
             throw;
         }
     }
@@ -96,11 +97,11 @@ public class R2StorageService : IStorageService
             };
 
             await _s3Client.DeleteObjectAsync(request, cancellationToken);
-            _logger.LogInformation("File deleted from R2: {Key}", key);
+            _logger.LogInformation("File deleted from R2: {Key}", PiiMaskingHelper.SanitizeForLog(key));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete file from R2: {Key}", key);
+            _logger.LogError(ex, "Failed to delete file from R2: {Key}", PiiMaskingHelper.SanitizeForLog(key));
             throw;
         }
     }

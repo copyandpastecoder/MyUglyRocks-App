@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cycleApi, tumblerApi } from '@/lib/api';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,7 +20,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -72,7 +71,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
   Collapsible,
@@ -90,9 +88,6 @@ import { useMaterials } from '@/hooks/use-materials';
 import { formatDateTimeLocal, combineDateWithCurrentTime, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes, formatDurationMinutes } from '@/lib/duration-utils';
 import { CLEANING_PURPOSES, CLEANING_DURATION_PRESETS, formatCleaningPurpose } from '@/lib/cleaning-constants';
-import { MATERIAL_UNITS, formatMaterialsForSubmission } from '@/lib/material-utils';
-import type { MaterialFormItem } from '@/lib/material-utils';
-import { invalidateCycleQueries } from '@/lib/query-invalidation';
 import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
 import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
@@ -239,6 +234,7 @@ export default function CycleDetailPage() {
         router.replace(`/cycles/${cycleId}`, { scroll: false });
       }, 100);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- openAddStageModal uses refs internally
   }, [searchParams, cycle, hasHandledAddStage, cycleId, router]);
 
   const addStageMutation = useMutation({
@@ -810,12 +806,6 @@ export default function CycleDetailPage() {
         notes: editStageNotes || undefined,
       },
     });
-  };
-
-  const openCleaningRunModal = (stage: StageRunSummaryDto) => {
-    setCleaningRunStageId(stage.stageRunId);
-    setCleaningRunStageName(formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns));
-    setIsCleaningRunOpen(true);
   };
 
   const openViewStageModal = (stage: StageRunSummaryDto) => {
@@ -2451,6 +2441,7 @@ export default function CycleDetailPage() {
                   <div className="grid grid-cols-3 gap-2">
                     {viewStageData.photos.slice(0, 6).map((photo) => (
                       <div key={photo.photoId} className="aspect-square rounded-lg overflow-hidden bg-muted">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- External R2 URLs with dynamic dimensions */}
                         <img
                           src={photo.thumbnailUrl || photo.url}
                           alt={photo.caption || 'Stage photo'}
@@ -2489,12 +2480,12 @@ function StageCard({
   onEdit,
   onDelete,
   onView,
-  onStartEarly,
+  onStartEarly: _onStartEarly,
   isCompleting,
-  isStartingEarly,
+  isStartingEarly: _isStartingEarly,
   cycleId,
   isPlanned,
-  canStartEarly,
+  canStartEarly: _canStartEarly,
 }: {
   stage: StageRunSummaryDto;
   onComplete?: () => void;
@@ -2839,6 +2830,7 @@ function StageCard({
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                           {stageDetails.photos.map((photo) => (
                             <div key={photo.photoId} className="relative aspect-square">
+                              {/* eslint-disable-next-line @next/next/no-img-element -- External R2 URLs with dynamic dimensions */}
                               <img
                                 src={photo.thumbnailUrl || photo.url}
                                 alt={photo.caption || photo.fileName || 'Photo'}
