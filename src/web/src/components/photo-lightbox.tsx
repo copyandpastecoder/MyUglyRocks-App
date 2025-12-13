@@ -38,8 +38,11 @@ export function PhotoLightbox({
   // Reset state when opening
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting state when modal opens
       setCurrentIndex(initialIndex);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsZoomed(false);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsImageLoaded(false);
     }
   }, [isOpen, initialIndex]);

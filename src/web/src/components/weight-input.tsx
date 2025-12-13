@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -43,10 +43,13 @@ export function WeightInput({
 
   // Local state for unit system - defaults to user's preference
   const [isMetric, setIsMetric] = useState(false);
+  const hasInitializedMetric = useRef(false);
 
-  // Initialize unit system from settings when available
+  // Initialize unit system from settings when available (once only)
   useEffect(() => {
-    if (settings?.measurementSystem) {
+    if (!hasInitializedMetric.current && settings?.measurementSystem) {
+      hasInitializedMetric.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from settings
       setIsMetric(settings.measurementSystem === 'Metric');
     }
   }, [settings?.measurementSystem]);
@@ -54,6 +57,8 @@ export function WeightInput({
   // Local state for the two input fields
   const [primary, setPrimary] = useState('');
   const [secondary, setSecondary] = useState('');
+  const lastSyncedGrams = useRef<number | null>(null);
+  const lastSyncedMetric = useRef<boolean>(false);
 
   // Calculate validation state
   const validation = useMemo(() => {
@@ -85,8 +90,20 @@ export function WeightInput({
   }, [validation, onValidationChange]);
 
   // Sync from external valueGrams when it changes or unit system changes
+  // Only update if the external value or metric setting actually changed
   useEffect(() => {
+    const gramsChanged = lastSyncedGrams.current !== valueGrams;
+    const metricChanged = lastSyncedMetric.current !== isMetric;
+
+    if (!gramsChanged && !metricChanged) {
+      return;
+    }
+
+    lastSyncedGrams.current = valueGrams;
+    lastSyncedMetric.current = isMetric;
+
     if (valueGrams === null || valueGrams === undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from external value
       setPrimary('');
       setSecondary('');
       return;

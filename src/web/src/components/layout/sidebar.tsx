@@ -46,6 +46,43 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
+interface NavLinkProps {
+  item: typeof navigation[0];
+  isActive: boolean;
+  collapsed: boolean;
+}
+
+function NavLink({ item, isActive, collapsed }: NavLinkProps) {
+  const linkContent = (
+    <Link
+      href={item.href}
+      className={cn(
+        'group flex gap-3 rounded-md px-3 py-2 text-sm font-medium leading-6 transition-colors',
+        isActive
+          ? 'bg-sidebar-accent text-sidebar-foreground'
+          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
+        collapsed && 'justify-center px-2'
+      )}
+    >
+      <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+      {!collapsed && <span>{item.name}</span>}
+    </Link>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={10}>
+          {item.name}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return linkContent;
+}
+
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
@@ -54,37 +91,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     const topic = getHelpTopicFromPath(pathname);
     return `/learn/faq/${topic}`;
   }, [pathname]);
-
-  const NavLink = ({ item, isActive }: { item: typeof navigation[0]; isActive: boolean }) => {
-    const linkContent = (
-      <Link
-        href={item.href}
-        className={cn(
-          'group flex gap-3 rounded-md px-3 py-2 text-sm font-medium leading-6 transition-colors',
-          isActive
-            ? 'bg-sidebar-accent text-sidebar-foreground'
-            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
-          collapsed && 'justify-center px-2'
-        )}
-      >
-        <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-        {!collapsed && <span>{item.name}</span>}
-      </Link>
-    );
-
-    if (collapsed) {
-      return (
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10}>
-            {item.name}
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return linkContent;
-  };
 
   return (
     <TooltipProvider>
@@ -122,7 +128,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <li key={item.name}>
-                  <NavLink item={item} isActive={isActive} />
+                  <NavLink item={item} isActive={isActive} collapsed={collapsed} />
                 </li>
               );
             })}
@@ -138,7 +144,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <li key={item.name}>
-                  <NavLink item={item} isActive={isActive} />
+                  <NavLink item={item} isActive={isActive} collapsed={collapsed} />
                 </li>
               );
             })}
@@ -149,6 +155,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <NavLink
                 item={{ name: 'Settings', href: '/settings', icon: Settings }}
                 isActive={pathname === '/settings' || pathname.startsWith('/settings/')}
+                collapsed={collapsed}
               />
             </li>
             {/* Context-aware Help link */}
@@ -156,6 +163,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <NavLink
                 item={{ name: 'Help', href: helpHref, icon: HelpCircle }}
                 isActive={pathname.startsWith('/learn/faq')}
+                collapsed={collapsed}
               />
             </li>
           </ul>

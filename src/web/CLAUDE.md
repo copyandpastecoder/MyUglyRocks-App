@@ -109,3 +109,118 @@ Add `key={value}` to force React to remount the Select when the value changes:
 **Future improvement:** Create a `FormSelect` wrapper component that includes `key={value}` automatically. See existing Selects with this fix in:
 - `tumblers/[id]/page.tsx`
 - `tumblers/new/page.tsx`
+
+## ESLint and React Compiler Rules
+
+### Unescaped Entities in JSX
+
+**ALWAYS** escape quotes and apostrophes in JSX text content:
+
+```tsx
+// BAD - ESLint error
+<p>"Hello, I'm here"</p>
+
+// GOOD - Use HTML entities
+<p>&quot;Hello, I&apos;m here&quot;</p>
+```
+
+This applies to:
+- Apostrophes in contractions: `don't` → `don&apos;t`
+- Possessives: `tumblers'` → `tumblers&apos;`
+- Quotation marks: `"text"` → `&quot;text&quot;`
+
+**Note:** This only applies to JSX text content, not to string literals in props or JavaScript code.
+
+### setState in useEffect (React Compiler)
+
+The React Compiler flags `setState` calls inside `useEffect` as errors. For legitimate use cases, add an eslint-disable comment:
+
+```tsx
+// One-time initialization from async data
+useEffect(() => {
+  if (!hasInitialized.current && data) {
+    hasInitialized.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization
+    setState(data.value);
+  }
+}, [data]);
+
+// Resetting state when props change
+useEffect(() => {
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting on prop change
+  setIsLoaded(false);
+}, [src]);
+```
+
+**Legitimate use cases:**
+- One-time initialization from async data (use a ref to track)
+- Resetting state when a key prop changes (e.g., modal opening)
+- Syncing state from external values
+- Initializing from localStorage/settings
+
+### Don't Define Components Inside Render
+
+**NEVER** define components inside other components - the React Compiler flags this:
+
+```tsx
+// BAD - creates new component on every render
+function Parent() {
+  const ChildComponent = ({ value }) => <div>{value}</div>;
+  return <ChildComponent value="test" />;
+}
+
+// GOOD - define outside or at module level
+function ChildComponent({ value }) {
+  return <div>{value}</div>;
+}
+
+function Parent() {
+  return <ChildComponent value="test" />;
+}
+```
+
+### Variable Declaration Order
+
+With `const` arrow functions, define functions **before** they are called:
+
+```tsx
+// BAD - ESLint error: Cannot access before declaration
+useEffect(() => {
+  doSomething();
+}, []);
+
+const doSomething = async () => { /* ... */ };
+
+// GOOD - define first, then use
+const doSomething = async () => { /* ... */ };
+
+useEffect(() => {
+  doSomething();
+}, []);
+```
+
+### CommonJS Scripts
+
+Node.js utility scripts that use `require()` should use the `.cjs` extension:
+
+```bash
+# BAD - ESLint error for require() in .js files
+scripts/lint-colors.js
+
+# GOOD - .cjs indicates CommonJS module
+scripts/lint-colors.cjs
+```
+
+The `.cjs` extension is excluded from ESLint in `eslint.config.mjs`.
+
+### zodResolver Type Assertion
+
+The `zodResolver` function has known type inference limitations with `react-hook-form`. Use an eslint-disable comment:
+
+```tsx
+const form = useForm<FormValues>({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
+  resolver: zodResolver(formSchema) as any,
+  defaultValues: { /* ... */ },
+});
+```

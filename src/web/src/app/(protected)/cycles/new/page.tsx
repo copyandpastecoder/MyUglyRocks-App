@@ -209,7 +209,7 @@ export default function NewCyclePage() {
                   isLoading={specimensLoading}
                 />
                 <FormDescription className="text-helpful-tip">
-                  Select the types of rocks you're tumbling. Search by name, alias, variety, or family.
+                  Select the types of rocks you&apos;re tumbling. Search by name, alias, variety, or family.
                 </FormDescription>
                 {specimenError && (
                   <p className="text-sm font-medium text-destructive">{specimenError}</p>

@@ -2189,7 +2189,7 @@ export default function CycleDetailPage() {
           <DialogHeader>
             <DialogTitle>Complete Cycle</DialogTitle>
             <DialogDescription>
-              Mark this tumbling cycle as complete. You'll be able to share it to the gallery afterwards.
+              Mark this tumbling cycle as complete. You&apos;ll be able to share it to the gallery afterwards.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
