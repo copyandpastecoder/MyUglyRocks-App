@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using MyUglyRocks.Abstractions.DTOs;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
 using MyUglyRocks.Infrastructure.Jobs;
@@ -107,7 +108,7 @@ public class PhotosController : ControllerBase
         try
         {
             _logger.LogDebug("Starting photo upload for stage {StageRunId}, extension: {Extension}, size: {Size}",
-                stageRunId, extension, file.Length);
+                stageRunId, PiiMaskingHelper.SanitizeForLog(extension), file.Length);
 
             var photoId = Guid.NewGuid();
             var folder = $"photos/stages/{stageRunId}";
@@ -218,7 +219,7 @@ public class PhotosController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to delete photo variants from storage: {StorageKey}", photo.StorageKey);
+            _logger.LogWarning(ex, "Failed to delete photo variants from storage: {StorageKey}", PiiMaskingHelper.SanitizeForLog(photo.StorageKey));
         }
 
         // Soft delete the record

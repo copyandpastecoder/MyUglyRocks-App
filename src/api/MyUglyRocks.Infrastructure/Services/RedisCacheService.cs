@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
+using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
 using StackExchange.Redis;
 
@@ -44,7 +45,7 @@ public class RedisCacheService : ICacheService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to get cache key {Key}", key);
+            _logger.LogWarning(ex, "Failed to get cache key {Key}", PiiMaskingHelper.SanitizeForLog(key));
             return null;
         }
     }
@@ -84,7 +85,7 @@ public class RedisCacheService : ICacheService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to get and remove cache key {Key}", key);
+            _logger.LogWarning(ex, "Failed to get and remove cache key {Key}", PiiMaskingHelper.SanitizeForLog(key));
             return null;
         }
     }
@@ -103,7 +104,7 @@ public class RedisCacheService : ICacheService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to set cache key {Key}", key);
+            _logger.LogWarning(ex, "Failed to set cache key {Key}", PiiMaskingHelper.SanitizeForLog(key));
         }
     }
 
@@ -115,7 +116,7 @@ public class RedisCacheService : ICacheService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to remove cache key {Key}", key);
+            _logger.LogWarning(ex, "Failed to remove cache key {Key}", PiiMaskingHelper.SanitizeForLog(key));
         }
     }
 
@@ -136,12 +137,12 @@ public class RedisCacheService : ICacheService
             {
                 var db = _redis.GetDatabase();
                 await db.KeyDeleteAsync(keys);
-                _logger.LogDebug("Removed {Count} cache keys with prefix {Prefix}", keys.Length, prefix);
+                _logger.LogDebug("Removed {Count} cache keys with prefix {Prefix}", keys.Length, PiiMaskingHelper.SanitizeForLog(prefix));
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to remove cache keys with prefix {Prefix}", prefix);
+            _logger.LogWarning(ex, "Failed to remove cache keys with prefix {Prefix}", PiiMaskingHelper.SanitizeForLog(prefix));
         }
     }
 }
