@@ -77,6 +77,41 @@ export const queryKeys = {
       [...queryKeys.posts.all, 'comments', postId] as const,
   },
 
+  // Inventory
+  inventory: {
+    all: ['inventory'] as const,
+    lists: () => [...queryKeys.inventory.all, 'list'] as const,
+    list: (filters?: {
+      status?: string;
+      sourceType?: string;
+      specimenId?: string;
+      favorites?: boolean;
+      search?: string;
+      sortBy?: string;
+      sortOrder?: string;
+    }) => [...queryKeys.inventory.lists(), filters] as const,
+    details: () => [...queryKeys.inventory.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.inventory.details(), id] as const,
+    stats: () => [...queryKeys.inventory.all, 'stats'] as const,
+  },
+
+  // User Specimens (custom specimens)
+  userSpecimens: {
+    all: ['userSpecimens'] as const,
+    lists: () => [...queryKeys.userSpecimens.all, 'list'] as const,
+    list: (filters?: {
+      search?: string;
+      materialType?: string;
+      sortBy?: string;
+      sortOrder?: string;
+    }) => [...queryKeys.userSpecimens.lists(), filters] as const,
+    details: () => [...queryKeys.userSpecimens.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.userSpecimens.details(), id] as const,
+    // Combined search for specimen picker (system + user + public)
+    search: (search?: string, includePublic?: boolean) =>
+      [...queryKeys.userSpecimens.all, 'search', { search, includePublic }] as const,
+  },
+
   // Admin
   admin: {
     all: ['admin'] as const,

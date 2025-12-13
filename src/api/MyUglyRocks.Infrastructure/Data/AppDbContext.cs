@@ -34,6 +34,14 @@ public class AppDbContext : DbContext
     public DbSet<StageMaterial> StageMaterials => Set<StageMaterial>();
     public DbSet<CleaningMaterial> CleaningMaterials => Set<CleaningMaterial>();
 
+    // Inventory entities
+    public DbSet<Inventory> Inventory => Set<Inventory>();
+    public DbSet<InventorySpecimen> InventorySpecimens => Set<InventorySpecimen>();
+    public DbSet<InventoryPhoto> InventoryPhotos => Set<InventoryPhoto>();
+
+    // User specimens
+    public DbSet<UserSpecimen> UserSpecimens => Set<UserSpecimen>();
+
     // Social entities
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostPhoto> PostPhotos => Set<PostPhoto>();
@@ -53,10 +61,6 @@ public class AppDbContext : DbContext
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
-        // Configure composite keys
-        modelBuilder.Entity<CycleSpecimen>()
-            .HasKey(cs => new { cs.CycleId, cs.SpecimenId });
-
         // Configure self-referencing FK for RefreshToken
         modelBuilder.Entity<RefreshToken>()
             .HasOne(rt => rt.ReplacedByToken)
@@ -70,6 +74,8 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Photo>().HasQueryFilter(p => !p.IsDeleted);
         modelBuilder.Entity<Post>().HasQueryFilter(p => !p.IsDeleted);
         modelBuilder.Entity<Comment>().HasQueryFilter(c => !c.IsDeleted);
+        modelBuilder.Entity<Inventory>().HasQueryFilter(i => !i.IsDeleted);
+        modelBuilder.Entity<UserSpecimen>().HasQueryFilter(us => !us.IsDeleted);
 
         // Configure UserSession entity
         modelBuilder.Entity<UserSession>(entity =>

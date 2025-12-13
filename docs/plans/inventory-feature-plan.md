@@ -1,5 +1,43 @@
 # Inventory Feature Plan
 
+## Implementation Status
+
+> **Status: Code Complete - Migration Required**
+>
+> Last Updated: 2024-12-13
+
+### Completed
+- [x] Backend entities: `Inventory`, `InventorySpecimen`, `InventoryPhoto`
+- [x] Enums: `SourceType`, `InventoryCondition`, `InventoryStatus`, `SizeCategory`
+- [x] EF Core configurations with indexes and constraints
+- [x] DTOs: `InventoryDto`, `InventoryListDto`, `CreateInventoryRequest`, etc.
+- [x] `IInventoryService` interface and `InventoryService` implementation
+- [x] `InventoryController` with all endpoints
+- [x] Service registration in `Program.cs`
+- [x] Frontend TypeScript types (`src/web/src/types/inventory.ts`)
+- [x] API client functions (`inventoryApi` in `api.ts`)
+- [x] Query keys and React Query hooks (`use-inventory.ts`)
+- [x] Inventory list page (`/inventory`) with filters and stats
+- [x] Add inventory page (`/inventory/new`)
+- [x] Inventory detail/edit page (`/inventory/[id]`)
+- [x] Navigation link in sidebar (Package icon)
+
+### TODO - Required Before Running
+1. **Create EF Core Migration**:
+   ```bash
+   cd src/api/MyUglyRocks.Infrastructure
+   dotnet ef migrations add AddInventoryAndUserSpecimen --startup-project ../MyUglyRocks.Api
+   dotnet ef database update --startup-project ../MyUglyRocks.Api
+   ```
+
+### TODO - Future Enhancements (Not Critical)
+- [ ] Photo upload integration (currently placeholder)
+- [ ] Mobile responsive polish
+- [ ] Seed data for demo user
+- [ ] Link inventory to cycles (CycleInventory junction - v2)
+
+---
+
 ## Overview
 
 Add an Inventory system to allow users to track their rock/specimen collection, including where they acquired items, when, cost, and current status.

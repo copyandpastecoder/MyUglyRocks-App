@@ -23,12 +23,14 @@ import {
   MessageCircleQuestion,
   Menu,
   ChevronLeft,
+  Package,
 } from 'lucide-react';
 import { getHelpTopicFromPath } from '@/data/help-content';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Tumbling Cycles', href: '/cycles', icon: RotateCcw },
+  { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Photo Gallery', href: '/gallery', icon: ImageIcon },
   { name: 'My Tumblers', href: '/tumblers', icon: Cylinder },
 ];

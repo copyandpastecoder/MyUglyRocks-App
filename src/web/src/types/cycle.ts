@@ -55,7 +55,10 @@ export interface CreateCycleRequest {
   difficultyRating?: number;
   additionalSpecimens?: string;
   notes?: string;
+  /** System specimen IDs (from reference data) */
   specimenIds?: string[];
+  /** User specimen IDs (custom user-created specimens) */
+  userSpecimenIds?: string[];
 }
 
 export interface UpdateCycleRequest {
@@ -237,6 +240,10 @@ export interface SpecimenDto {
   mohsHardnessMin: number | null;
   mohsHardnessMax: number | null;
   tumblingDifficulty: string | null;
+  /** Source: "system" for reference specimens, "user" for custom user specimens */
+  source?: 'system' | 'user';
+  /** Only set for user specimens - the user who created it */
+  userId?: string | null;
 }
 
 export interface CyclePhotoDto {

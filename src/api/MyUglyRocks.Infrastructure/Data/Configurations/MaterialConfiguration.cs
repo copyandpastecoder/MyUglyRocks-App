@@ -114,13 +114,21 @@ public class CycleSpecimenConfiguration : IEntityTypeConfiguration<CycleSpecimen
     {
         builder.ToTable("cycle_specimens");
 
-        // Composite key configured in AppDbContext
+        builder.HasKey(cs => cs.CycleSpecimenId);
+
+        builder.Property(cs => cs.CycleSpecimenId)
+            .HasColumnName("cycle_specimen_id")
+            .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cs => cs.CycleId)
-            .HasColumnName("cycle_id");
+            .HasColumnName("cycle_id")
+            .IsRequired();
 
         builder.Property(cs => cs.SpecimenId)
             .HasColumnName("specimen_id");
+
+        builder.Property(cs => cs.UserSpecimenId)
+            .HasColumnName("user_specimen_id");
 
         builder.Property(cs => cs.DateCreated)
             .HasColumnName("date_created")
@@ -141,9 +149,25 @@ public class CycleSpecimenConfiguration : IEntityTypeConfiguration<CycleSpecimen
             .HasForeignKey(cs => cs.SpecimenId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(cs => cs.UserSpecimen)
+            .WithMany(us => us.CycleSpecimens)
+            .HasForeignKey(cs => cs.UserSpecimenId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // XOR constraint: exactly one specimen type must be set
+        builder.ToTable(t => t.HasCheckConstraint(
+            "chk_cycle_specimen_xor",
+            "(specimen_id IS NOT NULL AND user_specimen_id IS NULL) OR (specimen_id IS NULL AND user_specimen_id IS NOT NULL)"));
+
         // Indexes
+        builder.HasIndex(cs => cs.CycleId)
+            .HasDatabaseName("ix_cycle_specimens_cycle_id");
+
         builder.HasIndex(cs => cs.SpecimenId)
             .HasDatabaseName("ix_cycle_specimens_specimen_id");
+
+        builder.HasIndex(cs => cs.UserSpecimenId)
+            .HasDatabaseName("ix_cycle_specimens_user_specimen_id");
     }
 }
 

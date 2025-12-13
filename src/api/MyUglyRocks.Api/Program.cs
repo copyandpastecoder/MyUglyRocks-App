@@ -170,6 +170,8 @@ try
     builder.Services.AddScoped<IExportService, ExportService>();
     builder.Services.AddScoped<IAdminService, AdminService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddScoped<IInventoryService, InventoryService>();
+    builder.Services.AddScoped<IUserSpecimenService, UserSpecimenService>();
     builder.Services.AddScoped<SeedDataService>();
 
     // Session analytics services

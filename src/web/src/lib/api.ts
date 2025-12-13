@@ -776,3 +776,110 @@ export const photosApi = {
     return response.data;
   },
 };
+
+// Inventory API functions
+import type {
+  InventoryDto,
+  InventoryListDto,
+  CreateInventoryRequest,
+  UpdateInventoryRequest,
+  UpdateInventoryStatusRequest,
+  UpdateInventorySpecimensRequest,
+  InventoryStatsDto,
+  InventoryFilters,
+} from '@/types/inventory';
+
+export const inventoryApi = {
+  getAll: async (filters?: InventoryFilters, skip = 0, take = 20): Promise<InventoryListDto[]> => {
+    const params = {
+      ...filters,
+      skip,
+      take,
+    };
+    const response = await api.get<InventoryListDto[]>('/inventory', { params });
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<InventoryDto> => {
+    const response = await api.get<InventoryDto>(`/inventory/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateInventoryRequest): Promise<InventoryDto> => {
+    const response = await api.post<InventoryDto>('/inventory', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: UpdateInventoryRequest): Promise<InventoryDto> => {
+    const response = await api.put<InventoryDto>(`/inventory/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/inventory/${id}`);
+  },
+
+  updateStatus: async (id: string, data: UpdateInventoryStatusRequest): Promise<InventoryDto> => {
+    const response = await api.patch<InventoryDto>(`/inventory/${id}/status`, data);
+    return response.data;
+  },
+
+  updateSpecimens: async (id: string, data: UpdateInventorySpecimensRequest): Promise<InventoryDto> => {
+    const response = await api.put<InventoryDto>(`/inventory/${id}/specimens`, data);
+    return response.data;
+  },
+
+  getStats: async (): Promise<InventoryStatsDto> => {
+    const response = await api.get<InventoryStatsDto>('/inventory/stats');
+    return response.data;
+  },
+};
+
+// User Specimen API functions
+import type {
+  UserSpecimenDto,
+  UserSpecimenListDto,
+  CreateUserSpecimenRequest,
+  UpdateUserSpecimenRequest,
+  SpecimenOptionDto,
+  UserSpecimenFilters,
+} from '@/types/user-specimen';
+
+export const userSpecimenApi = {
+  getAll: async (filters?: UserSpecimenFilters, skip = 0, take = 20): Promise<UserSpecimenListDto[]> => {
+    const params = {
+      ...filters,
+      skip,
+      take,
+    };
+    const response = await api.get<UserSpecimenListDto[]>('/user-specimens', { params });
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<UserSpecimenDto> => {
+    const response = await api.get<UserSpecimenDto>(`/user-specimens/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateUserSpecimenRequest): Promise<UserSpecimenDto> => {
+    const response = await api.post<UserSpecimenDto>('/user-specimens', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: UpdateUserSpecimenRequest): Promise<UserSpecimenDto> => {
+    const response = await api.put<UserSpecimenDto>(`/user-specimens/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/user-specimens/${id}`);
+  },
+
+  // Combined search for specimen pickers - includes system, user's own, and public specimens
+  searchAll: async (search?: string, includePublic = true, skip = 0, take = 50): Promise<SpecimenOptionDto[]> => {
+    const response = await api.get<SpecimenOptionDto[]>('/user-specimens/search', {
+      params: { search, includePublic, skip, take },
+    });
+    return response.data;
+  },
+};
