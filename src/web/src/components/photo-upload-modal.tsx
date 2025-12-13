@@ -35,6 +35,16 @@ interface PhotoUploadModalProps {
 
 type PhotoType = 'before' | 'during' | 'after';
 
+// Safe image MIME types - excludes SVG which can contain scripts
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+];
+
 export function PhotoUploadModal({
   open,
   onOpenChange,
@@ -71,8 +81,9 @@ export function PhotoUploadModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+    // Validate against allowlist of safe image types (excludes SVG to prevent XSS)
+    if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+      toast.error('Please select a valid image file (JPG, PNG, GIF, WebP)');
       return;
     }
 
@@ -210,7 +221,7 @@ export function PhotoUploadModal({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept=".jpg,.jpeg,.png,.gif,.webp,.heic,.heif"
             className="hidden"
             onChange={handleFileSelect}
           />
