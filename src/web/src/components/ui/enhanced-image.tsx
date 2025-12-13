@@ -32,7 +32,9 @@ export function EnhancedImage({
 
   useEffect(() => {
     // Reset state when src changes
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting state when prop changes
     setIsLoaded(false);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasError(false);
   }, [src]);
 

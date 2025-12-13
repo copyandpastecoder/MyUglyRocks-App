@@ -32,14 +32,6 @@ export function PhotoUpload({
   const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    checkStorageStatus();
-  }, []);
-
-  useEffect(() => {
-    setPhotos(initialPhotos);
-  }, [initialPhotos]);
-
   const checkStorageStatus = async () => {
     try {
       const status = await photosApi.getStorageStatus();
@@ -48,6 +40,15 @@ export function PhotoUpload({
       setStorageConfigured(false);
     }
   };
+
+  useEffect(() => {
+    checkStorageStatus();
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync state from prop change
+    setPhotos(initialPhotos);
+  }, [initialPhotos]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);

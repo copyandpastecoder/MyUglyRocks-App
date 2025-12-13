@@ -86,7 +86,7 @@ export default function PreferencesPage() {
                 <SelectItem value="bumblebee-jasper">Bumblebee Jasper (Dark)</SelectItem>
                 <SelectItem value="malachite">Malachite (Dark)</SelectItem>
                 <SelectItem value="rose-quartz">Rose Quartz (Dark)</SelectItem>
-                <SelectItem value="tigers-eye">Tiger's Eye (Dark)</SelectItem>
+                <SelectItem value="tigers-eye">Tiger&apos;s Eye (Dark)</SelectItem>
                 <SelectItem value="snowflake-obsidian">Snowflake Obsidian (Light)</SelectItem>
               </SelectContent>
             </Select>

@@ -95,28 +95,28 @@ export default function LandingPage() {
             <Card className="py-4">
               <CardContent className="px-6">
                 <p className="text-muted-foreground italic">
-                  "Wait, when did I start this stage? Was it 3 days ago or 5?"
+                  &quot;Wait, when did I start this stage? Was it 3 days ago or 5?&quot;
                 </p>
               </CardContent>
             </Card>
             <Card className="py-4">
               <CardContent className="px-6">
                 <p className="text-muted-foreground italic">
-                  "Which barrel has the agates and which has the jasper?"
+                  &quot;Which barrel has the agates and which has the jasper?&quot;
                 </p>
               </CardContent>
             </Card>
             <Card className="py-4">
               <CardContent className="px-6">
                 <p className="text-muted-foreground italic">
-                  "I can't remember which photo went with which tumbler or which batch."
+                  &quot;I can&apos;t remember which photo went with which tumbler or which batch.&quot;
                 </p>
               </CardContent>
             </Card>
             <Card className="py-4">
               <CardContent className="px-6">
                 <p className="text-muted-foreground italic">
-                  "Is this normal? I wish I could see what other tumblers' results look like."
+                  &quot;Is this normal? I wish I could see what other tumblers&apos; results look like.&quot;
                 </p>
               </CardContent>
             </Card>
@@ -173,7 +173,7 @@ export default function LandingPage() {
               </div>
               <h3 className="text-lg font-semibold mb-2">Learn Section</h3>
               <p className="text-muted-foreground">
-                Browse our database of rocks, minerals, and materials. Know what you're tumbling.
+                Browse our database of rocks, minerals, and materials. Know what you&apos;re tumbling.
               </p>
             </div>
             <div className="text-center">

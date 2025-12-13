@@ -40,7 +40,7 @@ const EXCLUDED_DIRS = [
 
 // Files to exclude
 const EXCLUDED_FILES = [
-  'lint-colors.js',
+  'lint-colors.cjs',
 ];
 
 // Patterns that are allowed (intentional design decisions)

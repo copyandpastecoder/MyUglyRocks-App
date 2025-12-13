@@ -17,6 +17,7 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
     if (saved !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage initialization on mount
       setCollapsed(saved === 'true');
     }
   }, []);

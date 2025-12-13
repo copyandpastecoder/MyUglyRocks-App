@@ -34,6 +34,10 @@ export async function GET(request: NextRequest) {
   if ((host && ALLOWED_PUBLIC_HOSTS.includes(host)) ||
       (originHost && ALLOWED_PUBLIC_HOSTS.includes(originHost))) {
     const matchedHost = host && ALLOWED_PUBLIC_HOSTS.includes(host) ? host : originHost;
+    // Defensive check (should never be null given the conditional above)
+    if (!matchedHost) {
+      return NextResponse.json({ apiUrl: '' });
+    }
     return NextResponse.json({
       apiUrl: `https://${matchedHost}`,
     });

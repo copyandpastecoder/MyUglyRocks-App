@@ -98,6 +98,7 @@ export default function NewTumblerPage() {
   const [barrelCapacity, setBarrelCapacity] = useState('');
 
   const form = useForm<FormValues>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
     resolver: zodResolver(formSchema) as any,
     defaultValues: {
       brand: '',
@@ -278,7 +279,7 @@ export default function NewTumblerPage() {
                       </SelectContent>
                     </Select>
                     <FormDescription className="text-helpful-tip">
-                      Don't see your tumbler? Choose "Generic" or "Other"
+                      Don&apos;t see your tumbler? Choose &quot;Generic&quot; or &quot;Other&quot;
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -137,6 +137,7 @@ export default function InventoryDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedSpecimenIds, setSelectedSpecimenIds] = useState<string[]>([]);
+  const hasInitializedSpecimens = useRef(false);
 
   const { data: inventory, isLoading } = useInventoryItem(id);
   const { data: specimens = [], isLoading: specimensLoading } = useSpecimens();
@@ -166,12 +167,14 @@ export default function InventoryDetailPage() {
     } : undefined,
   });
 
-  // Initialize selected specimens when inventory loads
+  // Initialize selected specimens when inventory loads (once only)
   useEffect(() => {
-    if (inventory?.specimens) {
+    if (!hasInitializedSpecimens.current && inventory?.specimens) {
+      hasInitializedSpecimens.current = true;
       const ids = inventory.specimens
         .filter(s => s.specimenId)
         .map(s => s.specimenId as string);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
       setSelectedSpecimenIds(ids);
     }
   }, [inventory]);
@@ -391,7 +394,7 @@ export default function InventoryDetailPage() {
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
               <AlertDialogDescription>
-                Are you sure you want to delete "{inventory.name}"? This action cannot be undone.
+                Are you sure you want to delete &quot;{inventory.name}&quot;? This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

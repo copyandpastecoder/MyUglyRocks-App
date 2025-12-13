@@ -103,6 +103,7 @@ export default function EditTumblerPage() {
   });
 
   const form = useForm<FormValues>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
     resolver: zodResolver(formSchema) as any,
     defaultValues: {
       brand: '',
@@ -123,6 +124,7 @@ export default function EditTumblerPage() {
   });
 
   const barrelForm = useForm<BarrelFormValues>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
     resolver: zodResolver(barrelFormSchema) as any,
     defaultValues: {
       nickname: '',

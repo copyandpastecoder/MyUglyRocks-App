@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -52,6 +52,7 @@ export default function ShareCyclePage() {
 
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
   const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
+  const hasInitializedPhotos = useRef(false);
 
   const { data: cycle, isLoading } = useQuery({
     queryKey: ['cycle', cycleId],
@@ -86,13 +87,16 @@ export default function ShareCyclePage() {
     }
   }, [cycle, form, router]);
 
-  // Auto-select all completed photos and set first as cover when photos load
+  // Auto-select all completed photos and set first as cover when photos load (once only)
   useEffect(() => {
-    if (completedPhotos.length > 0 && selectedPhotoIds.length === 0) {
+    if (!hasInitializedPhotos.current && completedPhotos.length > 0) {
+      hasInitializedPhotos.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
       setSelectedPhotoIds(completedPhotos.map(p => p.photoId));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoverPhotoId(completedPhotos[0].photoId);
     }
-  }, [completedPhotos, selectedPhotoIds.length]);
+  }, [completedPhotos]);
 
   const createPostMutation = useMutation({
     mutationFn: (data: FormValues) =>
@@ -318,7 +322,7 @@ export default function ShareCyclePage() {
               <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold">No Photos Available</h3>
               <p className="text-muted-foreground max-w-md">
-                This cycle doesn't have any photos yet. You can still share your cycle,
+                This cycle doesn&apos;t have any photos yet. You can still share your cycle,
                 but consider adding photos to your stage runs first for a more engaging post.
               </p>
             </div>

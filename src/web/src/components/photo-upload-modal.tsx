@@ -83,7 +83,7 @@ export function PhotoUploadModal({
 
     // Validate against allowlist of safe image types (excludes SVG to prevent XSS)
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
-      toast.error('Please select a valid image file (JPG, PNG, GIF, WebP)');
+      toast.error('Please select a valid image file (JPG, PNG, GIF, WebP, HEIC, HEIF)');
       return;
     }
 
