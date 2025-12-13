@@ -29,6 +29,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Gem, AlertCircle } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 
 const MATERIAL_TYPES = ['Rock', 'Mineral', 'Gemstone', 'Fossil', 'Glass', 'Other'];
 const DIFFICULTY_LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
@@ -58,6 +59,7 @@ export default function SpecimensPage() {
   const { data: selectedSpecimen } = useSpecimen(selectedId);
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Rock & Mineral Database</h1>
@@ -258,5 +260,6 @@ export default function SpecimensPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PageTransition>
   );
 }

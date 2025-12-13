@@ -43,6 +43,10 @@ export interface CycleListDto {
   activeStageStartDateTime: string | null;
   activeStageDurationEstimateEndDate: string | null;
   activeStageDaysOverdue: number | null;
+  // Active tumbler/barrel info
+  activeTumblerName: string | null;
+  activeBarrelNumber: number | null;
+  activeBarrelNickname: string | null;
 }
 
 export interface CreateCycleRequest {

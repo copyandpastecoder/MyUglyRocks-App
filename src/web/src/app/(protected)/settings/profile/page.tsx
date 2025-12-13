@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Camera, Loader2, User as UserIcon } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 
 export default function ProfileSettingsPage() {
   const queryClient = useQueryClient();
@@ -108,8 +109,9 @@ export default function ProfileSettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Profile Overview Card */}
+    <PageTransition>
+      <div className="space-y-6">
+        {/* Profile Overview Card */}
       <Card>
         <CardHeader>
           <CardTitle>Profile Overview</CardTitle>
@@ -275,6 +277,7 @@ export default function ProfileSettingsPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </PageTransition>
   );
 }

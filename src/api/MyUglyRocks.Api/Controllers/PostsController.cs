@@ -99,7 +99,7 @@ public class PostsController : ControllerBase
         {
             logger.LogInformation("Creating post for cycle {CycleId} with {PhotoCount} photos", request.CycleId, request.PhotoIds.Count);
             var post = await _postService.CreatePostAsync(userId.Value, request);
-            return CreatedAtAction(nameof(GetPost), new { id = post.PostId }, post);
+            return CreatedAtAction(nameof(GetPost), new { postId = post.PostId }, post);
         }
         catch (InvalidOperationException ex)
         {

@@ -58,6 +58,13 @@ export interface CyclePreviewDto {
   difficultyRating: number | null;
   finalQuality: number | null;
   stageCount: number;
+  // Extended fields for gallery display
+  elapsedDays: number;
+  totalRuntimeHours: number;
+  photoCount: number;
+  tumblerName: string | null;
+  barrelName: string | null;
+  specimenNames: string[];
 }
 
 export interface CreatePostRequest {

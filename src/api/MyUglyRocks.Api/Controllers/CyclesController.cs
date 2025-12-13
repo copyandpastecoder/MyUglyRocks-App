@@ -93,14 +93,22 @@ public class CyclesController : ControllerBase
     /// </summary>
     [HttpPost("{cycleId:guid}/complete")]
     [ProducesResponseType(typeof(CycleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> CompleteCycle(Guid cycleId, [FromBody] CompleteCycleRequest request, CancellationToken cancellationToken)
     {
-        var cycle = await _cycleService.CompleteCycleAsync(cycleId, GetUserId(), request, cancellationToken);
-        if (cycle == null)
-            return NotFound();
+        try
+        {
+            var cycle = await _cycleService.CompleteCycleAsync(cycleId, GetUserId(), request, cancellationToken);
+            if (cycle == null)
+                return NotFound();
 
-        return Ok(cycle);
+            return Ok(cycle);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>

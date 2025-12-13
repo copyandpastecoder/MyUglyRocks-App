@@ -67,6 +67,10 @@ spec:
         - name: secrets-volume
           mountPath: /etc/secrets
           readOnly: true
+        # Mount local photo folders for seeding (temporary - remove after seeding)
+        - name: demo-photos
+          mountPath: /demo-photos
+          readOnly: true
         resources:
           requests:
             memory: "256Mi"
@@ -119,6 +123,12 @@ spec:
             path: R2__PublicUrl
           - key: resend-api-key
             path: Email__ApiKey
+      # Mount local photo folder for seeding (temporary - remove after seeding)
+      # Docker Desktop maps D:\ to /run/desktop/mnt/host/d/
+      - name: demo-photos
+        hostPath:
+          path: /run/desktop/mnt/host/d/DemoRockPhotos
+          type: Directory
 ---
 apiVersion: v1
 kind: Service

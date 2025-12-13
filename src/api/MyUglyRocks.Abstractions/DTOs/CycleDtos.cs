@@ -46,7 +46,11 @@ public record CycleListDto(
     // Active stage progress info (null if no active stages)
     DateTime? ActiveStageStartDateTime = null,
     DateTime? ActiveStageDurationEstimateEndDate = null,
-    int? ActiveStageDaysOverdue = null
+    int? ActiveStageDaysOverdue = null,
+    // Active tumbler/barrel info (from most recent active stage, or most recent completed stage if no active)
+    string? ActiveTumblerName = null,
+    int? ActiveBarrelNumber = null,
+    string? ActiveBarrelNickname = null
 );
 
 public record CreateCycleRequest(
@@ -377,6 +381,7 @@ public record CyclePhotoDto(
     string? BlurHash,
     int? Width,
     int? Height,
+    string ProcessingStatus,
     // Stage context
     Guid StageRunId,
     string StageName,

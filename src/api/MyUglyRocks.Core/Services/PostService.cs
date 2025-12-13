@@ -79,7 +79,16 @@ public class PostService : IPostService
         var post = await _context.Set<Post>()
             .Include(p => p.User)
             .Include(p => p.Cycle)
-                .ThenInclude(c => c.StageRuns)
+                .ThenInclude(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+                    .ThenInclude(sr => sr.StageRunBarrels)
+                        .ThenInclude(srb => srb.Barrel)
+                            .ThenInclude(b => b.Tumbler)
+            .Include(p => p.Cycle)
+                .ThenInclude(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+                    .ThenInclude(sr => sr.Photos.Where(ph => !ph.IsDeleted))
+            .Include(p => p.Cycle)
+                .ThenInclude(c => c.CycleSpecimens)
+                    .ThenInclude(cs => cs.Specimen)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)
             .FirstOrDefaultAsync(p => p.PostId == postId && p.Status == PostStatus.Published);
@@ -434,6 +443,42 @@ public class PostService : IPostService
 
     private static PostDto MapToDto(Post post)
     {
+        var cycle = post.Cycle;
+        var stageRuns = cycle.StageRuns.ToList();
+
+        // Calculate elapsed days
+        var endDate = cycle.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+        var elapsedDays = endDate.DayNumber - cycle.StartDate.DayNumber;
+
+        // Calculate total runtime hours from stage runs
+        var totalRuntimeHours = stageRuns
+            .Where(sr => sr.Status == StageRunStatus.Completed)
+            .Sum(sr => sr.DurationDays * 24 + sr.DurationHours);
+
+        // Get tumbler/barrel from most recent stage
+        var mostRecentStage = stageRuns
+            .OrderByDescending(sr => sr.StartDateTime)
+            .FirstOrDefault();
+        var mostRecentBarrel = mostRecentStage?.StageRunBarrels.FirstOrDefault()?.Barrel;
+
+        // Get specimen names
+        var specimenNames = cycle.CycleSpecimens
+            .Select(cs => cs.Specimen?.CommonName ?? "")
+            .Where(n => !string.IsNullOrEmpty(n))
+            .ToList();
+
+        // Get tumbler name (Brand + Model)
+        string? tumblerName = null;
+        if (mostRecentBarrel?.Tumbler != null)
+        {
+            tumblerName = !string.IsNullOrEmpty(mostRecentBarrel.Tumbler.Model)
+                ? $"{mostRecentBarrel.Tumbler.Brand} {mostRecentBarrel.Tumbler.Model}"
+                : mostRecentBarrel.Tumbler.Brand;
+        }
+
+        // Count photos across all stages
+        var photoCount = stageRuns.Sum(sr => sr.Photos.Count());
+
         return new PostDto
         {
             PostId = post.PostId,
@@ -454,14 +499,20 @@ public class PostService : IPostService
             },
             Cycle = new CyclePreviewDto
             {
-                CycleId = post.Cycle.CycleId,
-                Name = post.Cycle.Name,
-                Status = post.Cycle.Status.ToString(),
-                StartDate = post.Cycle.StartDate,
-                EndDate = post.Cycle.EndDate,
-                DifficultyRating = post.Cycle.DifficultyRating,
-                FinalQuality = post.Cycle.FinalQuality,
-                StageCount = post.Cycle.StageRuns.Count
+                CycleId = cycle.CycleId,
+                Name = cycle.Name,
+                Status = cycle.Status.ToString(),
+                StartDate = cycle.StartDate,
+                EndDate = cycle.EndDate,
+                DifficultyRating = cycle.DifficultyRating,
+                FinalQuality = cycle.FinalQuality,
+                StageCount = stageRuns.Count,
+                ElapsedDays = elapsedDays,
+                TotalRuntimeHours = totalRuntimeHours,
+                PhotoCount = photoCount,
+                TumblerName = tumblerName,
+                BarrelName = mostRecentBarrel?.Nickname,
+                SpecimenNames = specimenNames
             },
             Photos = post.PostPhotos.OrderBy(pp => pp.SortOrder).Select(pp => new PostPhotoDto
             {

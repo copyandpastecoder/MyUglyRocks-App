@@ -17,6 +17,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 import type { UpdateSettingsRequest } from '@/types/user';
 
 export default function PreferencesPage() {
@@ -56,8 +57,9 @@ export default function PreferencesPage() {
   if (!settings) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Display Settings */}
+    <PageTransition>
+      <div className="space-y-6">
+        {/* Display Settings */}
       <Card>
         <CardHeader>
           <CardTitle>Display</CardTitle>
@@ -423,6 +425,7 @@ export default function PreferencesPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageTransition>
   );
 }

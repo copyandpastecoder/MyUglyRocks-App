@@ -21,6 +21,8 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { ChevronLeft, ChevronRight, Lightbulb, CheckCircle2, AlertCircle } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
+import { ScrollAnimate } from '@/components/ui/scroll-animate';
 
 interface TopicPageProps {
   params: Promise<{ topic: string }>;
@@ -45,6 +47,7 @@ export default function TopicHelpPage({ params }: TopicPageProps) {
     .filter(Boolean) || [];
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       {/* Breadcrumb */}
       <Breadcrumb>
@@ -73,7 +76,8 @@ export default function TopicHelpPage({ params }: TopicPageProps) {
       {/* Content Sections */}
       <div className="space-y-6">
         {helpTopic.sections.map((section, sectionIndex) => (
-          <Card key={sectionIndex}>
+          <ScrollAnimate key={sectionIndex} animation="slideUp" delay={sectionIndex * 0.1}>
+          <Card>
             <CardHeader>
               <CardTitle>{section.title}</CardTitle>
               {section.description && (
@@ -153,6 +157,7 @@ export default function TopicHelpPage({ params }: TopicPageProps) {
               )}
             </CardContent>
           </Card>
+          </ScrollAnimate>
         ))}
       </div>
 
@@ -201,5 +206,6 @@ export default function TopicHelpPage({ params }: TopicPageProps) {
         </p>
       </div>
     </div>
+    </PageTransition>
   );
 }

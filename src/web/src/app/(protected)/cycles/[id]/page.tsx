@@ -7,6 +7,7 @@ import { cycleApi, tumblerApi } from '@/lib/api';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -95,6 +96,7 @@ import { invalidateCycleQueries } from '@/lib/query-invalidation';
 import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
 import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
+import { PageTransition } from '@/components/ui/page-transition';
 
 const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish', 'Custom'];
 const WATER_UNITS = [
@@ -927,6 +929,8 @@ export default function CycleDetailPage() {
   const activeStages = cycle.stageRuns.filter(s => s.status === 'Active');
   const plannedStages = cycle.stageRuns.filter(s => s.status === 'Planned');
   const completedStages = cycle.stageRuns.filter(s => s.status === 'Completed');
+  const incompleteStages = [...activeStages, ...plannedStages];
+  const hasIncompleteStages = incompleteStages.length > 0;
 
   // Format runtime in a human-readable way
   const formatRuntime = (hours: number) => {
@@ -939,71 +943,83 @@ export default function CycleDetailPage() {
   };
 
   return (
-    <div className={PAGE_CONTAINER}>
-      {/* Back button */}
-      <div className="flex items-center gap-2 mb-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/cycles">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <span className="text-muted-foreground">Back to Cycles</span>
-      </div>
+    <PageTransition>
+      <div className={PAGE_CONTAINER}>
+        {/* Back button */}
+        <div className="flex items-center gap-2 mb-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/cycles">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <span className="text-muted-foreground">Back to Cycles</span>
+        </div>
 
       {/* Collapsible Cycle Overview Card */}
       <Collapsible open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
         <Card>
           <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <CardTitle className="text-xl">{cycle.name}</CardTitle>
-                  <CardDescription>
-                    {cycle.status === 'Active' ? (
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
+              <div className="flex items-center justify-between gap-3">
+                {/* Left: Title and metadata */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant={cycle.status === 'Active' ? 'default' : 'secondary'} className="text-xs shrink-0">
+                      {cycle.status}
+                    </Badge>
+                    <CardTitle className="text-base sm:text-lg leading-tight truncate">{cycle.name}</CardTitle>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <span>Day {cycle.elapsedDays}</span>
+                    <span>•</span>
+                    <span>{cycle.completedStagesCount} stage{cycle.completedStagesCount !== 1 ? 's' : ''}</span>
+                    {cycle.status === 'Active' && cycle.activeStageName && (
                       <>
-                        Day {cycle.elapsedDays} • {cycle.completedStagesCount} stage{cycle.completedStagesCount !== 1 ? 's' : ''} completed
-                        {cycle.activeStageName && ` • Running: ${cycle.activeStageName}`}
-                      </>
-                    ) : (
-                      <>
-                        {cycle.elapsedDays} days • {formatRuntime(cycle.totalRuntimeHours)} runtime • {cycle.completedStagesCount} stages
-                        {cycle.finalQuality && ` • Quality: ${cycle.finalQuality}/5`}
+                        <span>•</span>
+                        <span className="text-primary font-medium">{cycle.activeStageName}</span>
                       </>
                     )}
-                  </CardDescription>
+                    {cycle.status === 'Completed' && cycle.finalQuality && (
+                      <>
+                        <span>•</span>
+                        <span>{cycle.finalQuality}/5 ★</span>
+                      </>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-4" onClick={(e) => e.stopPropagation()}>
+
+                {/* Right: Actions and chevron */}
+                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {cycle.status === 'Active' && (
                     <>
-                      <Button variant="outline" size="sm" onClick={openEditCycleModal}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditCycleModal}>
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="default" size="sm" onClick={() => setIsCompleteCycleOpen(true)}>
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Complete
+                      <Button variant="default" size="sm" className="h-8" onClick={() => setIsCompleteCycleOpen(true)}>
+                        <CheckCircle2 className="h-4 w-4 sm:mr-1" />
+                        <span className="hidden sm:inline">Complete</span>
                       </Button>
                     </>
                   )}
                   {cycle.status === 'Completed' && (
-                    <Button variant="outline" size="sm" asChild>
+                    <Button variant="outline" size="sm" className="h-8" asChild>
                       {cycle.postId ? (
                         <Link href={`/gallery/${cycle.postId}`}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Post
+                          <Eye className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">View</span>
                         </Link>
                       ) : (
                         <Link href={`/cycles/${cycleId}/share`}>
-                          <Share2 className="mr-2 h-4 w-4" />
-                          Share
+                          <Share2 className="h-4 w-4 sm:mr-1" />
+                          <span className="hidden sm:inline">Share</span>
                         </Link>
                       )}
                     </Button>
                   )}
                   {isOverviewOpen ? (
-                    <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
                   ) : (
-                    <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   )}
                 </div>
               </div>
@@ -2177,6 +2193,21 @@ export default function CycleDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            {hasIncompleteStages && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Cannot complete cycle with incomplete stages. Please complete or delete these stages first:
+                  <ul className="mt-2 list-disc list-inside">
+                    {incompleteStages.map(stage => (
+                      <li key={stage.stageRunId}>
+                        {stage.stageName} (Run {stage.runNumber}) - <span className="font-medium">{stage.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="space-y-2">
               <Label>Final Quality Rating (optional)</Label>
               <p className="text-sm text-muted-foreground">
@@ -2190,6 +2221,7 @@ export default function CycleDetailPage() {
                     variant={completeCycleFinalQuality === rating ? 'default' : 'outline'}
                     size="sm"
                     onClick={() => setCompleteCycleFinalQuality(completeCycleFinalQuality === rating ? 0 : rating)}
+                    disabled={hasIncompleteStages}
                   >
                     <Star className={`h-4 w-4 ${completeCycleFinalQuality >= rating ? 'fill-current' : ''}`} />
                   </Button>
@@ -2203,6 +2235,7 @@ export default function CycleDetailPage() {
                 onChange={(e) => setCompleteCycleNotes(e.target.value)}
                 placeholder="Any final thoughts about this cycle? What worked well, what would you do differently..."
                 rows={3}
+                disabled={hasIncompleteStages}
               />
             </div>
           </div>
@@ -2213,7 +2246,7 @@ export default function CycleDetailPage() {
             <Button onClick={() => completeCycleMutation.mutate({
               finalQuality: completeCycleFinalQuality > 0 ? completeCycleFinalQuality : undefined,
               notes: completeCycleNotes || undefined,
-            })} disabled={completeCycleMutation.isPending}>
+            })} disabled={completeCycleMutation.isPending || hasIncompleteStages}>
               {completeCycleMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
@@ -2445,7 +2478,8 @@ export default function CycleDetailPage() {
 
       {/* Photos */}
       <CyclePhotos cycleId={cycleId} stages={cycle?.stageRuns || []} />
-    </div>
+      </div>
+    </PageTransition>
   );
 }
 

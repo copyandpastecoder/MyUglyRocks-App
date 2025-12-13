@@ -27,7 +27,12 @@ export function formatStageDisplayName(stageName: string, runNumber: number, tot
 
 /**
  * Get progress text for an active stage based on timing.
- * Returns: "Day X of Y", "Due Tomorrow", "Due Today", or "X days overdue"
+ * Returns: "Day X of Y", "Due Today", or "X days overdue"
+ *
+ * Timeline logic:
+ * - "Day X of Y": Currently in progress (currentDay < totalDays)
+ * - "Due Today": On the last day (currentDay === totalDays) OR slightly past end but same calendar day
+ * - "X days overdue": Past the end date by 1+ full days
  */
 export function getStageProgressText(
   startDateTime: Date,
@@ -51,10 +56,10 @@ export function getStageProgressText(
     return `${actualDaysOverdue} day${actualDaysOverdue === 1 ? '' : 's'} overdue`;
   }
 
-  // Check if due tomorrow (last day of duration)
+  // Check if this is the last day of the duration (due today)
   const clampedDay = Math.max(1, Math.min(currentDay, totalDays));
   if (clampedDay === totalDays) {
-    return 'Due Tomorrow';
+    return 'Due Today';
   }
 
   // Still in progress
