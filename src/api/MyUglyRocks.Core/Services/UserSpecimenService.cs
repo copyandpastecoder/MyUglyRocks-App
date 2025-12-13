@@ -207,6 +207,7 @@ public class UserSpecimenService : IUserSpecimenService
             us.ScientificName,
             us.MaterialType.ToString(),
             us.TumblingDifficulty?.ToString(),
+            us.MohsHardnessMax,
             "user",
             true,
             us.BasedOnSpecimenId
@@ -219,6 +220,7 @@ public class UserSpecimenService : IUserSpecimenService
             s.ScientificName,
             s.MaterialType.ToString(),
             s.TumblingDifficulty?.ToString(),
+            s.MohsHardnessMax,
             "system",
             false,
             null
@@ -231,6 +233,7 @@ public class UserSpecimenService : IUserSpecimenService
             us.ScientificName,
             us.MaterialType.ToString(),
             us.TumblingDifficulty?.ToString(),
+            us.MohsHardnessMax,
             "user",
             false,
             us.BasedOnSpecimenId

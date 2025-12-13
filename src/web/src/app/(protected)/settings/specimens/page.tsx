@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -46,7 +45,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
 import { Plus, Pencil, Trash2, Loader2, Search, Globe, Lock, Gem } from 'lucide-react';
 import { PageTransition } from '@/components/ui/page-transition';
 import {
@@ -143,7 +141,7 @@ export default function MySpecimensPage() {
   };
 
   // Update form when editing specimen loads
-  useState(() => {
+  useEffect(() => {
     if (editingSpecimen && editingId) {
       form.reset({
         commonName: editingSpecimen.commonName,
@@ -162,7 +160,7 @@ export default function MySpecimensPage() {
         isPublic: editingSpecimen.isPublic,
       });
     }
-  });
+  }, [editingSpecimen, editingId, form]);
 
   const handleSubmit = async (data: SpecimenFormData) => {
     try {

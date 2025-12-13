@@ -43,9 +43,6 @@ export default function SettingsLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Get current page title for mobile header
-  const currentPage = settingsNavItems.find((item) => item.href === pathname);
-
   return (
     <div className={PAGE_CONTAINER}>
       <div className="flex items-center justify-between">

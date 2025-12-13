@@ -124,6 +124,7 @@ public record SpecimenOptionDto(
     string? ScientificName,
     string MaterialType,
     string? TumblingDifficulty,
+    decimal? MohsHardnessMax,  // For hardness warning calculation
     string Source,  // "system" or "user"
     bool IsOwned,   // true if user created it
     Guid? BasedOnSpecimenId  // if derived from system specimen

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronsUpDown, X, Search, AlertTriangle, Plus, User, Database } from 'lucide-react';
+import { ChevronsUpDown, X, Search, AlertTriangle, Plus, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -92,10 +92,7 @@ export function SpecimenMultiSelect({
     if (selectedSpecimens.length < 2) return null;
 
     const hardnessValues = selectedSpecimens
-      .map((s) => {
-        // Parse hardness from tumblingDifficulty string or use default
-        return parseFloat(s.tumblingDifficulty || '0') || null;
-      })
+      .map((s) => s.mohsHardnessMax)
       .filter((h): h is number => h !== null);
 
     if (hardnessValues.length < 2) return null;

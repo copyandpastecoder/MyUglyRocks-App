@@ -72,6 +72,7 @@ export interface SpecimenOptionDto {
   scientificName: string | null;
   materialType: string;
   tumblingDifficulty: string | null;
+  mohsHardnessMax: number | null;  // For hardness warning calculation
   source: 'system' | 'user';
   isOwned: boolean;
   basedOnSpecimenId: string | null;

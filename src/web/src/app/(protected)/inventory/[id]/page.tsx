@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -167,14 +167,14 @@ export default function InventoryDetailPage() {
   });
 
   // Initialize selected specimens when inventory loads
-  useState(() => {
+  useEffect(() => {
     if (inventory?.specimens) {
       const ids = inventory.specimens
         .filter(s => s.specimenId)
         .map(s => s.specimenId as string);
       setSelectedSpecimenIds(ids);
     }
-  });
+  }, [inventory]);
 
   const onSubmit = (data: FormValues) => {
     const totalWeightGrams = data.totalWeight ? toGrams(data.totalWeight, data.displayUnit) : undefined;
