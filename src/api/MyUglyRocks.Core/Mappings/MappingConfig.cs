@@ -47,7 +47,7 @@ public static class MappingConfig
         // Cycle mappings
         TypeAdapterConfig<Cycle, CycleDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString())
-            .Map(dest => dest.Specimens, src => src.CycleSpecimens.Select(cs => cs.Specimen));
+            .Map(dest => dest.Specimens, src => src.CycleSpecimens.Where(cs => cs.Specimen != null).Select(cs => cs.Specimen!));
 
         TypeAdapterConfig<Cycle, CycleListDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString())
