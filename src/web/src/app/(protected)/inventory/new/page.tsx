@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { SpecimenMultiSelect } from '@/components/specimen-multi-select';
+import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import type { SourceType, InventoryCondition, SizeCategory } from '@/types/inventory';
@@ -95,13 +95,14 @@ function toGrams(value: number, unit: string): number {
 
 export default function NewInventoryPage() {
   const router = useRouter();
-  const [selectedSpecimenIds, setSelectedSpecimenIds] = useState<string[]>([]);
+  const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
 
   const { data: specimens = [], isLoading: specimensLoading } = useSpecimens();
   const createMutation = useCreateInventory();
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       name: '',
       acquiredDate: new Date().toISOString().split('T')[0],
@@ -141,7 +142,7 @@ export default function NewInventoryPage() {
       storageLocation: data.storageLocation || undefined,
       notes: data.notes || undefined,
       isFavorite: data.isFavorite,
-      specimens: selectedSpecimenIds.map(id => ({ specimenId: id })),
+      specimens: selectedSpecimenItems.map(item => ({ specimenId: item.id })),
     }, {
       onSuccess: (inventory) => {
         router.push(`/inventory/${inventory.inventoryId}`);
@@ -275,11 +276,9 @@ export default function NewInventoryPage() {
               <FormItem>
                 <FormLabel>Specimens</FormLabel>
                 <SpecimenMultiSelect
-                  specimens={specimens}
-                  selectedIds={selectedSpecimenIds}
-                  onSelectionChange={setSelectedSpecimenIds}
+                  selectedItems={selectedSpecimenItems}
+                  onSelectionChange={setSelectedSpecimenItems}
                   placeholder="Select rock/mineral types..."
-                  isLoading={specimensLoading}
                 />
                 <FormDescription>
                   What types of rocks are in this batch?
