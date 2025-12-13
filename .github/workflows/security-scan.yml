@@ -97,6 +97,10 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      - name: Restore .NET dependencies (for C# analysis)
+        if: matrix.language == 'csharp'
+        run: dotnet restore src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj
+
       - name: Build .NET project (for C# analysis)
         if: matrix.language == 'csharp'
         run: dotnet build src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj --no-restore
