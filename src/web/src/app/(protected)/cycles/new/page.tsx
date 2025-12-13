@@ -23,7 +23,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { SpecimenMultiSelect } from '@/components/specimen-multi-select';
+import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
 import { toast } from 'sonner';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -40,7 +40,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function NewCyclePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [selectedSpecimenIds, setSelectedSpecimenIds] = useState<string[]>([]);
+  const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
   const [specimenError, setSpecimenError] = useState<string | null>(null);
 
   const { data: tumblers } = useQuery({
@@ -65,6 +65,11 @@ export default function NewCyclePage() {
       notes: '',
     },
   });
+
+  // Extract IDs from selections for API calls
+  const selectedSpecimenIds = useMemo(() => {
+    return selectedSpecimenItems.map(s => s.id);
+  }, [selectedSpecimenItems]);
 
   // Get selected specimens for cycle name generation
   const selectedSpecimens = useMemo(() => {
@@ -199,14 +204,12 @@ export default function NewCyclePage() {
               <FormItem>
                 <FormLabel>Rocks/Specimens *</FormLabel>
                 <SpecimenMultiSelect
-                  specimens={specimens}
-                  selectedIds={selectedSpecimenIds}
-                  onSelectionChange={(ids) => {
-                    setSelectedSpecimenIds(ids);
-                    if (ids.length > 0) setSpecimenError(null);
+                  selectedItems={selectedSpecimenItems}
+                  onSelectionChange={(items) => {
+                    setSelectedSpecimenItems(items);
+                    if (items.length > 0) setSpecimenError(null);
                   }}
                   placeholder="Select specimens from the list..."
-                  isLoading={specimensLoading}
                 />
                 <FormDescription className="text-helpful-tip">
                   Select the types of rocks you&apos;re tumbling. Search by name, alias, variety, or family.

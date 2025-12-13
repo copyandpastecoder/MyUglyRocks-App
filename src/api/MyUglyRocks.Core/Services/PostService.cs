@@ -508,7 +508,7 @@ public class PostService : IPostService
                 FinalQuality = cycle.FinalQuality,
                 StageCount = stageRuns.Count,
                 ElapsedDays = elapsedDays,
-                TotalRuntimeHours = totalRuntimeHours,
+                TotalRuntimeHours = (int)totalRuntimeHours,
                 PhotoCount = photoCount,
                 TumblerName = tumblerName,
                 BarrelName = mostRecentBarrel?.Nickname,

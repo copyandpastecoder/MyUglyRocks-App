@@ -96,7 +96,8 @@ export default function MySpecimensPage() {
   const { data: editingSpecimen } = useUserSpecimen(editingId);
 
   const form = useForm<SpecimenFormData>({
-    resolver: zodResolver(specimenSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
+    resolver: zodResolver(specimenSchema) as any,
     defaultValues: {
       commonName: '',
       scientificName: null,
