@@ -453,7 +453,7 @@ public class PostService : IPostService
         // Calculate total runtime hours from stage runs
         var totalRuntimeHours = stageRuns
             .Where(sr => sr.Status == StageRunStatus.Completed)
-            .Sum(sr => (long)sr.DurationDays * 24 + sr.DurationHours);
+            .Sum(sr => ((long)sr.DurationDays * 24) + sr.DurationHours);
 
         // Get tumbler/barrel from most recent stage
         var mostRecentStage = stageRuns
