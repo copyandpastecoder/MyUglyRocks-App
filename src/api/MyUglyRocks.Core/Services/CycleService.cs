@@ -300,7 +300,7 @@ public class CycleService : ICycleService
             stageRunSummaries,
             specimens,
             elapsedDays,
-            (int)totalRuntimeHours,
+            checked((int)totalRuntimeHours),
             completedStagesCount,
             activeStageName,
             lastUpdated,
