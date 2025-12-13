@@ -6,6 +6,18 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+#### Stage Runs Ordering
+- **Problem**: Stage runs on cycle detail pages were ordered by `DateCreated` (database record creation time) instead of `StartDateTime` (when the stage actually started). This caused stages to appear out of order if they were created in the database in a different order than they were started.
+- **Fix**: Changed all stage run ordering in [CycleService.cs](../src/api/MyUglyRocks.Core/Services/CycleService.cs) from `.OrderBy(s => s.DateCreated)` to `.OrderBy(s => s.StartDateTime)`:
+  - Stage run summaries (line 113)
+  - Run number calculation (lines 88, 94)
+  - Weight loss calculation - first/last stage lookups (lines 155, 158)
+  - Most recent stage lookup (line 177)
+
+#### Share Page Photos Not Showing
+- **Problem**: The share page at `/cycles/{id}/share` showed "No Photos Available" even when photos existed. The frontend filters photos by `processingStatus === 'Completed'`, but this field was missing from the API response.
+- **Fix**: Added `ProcessingStatus` field to `CyclePhotoDto` in [CycleDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs:366-385) and updated the mapping in [CycleService.cs](../src/api/MyUglyRocks.Core/Services/CycleService.cs) to include `p.ProcessingStatus.ToString()`.
+
 #### Stage Status Bug (EF Core Default Value Issue)
 - **Problem**: Stage runs in the database all had `status=1` (Active) even when they should be Planned or Completed. The UI showed all stages as "Active" regardless of their actual dates.
 - **Root Cause**: EF Core's `.HasDefaultValue(StageRunStatus.Active)` in entity configuration caused issues. When seeding data with `Status = StageRunStatus.Planned` (enum value 0, which is the CLR default), EF Core interpreted it as "use database default" and skipped including the value in the INSERT statement.
@@ -33,7 +45,80 @@ All notable changes to this project will be documented in this file.
   - Type changed from `PhotoDto` to `CyclePhotoDto` (which includes stage context)
 - **Impact**: For a cycle with 10 stages, reduces photo requests from 10 to 1.
 
+### Changed
+
+#### Tumbler Settings Expanded by Default
+- **Change**: The "Tumbler Settings" collapsible section on the tumbler detail page (`/tumblers/{id}`) now opens expanded by default.
+- **File**: [tumblers/[id]/page.tsx](../src/web/src/app/(protected)/tumblers/[id]/page.tsx)
+- **Rationale**: Users visiting the tumbler page typically want to see or edit settings, so expanding by default reduces clicks.
+
+#### Mobile Cycle Detail Card Layout
+- **Change**: Made the cycle detail card header on `/cycles/[id]` more compact on mobile
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Details**:
+  - Changed from vertical stacked layout to single horizontal row
+  - Reduced padding to `py-3 px-4`
+  - Title is `text-base` on mobile, stats are `text-xs`
+  - Title truncates instead of wrapping on long names
+  - Edit button changed to ghost icon-only style
+  - Chevron moved to end after action buttons
+
+#### Dashboard Cycles Match /cycles Page
+- **Change**: The "Active Cycles" section on Dashboard now matches the `/cycles` page behavior
+- **Files**: [dashboard/page.tsx](../src/web/src/app/(protected)/dashboard/page.tsx)
+- **Details**:
+  - Same hover effects (`hover:shadow-sm hover:-translate-y-0.5`)
+  - Name truncation with `truncate` class
+  - Dropdown menu with View/Edit, Complete Cycle, and Delete options
+  - Stage progress text showing "X days overdue", "Day X of Y", or "Due Today"
+  - Shows total stage count instead of just active stages
+  - Delete confirmation dialog
+
 ### Added
+
+#### Gallery Cycle Card with Full Details
+- **Feature**: Gallery post detail page now shows a collapsible cycle card with full cycle information
+- **Files**:
+  - [gallery/[id]/page.tsx](../src/web/src/app/(protected)/gallery/[id]/page.tsx) - Frontend component
+  - [PostService.cs](../src/api/MyUglyRocks.Core/Services/PostService.cs) - Extended query and mapping
+  - [PostDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/PostDtos.cs) - Extended `CyclePreviewDto`
+  - [post.ts](../src/web/src/types/post.ts) - TypeScript types
+- **Details**:
+  - Extended `CyclePreviewDto` with new fields: `elapsedDays`, `totalRuntimeHours`, `photoCount`, `tumblerName`, `barrelName`, `specimenNames`
+  - Card shows: Started/Completed dates, Total Runtime, Specimens, Difficulty, Photos count, Equipment, Gallery likes
+  - Collapsible card starts collapsed by default
+  - Header shows status badge, cycle name, day count, stage count, and quality rating
+
+#### Tumbler/Barrel Info on Cycle Cards
+- **Feature**: Cycle cards on `/cycles` and `/dashboard` now show the active tumbler and barrel
+- **Files**:
+  - [CycleDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs) - Added `ActiveTumblerName`, `ActiveBarrelNumber`, `ActiveBarrelNickname` to `CycleListDto`
+  - [CycleService.cs](../src/api/MyUglyRocks.Core/Services/CycleService.cs) - New `MapToCycleListDto` method with barrel/tumbler lookup
+  - [cycle.ts](../src/web/src/types/cycle.ts) - TypeScript types
+  - [cycles/page.tsx](../src/web/src/app/(protected)/cycles/page.tsx) - Display logic
+  - [dashboard/page.tsx](../src/web/src/app/(protected)/dashboard/page.tsx) - Display logic
+- **Display Format**: `{TumblerBrand} {TumblerModel} · #{BarrelNumber} {BarrelNickname}`
+- **Logic**: Shows tumbler/barrel from most recent active stage, or most recent completed stage if no active stages
+
+#### Demo Photo Seeding Script (Wrangler)
+- **File**: [scripts/seed-photos-wrangler.ps1](../scripts/seed-photos-wrangler.ps1)
+- **Purpose**: Upload demo photos to R2 storage and insert corresponding database records for the demo user
+- **Features**:
+  - Uses `wrangler r2 object put` for R2 uploads (no API credentials needed, uses OAuth)
+  - Connects to PostgreSQL via `kubectl exec` (no port-forward needed)
+  - Seeds 1-2 photos per eligible stage run (~200+ photos total)
+  - Photo types: "Before" for Coarse stages, "During" for Fine stages, "After" for Polish stages
+  - Deterministic randomization (seed=42) for reproducibility
+  - Cleanup-only mode: `-CleanupPhotosOnly`
+- **Prerequisites**:
+  - `wrangler login` (OAuth authentication)
+  - Photo folders at `D:\DemoRockPhotos\Before` and `D:\DemoRockPhotos\After`
+  - Postgres pod running in K8s
+- **Usage**:
+  ```powershell
+  .\scripts\seed-photos-wrangler.ps1              # Full seed (cleanup + upload)
+  .\scripts\seed-photos-wrangler.ps1 -CleanupPhotosOnly  # Just delete existing demo photos
+  ```
 
 #### Quick Restart Script
 - **File**: [scripts/restart-apps.ps1](../scripts/restart-apps.ps1)

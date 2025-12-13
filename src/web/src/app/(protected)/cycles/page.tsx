@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useCycles, useDeleteCycle } from '@/hooks';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { FullPageSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
+import { NoCyclesEmpty } from '@/components/ui/empty-state';
 import { Plus, RotateCcw, MoreVertical, Pencil, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
 import {
   DropdownMenu,
@@ -30,11 +30,6 @@ import {
 import Link from 'next/link';
 import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
 import type { CycleListDto } from '@/types/cycle';
-
-const statusColors: Record<string, 'default' | 'secondary'> = {
-  Active: 'default',
-  Completed: 'secondary',
-};
 
 export default function CyclesPage() {
   const router = useRouter();
@@ -58,6 +53,20 @@ export default function CyclesPage() {
     }
   };
 
+  const formatTumblerBarrel = (cycle: CycleListDto) => {
+    if (!cycle.activeTumblerName) return null;
+
+    const barrelPart = cycle.activeBarrelNumber != null
+      ? cycle.activeBarrelNickname
+        ? `#${cycle.activeBarrelNumber} ${cycle.activeBarrelNickname}`
+        : `#${cycle.activeBarrelNumber}`
+      : cycle.activeBarrelNickname || null;
+
+    return barrelPart
+      ? `${cycle.activeTumblerName} · ${barrelPart}`
+      : cycle.activeTumblerName;
+  };
+
   const renderCycleRow = (cycle: CycleListDto) => {
     const progressText = cycle.activeStageCount > 0 && cycle.activeStageStartDateTime && cycle.activeStageDurationEstimateEndDate
       ? getStageProgressText(
@@ -67,14 +76,16 @@ export default function CyclesPage() {
         )
       : null;
 
+    const tumblerBarrelText = formatTumblerBarrel(cycle);
+
     return (
     <div
       key={cycle.cycleId}
-      className={`flex items-center justify-between p-3 rounded-lg border hover:opacity-80 transition-colors ${activeTab === 'Active' ? getCycleStatusClass(cycle) : 'bg-card border-border'}`}
+      className={`flex items-center justify-between p-3 rounded-lg border hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 ${activeTab === 'Active' ? getCycleStatusClass(cycle) : 'bg-card border-border hover:bg-accent/50'}`}
     >
       <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
         <p className="font-medium truncate">{cycle.name}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground truncate">
           {cycle.stageCount} stage{cycle.stageCount !== 1 ? 's' : ''}
           {progressText && (
             cycle.isOverdue ? (
@@ -82,6 +93,9 @@ export default function CyclesPage() {
             ) : (
               <span> · {progressText}</span>
             )
+          )}
+          {tumblerBarrelText && (
+            <span className="text-muted-foreground/70"> · {tumblerBarrelText}</span>
           )}
         </p>
       </Link>
@@ -129,67 +143,45 @@ export default function CyclesPage() {
   }
 
   return (
-    <div className={PAGE_CONTAINER}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tumbling Cycles</h1>
-          <p className="text-muted-foreground">Track your rock tumbling progress</p>
+    <PageTransition>
+      <div className={PAGE_CONTAINER}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Tumbling Cycles</h1>
+            <p className="text-muted-foreground">Track your rock tumbling progress</p>
+          </div>
+          <Button asChild>
+            <Link href="/cycles/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Cycle
+            </Link>
+          </Button>
         </div>
-        <Button asChild>
-          <Link href="/cycles/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Cycle
-          </Link>
-        </Button>
-      </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="Active">Active</TabsTrigger>
-          <TabsTrigger value="Completed">Completed</TabsTrigger>
-        </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="Active">Active</TabsTrigger>
+            <TabsTrigger value="Completed">Completed</TabsTrigger>
+          </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {activeTab} Cycles
-              </CardTitle>
-              <CardDescription>
-                {activeTab === 'Active' && 'Your currently running cycles'}
-                {activeTab === 'Completed' && 'Cycles that have been completed'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {cycles?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8">
-                  <RotateCcw className="h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold">
-                    No {activeTab.toLowerCase()} cycles
-                  </h3>
-                  <p className="text-muted-foreground text-center mb-4">
-                    {activeTab === 'Active'
-                      ? 'Start a new tumbling cycle to track your progress'
-                      : `You don't have any ${activeTab.toLowerCase()} cycles yet`}
-                  </p>
-                  {activeTab === 'Active' && (
-                    <Button asChild>
-                      <Link href="/cycles/new">
-                        <Plus className="mr-2 h-4 w-4" />
-                        Start New Cycle
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {cycles?.map(renderCycleRow)}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+          <TabsContent value={activeTab} className="mt-4">
+            {cycles?.length === 0 ? (
+              <div className="border rounded-lg border-dashed py-4">
+                <NoCyclesEmpty
+                  onAction={activeTab === 'Active' ? () => router.push('/cycles/new') : undefined}
+                />
+              </div>
+            ) : (
+              <StaggerContainer className="space-y-2">
+                {cycles?.map((cycle) => (
+                  <StaggerItem key={cycle.cycleId}>
+                    {renderCycleRow(cycle)}
+                  </StaggerItem>
+                ))}
+              </StaggerContainer>
+            )}
+          </TabsContent>
+        </Tabs>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
@@ -211,6 +203,7 @@ export default function CyclesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </PageTransition>
   );
 }

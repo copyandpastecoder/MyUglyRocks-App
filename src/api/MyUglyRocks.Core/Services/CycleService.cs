@@ -27,7 +27,10 @@ public class CycleService : ICycleService
     public async Task<IEnumerable<CycleListDto>> GetUserCyclesAsync(Guid userId, string? status = null, CancellationToken cancellationToken = default)
     {
         var query = Cycles
-            .Include(c => c.StageRuns)
+            .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.StageRunBarrels)
+                    .ThenInclude(srb => srb.Barrel)
+                        .ThenInclude(b => b.Tumbler)
             .Where(c => c.UserId == userId);
 
         if (!string.IsNullOrEmpty(status) && Enum.TryParse<CycleStatus>(status, true, out var cycleStatus))
@@ -39,7 +42,76 @@ public class CycleService : ICycleService
             .OrderByDescending(c => c.DateCreated)
             .ToListAsync(cancellationToken);
 
-        return cycles.Adapt<IEnumerable<CycleListDto>>();
+        return cycles.Select(MapToCycleListDto).ToList();
+    }
+
+    private static CycleListDto MapToCycleListDto(Cycle cycle)
+    {
+        var stageRuns = cycle.StageRuns.Where(s => !s.IsDeleted).ToList();
+        var activeStages = stageRuns.Where(s => s.Status == StageRunStatus.Active).ToList();
+
+        // Get the most relevant stage for tumbler/barrel info:
+        // Prefer active stage (soonest due), otherwise most recent completed stage
+        var relevantStage = activeStages
+            .OrderBy(s => s.DurationEstimateEndDate)
+            .FirstOrDefault()
+            ?? stageRuns
+                .Where(s => s.Status == StageRunStatus.Completed)
+                .OrderByDescending(s => s.EndDateTime ?? s.StartDateTime)
+                .FirstOrDefault();
+
+        // Get tumbler/barrel from the relevant stage
+        string? tumblerName = null;
+        int? barrelNumber = null;
+        string? barrelNickname = null;
+
+        if (relevantStage != null)
+        {
+            var barrel = relevantStage.StageRunBarrels.FirstOrDefault()?.Barrel;
+            if (barrel != null)
+            {
+                barrelNumber = barrel.BarrelNumber;
+                barrelNickname = barrel.Nickname;
+                if (barrel.Tumbler != null)
+                {
+                    tumblerName = !string.IsNullOrEmpty(barrel.Tumbler.Model)
+                        ? $"{barrel.Tumbler.Brand} {barrel.Tumbler.Model}"
+                        : barrel.Tumbler.Brand;
+                }
+            }
+        }
+
+        // Calculate active stage progress info
+        var firstActiveStage = activeStages.OrderBy(s => s.DurationEstimateEndDate).FirstOrDefault();
+        DateTime? activeStageStart = firstActiveStage?.StartDateTime;
+        DateTime? activeStageEnd = firstActiveStage?.DurationEstimateEndDate;
+        int? daysOverdue = null;
+        bool isOverdue = false;
+
+        if (firstActiveStage?.DurationEstimateEndDate != null && firstActiveStage.DurationEstimateEndDate < DateTime.UtcNow)
+        {
+            isOverdue = true;
+            daysOverdue = (int)(DateTime.UtcNow.Date - firstActiveStage.DurationEstimateEndDate.Value.Date).Days;
+        }
+
+        return new CycleListDto(
+            cycle.CycleId,
+            cycle.Name,
+            cycle.StartDate,
+            cycle.EndDate,
+            cycle.Status.ToString(),
+            cycle.DifficultyRating,
+            stageRuns.Count,
+            activeStages.Count,
+            isOverdue,
+            cycle.DateCreated,
+            activeStageStart,
+            activeStageEnd,
+            daysOverdue,
+            tumblerName,
+            barrelNumber,
+            barrelNickname
+        );
     }
 
     public async Task<CycleDto?> GetCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
@@ -85,13 +157,13 @@ public class CycleService : ICycleService
         var totalRuns = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         var activeStages = stageRuns
             .Where(s => !s.IsDeleted)
-            .OrderBy(s => s.DateCreated)
+            .OrderBy(s => s.StartDateTime)
             .ToList();
 
         // Group by stage name (case-insensitive) and assign run numbers
         var stageNameGroups = activeStages
             .GroupBy(s => s.StageName.ToLowerInvariant())
-            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.DateCreated).ToList());
+            .ToDictionary(g => g.Key, g => g.OrderBy(s => s.StartDateTime).ToList());
 
         foreach (var group in stageNameGroups)
         {
@@ -110,7 +182,7 @@ public class CycleService : ICycleService
         var activeStageRuns = cycle.StageRuns.Where(s => !s.IsDeleted).ToList();
 
         var stageRunSummaries = activeStageRuns
-            .OrderBy(s => s.DateCreated)
+            .OrderBy(s => s.StartDateTime)
             .Select(s => new StageRunSummaryDto(
                 s.StageRunId,
                 s.StageName,
@@ -152,10 +224,10 @@ public class CycleService : ICycleService
         decimal? weightLossGrams = null;
         decimal? weightLossPercent = null;
         var firstStageWithWeight = activeStageRuns
-            .OrderBy(s => s.DateCreated)
+            .OrderBy(s => s.StartDateTime)
             .FirstOrDefault(s => s.LoadWeightBeforeGrams.HasValue);
         var lastStageWithWeight = activeStageRuns
-            .OrderByDescending(s => s.DateCreated)
+            .OrderByDescending(s => s.StartDateTime)
             .FirstOrDefault(s => s.LoadWeightAfterGrams.HasValue);
 
         if (firstStageWithWeight?.LoadWeightBeforeGrams != null && lastStageWithWeight?.LoadWeightAfterGrams != null)
@@ -174,7 +246,7 @@ public class CycleService : ICycleService
         string? tumblerName = null;
         string? barrelName = null;
         var mostRecentStage = activeStageRuns
-            .OrderByDescending(s => s.DateCreated)
+            .OrderByDescending(s => s.StartDateTime)
             .FirstOrDefault();
         if (mostRecentStage?.StageRunBarrels.Any() == true)
         {
@@ -283,10 +355,23 @@ public class CycleService : ICycleService
 
     public async Task<CycleDto?> CompleteCycleAsync(Guid cycleId, Guid userId, CompleteCycleRequest request, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles
+            .Include(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+            .FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return null;
+
+        // Check for incomplete stage runs (Planned or Active)
+        var incompleteStages = cycle.StageRuns
+            .Where(sr => sr.Status == StageRunStatus.Planned || sr.Status == StageRunStatus.Active)
+            .ToList();
+
+        if (incompleteStages.Count > 0)
+        {
+            var stageNames = string.Join(", ", incompleteStages.Select(s => $"{s.StageName} ({s.Status})"));
+            throw new InvalidOperationException($"Cannot complete cycle with incomplete stages: {stageNames}. Please complete or delete all stages first.");
+        }
 
         cycle.Status = CycleStatus.Completed;
         cycle.EndDate = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -390,13 +475,11 @@ public class CycleService : ICycleService
         var newStageStartDateTime = request.StartDateTime;
 
         // Validate: Cannot create a stage with StartDateTime before active stage's estimated end
-        if (activeStage != null && activeStage.DurationEstimateEndDate.HasValue)
+        if (activeStage != null && activeStage.DurationEstimateEndDate.HasValue &&
+            newStageStartDateTime < activeStage.DurationEstimateEndDate.Value)
         {
-            if (newStageStartDateTime < activeStage.DurationEstimateEndDate.Value)
-            {
-                throw new InvalidOperationException(
-                    $"Cannot create stage with start date {newStageStartDateTime:g} before the active stage ends at {activeStage.DurationEstimateEndDate.Value:g}");
-            }
+            throw new InvalidOperationException(
+                $"Cannot create stage with start date {newStageStartDateTime:g} before the active stage ends at {activeStage.DurationEstimateEndDate.Value:g}");
         }
 
         // Determine status: Active if no existing Active stage AND StartDateTime <= now, otherwise Planned
@@ -808,6 +891,7 @@ public class CycleService : ICycleService
                     p.BlurHash,
                     p.Width,
                     p.Height,
+                    p.ProcessingStatus.ToString(),
                     s.StageRunId,
                     s.StageName,
                     runNumbers.RunNumbers.TryGetValue(s.StageRunId, out var runNum) ? runNum : 1

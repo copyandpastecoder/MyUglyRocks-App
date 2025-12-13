@@ -5,9 +5,10 @@ import { usePosts, useVoteMutation } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { GalleryGridSkeleton } from '@/components/skeletons';
 import { LazyImage } from '@/components/lazy-image';
+import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
+import { NoPhotosEmpty } from '@/components/ui/empty-state';
 import {
   Select,
   SelectContent,
@@ -42,61 +43,60 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className={PAGE_CONTAINER}>
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Gallery</h1>
-          <p className="text-muted-foreground">
-            Discover beautiful tumbled rocks from the community
-          </p>
-        </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="newest">Newest</SelectItem>
-            <SelectItem value="votes">Most Voted</SelectItem>
-            <SelectItem value="comments">Most Discussed</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {isLoading ? (
-        <GalleryGridSkeleton count={6} />
-      ) : error ? (
-        <Card className="border-destructive">
-          <CardContent className="flex items-center gap-4 py-6">
-            <AlertCircle className="h-8 w-8 text-destructive" />
-            <div>
-              <p className="font-medium">Error loading gallery</p>
-              <p className="text-sm text-muted-foreground">Please try again later</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : posts?.length === 0 ? (
-        <Card className="border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold">No posts yet</h3>
-            <p className="text-muted-foreground text-center">
-              Be the first to share your tumbled rocks!
+    <PageTransition>
+      <div className={PAGE_CONTAINER}>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Gallery</h1>
+            <p className="text-muted-foreground">
+              Discover beautiful tumbled rocks from the community
             </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {posts?.map((post) => (
-            <PostRow
-              key={post.postId}
-              post={post}
-              onVote={(hasVoted) => handleVote(post.postId, hasVoted)}
-              isAuthenticated={isAuthenticated}
-            />
-          ))}
+          </div>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest</SelectItem>
+              <SelectItem value="votes">Most Voted</SelectItem>
+              <SelectItem value="comments">Most Discussed</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-      )}
-    </div>
+
+        {isLoading ? (
+          <GalleryGridSkeleton count={6} />
+        ) : error ? (
+          <Card className="border-destructive">
+            <CardContent className="flex items-center gap-4 py-6">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+              <div>
+                <p className="font-medium">Error loading gallery</p>
+                <p className="text-sm text-muted-foreground">Please try again later</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : posts?.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="pt-6">
+              <NoPhotosEmpty />
+            </CardContent>
+          </Card>
+        ) : (
+          <StaggerContainer className="space-y-2">
+            {posts?.map((post) => (
+              <StaggerItem key={post.postId}>
+                <PostRow
+                  post={post}
+                  onVote={(hasVoted) => handleVote(post.postId, hasVoted)}
+                  isAuthenticated={isAuthenticated}
+                />
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        )}
+      </div>
+    </PageTransition>
   );
 }
 
@@ -123,7 +123,7 @@ function PostRow({
   return (
     <Link
       href={`/gallery/${post.postId}`}
-      className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+      className="flex items-center gap-4 p-3 rounded-lg border bg-card hover:bg-accent hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200"
     >
       {/* Thumbnail */}
       <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">

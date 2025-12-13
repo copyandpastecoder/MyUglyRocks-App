@@ -14,21 +14,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { PhotoLightbox, useLightbox } from '@/components/photo-lightbox';
+import { PageTransition } from '@/components/ui/page-transition';
+import { EnhancedImage } from '@/components/ui/enhanced-image';
 import { toast } from 'sonner';
 import {
   ArrowLeft,
   Heart,
   MessageCircle,
-  Calendar,
-  Star,
   Send,
   Loader2,
   User,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Maximize2,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import Link from 'next/link';
 import type { CommentDto } from '@/types/post';
 
@@ -42,6 +45,7 @@ export default function PostDetailPage() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [isCycleOverviewOpen, setIsCycleOverviewOpen] = useState(false);
   const lightbox = useLightbox();
 
   const { data: post, isLoading: postLoading } = useQuery({
@@ -151,6 +155,7 @@ export default function PostDetailPage() {
   const currentPhoto = post.photos[currentPhotoIndex];
 
   return (
+    <PageTransition>
     <div className={PAGE_CONTAINER}>
       {/* Header */}
       <div className="flex items-center gap-4">
@@ -174,10 +179,12 @@ export default function PostDetailPage() {
         <Card className="overflow-hidden">
           <div className="relative aspect-video bg-black group">
             {currentPhoto && (
-              <img
+              <EnhancedImage
                 src={currentPhoto.mediumUrl || currentPhoto.url}
                 alt={`Photo ${currentPhotoIndex + 1}`}
+                blurHash={currentPhoto.blurHash}
                 className="w-full h-full object-contain cursor-pointer"
+                wrapperClassName="w-full h-full"
                 onClick={() => lightbox.open(currentPhotoIndex)}
               />
             )}
@@ -257,36 +264,96 @@ export default function PostDetailPage() {
         </Card>
       )}
 
-      {/* Cycle Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Cycle Details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">Duration</p>
-              <p className="font-medium">
-                {post.cycle.startDate} - {post.cycle.endDate || 'Ongoing'}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Star className="h-4 w-4 text-muted-foreground" />
-            <div>
-              <p className="text-sm text-muted-foreground">Quality</p>
-              <p className="font-medium">
-                {post.cycle.finalQuality ? `${post.cycle.finalQuality}/5` : 'Not rated'}
-              </p>
-            </div>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Stages</p>
-            <p className="font-medium">{post.cycle.stageCount} stages</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Collapsible Cycle Overview Card (Read-only) */}
+      <Collapsible open={isCycleOverviewOpen} onOpenChange={setIsCycleOverviewOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
+              <div className="flex items-center justify-between gap-3">
+                {/* Left: Title and metadata */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="secondary" className="text-xs shrink-0">
+                      {post.cycle.status}
+                    </Badge>
+                    <CardTitle className="text-base sm:text-lg leading-tight truncate">{post.cycle.name}</CardTitle>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                    <span>Day {post.cycle.elapsedDays}</span>
+                    <span>•</span>
+                    <span>{post.cycle.stageCount} stage{post.cycle.stageCount !== 1 ? 's' : ''}</span>
+                    {post.cycle.finalQuality && (
+                      <>
+                        <span>•</span>
+                        <span>{post.cycle.finalQuality}/5 ★</span>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Chevron */}
+                <div className="flex items-center shrink-0">
+                  {isCycleOverviewOpen ? (
+                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
+              <div>
+                <p className="text-sm text-muted-foreground">Started</p>
+                <p className="font-medium">{new Date(post.cycle.startDate).toLocaleDateString()}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Completed</p>
+                <p className="font-medium">{post.cycle.endDate ? new Date(post.cycle.endDate).toLocaleDateString() : 'Ongoing'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Total Runtime</p>
+                <p className="font-medium">{post.cycle.elapsedDays}d</p>
+              </div>
+              {post.cycle.specimenNames && post.cycle.specimenNames.length > 0 && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Specimens</p>
+                  <p className="font-medium">{post.cycle.specimenNames.join(', ')}</p>
+                </div>
+              )}
+              {post.cycle.difficultyRating && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Difficulty</p>
+                  <p className="font-medium">
+                    {post.cycle.difficultyRating === 1 ? 'Easy' :
+                     post.cycle.difficultyRating === 2 ? 'Medium' :
+                     post.cycle.difficultyRating === 3 ? 'Hard' :
+                     post.cycle.difficultyRating === 4 ? 'Very Hard' :
+                     post.cycle.difficultyRating === 5 ? 'Expert' : 'Unknown'}
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Photos</p>
+                <p className="font-medium">{post.cycle.photoCount} photos</p>
+              </div>
+              {(post.cycle.tumblerName || post.cycle.barrelName) && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Equipment</p>
+                  <p className="font-medium">
+                    {[post.cycle.tumblerName, post.cycle.barrelName].filter(Boolean).join(' - ')}
+                  </p>
+                </div>
+              )}
+              <div>
+                <p className="text-sm text-muted-foreground">Gallery</p>
+                <p className="font-medium">{post.voteCount} likes</p>
+              </div>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
 
       {/* Comments */}
       <Card>
@@ -365,6 +432,7 @@ export default function PostDetailPage() {
         </CardContent>
       </Card>
     </div>
+    </PageTransition>
   );
 }
 

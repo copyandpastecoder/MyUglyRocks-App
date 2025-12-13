@@ -42,10 +42,10 @@ public class ExportService : IExportService
         if (request?.EndDate.HasValue == true)
             query = query.Where(c => c.StartDate <= request.EndDate.Value);
 
-        if (!string.IsNullOrEmpty(request?.Status))
+        if (!string.IsNullOrEmpty(request?.Status) &&
+            Enum.TryParse<CycleStatus>(request.Status, true, out var status))
         {
-            if (Enum.TryParse<CycleStatus>(request.Status, true, out var status))
-                query = query.Where(c => c.Status == status);
+            query = query.Where(c => c.Status == status);
         }
 
         var cycles = await query.OrderByDescending(c => c.StartDate).ToListAsync();
@@ -128,10 +128,10 @@ public class ExportService : IExportService
         if (request?.EndDate.HasValue == true)
             query = query.Where(s => DateOnly.FromDateTime(s.StartDateTime) <= request.EndDate.Value);
 
-        if (!string.IsNullOrEmpty(request?.Status))
+        if (!string.IsNullOrEmpty(request?.Status) &&
+            Enum.TryParse<CycleStatus>(request.Status, true, out var cycleStatus))
         {
-            if (Enum.TryParse<CycleStatus>(request.Status, true, out var cycleStatus))
-                query = query.Where(s => s.Cycle.Status == cycleStatus);
+            query = query.Where(s => s.Cycle.Status == cycleStatus);
         }
 
         var stages = await query.OrderByDescending(s => s.StartDateTime).ToListAsync();

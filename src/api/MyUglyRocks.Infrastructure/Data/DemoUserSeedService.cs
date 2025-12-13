@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
 
 namespace MyUglyRocks.Infrastructure.Data;
@@ -12,9 +13,35 @@ public class DemoUserSeedService
 {
     private readonly AppDbContext _context;
     private readonly ILogger _logger;
+    private readonly IStorageService _storageService;
+    private readonly IImageProcessingService _imageProcessingService;
     private readonly Random _random = new(42); // Fixed seed for reproducible data
     private readonly string? _demoEmail;
     private readonly string? _demoPassword;
+
+    // Local photo folders for seeding
+    // Container path: /demo-photos (mounted via K8s hostPath)
+    // Windows path: D:\DemoRockPhotos (for local development)
+    private static string BeforePhotosFolder => GetPhotoFolder("Before");
+    private static string AfterPhotosFolder => GetPhotoFolder("After");
+    private string[]? _beforePhotos;
+    private string[]? _afterPhotos;
+
+    private static string GetPhotoFolder(string subfolder)
+    {
+        // Try container path first
+        var containerPath = $"/demo-photos/{subfolder}";
+        if (Directory.Exists(containerPath))
+            return containerPath;
+
+        // Fall back to Windows path for local development
+        var windowsPath = $@"D:\DemoRockPhotos\{subfolder}";
+        if (Directory.Exists(windowsPath))
+            return windowsPath;
+
+        // Return container path as default (will log warning if not found)
+        return containerPath;
+    }
 
     // Demo user ID
     private static readonly Guid DemoUserId = Guid.Parse("00000000-0000-0000-0000-000000000003");
@@ -45,10 +72,16 @@ public class DemoUserSeedService
         "Lake Superior Agate", "Crazy Lace Agate", "Montana Agate"
     };
 
-    public DemoUserSeedService(AppDbContext context, ILogger logger)
+    public DemoUserSeedService(
+        AppDbContext context,
+        ILogger logger,
+        IStorageService storageService,
+        IImageProcessingService imageProcessingService)
     {
         _context = context;
         _logger = logger;
+        _storageService = storageService;
+        _imageProcessingService = imageProcessingService;
         _demoEmail = Environment.GetEnvironmentVariable("DEMO_USER_EMAIL");
         _demoPassword = Environment.GetEnvironmentVariable("DEMO_USER_PASSWORD");
     }
@@ -365,7 +398,7 @@ public class DemoUserSeedService
         var cleaningRuns = new List<CleaningRun>();
         var cleaningMaterials = new List<CleaningMaterial>();
         var cycleSpecimens = new List<CycleSpecimen>();
-        var photos = new List<Photo>();
+        var stageRunsNeedingPhotos = new List<(Guid StageRunId, string StageName, bool IsCompleted, DateTime StartDate, DateTime EndDate)>();
 
         int cycleCount = 0;
         int abandonedCount = 0;
@@ -631,24 +664,24 @@ public class DemoUserSeedService
                         });
                     }
 
-                    // Add photos at key stages (only on first run for before, last run for after)
+                    // Track stage runs that need photos (will upload after saving stage runs)
+                    // Photos are uploaded async, so we need the stage run saved first
                     if (isCompleted || isCurrentlyActive)
                     {
                         // Stage 1 Run 1 - Before photo
                         if (stageName == "Coarse" && runNumber == 1)
                         {
-                            photos.Add(CreatePlaceholderPhoto(stageRunId, PhotoType.Before, "stage1_before", runStartDate));
+                            stageRunsNeedingPhotos.Add((stageRunId, stageName, isCompleted, runStartDate, estimatedEndDate));
                         }
                         // Stage 3 - During photos
                         else if (stageName == "Fine" && isCompleted)
                         {
-                            photos.Add(CreatePlaceholderPhoto(stageRunId, PhotoType.During, "stage3_during_1", runStartDate.AddDays(1)));
-                            photos.Add(CreatePlaceholderPhoto(stageRunId, PhotoType.During, "stage3_during_2", runStartDate.AddDays(2)));
+                            stageRunsNeedingPhotos.Add((stageRunId, stageName, isCompleted, runStartDate, estimatedEndDate));
                         }
                         // Stage 5 - After photo
                         else if (stageName == "Polish" && isCompleted)
                         {
-                            photos.Add(CreatePlaceholderPhoto(stageRunId, PhotoType.After, "stage5_after", estimatedEndDate));
+                            stageRunsNeedingPhotos.Add((stageRunId, stageName, isCompleted, runStartDate, estimatedEndDate));
                         }
                     }
 
@@ -708,9 +741,33 @@ public class DemoUserSeedService
             _logger.LogInformation("Saved {Count} cleaning runs", cleaningRuns.Count);
 
             _context.CleaningMaterials.AddRange(cleaningMaterials);
-            _context.Photos.AddRange(photos);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Saved cleaning materials and {Count} photos", photos.Count);
+            _logger.LogInformation("Saved cleaning materials");
+
+            // Upload photos to R2 (after stage runs are saved)
+            if (_storageService.IsConfigured && stageRunsNeedingPhotos.Count > 0)
+            {
+                _logger.LogInformation("Uploading {Count} photo sets to R2...", stageRunsNeedingPhotos.Count);
+                var uploadedPhotos = new List<Photo>();
+
+                foreach (var (srId, srStageName, srIsCompleted, srStartDate, srEndDate) in stageRunsNeedingPhotos)
+                {
+                    var stagePhotos = await CreatePhotosForStageAsync(
+                        srId, srStageName, srIsCompleted, srStartDate, srEndDate);
+                    uploadedPhotos.AddRange(stagePhotos);
+                }
+
+                if (uploadedPhotos.Count > 0)
+                {
+                    _context.Photos.AddRange(uploadedPhotos);
+                    await _context.SaveChangesAsync();
+                    _logger.LogInformation("Saved {Count} uploaded photos", uploadedPhotos.Count);
+                }
+            }
+            else if (!_storageService.IsConfigured)
+            {
+                _logger.LogWarning("R2 storage not configured, skipping photo uploads");
+            }
         }
         catch (Exception ex)
         {
@@ -807,36 +864,173 @@ public class DemoUserSeedService
         };
     }
 
-    private Photo CreatePlaceholderPhoto(Guid stageRunId, PhotoType photoType, string name, DateTime date)
+    private void LoadPhotoFolders()
     {
-        // Create placeholder photo entries using placehold.co service
-        // Colors: Before=brown (rough rocks), During=gray (processing), After=teal (polished)
-        var fileName = $"{name}_{stageRunId:N}.jpg";
-        var (bgColor, textColor, label) = photoType switch
+        if (_beforePhotos == null && Directory.Exists(BeforePhotosFolder))
         {
-            PhotoType.Before => ("8B4513", "FFFFFF", "BEFORE+-+Rough+Rocks"),
-            PhotoType.During => ("708090", "FFFFFF", "DURING+-+Processing"),
-            PhotoType.After => ("20B2AA", "FFFFFF", "AFTER+-+Polished"),
-            _ => ("CCCCCC", "333333", "Photo")
-        };
+            _beforePhotos = Directory.GetFiles(BeforePhotosFolder, "*.jpg")
+                .Concat(Directory.GetFiles(BeforePhotosFolder, "*.jpeg"))
+                .Concat(Directory.GetFiles(BeforePhotosFolder, "*.png"))
+                .ToArray();
+            _logger.LogInformation("Loaded {Count} photos from Before folder", _beforePhotos.Length);
+        }
 
-        return new Photo
+        if (_afterPhotos == null && Directory.Exists(AfterPhotosFolder))
         {
-            PhotoId = Guid.NewGuid(),
-            StageRunId = stageRunId,
-            StorageKey = $"demo/{stageRunId}/{photoType.ToString().ToLower()}/{fileName}",
-            // Use placehold.co for actual working placeholder images
-            Url = $"https://placehold.co/800x600/{bgColor}/{textColor}?text={label}",
-            FileName = fileName,
-            MimeType = "image/jpeg",
-            FileSizeBytes = 50000,
-            Width = 800,
-            Height = 600,
-            PhotoType = photoType,
-            SortOrder = photoType == PhotoType.During ? _random.Next(1, 3) : 1,
-            DateCreated = date,
-            DateUpdated = date
-        };
+            _afterPhotos = Directory.GetFiles(AfterPhotosFolder, "*.jpg")
+                .Concat(Directory.GetFiles(AfterPhotosFolder, "*.jpeg"))
+                .Concat(Directory.GetFiles(AfterPhotosFolder, "*.png"))
+                .ToArray();
+            _logger.LogInformation("Loaded {Count} photos from After folder", _afterPhotos.Length);
+        }
+    }
+
+    private string? GetRandomPhotoPath(PhotoType photoType)
+    {
+        LoadPhotoFolders();
+
+        // Use Before folder for stages 1-4 (Before/During), After folder for stage 5 (After/Polish)
+        var photoPool = photoType == PhotoType.After ? _afterPhotos : _beforePhotos;
+
+        if (photoPool == null || photoPool.Length == 0)
+        {
+            _logger.LogWarning("No photos available for photo type {PhotoType}", photoType);
+            return null;
+        }
+
+        return photoPool[_random.Next(photoPool.Length)];
+    }
+
+    private async Task<Photo?> CreateAndUploadPhotoAsync(
+        Guid stageRunId,
+        PhotoType photoType,
+        int sortOrder,
+        DateTime date,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_storageService.IsConfigured)
+        {
+            _logger.LogWarning("R2 storage not configured, skipping photo upload");
+            return null;
+        }
+
+        var localPath = GetRandomPhotoPath(photoType);
+        if (localPath == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            var originalFileName = Path.GetFileName(localPath);
+            await using var fileStream = File.OpenRead(localPath);
+            var fileSize = fileStream.Length;
+
+            // Process the image to generate variants and blur hash
+            var result = await _imageProcessingService.ProcessImageAsync(fileStream, originalFileName, cancellationToken);
+
+            // Upload the medium variant (800x800) as the main photo
+            var mediumVariant = result.Variants.FirstOrDefault(v => v.Size == "medium")
+                                ?? result.Variants.First();
+
+            var folder = $"photos/demo/{stageRunId}";
+            var storageKey = $"{Guid.NewGuid():N}{mediumVariant.Extension}";
+
+            // Reset stream position and upload
+            mediumVariant.Stream.Position = 0;
+            var publicUrl = await _storageService.UploadAsync(
+                mediumVariant.Stream,
+                $"{storageKey}{mediumVariant.Extension}",
+                folder,
+                storageKey,
+                cancellationToken);
+
+            var photo = new Photo
+            {
+                PhotoId = Guid.NewGuid(),
+                StageRunId = stageRunId,
+                StorageKey = $"{folder}/{storageKey}",
+                Url = publicUrl,
+                FileName = originalFileName,
+                MimeType = mediumVariant.MimeType,
+                FileSizeBytes = mediumVariant.Stream.Length,
+                Width = mediumVariant.Width,
+                Height = mediumVariant.Height,
+                BlurHash = result.BlurHash,
+                PhotoType = photoType,
+                SortOrder = sortOrder,
+                DateCreated = date,
+                DateUpdated = date
+            };
+
+            _logger.LogDebug("Uploaded photo {FileName} to {Url}", originalFileName, publicUrl);
+            return photo;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload photo from {Path}", localPath);
+            return null;
+        }
+    }
+
+    private async Task<List<Photo>> CreatePhotosForStageAsync(
+        Guid stageRunId,
+        string stageName,
+        bool isCompleted,
+        DateTime startDate,
+        DateTime endDate,
+        CancellationToken cancellationToken = default)
+    {
+        var photos = new List<Photo>();
+
+        // Determine photo type and count based on stage
+        PhotoType photoType;
+        int minPhotos, maxPhotos;
+        DateTime photoDate;
+
+        switch (stageName)
+        {
+            case "Coarse":
+                photoType = PhotoType.Before;
+                minPhotos = 1;
+                maxPhotos = 2;
+                photoDate = startDate;
+                break;
+            case "Fine":
+                if (!isCompleted) return photos;
+                photoType = PhotoType.During;
+                minPhotos = 1;
+                maxPhotos = 2;
+                photoDate = startDate.AddDays(1);
+                break;
+            case "Polish":
+                if (!isCompleted) return photos;
+                photoType = PhotoType.After;
+                minPhotos = 1;
+                maxPhotos = 2;
+                photoDate = endDate;
+                break;
+            default:
+                return photos; // No photos for other stages
+        }
+
+        var photoCount = _random.Next(minPhotos, maxPhotos + 1);
+        for (int i = 0; i < photoCount; i++)
+        {
+            var photo = await CreateAndUploadPhotoAsync(
+                stageRunId,
+                photoType,
+                i + 1,
+                photoDate.AddMinutes(i * 5),
+                cancellationToken);
+
+            if (photo != null)
+            {
+                photos.Add(photo);
+            }
+        }
+
+        return photos;
     }
 
     private string GetRandomGoal()

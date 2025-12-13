@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Sparkles, AlertCircle } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 import type { MaterialListDto, MaterialDetailDto } from '@/types/reference';
 
 const CATEGORIES = ['Abrasive', 'Polish', 'Media', 'Additive'];
@@ -87,9 +88,10 @@ export default function MaterialsPage() {
   }, {} as Record<string, MaterialListDto[]>);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Grits & Polishes</h1>
+    <PageTransition>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Grits & Polishes</h1>
         <p className="text-muted-foreground">
           Reference guide for tumbling materials and their uses
         </p>
@@ -278,6 +280,7 @@ export default function MaterialsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageTransition>
   );
 }

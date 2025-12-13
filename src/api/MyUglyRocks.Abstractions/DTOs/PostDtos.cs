@@ -66,6 +66,13 @@ public record CyclePreviewDto
     public int? DifficultyRating { get; init; }
     public int? FinalQuality { get; init; }
     public int StageCount { get; init; }
+    // Extended fields for gallery display
+    public int ElapsedDays { get; init; }
+    public int TotalRuntimeHours { get; init; }
+    public int PhotoCount { get; init; }
+    public string? TumblerName { get; init; }
+    public string? BarrelName { get; init; }
+    public IEnumerable<string> SpecimenNames { get; init; } = [];
 }
 
 public record CreatePostRequest

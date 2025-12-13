@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
 
 namespace MyUglyRocks.Infrastructure.Data;
@@ -10,6 +11,8 @@ public class SeedDataService
     private readonly AppDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly ILogger<SeedDataService> _logger;
+    private readonly IStorageService _storageService;
+    private readonly IImageProcessingService _imageProcessingService;
     private static readonly Guid SystemUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
 
@@ -53,11 +56,18 @@ public class SeedDataService
         return result;
     }
 
-    public SeedDataService(AppDbContext context, IConfiguration configuration, ILogger<SeedDataService> logger)
+    public SeedDataService(
+        AppDbContext context,
+        IConfiguration configuration,
+        ILogger<SeedDataService> logger,
+        IStorageService storageService,
+        IImageProcessingService imageProcessingService)
     {
         _context = context;
         _configuration = configuration;
         _logger = logger;
+        _storageService = storageService;
+        _imageProcessingService = imageProcessingService;
     }
 
     public async Task SeedAllAsync()
@@ -74,7 +84,11 @@ public class SeedDataService
 
     private async Task SeedDemoUserAsync()
     {
-        var demoSeedService = new DemoUserSeedService(_context, _logger);
+        var demoSeedService = new DemoUserSeedService(
+            _context,
+            _logger,
+            _storageService,
+            _imageProcessingService);
         await demoSeedService.SeedDemoUserAsync();
     }
 
