@@ -232,7 +232,7 @@ public class CycleService : ICycleService
         // Compute total runtime in hours
         var totalRuntimeHours = activeStageRuns
             .Where(s => s.Status == StageRunStatus.Completed)
-            .Sum(s => (long)s.DurationDays * 24 + s.DurationHours);
+            .Sum(s => ((long)s.DurationDays * 24) + s.DurationHours);
 
         // Compute completed stages count
         var completedStagesCount = activeStageRuns.Count(s => s.Status == StageRunStatus.Completed);

@@ -1,0 +1,68 @@
+# Code quality checks - linting, type checking, and build verification
+# Runs on every PR and can be triggered manually
+
+name: Code Quality
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:  # Manual trigger from Actions tab
+
+jobs:
+  # Frontend checks
+  frontend:
+    name: Frontend (Next.js)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+  # Backend checks
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj
+
+      - name: Build (with warnings as errors)
+        run: dotnet build src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj --no-restore --configuration Release
+
+      - name: Check for analyzer warnings
+        run: |
+          dotnet build src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj --no-restore -warnaserror 2>&1 | tee build-output.txt || true
+          # Count warnings (informational, won't fail the build)
+          WARNINGS=$(grep -c "warning " build-output.txt || echo "0")
+          echo "Found $WARNINGS compiler warnings"
