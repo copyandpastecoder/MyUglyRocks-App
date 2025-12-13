@@ -162,12 +162,14 @@ foreach ($sr in $stageRuns) {
         $url = "$publicUrl/$storageKey"
         $fileSize = (Get-Item $photoFile.FullName).Length
         $photoDate = $sr.EndDate
+        # Escape single quotes in file name to prevent SQL injection
+        $escapedFileName = $photoFile.Name -replace "'", "''"
 
         # Insert photo record
         # ProcessingStatus: 1 = Completed (skip processing for seed data)
         $insertSql = @"
 INSERT INTO photos (photo_id, stage_run_id, storage_key, url, file_name, mime_type, file_size_bytes, width, height, photo_type, sort_order, \"ProcessingStatus\", date_created, date_updated)
-VALUES ('$photoId', '$stageRunId', '$storageKey', '$url', '$($photoFile.Name)', 'image/jpeg', $fileSize, 800, 600, $photoType, $($i + 1), 1, '$photoDate', '$photoDate');
+VALUES ('$photoId', '$stageRunId', '$storageKey', '$url', '$escapedFileName', 'image/jpeg', $fileSize, 800, 600, $photoType, $($i + 1), 1, '$photoDate', '$photoDate');
 "@
         Invoke-Psql $insertSql | Out-Null
 

@@ -924,7 +924,6 @@ public class DemoUserSeedService
         {
             var originalFileName = Path.GetFileName(localPath);
             await using var fileStream = File.OpenRead(localPath);
-            var fileSize = fileStream.Length;
 
             // Process the image to generate variants and blur hash
             var result = await _imageProcessingService.ProcessImageAsync(fileStream, originalFileName, cancellationToken);
@@ -1021,7 +1020,7 @@ public class DemoUserSeedService
                 stageRunId,
                 photoType,
                 i + 1,
-                photoDate.AddMinutes(i * 5),
+                photoDate.AddMinutes((double)i * 5),
                 cancellationToken);
 
             if (photo != null)
