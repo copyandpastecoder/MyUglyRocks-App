@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { PAGE_CONTAINER } from '@/lib/layout';
-import { User, Settings, Shield, Menu, X } from 'lucide-react';
+import { User, Settings, Shield, Menu, X, Gem } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const settingsNavItems = [
@@ -20,6 +20,12 @@ const settingsNavItems = [
     href: '/settings/preferences',
     icon: Settings,
     description: 'Customize your experience',
+  },
+  {
+    title: 'My Specimens',
+    href: '/settings/specimens',
+    icon: Gem,
+    description: 'Manage your custom specimens',
   },
   {
     title: 'Account',

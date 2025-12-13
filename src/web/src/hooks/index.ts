@@ -106,3 +106,25 @@ export {
   useUpdateMaterial,
   useDeleteMaterial,
 } from './use-admin';
+
+// Inventory hooks
+export {
+  useInventory,
+  useInventoryItem,
+  useInventoryStats,
+  useCreateInventory,
+  useUpdateInventory,
+  useDeleteInventory,
+  useUpdateInventoryStatus,
+  useUpdateInventorySpecimens,
+} from './use-inventory';
+
+// User Specimen hooks
+export {
+  useUserSpecimens,
+  useUserSpecimen,
+  useSpecimenSearch,
+  useCreateUserSpecimen,
+  useUpdateUserSpecimen,
+  useDeleteUserSpecimen,
+} from './use-user-specimens';
