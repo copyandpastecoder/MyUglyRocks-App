@@ -206,7 +206,7 @@ export function SpecimenMultiSelect({
       secondaryParts.push(<span key="sci" className="italic">{specimen.scientificName}</span>);
     }
     if (visibleColumns.alias && specimen.alias) {
-      secondaryParts.push(<span key="alias">aka "{specimen.alias}"</span>);
+      secondaryParts.push(<span key="alias">aka &quot;{specimen.alias}&quot;</span>);
     }
     if (visibleColumns.materialType) {
       secondaryParts.push(<span key="mat">{specimen.materialType}</span>);
