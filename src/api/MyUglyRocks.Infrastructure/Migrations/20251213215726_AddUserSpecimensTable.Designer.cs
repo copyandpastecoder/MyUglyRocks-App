@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyUglyRocks.Infrastructure.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyUglyRocks.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251213215726_AddUserSpecimensTable")]
+    partial class AddUserSpecimensTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -655,10 +658,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("numeric(10,2)")
                         .HasColumnName("remaining_weight_grams");
 
-                    b.Property<string>("SizeCategories")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("size_categories");
+                    b.Property<int?>("SizeCategory")
+                        .HasColumnType("integer")
+                        .HasColumnName("size_category");
 
                     b.Property<string>("SourceLocation")
                         .HasMaxLength(255)
@@ -726,7 +728,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("BlurHash")
-                        .HasColumnType("text")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("blur_hash");
 
                     b.Property<string>("Caption")
@@ -1136,7 +1139,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("comment_count");
 
-                    b.Property<Guid?>("CycleId")
+                    b.Property<Guid>("CycleId")
                         .HasColumnType("uuid")
                         .HasColumnName("cycle_id");
 
@@ -1159,10 +1162,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
-
-                    b.Property<Guid?>("InventoryId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("inventory_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -1200,9 +1199,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
                     b.HasIndex("CycleId");
 
-                    b.HasIndex("InventoryId")
-                        .HasDatabaseName("ix_posts_inventory_id");
-
                     b.HasIndex("PublishedDate")
                         .HasDatabaseName("ix_posts_published_date");
 
@@ -1224,10 +1220,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasIndex("UserId", "Status", "PublishedDate")
                         .HasDatabaseName("ix_posts_user_status_date");
 
-                    b.ToTable("posts", null, t =>
-                        {
-                            t.HasCheckConstraint("chk_post_source_xor", "(cycle_id IS NOT NULL AND inventory_id IS NULL) OR (cycle_id IS NULL AND inventory_id IS NOT NULL)");
-                        });
+                    b.ToTable("posts", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.PostPhoto", b =>
@@ -2710,12 +2703,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasOne("MyUglyRocks.Core.Entities.Cycle", "Cycle")
                         .WithMany()
                         .HasForeignKey("CycleId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("MyUglyRocks.Core.Entities.Inventory", "Inventory")
-                        .WithMany()
-                        .HasForeignKey("InventoryId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("MyUglyRocks.Core.Entities.User", "User")
                         .WithMany("Posts")
@@ -2724,8 +2713,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Cycle");
-
-                    b.Navigation("Inventory");
 
                     b.Navigation("User");
                 });

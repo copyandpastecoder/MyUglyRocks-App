@@ -15,7 +15,7 @@ public record InventoryDto(
     string DisplayUnit,
     decimal? Cost,
     string Condition,
-    string? SizeCategory,
+    string[]? SizeCategories,
     int? QualityRating,
     string Status,
     string? StorageLocation,
@@ -87,7 +87,7 @@ public record CreateInventoryRequest(
     [Required(ErrorMessage = "Condition is required")]
     string Condition,
 
-    string? SizeCategory,
+    string[]? SizeCategories,
 
     [Range(1, 5, ErrorMessage = "Quality rating must be between 1 and 5")]
     int? QualityRating,
@@ -141,7 +141,7 @@ public record UpdateInventoryRequest(
     [Required(ErrorMessage = "Condition is required")]
     string Condition,
 
-    string? SizeCategory,
+    string[]? SizeCategories,
 
     [Range(1, 5, ErrorMessage = "Quality rating must be between 1 and 5")]
     int? QualityRating,

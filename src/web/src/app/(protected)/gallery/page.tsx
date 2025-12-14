@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { usePosts, useVoteMutation } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { PAGE_CONTAINER } from '@/lib/layout';
+import { formatSizeCategories } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { GalleryGridSkeleton } from '@/components/skeletons';
 import { LazyImage } from '@/components/lazy-image';
@@ -22,7 +23,7 @@ import {
   MessageCircle,
   ImageIcon,
   AlertCircle,
-  User,
+  Package,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { PostListDto } from '@/types/post';
@@ -144,11 +145,28 @@ function PostRow({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="font-medium truncate">{post.title}</p>
-        <p className="text-sm text-muted-foreground">
-          {post.photoCount} photo{post.photoCount !== 1 ? 's' : ''}
-          {' · '}
-          {post.author.displayName || post.author.username}
+        <div className="flex items-center gap-2">
+          <p className="font-medium truncate">{post.title}</p>
+          {post.postType === 'Inventory' && (
+            <Package className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground truncate">
+          {post.postType === 'Inventory' ? (
+            // Inventory posts: Source Type, Specimens, Size
+            <>
+              {post.sourceType}
+              {post.specimenNames?.length > 0 && ` · ${post.specimenNames.join(', ')}`}
+              {post.sizeCategories?.length > 0 && ` · ${formatSizeCategories(post.sizeCategories).join(', ')}`}
+            </>
+          ) : (
+            // Cycle posts: photo count and author
+            <>
+              {post.photoCount} photo{post.photoCount !== 1 ? 's' : ''}
+              {' · '}
+              {post.author.displayName || post.author.username}
+            </>
+          )}
         </p>
       </div>
 

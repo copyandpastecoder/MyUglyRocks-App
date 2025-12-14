@@ -96,7 +96,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
     <TooltipProvider>
       <div
         className={cn(
-          'flex h-full flex-col bg-sidebar transition-all duration-300 ease-in-out',
+          'hidden md:flex h-full flex-col bg-sidebar transition-all duration-300 ease-in-out',
           collapsed ? 'w-16' : 'w-64'
         )}
       >

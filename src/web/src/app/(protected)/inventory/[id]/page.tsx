@@ -5,8 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useInventoryItem, useUpdateInventory, useDeleteInventory, useUpdateInventoryStatus } from '@/hooks/use-inventory';
-import { useSpecimens } from '@/hooks/use-specimens';
+import { useInventoryItem, useUpdateInventory, useDeleteInventory } from '@/hooks/use-inventory';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,8 +41,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { SpecimenMultiSelect } from '@/components/specimen-multi-select';
-import { ArrowLeft, Loader2, Trash2, Package, Star, MapPin, DollarSign, Scale, ExternalLink } from 'lucide-react';
+import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
+import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
+import { WeightInput } from '@/components/weight-input';
+import { InventoryPhotos } from '@/components/inventory-photos';
+import { StarRating } from '@/components/star-rating';
+import { ArrowLeft, Loader2, Trash2, Package, Star, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import type { SourceType, InventoryCondition, SizeCategory, InventoryStatus } from '@/types/inventory';
 
@@ -64,10 +68,12 @@ const CONDITIONS: { value: InventoryCondition; label: string }[] = [
 ];
 
 const SIZE_CATEGORIES: { value: SizeCategory; label: string }[] = [
-  { value: 'Small', label: 'Small (< 0.5")' },
-  { value: 'Medium', label: 'Medium (0.5" - 1.5")' },
-  { value: 'Large', label: 'Large (> 1.5")' },
-  { value: 'Mixed', label: 'Mixed sizes' },
+  { value: 'ZeroToOne', label: '0 - 1"' },
+  { value: 'OneToTwo', label: '1" - 2"' },
+  { value: 'TwoToThree', label: '2" - 3"' },
+  { value: 'ThreeToFour', label: '3" - 4"' },
+  { value: 'FourToFive', label: '4" - 5"' },
+  { value: 'GreaterThanFive', label: 'Greater than 5"' },
   { value: 'Assorted', label: 'Assorted' },
 ];
 
@@ -85,12 +91,6 @@ const STATUS_COLORS: Record<InventoryStatus, string> = {
   Partial: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
 };
 
-const WEIGHT_UNITS = [
-  { value: 'g', label: 'Grams (g)' },
-  { value: 'oz', label: 'Ounces (oz)' },
-  { value: 'lb', label: 'Pounds (lb)' },
-];
-
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   acquiredDate: z.string().min(1, 'Acquired date is required'),
@@ -98,12 +98,11 @@ const formSchema = z.object({
   sourceName: z.string().max(255).optional(),
   sourceLocation: z.string().max(255).optional(),
   sourceUrl: z.string().url().max(500).optional().or(z.literal('')),
-  totalWeight: z.coerce.number().min(0).optional(),
-  remainingWeight: z.coerce.number().min(0).optional(),
-  displayUnit: z.string().default('g'),
+  totalWeightGrams: z.number().min(0).nullable().optional(),
+  remainingWeightGrams: z.number().min(0).nullable().optional(),
   cost: z.coerce.number().min(0).optional(),
   condition: z.string().min(1, 'Condition is required'),
-  sizeCategory: z.string().optional(),
+  sizeCategories: z.array(z.string()).optional(),
   qualityRating: z.coerce.number().min(1).max(5).optional(),
   status: z.string().min(1, 'Status is required'),
   storageLocation: z.string().max(255).optional(),
@@ -113,77 +112,102 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function toGrams(value: number, unit: string): number {
-  switch (unit) {
-    case 'oz': return value * 28.3495;
-    case 'lb': return value * 453.592;
-    default: return value;
-  }
-}
-
-function fromGrams(grams: number, unit: string): number {
-  switch (unit) {
-    case 'oz': return grams / 28.3495;
-    case 'lb': return grams / 453.592;
-    default: return grams;
-  }
-}
-
 export default function InventoryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
 
-  const [isEditing, setIsEditing] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedSpecimenIds, setSelectedSpecimenIds] = useState<string[]>([]);
+  const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
+  const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
+  const [displayUnit, setDisplayUnit] = useState<string>('lb');
+  const hasInitializedForm = useRef(false);
   const hasInitializedSpecimens = useRef(false);
+  const hasInitializedDisplayUnit = useRef(false);
 
-  const { data: inventory, isLoading } = useInventoryItem(id);
-  const { data: specimens = [], isLoading: specimensLoading } = useSpecimens();
+  const { data: inventory, isLoading, refetch: refetchInventory } = useInventoryItem(id);
   const updateMutation = useUpdateInventory();
   const deleteMutation = useDeleteInventory();
 
   const form = useForm<FormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
     resolver: zodResolver(formSchema) as any,
-    values: inventory ? {
-      name: inventory.name,
-      acquiredDate: inventory.acquiredDate,
-      sourceType: inventory.sourceType,
-      sourceName: inventory.sourceName || '',
-      sourceLocation: inventory.sourceLocation || '',
-      sourceUrl: inventory.sourceUrl || '',
-      totalWeight: inventory.totalWeightGrams ? fromGrams(inventory.totalWeightGrams, inventory.displayUnit) : undefined,
-      remainingWeight: inventory.remainingWeightGrams ? fromGrams(inventory.remainingWeightGrams, inventory.displayUnit) : undefined,
-      displayUnit: inventory.displayUnit,
-      cost: inventory.cost || undefined,
-      condition: inventory.condition,
-      sizeCategory: inventory.sizeCategory || '',
-      qualityRating: inventory.qualityRating || undefined,
-      status: inventory.status,
-      storageLocation: inventory.storageLocation || '',
-      notes: inventory.notes || '',
-      isFavorite: inventory.isFavorite,
-    } : undefined,
+    defaultValues: {
+      name: '',
+      acquiredDate: '',
+      sourceType: '',
+      sourceName: '',
+      sourceLocation: '',
+      sourceUrl: '',
+      totalWeightGrams: null,
+      remainingWeightGrams: null,
+      cost: undefined,
+      condition: '',
+      sizeCategories: [],
+      qualityRating: undefined,
+      status: '',
+      storageLocation: '',
+      notes: '',
+      isFavorite: false,
+    },
   });
+
+  // Reset form when inventory data loads (once only)
+  useEffect(() => {
+    if (!hasInitializedForm.current && inventory) {
+      hasInitializedForm.current = true;
+      form.reset({
+        name: inventory.name,
+        acquiredDate: inventory.acquiredDate,
+        sourceType: inventory.sourceType,
+        sourceName: inventory.sourceName || '',
+        sourceLocation: inventory.sourceLocation || '',
+        sourceUrl: inventory.sourceUrl || '',
+        totalWeightGrams: inventory.totalWeightGrams ?? null,
+        remainingWeightGrams: inventory.remainingWeightGrams ?? null,
+        cost: inventory.cost || undefined,
+        condition: inventory.condition,
+        sizeCategories: inventory.sizeCategories || [],
+        qualityRating: inventory.qualityRating || undefined,
+        status: inventory.status,
+        storageLocation: inventory.storageLocation || '',
+        notes: inventory.notes || '',
+        isFavorite: inventory.isFavorite,
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time initialization, form.reset is stable
+  }, [inventory]);
 
   // Initialize selected specimens when inventory loads (once only)
   useEffect(() => {
     if (!hasInitializedSpecimens.current && inventory?.specimens) {
       hasInitializedSpecimens.current = true;
-      const ids = inventory.specimens
-        .filter(s => s.specimenId)
-        .map(s => s.specimenId as string);
+      const items: SpecimenSelection[] = inventory.specimens
+        .filter(s => s.specimenId || s.userSpecimenId)
+        .map(s => ({
+          id: (s.specimenId || s.userSpecimenId) as string,
+          source: s.source,
+        }));
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
-      setSelectedSpecimenIds(ids);
+      setSelectedSpecimenItems(items);
     }
   }, [inventory]);
 
-  const onSubmit = (data: FormValues) => {
-    const totalWeightGrams = data.totalWeight ? toGrams(data.totalWeight, data.displayUnit) : undefined;
-    const remainingWeightGrams = data.remainingWeight ? toGrams(data.remainingWeight, data.displayUnit) : undefined;
+  // Initialize display unit from inventory (once only)
+  useEffect(() => {
+    if (!hasInitializedDisplayUnit.current && inventory?.displayUnit) {
+      hasInitializedDisplayUnit.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
+      setDisplayUnit(inventory.displayUnit);
+    }
+  }, [inventory]);
 
+  // Handle when a custom specimen is created - add it to the selection
+  const handleCustomSpecimenCreated = (specimenId: string) => {
+    setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
+  };
+
+  const onSubmit = (data: FormValues) => {
     updateMutation.mutate({
       id,
       data: {
@@ -193,21 +217,19 @@ export default function InventoryDetailPage() {
         sourceName: data.sourceName || undefined,
         sourceLocation: data.sourceLocation || undefined,
         sourceUrl: data.sourceUrl || undefined,
-        totalWeightGrams,
-        remainingWeightGrams,
-        displayUnit: data.displayUnit,
+        totalWeightGrams: data.totalWeightGrams ?? undefined,
+        remainingWeightGrams: data.remainingWeightGrams ?? undefined,
+        displayUnit: data.totalWeightGrams || data.remainingWeightGrams ? displayUnit : undefined,
         cost: data.cost,
         condition: data.condition as InventoryCondition,
-        sizeCategory: data.sizeCategory as SizeCategory || undefined,
+        sizeCategories: data.sizeCategories && data.sizeCategories.length > 0
+          ? data.sizeCategories as SizeCategory[]
+          : undefined,
         qualityRating: data.qualityRating,
         status: data.status as InventoryStatus,
         storageLocation: data.storageLocation || undefined,
         notes: data.notes || undefined,
         isFavorite: data.isFavorite,
-      },
-    }, {
-      onSuccess: () => {
-        setIsEditing(false);
       },
     });
   };
@@ -239,223 +261,48 @@ export default function InventoryDetailPage() {
     );
   }
 
-  if (!isEditing) {
-    return (
-      <div className={PAGE_CONTAINER}>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/inventory">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">{inventory.name}</h1>
-              {inventory.isFavorite && <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />}
-            </div>
-            <p className="text-muted-foreground">
-              Acquired {new Date(inventory.acquiredDate).toLocaleDateString()}
-            </p>
-          </div>
-          <Badge variant="secondary" className={STATUS_COLORS[inventory.status]}>
-            {inventory.status}
-          </Badge>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Source Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium">Source:</span>
-                <span>{SOURCE_TYPES.find(s => s.value === inventory.sourceType)?.label}</span>
-              </div>
-              {inventory.sourceName && (
-                <div className="flex items-center gap-2">
-                  <span className="font-medium">Name:</span>
-                  <span>{inventory.sourceName}</span>
-                </div>
-              )}
-              {inventory.sourceLocation && (
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span>{inventory.sourceLocation}</span>
-                </div>
-              )}
-              {inventory.sourceUrl && (
-                <div className="flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  <a href={inventory.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate">
-                    {inventory.sourceUrl}
-                  </a>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                {inventory.totalWeightGrams && (
-                  <div>
-                    <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                      <Scale className="h-3 w-3" />
-                      Total Weight
-                    </div>
-                    <p className="font-medium">{fromGrams(inventory.totalWeightGrams, inventory.displayUnit).toFixed(1)} {inventory.displayUnit}</p>
-                  </div>
-                )}
-                {inventory.remainingWeightGrams !== null && (
-                  <div>
-                    <div className="text-muted-foreground text-sm">Remaining</div>
-                    <p className="font-medium">{fromGrams(inventory.remainingWeightGrams, inventory.displayUnit).toFixed(1)} {inventory.displayUnit}</p>
-                  </div>
-                )}
-                {inventory.cost && (
-                  <div>
-                    <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                      <DollarSign className="h-3 w-3" />
-                      Cost
-                    </div>
-                    <p className="font-medium">${inventory.cost.toFixed(2)}</p>
-                  </div>
-                )}
-                <div>
-                  <div className="text-muted-foreground text-sm">Condition</div>
-                  <p className="font-medium">{CONDITIONS.find(c => c.value === inventory.condition)?.label}</p>
-                </div>
-                {inventory.sizeCategory && (
-                  <div>
-                    <div className="text-muted-foreground text-sm">Size</div>
-                    <p className="font-medium">{SIZE_CATEGORIES.find(s => s.value === inventory.sizeCategory)?.label}</p>
-                  </div>
-                )}
-                {inventory.qualityRating && (
-                  <div>
-                    <div className="text-muted-foreground text-sm">Quality</div>
-                    <p className="font-medium">{inventory.qualityRating}/5</p>
-                  </div>
-                )}
-              </div>
-              {inventory.storageLocation && (
-                <div>
-                  <div className="text-muted-foreground text-sm">Storage Location</div>
-                  <p className="font-medium">{inventory.storageLocation}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {inventory.specimens.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Specimens</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {inventory.specimens.map((specimen) => (
-                    <Badge key={specimen.inventorySpecimenId} variant="outline">
-                      {specimen.commonName}
-                      {specimen.estimatedPercentage && ` (${specimen.estimatedPercentage}%)`}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {inventory.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="whitespace-pre-wrap">{inventory.notes}</p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="flex gap-4">
-          <Button onClick={() => setIsEditing(true)}>Edit</Button>
-          <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
-        </div>
-
-        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete &quot;{inventory.name}&quot;? This action cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-    );
-  }
-
-  // Edit mode
   return (
     <div className={PAGE_CONTAINER}>
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setIsEditing(false)}>
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/inventory">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
         </Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit Inventory</h1>
-          <p className="text-muted-foreground">{inventory.name}</p>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">{inventory.name}</h1>
+            {inventory.isFavorite && <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />}
+          </div>
+          <p className="text-muted-foreground">
+            Acquired {new Date(inventory.acquiredDate).toLocaleDateString()}
+          </p>
         </div>
+        <Badge variant="secondary" className={STATUS_COLORS[inventory.status]}>
+          {inventory.status}
+        </Badge>
       </div>
 
       <Card>
-        <CardContent className="pt-6">
+        <CardHeader>
+          <CardTitle>Acquisition Details</CardTitle>
+        </CardHeader>
+        <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name *</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="acquiredDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date Acquired *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="acquiredDate"
+                render={({ field }) => (
+                  <FormItem className="max-w-xs">
+                    <FormLabel>Date Acquired *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
@@ -464,10 +311,10 @@ export default function InventoryDetailPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Source Type *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} key={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="How did you acquire this?" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -486,9 +333,9 @@ export default function InventoryDetailPage() {
                   name="sourceName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Source Name</FormLabel>
+                      <FormLabel>Source Name *</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input placeholder="Store name, website, location..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -504,7 +351,7 @@ export default function InventoryDetailPage() {
                     <FormItem>
                       <FormLabel>Location</FormLabel>
                       <FormControl>
-                        <Input {...field} />
+                        <Input placeholder="City, State or general area" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -518,7 +365,19 @@ export default function InventoryDetailPage() {
                     <FormItem>
                       <FormLabel>URL</FormLabel>
                       <FormControl>
-                        <Input type="url" {...field} />
+                        <Input
+                          type="url"
+                          placeholder="https://..."
+                          {...field}
+                          onBlur={(e) => {
+                            let value = e.target.value.trim();
+                            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+                              value = 'https://' + value;
+                              field.onChange(value);
+                            }
+                            field.onBlur();
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -526,53 +385,34 @@ export default function InventoryDetailPage() {
                 />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-4">
-                <FormField
-                  control={form.control}
-                  name="totalWeight"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Total Weight</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+              <FormItem>
+                <FormLabel>Specimens</FormLabel>
+                <SpecimenMultiSelect
+                  selectedItems={selectedSpecimenItems}
+                  onSelectionChange={setSelectedSpecimenItems}
+                  placeholder="Select rock/mineral types..."
+                  onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
                 />
+                <FormDescription>
+                  What types of rocks are in this batch?
+                </FormDescription>
+              </FormItem>
 
+              <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="remainingWeight"
+                  name="totalWeightGrams"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Remaining Weight</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="displayUnit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unit</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {WEIGHT_UNITS.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <WeightInput
+                        label="Total Weight"
+                        valueGrams={field.value ?? null}
+                        onValueChange={(grams, unit) => {
+                          field.onChange(grams);
+                          if (unit) setDisplayUnit(unit);
+                        }}
+                        initialDisplayUnit={inventory?.displayUnit}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -585,7 +425,7 @@ export default function InventoryDetailPage() {
                     <FormItem>
                       <FormLabel>Cost ($)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" {...field} />
+                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -593,17 +433,17 @@ export default function InventoryDetailPage() {
                 />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-4">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="condition"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Condition *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} key={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder="Select condition" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -619,36 +459,72 @@ export default function InventoryDetailPage() {
 
                 <FormField
                   control={form.control}
-                  name="sizeCategory"
+                  name="qualityRating"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Size Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select size" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {SIZE_CATEGORIES.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <StarRating
+                        label="Quality"
+                        value={field.value ?? null}
+                        onChange={(val) => field.onChange(val ?? undefined)}
+                        size="md"
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </div>
 
+              <FormField
+                control={form.control}
+                name="sizeCategories"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Size Categories</FormLabel>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3 border rounded-md">
+                      {SIZE_CATEGORIES.map(({ value, label }) => (
+                        <div key={value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`size-${value}`}
+                            checked={field.value?.includes(value) ?? false}
+                            onCheckedChange={(checked) => {
+                              const currentValues = field.value ?? [];
+                              if (checked) {
+                                field.onChange([...currentValues, value]);
+                              } else {
+                                field.onChange(currentValues.filter((v: string) => v !== value));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`size-${value}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            {label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <FormDescription>Select all sizes that apply to this batch</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="qualityRating"
+                  name="remainingWeightGrams"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Quality (1-5)</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="1" max="5" {...field} />
-                      </FormControl>
+                      <WeightInput
+                        label="Remaining Weight"
+                        valueGrams={field.value ?? null}
+                        onValueChange={(grams, unit) => {
+                          field.onChange(grams);
+                          if (unit) setDisplayUnit(unit);
+                        }}
+                        initialDisplayUnit={inventory?.displayUnit}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -660,7 +536,7 @@ export default function InventoryDetailPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Status *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value} key={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue />
@@ -685,8 +561,11 @@ export default function InventoryDetailPage() {
                   <FormItem>
                     <FormLabel>Storage Location</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="e.g., Garage shelf 2, Bucket A" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Where do you keep this material?
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -699,7 +578,11 @@ export default function InventoryDetailPage() {
                   <FormItem>
                     <FormLabel>Notes</FormLabel>
                     <FormControl>
-                      <Textarea className="min-h-[100px]" {...field} />
+                      <Textarea
+                        placeholder="Any additional notes..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -714,7 +597,7 @@ export default function InventoryDetailPage() {
                     <div className="space-y-0.5">
                       <FormLabel className="text-base">Favorite</FormLabel>
                       <FormDescription>
-                        Mark this as a favorite
+                        Mark this as a favorite for quick filtering
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -727,19 +610,79 @@ export default function InventoryDetailPage() {
                 )}
               />
 
-              <div className="flex gap-4">
-                <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
-                </Button>
-              </div>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Rock Shop - Agates - Dec 13, 2025" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Display name for this inventory item
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </form>
           </Form>
         </CardContent>
       </Card>
+
+      <InventoryPhotos
+        inventoryId={id}
+        photos={inventory.photos}
+        onPhotosChange={() => refetchInventory()}
+      />
+
+      <div className="flex gap-4">
+        <Button
+          type="button"
+          onClick={form.handleSubmit(onSubmit)}
+          disabled={updateMutation.isPending}
+        >
+          {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Save Changes
+        </Button>
+        {inventory.photos.length > 0 && (
+          <Button variant="secondary" asChild>
+            <Link href={`/inventory/${id}/share`}>
+              <Share2 className="mr-2 h-4 w-4" />
+              Share to Gallery
+            </Link>
+          </Button>
+        )}
+        <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </Button>
+      </div>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{inventory.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add Custom Specimen Dialog */}
+      <AddCustomSpecimenDialog
+        open={isAddSpecimenDialogOpen}
+        onOpenChange={setIsAddSpecimenDialogOpen}
+        onSuccess={handleCustomSpecimenCreated}
+      />
     </div>
   );
 }

@@ -24,3 +24,9 @@ public record UploadAvatarResponse(
     string? AvatarUrl = null,
     string? Error = null
 );
+
+public record UploadInventoryPhotoResponse(
+    bool Success,
+    InventoryPhotoDto? Photo = null,
+    string? Error = null
+);

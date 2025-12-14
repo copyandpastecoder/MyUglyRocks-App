@@ -1,7 +1,7 @@
 export type SourceType = 'Store' | 'Online' | 'Found' | 'Gift' | 'Trade' | 'Other';
 export type InventoryCondition = 'Raw' | 'PreShaped' | 'Tumbled' | 'Polished' | 'Mixed';
 export type InventoryStatus = 'Available' | 'InUse' | 'Depleted' | 'Partial';
-export type SizeCategory = 'Small' | 'Medium' | 'Large' | 'Mixed' | 'Assorted';
+export type SizeCategory = 'ZeroToOne' | 'OneToTwo' | 'TwoToThree' | 'ThreeToFour' | 'FourToFive' | 'GreaterThanFive' | 'Assorted';
 
 export interface InventoryDto {
   inventoryId: string;
@@ -16,7 +16,7 @@ export interface InventoryDto {
   displayUnit: string;
   cost: number | null;
   condition: InventoryCondition;
-  sizeCategory: SizeCategory | null;
+  sizeCategories: SizeCategory[] | null;
   qualityRating: number | null;
   status: InventoryStatus;
   storageLocation: string | null;
@@ -64,7 +64,7 @@ export interface CreateInventoryRequest {
   displayUnit?: string;
   cost?: number;
   condition: InventoryCondition;
-  sizeCategory?: SizeCategory;
+  sizeCategories?: SizeCategory[];
   qualityRating?: number;
   status?: InventoryStatus;
   storageLocation?: string;
@@ -85,7 +85,7 @@ export interface UpdateInventoryRequest {
   displayUnit?: string;
   cost?: number;
   condition: InventoryCondition;
-  sizeCategory?: SizeCategory;
+  sizeCategories?: SizeCategory[];
   qualityRating?: number;
   status?: InventoryStatus;
   storageLocation?: string;
@@ -146,6 +146,12 @@ export interface InventoryStatsDto {
   availableCount: number;
   inUseCount: number;
   depletedCount: number;
+}
+
+export interface UploadInventoryPhotoResponse {
+  success: boolean;
+  photo?: InventoryPhotoDto;
+  error?: string;
 }
 
 // Filter options for inventory list

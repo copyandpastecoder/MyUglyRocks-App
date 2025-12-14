@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { postApi } from '@/lib/api';
 import { PAGE_CONTAINER } from '@/lib/layout';
+import { formatSizeCategories } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +31,7 @@ import {
   ChevronUp,
   ChevronDown,
   Maximize2,
+  Package,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import Link from 'next/link';
@@ -45,7 +47,7 @@ export default function PostDetailPage() {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [isCycleOverviewOpen, setIsCycleOverviewOpen] = useState(false);
+  const [isOverviewOpen, setIsOverviewOpen] = useState(false);
   const lightbox = useLightbox();
 
   const { data: post, isLoading: postLoading } = useQuery({
@@ -264,96 +266,190 @@ export default function PostDetailPage() {
         </Card>
       )}
 
-      {/* Collapsible Cycle Overview Card (Read-only) */}
-      <Collapsible open={isCycleOverviewOpen} onOpenChange={setIsCycleOverviewOpen}>
-        <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
-              <div className="flex items-center justify-between gap-3">
-                {/* Left: Title and metadata */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      {post.cycle.status}
-                    </Badge>
-                    <CardTitle className="text-base sm:text-lg leading-tight truncate">{post.cycle.name}</CardTitle>
+      {/* Collapsible Overview Card (Cycle or Inventory) */}
+      {post.postType === 'Cycle' && post.cycle && (
+        <Collapsible open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
+                <div className="flex items-center justify-between gap-3">
+                  {/* Left: Title and metadata */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        {post.cycle.status}
+                      </Badge>
+                      <CardTitle className="text-base sm:text-lg leading-tight truncate">{post.cycle.name}</CardTitle>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                      <span>Day {post.cycle.elapsedDays}</span>
+                      <span>•</span>
+                      <span>{post.cycle.stageCount} stage{post.cycle.stageCount !== 1 ? 's' : ''}</span>
+                      {post.cycle.finalQuality && (
+                        <>
+                          <span>•</span>
+                          <span>{post.cycle.finalQuality}/5 ★</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                    <span>Day {post.cycle.elapsedDays}</span>
-                    <span>•</span>
-                    <span>{post.cycle.stageCount} stage{post.cycle.stageCount !== 1 ? 's' : ''}</span>
-                    {post.cycle.finalQuality && (
-                      <>
-                        <span>•</span>
-                        <span>{post.cycle.finalQuality}/5 ★</span>
-                      </>
+
+                  {/* Right: Chevron */}
+                  <div className="flex items-center shrink-0">
+                    {isOverviewOpen ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
                     )}
                   </div>
                 </div>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
+                <div>
+                  <p className="text-sm text-muted-foreground">Started</p>
+                  <p className="font-medium">{new Date(post.cycle.startDate).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Completed</p>
+                  <p className="font-medium">{post.cycle.endDate ? new Date(post.cycle.endDate).toLocaleDateString() : 'Ongoing'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Runtime</p>
+                  <p className="font-medium">{post.cycle.elapsedDays}d</p>
+                </div>
+                {post.cycle.specimenNames && post.cycle.specimenNames.length > 0 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Specimens</p>
+                    <p className="font-medium">{post.cycle.specimenNames.join(', ')}</p>
+                  </div>
+                )}
+                {post.cycle.difficultyRating && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Difficulty</p>
+                    <p className="font-medium">
+                      {post.cycle.difficultyRating === 1 ? 'Easy' :
+                       post.cycle.difficultyRating === 2 ? 'Medium' :
+                       post.cycle.difficultyRating === 3 ? 'Hard' :
+                       post.cycle.difficultyRating === 4 ? 'Very Hard' :
+                       post.cycle.difficultyRating === 5 ? 'Expert' : 'Unknown'}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-muted-foreground">Photos</p>
+                  <p className="font-medium">{post.cycle.photoCount} photos</p>
+                </div>
+                {(post.cycle.tumblerName || post.cycle.barrelName) && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Equipment</p>
+                    <p className="font-medium">
+                      {[post.cycle.tumblerName, post.cycle.barrelName].filter(Boolean).join(' - ')}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-muted-foreground">Gallery</p>
+                  <p className="font-medium">{post.voteCount} likes</p>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
-                {/* Right: Chevron */}
-                <div className="flex items-center shrink-0">
-                  {isCycleOverviewOpen ? (
-                    <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  )}
+      {/* Inventory Overview Card */}
+      {post.postType === 'Inventory' && post.inventory && (
+        <Collapsible open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
+          <Card>
+            <CollapsibleTrigger asChild>
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
+                <div className="flex items-center justify-between gap-3">
+                  {/* Left: Title and metadata */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <Badge variant="secondary" className="text-xs shrink-0">
+                        {post.inventory.sourceType}
+                      </Badge>
+                      <CardTitle className="text-base sm:text-lg leading-tight truncate">{post.inventory.name}</CardTitle>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                      {post.inventory.specimenNames.length > 0 && (
+                        <span>{post.inventory.specimenNames.join(', ')}</span>
+                      )}
+                      {post.inventory.sizeCategories.length > 0 && (
+                        <>
+                          {post.inventory.specimenNames.length > 0 && <span>•</span>}
+                          <span>{formatSizeCategories(post.inventory.sizeCategories).join(', ')}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: Chevron */}
+                  <div className="flex items-center shrink-0">
+                    {isOverviewOpen ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
                 </div>
-              </div>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
-              <div>
-                <p className="text-sm text-muted-foreground">Started</p>
-                <p className="font-medium">{new Date(post.cycle.startDate).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Completed</p>
-                <p className="font-medium">{post.cycle.endDate ? new Date(post.cycle.endDate).toLocaleDateString() : 'Ongoing'}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Runtime</p>
-                <p className="font-medium">{post.cycle.elapsedDays}d</p>
-              </div>
-              {post.cycle.specimenNames && post.cycle.specimenNames.length > 0 && (
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
                 <div>
-                  <p className="text-sm text-muted-foreground">Specimens</p>
-                  <p className="font-medium">{post.cycle.specimenNames.join(', ')}</p>
+                  <p className="text-sm text-muted-foreground">Source</p>
+                  <p className="font-medium">{post.inventory.sourceType}</p>
                 </div>
-              )}
-              {post.cycle.difficultyRating && (
+                {post.inventory.sourceName && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Source Name</p>
+                    <p className="font-medium">{post.inventory.sourceName}</p>
+                  </div>
+                )}
+                {post.inventory.sourceLocation && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Location</p>
+                    <p className="font-medium">{post.inventory.sourceLocation}</p>
+                  </div>
+                )}
                 <div>
-                  <p className="text-sm text-muted-foreground">Difficulty</p>
-                  <p className="font-medium">
-                    {post.cycle.difficultyRating === 1 ? 'Easy' :
-                     post.cycle.difficultyRating === 2 ? 'Medium' :
-                     post.cycle.difficultyRating === 3 ? 'Hard' :
-                     post.cycle.difficultyRating === 4 ? 'Very Hard' :
-                     post.cycle.difficultyRating === 5 ? 'Expert' : 'Unknown'}
-                  </p>
+                  <p className="text-sm text-muted-foreground">Acquired</p>
+                  <p className="font-medium">{new Date(post.inventory.acquiredDate).toLocaleDateString()}</p>
                 </div>
-              )}
-              <div>
-                <p className="text-sm text-muted-foreground">Photos</p>
-                <p className="font-medium">{post.cycle.photoCount} photos</p>
-              </div>
-              {(post.cycle.tumblerName || post.cycle.barrelName) && (
                 <div>
-                  <p className="text-sm text-muted-foreground">Equipment</p>
-                  <p className="font-medium">
-                    {[post.cycle.tumblerName, post.cycle.barrelName].filter(Boolean).join(' - ')}
-                  </p>
+                  <p className="text-sm text-muted-foreground">Condition</p>
+                  <p className="font-medium">{post.inventory.condition}</p>
                 </div>
-              )}
-              <div>
-                <p className="text-sm text-muted-foreground">Gallery</p>
-                <p className="font-medium">{post.voteCount} likes</p>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
+                {post.inventory.specimenNames.length > 0 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Specimens</p>
+                    <p className="font-medium">{post.inventory.specimenNames.join(', ')}</p>
+                  </div>
+                )}
+                {post.inventory.sizeCategories.length > 0 && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Size</p>
+                    <p className="font-medium">{formatSizeCategories(post.inventory.sizeCategories).join(', ')}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-muted-foreground">Photos</p>
+                  <p className="font-medium">{post.inventory.photoCount} photos</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Gallery</p>
+                  <p className="font-medium">{post.voteCount} likes</p>
+                </div>
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
 
       {/* Comments */}
       <Card>

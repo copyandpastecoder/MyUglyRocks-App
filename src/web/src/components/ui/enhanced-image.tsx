@@ -4,6 +4,14 @@ import { useState, useEffect } from 'react';
 import { Blurhash } from 'react-blurhash';
 import { cn } from '@/lib/utils';
 
+// Valid blurhash is typically 20-30 chars of base83 characters
+function isValidBlurhash(hash: string): boolean {
+  // Blurhash strings are short (typically 20-30 chars) and don't start with "data:"
+  if (hash.startsWith('data:')) return false;
+  if (hash.length < 6 || hash.length > 100) return false;
+  return true;
+}
+
 interface EnhancedImageProps {
   src: string;
   alt: string;
@@ -29,6 +37,10 @@ export function EnhancedImage({
 }: EnhancedImageProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
+
+  // Determine if blurHash is a valid blurhash or a data URI
+  const isDataUri = blurHash?.startsWith('data:') ?? false;
+  const validBlurhash = blurHash && isValidBlurhash(blurHash) ? blurHash : null;
 
   useEffect(() => {
     // Reset state when src changes
@@ -56,11 +68,11 @@ export function EnhancedImage({
       )}
       onClick={onClick}
     >
-      {/* BlurHash placeholder */}
-      {blurHash && !isLoaded && !hasError && (
+      {/* BlurHash placeholder (proper blurhash string) */}
+      {validBlurhash && !isLoaded && !hasError && (
         <div className="absolute inset-0">
           <Blurhash
-            hash={blurHash}
+            hash={validBlurhash}
             width="100%"
             height="100%"
             resolutionX={32}
@@ -71,8 +83,18 @@ export function EnhancedImage({
         </div>
       )}
 
-      {/* Fallback placeholder when no blurHash */}
-      {!blurHash && !isLoaded && !hasError && (
+      {/* Data URI placeholder (base64 image) */}
+      {isDataUri && blurHash && !isLoaded && !hasError && (
+        <img
+          src={blurHash}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover blur-sm scale-105"
+          aria-hidden
+        />
+      )}
+
+      {/* Fallback placeholder when no valid blurHash or data URI */}
+      {!validBlurhash && !isDataUri && !isLoaded && !hasError && (
         <div className="absolute inset-0 bg-muted animate-pulse" />
       )}
 

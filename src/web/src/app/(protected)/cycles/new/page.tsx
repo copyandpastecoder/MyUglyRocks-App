@@ -24,6 +24,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
+import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -42,6 +43,13 @@ export default function NewCyclePage() {
   const queryClient = useQueryClient();
   const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
   const [specimenError, setSpecimenError] = useState<string | null>(null);
+  const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
+
+  // Handle when a custom specimen is created - add it to the selection
+  const handleCustomSpecimenCreated = (specimenId: string) => {
+    setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
+    setSpecimenError(null);
+  };
 
   const { data: tumblers } = useQuery({
     queryKey: ['tumblers'],
@@ -210,6 +218,7 @@ export default function NewCyclePage() {
                     if (items.length > 0) setSpecimenError(null);
                   }}
                   placeholder="Select specimens from the list..."
+                  onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
                 />
                 <FormDescription className="text-helpful-tip">
                   Select the types of rocks you&apos;re tumbling. Search by name, alias, variety, or family.
@@ -298,6 +307,13 @@ export default function NewCyclePage() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Add Custom Specimen Dialog */}
+      <AddCustomSpecimenDialog
+        open={isAddSpecimenDialogOpen}
+        onOpenChange={setIsAddSpecimenDialogOpen}
+        onSuccess={handleCustomSpecimenCreated}
+      />
     </div>
   );
 }

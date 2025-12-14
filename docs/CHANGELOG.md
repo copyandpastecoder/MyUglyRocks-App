@@ -2,6 +2,80 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-14
+
+### Added
+
+#### Share Inventory to Gallery
+- **Feature**: Inventory items can now be shared to the gallery, similar to cycles
+- **Files**:
+  - [Post.cs](../src/api/MyUglyRocks.Core/Entities/Post.cs) - Added nullable `InventoryId` with XOR constraint (CycleId OR InventoryId)
+  - [PostDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/PostDtos.cs) - Added `InventoryPreviewDto`, `postType` field
+  - [PostService.cs](../src/api/MyUglyRocks.Core/Services/PostService.cs) - Handle inventory posts, map inventory photos
+  - [SocialConfiguration.cs](../src/api/MyUglyRocks.Infrastructure/Data/Configurations/SocialConfiguration.cs) - FK and constraint
+  - [inventory/[id]/share/page.tsx](../src/web/src/app/(protected)/inventory/[id]/share/page.tsx) - New share page
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Added "Share to Gallery" button
+  - [gallery/page.tsx](../src/web/src/app/(protected)/gallery/page.tsx) - Handle both post types
+  - [gallery/[id]/page.tsx](../src/web/src/app/(protected)/gallery/[id]/page.tsx) - Display inventory info
+- **Display**: Gallery inventory cards show Name, Source Type, Specimens, and Size
+
+### Changed
+
+#### Inventory Size Categories Updated
+- **Change**: Replaced old size categories with new inch-based ranges
+- **Old Values**: Mini, Small, Medium, Large, ExtraLarge, Fist, DoubleFist, Mixed, Assorted
+- **New Values**: 0-1", 1"-2", 2"-3", 3"-4", 4"-5", Greater than 5", Assorted
+- **Files**:
+  - [Inventory.cs](../src/api/MyUglyRocks.Core/Entities/Inventory.cs) - Backend enum
+  - [inventory.ts](../src/web/src/types/inventory.ts) - Frontend type
+  - [inventory/new/page.tsx](../src/web/src/app/(protected)/inventory/new/page.tsx) - New form options
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Edit form options
+  - [utils.ts](../src/web/src/lib/utils.ts) - Added `formatSizeCategories()` helper for display
+  - [gallery/page.tsx](../src/web/src/app/(protected)/gallery/page.tsx) - Use display helper
+  - [gallery/[id]/page.tsx](../src/web/src/app/(protected)/gallery/[id]/page.tsx) - Use display helper
+- **Migration**: [20251214035413_UpdateSizeCategories.cs](../src/api/MyUglyRocks.Infrastructure/Migrations/20251214035413_UpdateSizeCategories.cs) - Updates existing data
+
+### Fixed
+
+#### Cycle Creation 400 Error
+- **Problem**: Creating a new cycle at `/cycles/new` returned HTTP 400 error, but the cycle was actually created (visible on refresh)
+- **Root Cause**: `CreatedAtAction` in CyclesController used `id` instead of the correct route parameter names. ASP.NET threw "No route matches the supplied values" when generating the Location header.
+- **Fix**: Updated all `CreatedAtAction` calls in CyclesController to use correct route parameter names:
+  - `CreateCycle`: `id` → `cycleId`
+  - `AddStageRun`: `id` → `stageRunId`
+  - `AddCleaningRun`: `id` → `stageRunId`
+  - `AddStageMaterial`: `id` → `stageRunId`
+- **File**: [CyclesController.cs](../src/api/MyUglyRocks.Api/Controllers/CyclesController.cs) - Lines 58, 126, 201, 247
+
+#### Tumbler Creation 400 Error
+- **Problem**: Creating a new tumbler returned HTTP 400 error, but the tumbler was actually created (visible on refresh)
+- **Root Cause**: `CreatedAtAction` in TumblersController used `id` instead of `tumblerId` for the route parameter
+- **Fix**: Changed `new { id = tumbler.TumblerId }` to `new { tumblerId = tumbler.TumblerId }`
+- **File**: [TumblersController.cs](../src/api/MyUglyRocks.Api/Controllers/TumblersController.cs) - Lines 58, 103
+
+#### BlurHash Validation Error in Gallery
+- **Problem**: Gallery threw "blurhash length mismatch" error when viewing inventory posts
+- **Root Cause**: Some inventory photos had base64 data URIs stored in the blurHash field instead of proper blurhash strings
+- **Fix**: Added validation to detect and handle both formats
+- **File**: [enhanced-image.tsx](../src/web/src/components/ui/enhanced-image.tsx)
+  - Added `isValidBlurhash()` function to detect proper blurhash vs data URI
+  - Renders `<Blurhash>` component for valid blurhash strings
+  - Renders blurred `<img>` for data URIs
+  - Falls back to animated pulse placeholder when neither is available
+
+#### Inventory Photos Not Showing in Gallery
+- **Problem**: Inventory posts in gallery showed no photos even when inventory had photos
+- **Root Cause**: PostService was looking for photos in `PostPhoto` table (which links to cycle `Photo`) instead of `InventoryPhoto`
+- **Fix**: Modified `MapToListDto` and `MapToDto` in PostService to use `Inventory.InventoryPhotos` when post is an inventory type
+- **File**: [PostService.cs](../src/api/MyUglyRocks.Core/Services/PostService.cs)
+
+#### Share Button Condition
+- **Problem**: "Share to Gallery" button only appeared when inventory had completed photos
+- **Fix**: Changed condition from `photos.some(p => p.processingStatus === 'Completed')` to `photos.length > 0`
+- **File**: [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx)
+
+---
+
 ## [Unreleased] - 2025-12-12
 
 ### Fixed

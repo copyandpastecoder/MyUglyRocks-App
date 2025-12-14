@@ -206,7 +206,9 @@ public class ExportService : IExportService
             CommentCount: p.CommentCount,
             DateCreated: p.DateCreated,
             LinkedCycleId: p.CycleId,
-            LinkedCycleName: p.Cycle?.Name
+            LinkedCycleName: p.Cycle?.Name,
+            LinkedInventoryId: p.InventoryId,
+            LinkedInventoryName: p.Inventory?.Name
         )).ToList();
 
         var csv = GenerateCsv(rows);

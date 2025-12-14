@@ -10,6 +10,7 @@ import { formatStageDisplayName } from '@/lib/cycle-utils';
 import type { CyclePhotoDto, StageRunSummaryDto } from '@/types/cycle';
 import { useQuery } from '@tanstack/react-query';
 import { PhotoUploadModal } from './photo-upload-modal';
+import { PhotoLightbox, useLightbox } from './photo-lightbox';
 import {
   Tooltip,
   TooltipContent,
@@ -26,6 +27,7 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
   const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const lightbox = useLightbox();
 
   // Fetch all photos for the cycle in a single request
   const { data: allPhotos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
@@ -194,7 +196,13 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                             <img
                               src={photo.thumbnailUrl || photo.url}
                               alt={photo.caption || photo.fileName || 'Photo'}
-                              className="w-full h-full object-cover rounded-lg"
+                              className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => {
+                                // Find index of this photo among completed photos
+                                const completedPhotos = allPhotos.filter(p => p.processingStatus === 'Completed');
+                                const index = completedPhotos.findIndex(p => p.photoId === photo.photoId);
+                                if (index >= 0) lightbox.open(index);
+                              }}
                             />
                           )}
                           <button
@@ -256,6 +264,23 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
         onOpenChange={setUploadModalOpen}
         stages={stages}
         onUploadComplete={handleUploadComplete}
+      />
+
+      {/* Photo Lightbox */}
+      <PhotoLightbox
+        photos={allPhotos
+          .filter(p => p.processingStatus === 'Completed')
+          .map(p => ({
+            url: p.url,
+            thumbnailUrl: p.thumbnailUrl,
+            mediumUrl: p.mediumUrl,
+            largeUrl: p.largeUrl,
+            blurHash: p.blurHash,
+            caption: p.caption,
+          }))}
+        initialIndex={lightbox.initialIndex}
+        isOpen={lightbox.isOpen}
+        onClose={lightbox.close}
       />
     </>
   );

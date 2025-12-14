@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useCreateInventory } from '@/hooks/use-inventory';
-import { useSpecimens } from '@/hooks/use-specimens';
+import { useCreateInventory, useUploadInventoryPhoto } from '@/hooks/use-inventory';
+import { useSpecimenSearch } from '@/hooks/use-user-specimens';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,8 +28,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
+import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
+import { WeightInput } from '@/components/weight-input';
+import { StarRating } from '@/components/star-rating';
+import { StagedPhotoUpload, type StagedPhoto } from '@/components/staged-photo-upload';
 import { ArrowLeft, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from 'next/link';
 import type { SourceType, InventoryCondition, SizeCategory } from '@/types/inventory';
 
@@ -51,31 +57,26 @@ const CONDITIONS: { value: InventoryCondition; label: string }[] = [
 ];
 
 const SIZE_CATEGORIES: { value: SizeCategory; label: string }[] = [
-  { value: 'Small', label: 'Small (< 0.5")' },
-  { value: 'Medium', label: 'Medium (0.5" - 1.5")' },
-  { value: 'Large', label: 'Large (> 1.5")' },
-  { value: 'Mixed', label: 'Mixed sizes' },
+  { value: 'ZeroToOne', label: '0 - 1"' },
+  { value: 'OneToTwo', label: '1" - 2"' },
+  { value: 'TwoToThree', label: '2" - 3"' },
+  { value: 'ThreeToFour', label: '3" - 4"' },
+  { value: 'FourToFive', label: '4" - 5"' },
+  { value: 'GreaterThanFive', label: 'Greater than 5"' },
   { value: 'Assorted', label: 'Assorted' },
-];
-
-const WEIGHT_UNITS = [
-  { value: 'g', label: 'Grams (g)' },
-  { value: 'oz', label: 'Ounces (oz)' },
-  { value: 'lb', label: 'Pounds (lb)' },
 ];
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   acquiredDate: z.string().min(1, 'Acquired date is required'),
   sourceType: z.string().min(1, 'Source type is required'),
-  sourceName: z.string().max(255).optional(),
+  sourceName: z.string().min(1, 'Source name is required').max(255),
   sourceLocation: z.string().max(255).optional(),
   sourceUrl: z.string().url().max(500).optional().or(z.literal('')),
-  totalWeight: z.coerce.number().min(0).optional(),
-  displayUnit: z.string().default('g'),
+  totalWeightGrams: z.number().min(0).nullable().optional(),
   cost: z.coerce.number().min(0).optional(),
   condition: z.string().min(1, 'Condition is required'),
-  sizeCategory: z.string().optional(),
+  sizeCategories: z.array(z.string()).optional(),
   qualityRating: z.coerce.number().min(1).max(5).optional(),
   storageLocation: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
@@ -84,21 +85,24 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Conversion helpers
-function toGrams(value: number, unit: string): number {
-  switch (unit) {
-    case 'oz': return value * 28.3495;
-    case 'lb': return value * 453.592;
-    default: return value;
-  }
-}
-
 export default function NewInventoryPage() {
   const router = useRouter();
   const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
+  const [specimenError, setSpecimenError] = useState<string | null>(null);
+  const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
+  const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [displayUnit, setDisplayUnit] = useState<string>('lb');
 
-  const { data: specimens = [], isLoading: specimensLoading } = useSpecimens();
+  // Use specimen search to get specimen names for auto-populating the name field
+  const { data: allSpecimens = [] } = useSpecimenSearch();
   const createMutation = useCreateInventory();
+  const uploadPhotoMutation = useUploadInventoryPhoto();
+
+  // Handle when a custom specimen is created - add it to the selection
+  const handleCustomSpecimenCreated = (specimenId: string) => {
+    setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
+  };
 
   const form = useForm<FormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
@@ -110,11 +114,10 @@ export default function NewInventoryPage() {
       sourceName: '',
       sourceLocation: '',
       sourceUrl: '',
-      totalWeight: undefined,
-      displayUnit: 'lb',
+      totalWeightGrams: null,
       cost: undefined,
       condition: 'Raw',
-      sizeCategory: '',
+      sizeCategories: [],
       qualityRating: undefined,
       storageLocation: '',
       notes: '',
@@ -122,32 +125,103 @@ export default function NewInventoryPage() {
     },
   });
 
-  const onSubmit = (data: FormValues) => {
-    const totalWeightGrams = data.totalWeight ? toGrams(data.totalWeight, data.displayUnit) : undefined;
+  // Watch fields for auto-populating name
+  const sourceName = form.watch('sourceName');
+  const acquiredDate = form.watch('acquiredDate');
 
-    createMutation.mutate({
-      name: data.name,
-      acquiredDate: data.acquiredDate,
-      sourceType: data.sourceType as SourceType,
-      sourceName: data.sourceName || undefined,
-      sourceLocation: data.sourceLocation || undefined,
-      sourceUrl: data.sourceUrl || undefined,
-      totalWeightGrams,
-      remainingWeightGrams: totalWeightGrams,
-      displayUnit: data.displayUnit,
-      cost: data.cost,
-      condition: data.condition as InventoryCondition,
-      sizeCategory: data.sizeCategory as SizeCategory || undefined,
-      qualityRating: data.qualityRating,
-      storageLocation: data.storageLocation || undefined,
-      notes: data.notes || undefined,
-      isFavorite: data.isFavorite,
-      specimens: selectedSpecimenItems.map(item => ({ specimenId: item.id })),
-    }, {
-      onSuccess: (inventory) => {
-        router.push(`/inventory/${inventory.inventoryId}`);
-      },
-    });
+  // Auto-populate name based on SourceName, Specimens, and Date
+  useEffect(() => {
+    const parts: string[] = [];
+
+    if (sourceName?.trim()) {
+      parts.push(sourceName.trim());
+    }
+
+    if (selectedSpecimenItems.length > 0 && allSpecimens.length > 0) {
+      // Look up specimen names from the allSpecimens data
+      const allNames = selectedSpecimenItems
+        .map(sel => allSpecimens.find(s => s.id === sel.id)?.commonName)
+        .filter(Boolean) as string[];
+
+      if (allNames.length > 0) {
+        // Show first 3, then "& more" if there are more than 3
+        const displayNames = allNames.slice(0, 3).join(', ');
+        const specimenNames = allNames.length > 3
+          ? `${displayNames} & more`
+          : displayNames;
+        parts.push(specimenNames);
+      }
+    }
+
+    if (acquiredDate) {
+      const date = new Date(acquiredDate);
+      const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      parts.push(formattedDate);
+    }
+
+    if (parts.length > 0) {
+      form.setValue('name', parts.join(' - '));
+    }
+  }, [sourceName, selectedSpecimenItems, acquiredDate, allSpecimens, form]);
+
+  const onSubmit = async (data: FormValues) => {
+    // Validate specimens (managed outside form)
+    if (selectedSpecimenItems.length === 0) {
+      setSpecimenError('At least one specimen is required');
+      return;
+    }
+    setSpecimenError(null);
+    setIsSubmitting(true);
+
+    const totalWeightGrams = data.totalWeightGrams ?? undefined;
+
+    try {
+      const inventory = await createMutation.mutateAsync({
+        name: data.name,
+        acquiredDate: data.acquiredDate,
+        sourceType: data.sourceType as SourceType,
+        sourceName: data.sourceName || undefined,
+        sourceLocation: data.sourceLocation || undefined,
+        sourceUrl: data.sourceUrl || undefined,
+        totalWeightGrams,
+        remainingWeightGrams: totalWeightGrams,
+        displayUnit: totalWeightGrams ? displayUnit : undefined,
+        cost: data.cost,
+        condition: data.condition as InventoryCondition,
+        sizeCategories: data.sizeCategories && data.sizeCategories.length > 0
+          ? data.sizeCategories as SizeCategory[]
+          : undefined,
+        qualityRating: data.qualityRating,
+        storageLocation: data.storageLocation || undefined,
+        notes: data.notes || undefined,
+        isFavorite: data.isFavorite,
+        specimens: selectedSpecimenItems.map(item => ({ specimenId: item.id })),
+      });
+
+      // Upload photos if any
+      if (stagedPhotos.length > 0) {
+        toast.info(`Uploading ${stagedPhotos.length} photo${stagedPhotos.length > 1 ? 's' : ''}...`);
+
+        for (let i = 0; i < stagedPhotos.length; i++) {
+          const photo = stagedPhotos[i];
+          try {
+            await uploadPhotoMutation.mutateAsync({
+              inventoryId: inventory.inventoryId,
+              file: photo.file,
+              isCover: i === 0, // First photo is cover
+            });
+          } catch {
+            toast.error(`Failed to upload photo ${i + 1}`);
+          }
+        }
+      }
+
+      router.push(`/inventory/${inventory.inventoryId}`);
+    } catch {
+      // Error already handled by mutation
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -171,38 +245,19 @@ export default function NewInventoryPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Lake Superior Agates Batch 1" {...field} />
-                      </FormControl>
-                      <FormDescription>
-                        A descriptive name for this acquisition
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="acquiredDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Date Acquired *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="acquiredDate"
+                render={({ field }) => (
+                  <FormItem className="max-w-xs">
+                    <FormLabel>Date Acquired *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
@@ -233,7 +288,7 @@ export default function NewInventoryPage() {
                   name="sourceName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Source Name</FormLabel>
+                      <FormLabel>Source Name *</FormLabel>
                       <FormControl>
                         <Input placeholder="Store name, website, location..." {...field} />
                       </FormControl>
@@ -265,7 +320,19 @@ export default function NewInventoryPage() {
                     <FormItem>
                       <FormLabel>URL</FormLabel>
                       <FormControl>
-                        <Input type="url" placeholder="https://..." {...field} />
+                        <Input
+                          type="url"
+                          placeholder="https://..."
+                          {...field}
+                          onBlur={(e) => {
+                            let value = e.target.value.trim();
+                            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+                              value = 'https://' + value;
+                              field.onChange(value);
+                            }
+                            field.onBlur();
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -274,50 +341,40 @@ export default function NewInventoryPage() {
               </div>
 
               <FormItem>
-                <FormLabel>Specimens</FormLabel>
+                <FormLabel>Specimens *</FormLabel>
                 <SpecimenMultiSelect
                   selectedItems={selectedSpecimenItems}
-                  onSelectionChange={setSelectedSpecimenItems}
+                  onSelectionChange={(items) => {
+                    setSelectedSpecimenItems(items);
+                    if (items.length > 0) {
+                      setSpecimenError(null);
+                    }
+                  }}
                   placeholder="Select rock/mineral types..."
+                  onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
                 />
                 <FormDescription>
                   What types of rocks are in this batch?
                 </FormDescription>
+                {specimenError && (
+                  <p className="text-sm font-medium text-destructive">{specimenError}</p>
+                )}
               </FormItem>
 
-              <div className="grid gap-6 sm:grid-cols-3">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
                   control={form.control}
-                  name="totalWeight"
+                  name="totalWeightGrams"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Total Weight</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" placeholder="0" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="displayUnit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Unit</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {WEIGHT_UNITS.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <WeightInput
+                        label="Total Weight"
+                        valueGrams={field.value ?? null}
+                        onValueChange={(grams, unit) => {
+                          field.onChange(grams);
+                          if (unit) setDisplayUnit(unit);
+                        }}
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -338,7 +395,7 @@ export default function NewInventoryPage() {
                 />
               </div>
 
-              <div className="grid gap-6 sm:grid-cols-3">
+              <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
                   control={form.control}
                   name="condition"
@@ -364,41 +421,56 @@ export default function NewInventoryPage() {
 
                 <FormField
                   control={form.control}
-                  name="sizeCategory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Size Category</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select size" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {SIZE_CATEGORIES.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="qualityRating"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Quality (1-5)</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="1" max="5" placeholder="1-5" {...field} />
-                      </FormControl>
+                      <StarRating
+                        label="Quality"
+                        value={field.value ?? null}
+                        onChange={(val) => field.onChange(val ?? undefined)}
+                        size="md"
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="sizeCategories"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Size Categories</FormLabel>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3 border rounded-md">
+                      {SIZE_CATEGORIES.map(({ value, label }) => (
+                        <div key={value} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`size-${value}`}
+                            checked={field.value?.includes(value) ?? false}
+                            onCheckedChange={(checked) => {
+                              const currentValues = field.value ?? [];
+                              if (checked) {
+                                field.onChange([...currentValues, value]);
+                              } else {
+                                field.onChange(currentValues.filter((v: string) => v !== value));
+                              }
+                            }}
+                          />
+                          <label
+                            htmlFor={`size-${value}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                          >
+                            {label}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                    <FormDescription>Select all sizes that apply to this batch</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}
@@ -456,25 +528,62 @@ export default function NewInventoryPage() {
                 )}
               />
 
-              <div className="flex gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.back()}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
-                  Add Inventory
-                </Button>
-              </div>
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Rock Shop - Agates - Dec 13, 2025" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Auto-generated from Source Name, Specimens, and Date (you can edit)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </form>
           </Form>
         </CardContent>
       </Card>
+
+      {/* Photo Upload */}
+      <StagedPhotoUpload
+        photos={stagedPhotos}
+        onChange={setStagedPhotos}
+        maxPhotos={10}
+      />
+
+      {/* Submit Buttons */}
+      <div className="flex gap-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => router.back()}
+          disabled={isSubmitting}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          onClick={form.handleSubmit(onSubmit)}
+          disabled={isSubmitting}
+        >
+          {isSubmitting && (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          )}
+          {isSubmitting ? 'Creating...' : 'Add Inventory'}
+        </Button>
+      </div>
+
+      {/* Add Custom Specimen Dialog */}
+      <AddCustomSpecimenDialog
+        open={isAddSpecimenDialogOpen}
+        onOpenChange={setIsAddSpecimenDialogOpen}
+        onSuccess={handleCustomSpecimenCreated}
+      />
     </div>
   );
 }

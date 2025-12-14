@@ -55,7 +55,7 @@ public class TumblersController : ControllerBase
     public async Task<IActionResult> CreateTumbler([FromBody] CreateTumblerRequest request, CancellationToken cancellationToken)
     {
         var tumbler = await _tumblerService.CreateTumblerAsync(GetUserId(), request, cancellationToken);
-        return CreatedAtAction(nameof(GetTumbler), new { id = tumbler.TumblerId }, tumbler);
+        return CreatedAtAction(nameof(GetTumbler), new { tumblerId = tumbler.TumblerId }, tumbler);
     }
 
     /// <summary>
@@ -100,7 +100,7 @@ public class TumblersController : ControllerBase
         if (barrel == null)
             return NotFound();
 
-        return CreatedAtAction(nameof(GetTumbler), new { id = tumblerId }, barrel);
+        return CreatedAtAction(nameof(GetTumbler), new { tumblerId }, barrel);
     }
 
     /// <summary>

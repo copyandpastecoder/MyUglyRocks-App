@@ -1,8 +1,12 @@
 // Post types
+export type PostType = 'Cycle' | 'Inventory';
+
 export interface PostDto {
   postId: string;
   userId: string;
-  cycleId: string;
+  cycleId: string | null;
+  inventoryId: string | null;
+  postType: PostType;
   title: string;
   description: string | null;
   status: string;
@@ -10,12 +14,14 @@ export interface PostDto {
   voteCount: number;
   commentCount: number;
   author: PostAuthorDto;
-  cycle: CyclePreviewDto;
+  cycle: CyclePreviewDto | null;
+  inventory: InventoryPreviewDto | null;
   photos: PostPhotoDto[];
 }
 
 export interface PostListDto {
   postId: string;
+  postType: PostType;
   title: string;
   description: string | null;
   publishedDate: string;
@@ -26,6 +32,10 @@ export interface PostListDto {
   coverPhotoThumbnailUrl: string | null;
   coverPhotoBlurHash: string | null;
   photoCount: number;
+  // Inventory-specific fields for gallery card display
+  sourceType: string | null;
+  specimenNames: string[];
+  sizeCategories: string[];
 }
 
 export interface PostAuthorDto {
@@ -67,8 +77,22 @@ export interface CyclePreviewDto {
   specimenNames: string[];
 }
 
+export interface InventoryPreviewDto {
+  inventoryId: string;
+  name: string;
+  sourceType: string;
+  sourceName: string | null;
+  sourceLocation: string | null;
+  acquiredDate: string;
+  condition: string;
+  specimenNames: string[];
+  sizeCategories: string[];
+  photoCount: number;
+}
+
 export interface CreatePostRequest {
-  cycleId: string;
+  cycleId?: string;
+  inventoryId?: string;
   title: string;
   description?: string;
   photoIds?: string[];
