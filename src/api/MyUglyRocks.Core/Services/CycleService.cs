@@ -773,24 +773,41 @@ public class CycleService : ICycleService
         stageRun.LoadWeightAfterGrams = request.LoadWeightAfterGrams;
 
         // Set actual end date and clear estimate
-        stageRun.EndDateTime = request.ActualEndDateTime ?? DateTime.UtcNow;
+        var actualEndDateTime = request.ActualEndDateTime ?? DateTime.UtcNow;
+        stageRun.EndDateTime = actualEndDateTime;
         stageRun.DurationEstimateEndDate = null;  // Clear estimate on completion
 
         stageRun.DateUpdated = DateTime.UtcNow;
 
         // Auto-promote the next Planned stage to Active
-        // Find the next Planned stage with the earliest StartDateTime <= now
+        // First, find the next Planned stage (by start time or creation order)
         var now = DateTime.UtcNow;
-        var nextStageToPromote = stageRun.Cycle.StageRuns
-            .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned && s.StartDateTime <= now)
+        var nextPlannedStage = stageRun.Cycle.StageRuns
+            .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned)
             .OrderBy(s => s.StartDateTime)
             .ThenBy(s => s.DateCreated)
             .FirstOrDefault();
 
-        if (nextStageToPromote != null)
+        if (nextPlannedStage != null)
         {
-            nextStageToPromote.Status = StageRunStatus.Active;
-            nextStageToPromote.DateUpdated = DateTime.UtcNow;
+            // If completing early (actual end < next stage's planned start),
+            // update the next stage's start time to match actual completion
+            if (actualEndDateTime < nextPlannedStage.StartDateTime)
+            {
+                var originalDuration = nextPlannedStage.DurationEstimateEndDate.HasValue
+                    ? nextPlannedStage.DurationEstimateEndDate.Value - nextPlannedStage.StartDateTime
+                    : TimeSpan.FromDays(nextPlannedStage.DurationDays) + TimeSpan.FromHours(nextPlannedStage.DurationHours);
+
+                nextPlannedStage.StartDateTime = actualEndDateTime;
+                nextPlannedStage.DurationEstimateEndDate = actualEndDateTime + originalDuration;
+            }
+
+            // Now promote to Active if StartDateTime <= now
+            if (nextPlannedStage.StartDateTime <= now)
+            {
+                nextPlannedStage.Status = StageRunStatus.Active;
+            }
+            nextPlannedStage.DateUpdated = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync(cancellationToken);
