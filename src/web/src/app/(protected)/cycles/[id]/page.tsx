@@ -159,7 +159,7 @@ export default function CycleDetailPage() {
   const [issueUnderRounded, setIssueUnderRounded] = useState(false);
   const [issueContamination, setIssueContamination] = useState(false);
   const [lessonsLearned, setLessonsLearned] = useState('');
-  const [nextAction, setNextAction] = useState<string>('Advance');
+  const [nextAction, setNextAction] = useState<string>('');
   const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
   const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
   // Barrel capacity for the stage being completed (for validation)
@@ -517,7 +517,7 @@ export default function CycleDetailPage() {
     setIssueUnderRounded(false);
     setIssueContamination(false);
     setLessonsLearned('');
-    setNextAction('Advance');
+    setNextAction('');
     setLoadWeightAfterGrams(null);
     setWeightAfterValidationError(false);
     setCompleteStageBarrelCapacity(null);
@@ -802,8 +802,17 @@ export default function CycleDetailPage() {
 
   const handleCompleteStage = () => {
     if (!completeStageId) return;
-    if (resultRating === 0) {
+
+    // Result rating is only required for Polish stage
+    const isPolishStage = completeStageName.toLowerCase() === 'polish';
+    if (isPolishStage && resultRating === 0) {
       toast.error('Please rate the stage result (1-5 stars)');
+      return;
+    }
+
+    // What's next is always required
+    if (!nextAction) {
+      toast.error('Please select what\'s next for this cycle');
       return;
     }
 
@@ -1996,7 +2005,7 @@ export default function CycleDetailPage() {
 
             {/* Result Rating */}
             <div className="space-y-2">
-              <Label>How did this stage turn out? *</Label>
+              <Label>How did this stage turn out?{completeStageName.toLowerCase() === 'polish' ? ' *' : ' (optional)'}</Label>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map(star => (
                   <button
@@ -2134,7 +2143,7 @@ export default function CycleDetailPage() {
 
             {/* What's Next */}
             <div className="space-y-2">
-              <Label>What&apos;s next?</Label>
+              <Label>What&apos;s next? *</Label>
               <RadioGroup value={nextAction} onValueChange={setNextAction}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="Advance" id="advance" />
