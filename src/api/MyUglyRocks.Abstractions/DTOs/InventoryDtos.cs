@@ -176,6 +176,7 @@ public record InventorySpecimenDto(
     string MaterialType,
     string? TumblingDifficulty,
     int? EstimatedPercentage,
+    decimal? WeightGrams,
     string? Notes,
     string Source  // "system" or "user"
 );
@@ -186,6 +187,9 @@ public record CreateInventorySpecimenRequest(
 
     [Range(0, 100, ErrorMessage = "Estimated percentage must be between 0 and 100")]
     int? EstimatedPercentage,
+
+    [Range(0, 1000000, ErrorMessage = "Weight must be between 0 and 1,000,000 grams")]
+    decimal? WeightGrams,
 
     [StringLength(500, ErrorMessage = "Notes must be at most 500 characters")]
     string? Notes

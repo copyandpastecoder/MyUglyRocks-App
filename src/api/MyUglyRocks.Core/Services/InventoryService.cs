@@ -136,10 +136,15 @@ public class InventoryService : IInventoryService
                     SpecimenId = specimenRequest.SpecimenId,
                     UserSpecimenId = specimenRequest.UserSpecimenId,
                     EstimatedPercentage = specimenRequest.EstimatedPercentage,
+                    WeightGrams = specimenRequest.WeightGrams,
                     Notes = specimenRequest.Notes
                 };
                 InventorySpecimens.Add(inventorySpecimen);
             }
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // If individual weights were provided, calculate total weight from specimens
+            RecalculateTotalWeightFromSpecimens(inventory);
             await _context.SaveChangesAsync(cancellationToken);
         }
 
@@ -228,12 +233,24 @@ public class InventoryService : IInventoryService
                 SpecimenId = specimenRequest.SpecimenId,
                 UserSpecimenId = specimenRequest.UserSpecimenId,
                 EstimatedPercentage = specimenRequest.EstimatedPercentage,
+                WeightGrams = specimenRequest.WeightGrams,
                 Notes = specimenRequest.Notes
             };
             InventorySpecimens.Add(inventorySpecimen);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Reload inventory with new specimens to recalculate weight
+        inventory = await Inventories
+            .Include(i => i.InventorySpecimens)
+            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId, cancellationToken);
+
+        if (inventory != null)
+        {
+            RecalculateTotalWeightFromSpecimens(inventory);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         return await GetInventoryAsync(inventoryId, userId, cancellationToken);
     }
@@ -297,6 +314,7 @@ public class InventoryService : IInventoryService
                 (specimen?.MaterialType ?? userSpecimen?.MaterialType ?? SpecimenMaterialType.Rock).ToString(),
                 (specimen?.TumblingDifficulty ?? userSpecimen?.TumblingDifficulty)?.ToString(),
                 s.EstimatedPercentage,
+                s.WeightGrams,
                 s.Notes,
                 specimen != null ? "system" : "user"
             );
@@ -350,5 +368,29 @@ public class InventoryService : IInventoryService
             inventory.RemainingWeightGrams,
             inventory.InventoryPhotos.Count
         );
+    }
+
+    /// <summary>
+    /// Recalculates TotalWeightGrams from individual specimen weights if any are provided.
+    /// Only updates if at least one specimen has an individual weight set.
+    /// </summary>
+    private static void RecalculateTotalWeightFromSpecimens(Inventory inventory)
+    {
+        var specimensWithWeight = inventory.InventorySpecimens
+            .Where(s => s.WeightGrams.HasValue)
+            .ToList();
+
+        // Only recalculate if at least one specimen has an individual weight
+        if (specimensWithWeight.Count > 0)
+        {
+            var totalFromSpecimens = specimensWithWeight.Sum(s => s.WeightGrams!.Value);
+            inventory.TotalWeightGrams = totalFromSpecimens;
+
+            // If remaining weight isn't set or equals the old total, update it too
+            if (!inventory.RemainingWeightGrams.HasValue || inventory.RemainingWeightGrams == inventory.TotalWeightGrams)
+            {
+                inventory.RemainingWeightGrams = totalFromSpecimens;
+            }
+        }
     }
 }
