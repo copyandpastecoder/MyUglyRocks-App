@@ -23,24 +23,24 @@ export function StagedPhotoUpload({ photos, onChange, maxPhotos = 10 }: StagedPh
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const checkStorageStatus = async () => {
+      try {
+        const status = await photosApi.getStorageStatus();
+        setStorageConfigured(status.configured);
+      } catch {
+        setStorageConfigured(false);
+      }
+    };
     checkStorageStatus();
   }, []);
 
   // Clean up preview URLs when photos are removed
   useEffect(() => {
+    const currentPhotos = photos;
     return () => {
-      photos.forEach(photo => URL.revokeObjectURL(photo.previewUrl));
+      currentPhotos.forEach(photo => URL.revokeObjectURL(photo.previewUrl));
     };
-  }, []);
-
-  const checkStorageStatus = async () => {
-    try {
-      const status = await photosApi.getStorageStatus();
-      setStorageConfigured(status.configured);
-    } catch {
-      setStorageConfigured(false);
-    }
-  };
+  }, [photos]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
