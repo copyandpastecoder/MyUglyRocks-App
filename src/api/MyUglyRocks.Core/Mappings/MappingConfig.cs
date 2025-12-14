@@ -24,7 +24,7 @@ public static class MappingConfig
 
         TypeAdapterConfig<CreateTumblerRequest, Tumbler>.NewConfig()
             .Map(dest => dest.TumblerType, src => Enum.Parse<TumblerType>(src.TumblerType, true))
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.TumblerId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.UserId)
@@ -35,7 +35,7 @@ public static class MappingConfig
             .Map(dest => dest.IsMounted, src => src.StageRunBarrels.Any(srb => srb.StageRun != null && srb.StageRun.Status == StageRunStatus.Active));
 
         TypeAdapterConfig<CreateBarrelRequest, Barrel>.NewConfig()
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.BarrelId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.TumblerId);
@@ -46,15 +46,32 @@ public static class MappingConfig
 
         // Cycle mappings
         TypeAdapterConfig<Cycle, CycleDto>.NewConfig()
-            .Map(dest => dest.Status, src => src.Status.ToString());
+            .Map(dest => dest.Status, src => src.Status.ToString())
+            .Map(dest => dest.Specimens, src => src.CycleSpecimens.Where(cs => cs.Specimen != null).Select(cs => cs.Specimen!));
 
         TypeAdapterConfig<Cycle, CycleListDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString())
             .Map(dest => dest.StageCount, src => src.StageRuns.Count)
-            .Map(dest => dest.ActiveStageCount, src => src.StageRuns.Count(s => s.Status == StageRunStatus.Active));
+            .Map(dest => dest.ActiveStageCount, src => src.StageRuns.Count(s => s.Status == StageRunStatus.Active))
+            .Map(dest => dest.IsOverdue, src => src.StageRuns.Any(s => s.Status == StageRunStatus.Active && s.DurationEstimateEndDate < DateTime.UtcNow))
+            .Map(dest => dest.ActiveStageStartDateTime, src => src.StageRuns
+                .Where(s => s.Status == StageRunStatus.Active)
+                .OrderBy(s => s.DurationEstimateEndDate)
+                .Select(s => (DateTime?)s.StartDateTime)
+                .FirstOrDefault())
+            .Map(dest => dest.ActiveStageDurationEstimateEndDate, src => src.StageRuns
+                .Where(s => s.Status == StageRunStatus.Active)
+                .OrderBy(s => s.DurationEstimateEndDate)
+                .Select(s => s.DurationEstimateEndDate)
+                .FirstOrDefault())
+            .Map(dest => dest.ActiveStageDaysOverdue, src => src.StageRuns
+                .Where(s => s.Status == StageRunStatus.Active && s.DurationEstimateEndDate < DateTime.UtcNow)
+                .OrderBy(s => s.DurationEstimateEndDate)
+                .Select(s => (int?)((DateTime.UtcNow.Date - s.DurationEstimateEndDate!.Value.Date).Days))
+                .FirstOrDefault());
 
         TypeAdapterConfig<CreateCycleRequest, Cycle>.NewConfig()
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.CycleId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.UserId)
@@ -70,7 +87,7 @@ public static class MappingConfig
             .Map(dest => dest.WaterLevel, src => src.WaterLevel != null ? src.WaterLevel.ToString() : null)
             .Map(dest => dest.NextAction, src => src.NextAction != null ? src.NextAction.ToString() : null)
             .Map(dest => dest.Materials, src => src.StageMaterials)
-            .Map(dest => dest.Barrels, src => src.StageRunBarrels.Where(srb => srb.Barrel != null).Select(srb => srb.Barrel));
+            .Map(dest => dest.Barrels, src => src.StageRunBarrels.Where(srb => srb.Barrel != null).Select(srb => srb.Barrel!));
 
         TypeAdapterConfig<StageRun, StageRunSummaryDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString());
@@ -79,11 +96,12 @@ public static class MappingConfig
             .Map(dest => dest.WaterLevel, src => !string.IsNullOrEmpty(src.WaterLevel)
                 ? Enum.Parse<WaterLevel>(src.WaterLevel, true)
                 : (WaterLevel?)null)
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.StageRunId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.CycleId)
             .Ignore(dest => dest.Status)
+            .Ignore(dest => dest.RunNumber)
             .Ignore(dest => dest.EndDateTime)
             .Ignore(dest => dest.IsDeleted)
             .Ignore(dest => dest.DateDeleted)
@@ -99,7 +117,7 @@ public static class MappingConfig
             .Map(dest => dest.Purpose, src => !string.IsNullOrEmpty(src.Purpose)
                 ? Enum.Parse<CleaningPurpose>(src.Purpose, true)
                 : (CleaningPurpose?)null)
-            .Ignore(dest => dest.Id)
+            .Ignore(dest => dest.CleaningRunId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)
             .Ignore(dest => dest.StageRunId)
@@ -149,5 +167,22 @@ public static class MappingConfig
         TypeAdapterConfig<Material, MaterialDetailDto>.NewConfig()
             .Map(dest => dest.Category, src => src.Category.ToString())
             .Map(dest => dest.UsageType, src => src.UsageType != null ? src.UsageType.ToString() : null);
+
+        // UserProfile mapping
+        TypeAdapterConfig<User, UserProfileDto>.NewConfig()
+            .Map(dest => dest.Role, src => src.Role.ToString());
+
+        // Vote mapping (auto-maps VoteId, PostId, UserId)
+        TypeAdapterConfig<Vote, VoteDto>.NewConfig();
+
+        // Admin user mappings
+        TypeAdapterConfig<User, AdminUserDto>.NewConfig()
+            .Map(dest => dest.Role, src => src.Role.ToString());
+
+        TypeAdapterConfig<User, AdminUserListDto>.NewConfig()
+            .Map(dest => dest.Role, src => src.Role.ToString());
+
+        // Compile all configurations to ensure they're applied
+        TypeAdapterConfig.GlobalSettings.Compile();
     }
 }

@@ -17,17 +17,17 @@ namespace MyUglyRocks.Infrastructure.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.1")
+                .HasAnnotation("ProductVersion", "9.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Barrel", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("BarrelId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("barrel_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<int>("BarrelNumber")
@@ -89,7 +89,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("tumbler_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("BarrelId");
 
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_barrels_is_active");
@@ -102,19 +102,16 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.BarrelNickname", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("BarrelNicknameId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("barrel_nickname_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Category")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("category");
-
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uuid");
 
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
@@ -140,9 +137,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
-                    b.Property<Guid?>("UpdatedByUserId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid?>("UserCreated")
                         .HasColumnType("uuid")
                         .HasColumnName("user_created");
@@ -151,9 +145,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_updated");
 
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedByUserId");
+                    b.HasKey("BarrelNicknameId");
 
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_barrel_nicknames_is_active");
@@ -162,17 +154,19 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_barrel_nicknames_name");
 
-                    b.HasIndex("UpdatedByUserId");
+                    b.HasIndex("UserCreated");
+
+                    b.HasIndex("UserUpdated");
 
                     b.ToTable("barrel_nicknames", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.CleaningMaterial", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CleaningMaterialId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("cleaning_material_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<decimal?>("AmountGrams")
@@ -225,7 +219,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("sort_order");
 
-                    b.HasKey("Id");
+                    b.HasKey("CleaningMaterialId");
 
                     b.HasIndex("CleaningRunId")
                         .HasDatabaseName("ix_cleaning_materials_cleaning_run_id");
@@ -238,10 +232,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.CleaningRun", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CleaningRunId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("cleaning_run_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("DateCreated")
@@ -287,12 +281,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("stage_run_id");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
                         .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("CleaningRunId");
 
                     b.HasIndex("StageRunId")
                         .IsUnique()
@@ -303,10 +295,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Comment", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CommentId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("comment_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Content")
@@ -358,7 +350,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("CommentId");
 
                     b.HasIndex("ParentCommentId")
                         .HasDatabaseName("ix_comments_parent_id");
@@ -380,10 +372,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.CommentReport", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CommentReportId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("comment_report_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<Guid>("CommentId")
@@ -432,7 +424,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("status");
 
-                    b.HasKey("Id");
+                    b.HasKey("CommentReportId");
 
                     b.HasIndex("CommentId")
                         .HasDatabaseName("ix_comment_reports_comment_id");
@@ -455,10 +447,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Cycle", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("CycleId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("cycle_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("AdditionalSpecimens")
@@ -493,11 +485,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("final_quality");
 
-                    b.Property<string>("Goal")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("goal");
-
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -519,16 +506,14 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("start_date");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
                         .HasColumnName("status");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("CycleId");
 
                     b.HasIndex("StartDate")
                         .HasDatabaseName("ix_cycles_start_date");
@@ -547,13 +532,15 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.CycleSpecimen", b =>
                 {
+                    b.Property<Guid>("CycleSpecimenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("cycle_specimen_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
                     b.Property<Guid>("CycleId")
                         .HasColumnType("uuid")
                         .HasColumnName("cycle_id");
-
-                    b.Property<Guid>("SpecimenId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("specimen_id");
 
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
@@ -567,20 +554,362 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("date_updated")
                         .HasDefaultValueSql("now()");
 
-                    b.HasKey("CycleId", "SpecimenId");
+                    b.Property<Guid?>("SpecimenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("specimen_id");
+
+                    b.Property<Guid?>("UserSpecimenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_specimen_id");
+
+                    b.HasKey("CycleSpecimenId");
+
+                    b.HasIndex("CycleId")
+                        .HasDatabaseName("ix_cycle_specimens_cycle_id");
 
                     b.HasIndex("SpecimenId")
                         .HasDatabaseName("ix_cycle_specimens_specimen_id");
 
-                    b.ToTable("cycle_specimens", (string)null);
+                    b.HasIndex("UserSpecimenId")
+                        .HasDatabaseName("ix_cycle_specimens_user_specimen_id");
+
+                    b.ToTable("cycle_specimens", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_cycle_specimen_xor", "(specimen_id IS NOT NULL AND user_specimen_id IS NULL) OR (specimen_id IS NULL AND user_specimen_id IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.Inventory", b =>
+                {
+                    b.Property<Guid>("InventoryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateOnly>("AcquiredDate")
+                        .HasColumnType("date")
+                        .HasColumnName("acquired_date");
+
+                    b.Property<int>("Condition")
+                        .HasColumnType("integer")
+                        .HasColumnName("condition");
+
+                    b.Property<decimal?>("Cost")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("cost");
+
+                    b.Property<DateTime>("DateCreated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime?>("DateDeleted")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_deleted");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("DisplayUnit")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasDefaultValue("g")
+                        .HasColumnName("display_unit");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsFavorite")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_favorite");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<int?>("QualityRating")
+                        .HasColumnType("integer")
+                        .HasColumnName("quality_rating");
+
+                    b.Property<decimal?>("RemainingWeightGrams")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("remaining_weight_grams");
+
+                    b.Property<string>("SizeCategories")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("size_categories");
+
+                    b.Property<string>("SourceLocation")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("source_location");
+
+                    b.Property<string>("SourceName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("source_name");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_type");
+
+                    b.Property<string>("SourceUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("source_url");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("StorageLocation")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("storage_location");
+
+                    b.Property<decimal?>("TotalWeightGrams")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("total_weight_grams");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("InventoryId");
+
+                    b.HasIndex("AcquiredDate")
+                        .HasDatabaseName("ix_inventory_acquired_date");
+
+                    b.HasIndex("IsFavorite")
+                        .HasDatabaseName("ix_inventory_is_favorite");
+
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_inventory_status");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_inventory_user_id");
+
+                    b.HasIndex("UserId", "Status")
+                        .HasDatabaseName("ix_inventory_user_id_status");
+
+                    b.ToTable("inventory", (string)null);
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventoryPhoto", b =>
+                {
+                    b.Property<Guid>("InventoryPhotoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_photo_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("BlurHash")
+                        .HasColumnType("text")
+                        .HasColumnName("blur_hash");
+
+                    b.Property<string>("Caption")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("caption");
+
+                    b.Property<DateTime>("DateCreated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("file_name");
+
+                    b.Property<long>("FileSizeBytes")
+                        .HasColumnType("bigint")
+                        .HasColumnName("file_size_bytes");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("integer")
+                        .HasColumnName("height");
+
+                    b.Property<Guid>("InventoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_id");
+
+                    b.Property<bool>("IsCover")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_cover");
+
+                    b.Property<string>("LargeStorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("large_storage_key");
+
+                    b.Property<string>("LargeUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("large_url");
+
+                    b.Property<string>("MediumStorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("medium_storage_key");
+
+                    b.Property<string>("MediumUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("medium_url");
+
+                    b.Property<string>("MimeType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("mime_type");
+
+                    b.Property<string>("ProcessingError")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("processing_error");
+
+                    b.Property<int>("ProcessingStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("processing_status");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("storage_key");
+
+                    b.Property<string>("ThumbnailStorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("thumbnail_storage_key");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("thumbnail_url");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("url");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("integer")
+                        .HasColumnName("width");
+
+                    b.HasKey("InventoryPhotoId");
+
+                    b.HasIndex("InventoryId")
+                        .HasDatabaseName("ix_inventory_photos_inventory_id");
+
+                    b.HasIndex("IsCover")
+                        .HasDatabaseName("ix_inventory_photos_is_cover");
+
+                    b.ToTable("inventory_photos", (string)null);
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySpecimen", b =>
+                {
+                    b.Property<Guid>("InventorySpecimenId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_specimen_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("DateCreated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int?>("EstimatedPercentage")
+                        .HasColumnType("integer")
+                        .HasColumnName("estimated_percentage");
+
+                    b.Property<Guid>("InventoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_id");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid?>("SpecimenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("specimen_id");
+
+                    b.Property<Guid?>("UserSpecimenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_specimen_id");
+
+                    b.HasKey("InventorySpecimenId");
+
+                    b.HasIndex("InventoryId")
+                        .HasDatabaseName("ix_inventory_specimens_inventory_id");
+
+                    b.HasIndex("SpecimenId")
+                        .HasDatabaseName("ix_inventory_specimens_specimen_id");
+
+                    b.HasIndex("UserSpecimenId")
+                        .HasDatabaseName("ix_inventory_specimens_user_specimen_id");
+
+                    b.ToTable("inventory_specimens", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_inventory_specimen_xor", "(specimen_id IS NOT NULL AND user_specimen_id IS NULL) OR (specimen_id IS NULL AND user_specimen_id IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Material", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("MaterialId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("material_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<int>("Category")
@@ -655,7 +984,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_updated");
 
-                    b.HasKey("Id");
+                    b.HasKey("MaterialId");
 
                     b.HasIndex("Category")
                         .HasDatabaseName("ix_materials_category");
@@ -675,11 +1004,17 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Photo", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("PhotoId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("photo_id")
                         .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("BlurHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Caption")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
@@ -716,6 +1051,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
+                    b.Property<string>("LargeStorageKey")
+                        .HasColumnType("text");
+
+                    b.Property<string>("LargeUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MediumStorageKey")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MediumUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("MimeType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -725,6 +1072,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<int>("PhotoType")
                         .HasColumnType("integer")
                         .HasColumnName("photo_type");
+
+                    b.Property<string>("ProcessingError")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ProcessingStatus")
+                        .HasColumnType("integer");
 
                     b.Property<int>("SortOrder")
                         .ValueGeneratedOnAdd()
@@ -742,6 +1095,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("storage_key");
 
+                    b.Property<string>("ThumbnailStorageKey")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ThumbnailUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -752,7 +1111,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("width");
 
-                    b.HasKey("Id");
+                    b.HasKey("PhotoId");
 
                     b.HasIndex("PhotoType")
                         .HasDatabaseName("ix_photos_photo_type");
@@ -765,10 +1124,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Post", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("PostId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("post_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<int>("CommentCount")
@@ -777,7 +1136,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("comment_count");
 
-                    b.Property<Guid>("CycleId")
+                    b.Property<Guid?>("CycleId")
                         .HasColumnType("uuid")
                         .HasColumnName("cycle_id");
 
@@ -800,6 +1159,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<string>("Description")
                         .HasColumnType("text")
                         .HasColumnName("description");
+
+                    b.Property<Guid?>("InventoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -833,9 +1196,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("vote_count");
 
-                    b.HasKey("Id");
+                    b.HasKey("PostId");
 
                     b.HasIndex("CycleId");
+
+                    b.HasIndex("InventoryId")
+                        .HasDatabaseName("ix_posts_inventory_id");
 
                     b.HasIndex("PublishedDate")
                         .HasDatabaseName("ix_posts_published_date");
@@ -858,16 +1224,21 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasIndex("UserId", "Status", "PublishedDate")
                         .HasDatabaseName("ix_posts_user_status_date");
 
-                    b.ToTable("posts", (string)null);
+                    b.ToTable("posts", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_post_source_xor", "(cycle_id IS NOT NULL AND inventory_id IS NULL) OR (cycle_id IS NULL AND inventory_id IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.PostPhoto", b =>
                 {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<Guid>("PostId")
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
-                        .HasDefaultValueSql("gen_random_uuid()");
+                        .HasColumnName("post_id");
+
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_id");
 
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
@@ -887,21 +1258,13 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(false)
                         .HasColumnName("is_cover");
 
-                    b.Property<Guid>("PhotoId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("photo_id");
-
-                    b.Property<Guid>("PostId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("post_id");
-
                     b.Property<int>("SortOrder")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("sort_order");
 
-                    b.HasKey("Id");
+                    b.HasKey("PostId", "PhotoId");
 
                     b.HasIndex("PhotoId")
                         .HasDatabaseName("ix_post_photos_photo_id");
@@ -917,10 +1280,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.RefreshToken", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("RefreshTokenId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("refresh_token_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("DateCreated")
@@ -973,7 +1336,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("RefreshTokenId");
 
                     b.HasIndex("DateExpires")
                         .HasDatabaseName("ix_refresh_tokens_date_expires");
@@ -992,10 +1355,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Specimen", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("SpecimenId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("specimen_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Alias")
@@ -1087,7 +1450,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("variety");
 
-                    b.HasKey("Id");
+                    b.HasKey("SpecimenId");
 
                     b.HasIndex("CommonName")
                         .HasDatabaseName("ix_specimens_common_name");
@@ -1105,10 +1468,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.StageMaterial", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("StageMaterialId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("stage_material_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<decimal?>("AmountGrams")
@@ -1161,7 +1524,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("stage_run_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("StageMaterialId");
 
                     b.HasIndex("MaterialId")
                         .HasDatabaseName("ix_stage_materials_material_id");
@@ -1174,10 +1537,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.StageRun", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("StageRunId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("stage_run_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<decimal?>("BarrelRpm")
@@ -1215,13 +1578,17 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(0)
                         .HasColumnName("duration_days");
 
+                    b.Property<DateTime?>("DurationEstimateEndDate")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("duration_estimate_end_date");
+
                     b.Property<int>("DurationHours")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0)
                         .HasColumnName("duration_hours");
 
-                    b.Property<DateTime>("EndDateTime")
+                    b.Property<DateTime?>("EndDateTime")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date_time");
 
@@ -1311,6 +1678,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("result_shine");
 
+                    b.Property<int>("RunNumber")
+                        .HasColumnType("integer");
+
                     b.Property<string>("StageName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1322,9 +1692,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("start_date_time");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasDefaultValue(1)
                         .HasColumnName("status");
 
                     b.Property<int?>("WaterAmountMl")
@@ -1335,7 +1703,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("water_level");
 
-                    b.HasKey("Id");
+                    b.HasKey("StageRunId");
 
                     b.HasIndex("CycleId")
                         .HasDatabaseName("ix_stage_runs_cycle_id");
@@ -1369,10 +1737,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Tumbler", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("TumblerId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("tumbler_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Brand")
@@ -1431,7 +1799,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("TumblerId");
 
                     b.HasIndex("IsActive")
                         .HasDatabaseName("ix_tumblers_is_active");
@@ -1449,10 +1817,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.TumblerModel", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("TumblerModelId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("tumbler_model_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("Brand")
@@ -1517,7 +1885,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("tumbler_type");
 
-                    b.HasKey("Id");
+                    b.HasKey("TumblerModelId");
 
                     b.HasIndex("Brand")
                         .HasDatabaseName("ix_tumbler_models_brand");
@@ -1530,10 +1898,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.User", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("UserId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("user_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<string>("AvatarUrl")
@@ -1639,7 +2007,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("character varying(50)")
                         .HasColumnName("username");
 
-                    b.HasKey("Id");
+                    b.HasKey("UserId");
 
                     b.HasIndex("Email")
                         .IsUnique()
@@ -1655,13 +2023,103 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSettings", b =>
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSession", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("UserSessionId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("user_session_id")
                         .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<int?>("BrowserMajorVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("BrowserName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("BrowserVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Country")
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DeviceType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("OsName")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("OsVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("PageViewCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ReferrerDomain")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("ScreenHeight")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ScreenWidth")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("SessionDurationSeconds")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("SessionEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("SessionStart")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool?>("SupportsAvif")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool?>("SupportsWebP")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Timezone")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("UserSessionId");
+
+                    b.HasIndex("SessionStart");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSessions");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSettings", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
 
                     b.Property<bool>("AddWatermark")
                         .ValueGeneratedOnAdd()
@@ -1791,10 +2249,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue(true)
                         .HasColumnName("show_relative_times");
 
-                    b.Property<string>("StageFieldVisibility")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("stage_field_visibility");
-
                     b.Property<string>("Theme")
                         .IsRequired()
                         .ValueGeneratedOnAdd()
@@ -1817,31 +2271,139 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDefaultValue("UTC")
                         .HasColumnName("timezone");
 
-                    b.Property<int>("TrackingMode")
+                    b.HasKey("UserId");
+
+                    b.ToTable("user_settings", (string)null);
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSpecimen", b =>
+                {
+                    b.Property<Guid>("UserSpecimenId")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_specimen_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("Alias")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("alias");
+
+                    b.Property<Guid?>("BasedOnSpecimenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("based_on_specimen_id");
+
+                    b.Property<string>("CommonName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("common_name");
+
+                    b.Property<DateTime>("DateCreated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime?>("DateDeleted")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_deleted");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_deleted");
+
+                    b.Property<bool>("IsPublic")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_public");
+
+                    b.Property<int>("MaterialType")
                         .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("tracking_mode");
+                        .HasColumnName("material_type");
+
+                    b.Property<decimal?>("MohsHardnessMax")
+                        .HasPrecision(3, 1)
+                        .HasColumnType("numeric(3,1)")
+                        .HasColumnName("mohs_hardness_max");
+
+                    b.Property<decimal?>("MohsHardnessMin")
+                        .HasPrecision(3, 1)
+                        .HasColumnType("numeric(3,1)")
+                        .HasColumnName("mohs_hardness_min");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("RecommendedGritSequence")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("recommended_grit_sequence");
+
+                    b.Property<string>("RockFamily")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("rock_family");
+
+                    b.Property<string>("ScientificName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("scientific_name");
+
+                    b.Property<string>("SpecialConsiderations")
+                        .HasColumnType("text")
+                        .HasColumnName("special_considerations");
+
+                    b.Property<string>("Species")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("species");
+
+                    b.Property<int?>("TumblingDifficulty")
+                        .HasColumnType("integer")
+                        .HasColumnName("tumbling_difficulty");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.Property<string>("Variety")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("variety");
+
+                    b.HasKey("UserSpecimenId");
+
+                    b.HasIndex("BasedOnSpecimenId");
+
+                    b.HasIndex("IsPublic")
+                        .HasDatabaseName("ix_user_specimens_is_public");
 
                     b.HasIndex("UserId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_user_settings_user_id");
+                        .HasDatabaseName("ix_user_specimens_user_id");
 
-                    b.ToTable("user_settings", (string)null);
+                    b.HasIndex("UserId", "CommonName")
+                        .HasDatabaseName("ix_user_specimens_user_id_common_name");
+
+                    b.ToTable("user_specimens", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Vote", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<Guid>("VoteId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
-                        .HasColumnName("id")
+                        .HasColumnName("vote_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
                     b.Property<DateTime>("DateCreated")
@@ -1864,7 +2426,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
-                    b.HasKey("Id");
+                    b.HasKey("VoteId");
 
                     b.HasIndex("PostId")
                         .HasDatabaseName("ix_votes_post_id");
@@ -1877,6 +2439,47 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasDatabaseName("ix_votes_post_user_unique");
 
                     b.ToTable("votes", (string)null);
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.WaitlistEntry", b =>
+                {
+                    b.Property<Guid>("WaitlistEntryId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("waitlist_entry_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<DateTime>("DateCreated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DateNotificationSent")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<bool>("NotificationSent")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.HasKey("WaitlistEntryId");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("WaitlistEntries", (string)null);
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Barrel", b =>
@@ -1894,11 +2497,13 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 {
                     b.HasOne("MyUglyRocks.Core.Entities.User", "CreatedByUser")
                         .WithMany()
-                        .HasForeignKey("CreatedByUserId");
+                        .HasForeignKey("UserCreated")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("MyUglyRocks.Core.Entities.User", "UpdatedByUser")
                         .WithMany()
-                        .HasForeignKey("UpdatedByUserId");
+                        .HasForeignKey("UserUpdated")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("CreatedByUser");
 
@@ -2009,12 +2614,65 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasOne("MyUglyRocks.Core.Entities.Specimen", "Specimen")
                         .WithMany("CycleSpecimens")
                         .HasForeignKey("SpecimenId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("MyUglyRocks.Core.Entities.UserSpecimen", "UserSpecimen")
+                        .WithMany("CycleSpecimens")
+                        .HasForeignKey("UserSpecimenId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Cycle");
 
                     b.Navigation("Specimen");
+
+                    b.Navigation("UserSpecimen");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.Inventory", b =>
+                {
+                    b.HasOne("MyUglyRocks.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventoryPhoto", b =>
+                {
+                    b.HasOne("MyUglyRocks.Core.Entities.Inventory", "Inventory")
+                        .WithMany("InventoryPhotos")
+                        .HasForeignKey("InventoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inventory");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySpecimen", b =>
+                {
+                    b.HasOne("MyUglyRocks.Core.Entities.Inventory", "Inventory")
+                        .WithMany("InventorySpecimens")
+                        .HasForeignKey("InventoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MyUglyRocks.Core.Entities.Specimen", "Specimen")
+                        .WithMany()
+                        .HasForeignKey("SpecimenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyUglyRocks.Core.Entities.UserSpecimen", "UserSpecimen")
+                        .WithMany("InventorySpecimens")
+                        .HasForeignKey("UserSpecimenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Inventory");
+
+                    b.Navigation("Specimen");
+
+                    b.Navigation("UserSpecimen");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Material", b =>
@@ -2052,8 +2710,12 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasOne("MyUglyRocks.Core.Entities.Cycle", "Cycle")
                         .WithMany()
                         .HasForeignKey("CycleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MyUglyRocks.Core.Entities.Inventory", "Inventory")
+                        .WithMany()
+                        .HasForeignKey("InventoryId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.HasOne("MyUglyRocks.Core.Entities.User", "User")
                         .WithMany("Posts")
@@ -2062,6 +2724,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Cycle");
+
+                    b.Navigation("Inventory");
 
                     b.Navigation("User");
                 });
@@ -2188,6 +2852,17 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSession", b =>
+                {
+                    b.HasOne("MyUglyRocks.Core.Entities.User", "User")
+                        .WithMany("Sessions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSettings", b =>
                 {
                     b.HasOne("MyUglyRocks.Core.Entities.User", "User")
@@ -2195,6 +2870,24 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasForeignKey("MyUglyRocks.Core.Entities.UserSettings", "UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSpecimen", b =>
+                {
+                    b.HasOne("MyUglyRocks.Core.Entities.Specimen", "BasedOnSpecimen")
+                        .WithMany()
+                        .HasForeignKey("BasedOnSpecimenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MyUglyRocks.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BasedOnSpecimen");
 
                     b.Navigation("User");
                 });
@@ -2240,6 +2933,13 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Navigation("CycleSpecimens");
 
                     b.Navigation("StageRuns");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.Inventory", b =>
+                {
+                    b.Navigation("InventoryPhotos");
+
+                    b.Navigation("InventorySpecimens");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Material", b =>
@@ -2292,9 +2992,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
                     b.Navigation("RefreshTokens");
 
+                    b.Navigation("Sessions");
+
                     b.Navigation("Settings");
 
                     b.Navigation("Tumblers");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.UserSpecimen", b =>
+                {
+                    b.Navigation("CycleSpecimens");
+
+                    b.Navigation("InventorySpecimens");
                 });
 #pragma warning restore 612, 618
         }

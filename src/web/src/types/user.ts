@@ -1,6 +1,6 @@
 // User profile types
 export interface UserProfileDto {
-  id: string;
+  userId: string;
   username: string;
   email: string;
   displayName: string | null;
@@ -28,7 +28,6 @@ export interface UserSettingsDto {
   timezone: string;
   firstDayOfWeek: string;
   showRelativeTimes: boolean;
-  trackingMode: string;
   fontSize: string;
   density: string;
   defaultHomeSection: string;
@@ -55,7 +54,6 @@ export interface UpdateSettingsRequest {
   timezone?: string;
   firstDayOfWeek?: string;
   showRelativeTimes?: boolean;
-  trackingMode?: string;
   fontSize?: string;
   density?: string;
   defaultHomeSection?: string;

@@ -126,9 +126,10 @@ Discover with Dr. Cool,Professional Series,Rotary,3,1,3,false,201,Educational ki
 NSI/Smithsonian,Smithsonian Rock Tumbler Kit,Rotary,0.5,1,0.5,false,202,Toy-grade educational tumbler
 RELIGHTABLE,Professional Rock Tumbler,Rotary,5,1,5,false,203,Heavy-duty motor with LED display
 # === GENERIC / DIY / OTHER - User Specifies Capacity ===
-Generic,Rotary - Custom,Rotary,,1,,true,900,User specifies capacity
-Generic,Vibratory - Custom,Vibratory,,1,,true,901,User specifies capacity
-DIY,Custom Build - Rotary,Rotary,,1,,true,910,Homemade tumbler - user specifies all
-DIY,Custom Build - Vibratory,Vibratory,,1,,true,911,Homemade vibratory - user specifies all
-Other,Unlisted Rotary Model,Rotary,,1,,true,920,Brand not listed - user specifies details
-Other,Unlisted Vibratory Model,Vibratory,,1,,true,921,Brand not listed - user specifies details
+Generic,Rotary - Custom,Rotary,0,1,0,true,900,User specifies capacity
+Generic,Vibratory - Custom,Vibratory,0,1,0,true,901,User specifies capacity
+DIY,Custom Build - Rotary,Rotary,0,1,0,true,910,Homemade tumbler - user specifies all
+DIY,Custom Build - Vibratory,Vibratory,0,1,0,true,911,Homemade vibratory - user specifies all
+DIY,Custom Lot-o-Tumbler Build - Vibratory,Vibratory,4.5,1,4.5,true,912,Homemade Lot-o-Tumbler barrel vibratory - user specifies all
+Other,Unlisted Rotary Model,Rotary,0,1,0,true,920,Brand not listed - user specifies details
+Other,Unlisted Vibratory Model,Vibratory,0,1,0,true,921,Brand not listed - user specifies details

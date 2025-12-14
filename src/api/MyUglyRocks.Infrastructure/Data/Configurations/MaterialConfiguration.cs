@@ -10,10 +10,10 @@ public class SpecimenConfiguration : IEntityTypeConfiguration<Specimen>
     {
         builder.ToTable("specimens");
 
-        builder.HasKey(s => s.Id);
+        builder.HasKey(s => s.SpecimenId);
 
-        builder.Property(s => s.Id)
-            .HasColumnName("id")
+        builder.Property(s => s.SpecimenId)
+            .HasColumnName("specimen_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.CommonName)
@@ -114,13 +114,21 @@ public class CycleSpecimenConfiguration : IEntityTypeConfiguration<CycleSpecimen
     {
         builder.ToTable("cycle_specimens");
 
-        // Composite key configured in AppDbContext
+        builder.HasKey(cs => cs.CycleSpecimenId);
+
+        builder.Property(cs => cs.CycleSpecimenId)
+            .HasColumnName("cycle_specimen_id")
+            .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cs => cs.CycleId)
-            .HasColumnName("cycle_id");
+            .HasColumnName("cycle_id")
+            .IsRequired();
 
         builder.Property(cs => cs.SpecimenId)
             .HasColumnName("specimen_id");
+
+        builder.Property(cs => cs.UserSpecimenId)
+            .HasColumnName("user_specimen_id");
 
         builder.Property(cs => cs.DateCreated)
             .HasColumnName("date_created")
@@ -141,9 +149,25 @@ public class CycleSpecimenConfiguration : IEntityTypeConfiguration<CycleSpecimen
             .HasForeignKey(cs => cs.SpecimenId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasOne(cs => cs.UserSpecimen)
+            .WithMany(us => us.CycleSpecimens)
+            .HasForeignKey(cs => cs.UserSpecimenId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        // XOR constraint: exactly one specimen type must be set
+        builder.ToTable(t => t.HasCheckConstraint(
+            "chk_cycle_specimen_xor",
+            "(specimen_id IS NOT NULL AND user_specimen_id IS NULL) OR (specimen_id IS NULL AND user_specimen_id IS NOT NULL)"));
+
         // Indexes
+        builder.HasIndex(cs => cs.CycleId)
+            .HasDatabaseName("ix_cycle_specimens_cycle_id");
+
         builder.HasIndex(cs => cs.SpecimenId)
             .HasDatabaseName("ix_cycle_specimens_specimen_id");
+
+        builder.HasIndex(cs => cs.UserSpecimenId)
+            .HasDatabaseName("ix_cycle_specimens_user_specimen_id");
     }
 }
 
@@ -153,10 +177,10 @@ public class MaterialConfiguration : IEntityTypeConfiguration<Material>
     {
         builder.ToTable("materials");
 
-        builder.HasKey(m => m.Id);
+        builder.HasKey(m => m.MaterialId);
 
-        builder.Property(m => m.Id)
-            .HasColumnName("id")
+        builder.Property(m => m.MaterialId)
+            .HasColumnName("material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(m => m.CommonName)
@@ -242,10 +266,10 @@ public class StageMaterialConfiguration : IEntityTypeConfiguration<StageMaterial
     {
         builder.ToTable("stage_materials");
 
-        builder.HasKey(sm => sm.Id);
+        builder.HasKey(sm => sm.StageMaterialId);
 
-        builder.Property(sm => sm.Id)
-            .HasColumnName("id")
+        builder.Property(sm => sm.StageMaterialId)
+            .HasColumnName("stage_material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(sm => sm.StageRunId)
@@ -313,10 +337,10 @@ public class CleaningMaterialConfiguration : IEntityTypeConfiguration<CleaningMa
     {
         builder.ToTable("cleaning_materials");
 
-        builder.HasKey(cm => cm.Id);
+        builder.HasKey(cm => cm.CleaningMaterialId);
 
-        builder.Property(cm => cm.Id)
-            .HasColumnName("id")
+        builder.Property(cm => cm.CleaningMaterialId)
+            .HasColumnName("cleaning_material_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cm => cm.CleaningRunId)
@@ -384,11 +408,8 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
     {
         builder.ToTable("user_settings");
 
-        builder.HasKey(us => us.Id);
-
-        builder.Property(us => us.Id)
-            .HasColumnName("id")
-            .HasDefaultValueSql("gen_random_uuid()");
+        // UserId is both PK and FK (1:1 with User)
+        builder.HasKey(us => us.UserId);
 
         builder.Property(us => us.UserId)
             .HasColumnName("user_id")
@@ -419,13 +440,9 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
             .HasColumnName("show_relative_times")
             .HasDefaultValue(true);
 
-        builder.Property(us => us.TrackingMode)
-            .HasColumnName("tracking_mode")
-            .HasDefaultValue(TrackingMode.Simple);
-
         builder.Property(us => us.FontSize)
             .HasColumnName("font_size")
-            .HasDefaultValue(FontSize.Normal);
+            .HasDefaultValue(FontSize.Medium);
 
         builder.Property(us => us.Density)
             .HasColumnName("density")
@@ -490,10 +507,6 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
             .HasMaxLength(50)
             .HasDefaultValue("lapis-lazuli");
 
-        builder.Property(us => us.StageFieldVisibility)
-            .HasColumnName("stage_field_visibility")
-            .HasColumnType("jsonb");
-
         builder.Property(us => us.DateCreated)
             .HasColumnName("date_created")
             .HasDefaultValueSql("now()");
@@ -502,9 +515,6 @@ public class UserSettingsConfiguration : IEntityTypeConfiguration<UserSettings>
             .HasColumnName("date_updated")
             .HasDefaultValueSql("now()");
 
-        // Indexes
-        builder.HasIndex(us => us.UserId)
-            .IsUnique()
-            .HasDatabaseName("ix_user_settings_user_id");
+        // Note: No additional index needed for UserId since it's the primary key
     }
 }

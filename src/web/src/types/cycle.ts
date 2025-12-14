@@ -1,10 +1,9 @@
 export interface CycleDto {
-  id: string;
+  cycleId: string;
   name: string;
   startDate: string;
   endDate: string | null;
   status: string;
-  goal: string | null;
   difficultyRating: number | null;
   finalQuality: number | null;
   additionalSpecimens: string | null;
@@ -12,35 +11,59 @@ export interface CycleDto {
   dateCreated: string;
   stageRuns: StageRunSummaryDto[];
   specimens: SpecimenDto[];
+  // Computed fields
+  elapsedDays: number;
+  totalRuntimeHours: number;
+  completedStagesCount: number;
+  activeStageName: string | null;
+  lastUpdated: string | null;
+  weightLossGrams: number | null;
+  weightLossPercent: number | null;
+  photoCount: number;
+  // Gallery info
+  postId: string | null;
+  galleryLikes: number;
+  // Tumbler/Barrel info
+  tumblerName: string | null;
+  barrelName: string | null;
 }
 
 export interface CycleListDto {
-  id: string;
+  cycleId: string;
   name: string;
   startDate: string;
   endDate: string | null;
   status: string;
-  goal: string | null;
   difficultyRating: number | null;
   stageCount: number;
   activeStageCount: number;
+  isOverdue: boolean;
   dateCreated: string;
+  // Active stage progress info (null if no active stages)
+  activeStageStartDateTime: string | null;
+  activeStageDurationEstimateEndDate: string | null;
+  activeStageDaysOverdue: number | null;
+  // Active tumbler/barrel info
+  activeTumblerName: string | null;
+  activeBarrelNumber: number | null;
+  activeBarrelNickname: string | null;
 }
 
 export interface CreateCycleRequest {
   name: string;
   startDate: string;
-  goal?: string;
   difficultyRating?: number;
   additionalSpecimens?: string;
   notes?: string;
+  /** System specimen IDs (from reference data) */
   specimenIds?: string[];
+  /** User specimen IDs (custom user-created specimens) */
+  userSpecimenIds?: string[];
 }
 
 export interface UpdateCycleRequest {
   name: string;
   startDate: string;
-  goal?: string;
   difficultyRating?: number;
   additionalSpecimens?: string;
   notes?: string;
@@ -52,24 +75,33 @@ export interface CompleteCycleRequest {
 }
 
 export interface StageRunSummaryDto {
-  id: string;
+  stageRunId: string;
   stageName: string;
+  runNumber: number;
+  totalRuns: number;
   startDateTime: string;
-  endDateTime: string;
+  endDateTime: string | null; // Actual end - only set when completed/aborted
+  durationEstimateEndDate: string | null; // Calculated estimate based on duration
   status: string;
   resultRating: number | null;
+  cleaningRun: CleaningRunDto | null;
 }
 
 export interface StageRunDto {
-  id: string;
+  stageRunId: string;
   cycleId: string;
   stageName: string;
+  runNumber: number;
+  totalRuns: number;
   startDateTime: string;
   durationDays: number;
   durationHours: number;
-  endDateTime: string;
+  endDateTime: string | null; // Actual end - only set when completed/aborted
+  durationEstimateEndDate: string | null; // Calculated estimate based on duration
   status: string;
   reminderEnabled: boolean;
+  loadWeightBeforeGrams: number | null;
+  loadWeightAfterGrams: number | null;
   fillLevelPercent: number | null;
   waterLevel: string | null;
   waterAmountMl: number | null;
@@ -98,10 +130,11 @@ export interface CreateStageRunRequest {
   waterAmountMl?: number;
   notes?: string;
   materials?: CreateStageMaterialRequest[];
+  cleaningRun?: CreateCleaningRunRequest;
 }
 
 export interface CleaningRunDto {
-  id: string;
+  cleaningRunId: string;
   durationMinutes: number;
   purpose: string | null;
   status: string;
@@ -110,8 +143,22 @@ export interface CleaningRunDto {
   materials: CleaningMaterialDto[];
 }
 
+export interface CreateCleaningRunRequest {
+  durationMinutes: number;
+  purpose?: string;
+  reminderEnabled?: boolean;
+  notes?: string;
+  materials?: CreateCleaningMaterialRequest[];
+}
+
+export interface CreateCleaningMaterialRequest {
+  materialId: string;
+  displayAmount?: number;
+  displayUnit?: string;
+}
+
 export interface StageMaterialDto {
-  id: string;
+  stageMaterialId: string;
   materialId: string;
   materialName: string;
   displayAmount: number | null;
@@ -155,10 +202,11 @@ export interface CompleteStageRunRequest {
   lessonsLearned?: string;
   nextAction?: string;
   loadWeightAfterGrams?: number;
+  actualEndDateTime?: string;
 }
 
 export interface CleaningMaterialDto {
-  id: string;
+  cleaningMaterialId: string;
   materialId: string;
   materialName: string;
   displayAmount: number | null;
@@ -167,20 +215,55 @@ export interface CleaningMaterialDto {
 }
 
 export interface PhotoDto {
-  id: string;
+  photoId: string;
   url: string;
   fileName: string | null;
   photoType: string;
+  caption: string | null;
   sortOrder: number;
   dateCreated: string;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
+  blurHash: string | null;
+  width: number | null;
+  height: number | null;
+  processingStatus: 'Processing' | 'Completed' | 'Failed';
+  processingError: string | null;
 }
 
 export interface SpecimenDto {
-  id: string;
+  specimenId: string;
   commonName: string;
   scientificName: string | null;
   materialType: string;
   mohsHardnessMin: number | null;
   mohsHardnessMax: number | null;
   tumblingDifficulty: string | null;
+  /** Source: "system" for reference specimens, "user" for custom user specimens */
+  source?: 'system' | 'user';
+  /** Only set for user specimens - the user who created it */
+  userId?: string | null;
+}
+
+export interface CyclePhotoDto {
+  photoId: string;
+  url: string;
+  fileName: string | null;
+  photoType: string;
+  caption: string | null;
+  sortOrder: number;
+  dateCreated: string;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
+  blurHash: string | null;
+  width: number | null;
+  height: number | null;
+  processingStatus: 'Processing' | 'Completed' | 'Failed';
+  processingError: string | null;
+  // Stage context
+  stageRunId: string;
+  stageName: string;
+  runNumber: number;
 }

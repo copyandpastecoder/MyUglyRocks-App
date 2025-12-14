@@ -4,7 +4,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 public record ExportCyclesRequest(
     DateOnly? StartDate = null,
     DateOnly? EndDate = null,
-    string? Status = null // Active, Completed, Archived, or null for all
+    string? Status = null // Active, Completed, or null for all
 );
 
 public record FullExportRequest(
@@ -37,7 +37,6 @@ public record CycleCsvRow(
     int? DifficultyRating,
     int? FinalQuality,
     string? Specimens,
-    string? Goal,
     string? Notes,
     int TotalStages,
     int CompletedStages
@@ -50,7 +49,8 @@ public record StageCsvRow(
     string StageName,
     string Status,
     DateTime StartDateTime,
-    DateTime EndDateTime,
+    DateTime? EndDateTime,
+    DateTime? DurationEstimateEndDate,
     int DurationDays,
     int DurationHours,
     string? BarrelName,
@@ -83,6 +83,8 @@ public record PostCsvRow(
     int VoteCount,
     int CommentCount,
     DateTime DateCreated,
-    Guid LinkedCycleId,
-    string? LinkedCycleName
+    Guid? LinkedCycleId,
+    string? LinkedCycleName,
+    Guid? LinkedInventoryId,
+    string? LinkedInventoryName
 );

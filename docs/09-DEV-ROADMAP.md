@@ -3,8 +3,8 @@
 ## Document Info
 | Field | Value |
 |-------|-------|
-| Version | 1.6 |
-| Last Updated | 2025-12-03 |
+| Version | 2.0 |
+| Last Updated | 2025-12-10 |
 | Status | In Progress |
 | Related | [01-PRD.md](01-PRD.md), [06-ARCHITECTURE.md](06-ARCHITECTURE.md) |
 
@@ -169,11 +169,11 @@ This document defines the development milestones for building MyUglyRocks. Each 
 #### Image Storage
 | Task | Description | Dependencies | Status |
 |------|-------------|--------------|--------|
-| I2.1 | Configure Cloudflare R2 client | M1 Complete | 🔜 Ready (R2 keys in K8s secrets) |
-| I2.2 | Implement image upload service | I2.1 | 🔜 Ready |
+| I2.1 | Configure Cloudflare R2 client | M1 Complete | ✅ |
+| I2.2 | Implement image upload service | I2.1 | ✅ |
 | I2.3 | Implement image resize/compression (ImageSharp) | I2.2 | 🔜 Ready |
-| I2.4 | Generate signed URLs for private images | I2.1 | 🔜 Ready |
-| I2.5 | Implement image deletion service | I2.1 | 🔜 Ready |
+| I2.4 | Generate signed URLs for private images | I2.1 | ⏭️ Not needed (public bucket) |
+| I2.5 | Implement image deletion service | I2.1 | ✅ |
 
 #### Tumbler API
 | Task | Description | Dependencies | Status |
@@ -193,7 +193,7 @@ This document defines the development milestones for building MyUglyRocks. Each 
 | B2.9 | PUT /api/cycles/:id - Update cycle | D2.2 | ✅ |
 | B2.10 | DELETE /api/cycles/:id - Soft delete cycle | D2.2 | ✅ |
 | B2.11 | POST /api/cycles/:id/complete - Complete cycle | D2.2 | ✅ |
-| B2.12 | POST /api/cycles/:id/archive - Archive cycle | D2.2 | ✅ |
+| B2.12 | ~~POST /api/cycles/:id/archive~~ | - | ❌ Removed |
 
 #### Stage Run API
 | Task | Description | Dependencies | Status |
@@ -209,9 +209,9 @@ This document defines the development milestones for building MyUglyRocks. Each 
 #### Photo API
 | Task | Description | Dependencies | Status |
 |------|-------------|--------------|--------|
-| B2.20 | POST /api/stages/:id/photos - Upload photo(s) | D2.4, I2.2 | 🔜 Ready (R2 configured) |
-| B2.21 | DELETE /api/photos/:id - Delete photo | D2.4, I2.5 | 🔜 Ready |
-| B2.22 | PUT /api/photos/:id - Update photo label | D2.4 | 🔜 Ready |
+| B2.20 | POST /api/stages/:id/photos - Upload photo(s) | D2.4, I2.2 | ✅ |
+| B2.21 | DELETE /api/photos/:id - Delete photo | D2.4, I2.5 | ✅ |
+| B2.22 | PUT /api/photos/:id - Update photo label | D2.4 | ✅ |
 
 #### Cleaning Run API
 | Task | Description | Dependencies | Status |
@@ -236,7 +236,7 @@ This document defines the development milestones for building MyUglyRocks. Each 
 | P2.7 | New cycle page (/cycles/new) | B2.7 | ✅ |
 | P2.8 | Cycle detail page (/cycles/:id) | B2.8 | ✅ |
 | P2.9 | Edit cycle page (/cycles/:id/edit) | B2.9 | ⏭️ M3 |
-| P2.10 | Complete/archive cycle actions | B2.11, B2.12 | ✅ |
+| P2.10 | Complete cycle action | B2.11 | ✅ |
 
 #### Frontend - Stage Runs
 | Task | Description | Dependencies | Status |
@@ -264,19 +264,19 @@ This document defines the development milestones for building MyUglyRocks. Each 
 - [x] User can CRUD tumblers
 - [x] User can CRUD cycles with specimens (free-text)
 - [x] User can add/edit/complete stage runs
-- [ ] User can upload photos (up to 10 per stage) *(deferred - R2)*
-- [ ] Photos are resized and stored in R2 *(deferred - R2)*
+- [x] User can upload photos (up to 10 per stage)
+- [ ] Photos are resized and stored in R2 *(resize deferred)*
 - [ ] User can add materials to stages *(UI deferred to M3)*
 - [ ] User can add cleaning runs to stages *(UI deferred to M3)*
 - [x] Dashboard shows active cycles with progress
-- [x] Cycle list has working tabs (Active/Completed/Archived)
+- [x] Cycle list has working tabs (Active/Completed)
 - [x] All forms have proper validation
 - [x] Mobile-responsive layouts
 
 ### 3.3 Deliverables
 
 - ✅ Complete tumbler management (list, create, edit, delete)
-- ✅ Complete cycle management (list, create, detail, complete, archive, delete)
+- ✅ Complete cycle management (list, create, detail, complete, delete)
 - ✅ Stage run management (add, complete, delete from cycle detail)
 - ✅ Photo upload placeholder UI (R2 integration pending)
 - ✅ Dashboard with active cycles and stats
@@ -943,13 +943,13 @@ Implemented full Kubernetes deployment for local development, matching productio
 | `src/api/MyUglyRocks.Api/Configuration/AkeylessConfigurationProvider.cs` | No longer needed |
 | `k8s/base/akeyless-gateway.yaml` | No longer needed |
 
-#### Access URLs (with port-forward)
+#### Access URLs (via Cloudflare Tunnel)
 
-| Service | URL | Command |
-|---------|-----|---------|
-| Web | http://localhost:3000 | `kubectl port-forward svc/myuglyrocks-web 3000:80 -n myuglyrocks` |
-| API | http://localhost:5000 | `kubectl port-forward svc/myuglyrocks-api 5000:80 -n myuglyrocks` |
-| PostgreSQL | localhost:5432 | `kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks` |
+| Service | URL | Notes |
+|---------|-----|-------|
+| Web | https://dev.myuglyrocks.com | Via Cloudflare tunnel |
+| API | https://dev.myuglyrocks.com/api | Via Cloudflare tunnel |
+| PostgreSQL | N/A | Use `kubectl exec` to access |
 
 #### Secrets Management
 
@@ -990,7 +990,258 @@ kubectl port-forward svc/postgres 5432:5432 -n myuglyrocks &
 
 ---
 
-## 11. Post-Launch Roadmap
+### Session: 2025-12-08 - NodePort Services & CORS Fix
+
+#### Overview
+
+Configured K8s NodePort services for network-accessible development and fixed CORS issues preventing cross-origin API calls.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| NodePort Services | Configured services with stable ports: Web (30000), API (30001) | ✅ |
+| CORS Port Fix | Fixed `appsettings.Development.json` - wrong port 3000 → 30000 for IP origin | ✅ |
+| CORS Configuration | Updated `appsettings.json` with correct NodePort origins | ✅ |
+| Specimen Multi-Select UX | Improved popover behavior - button hides when dropdown open | ✅ |
+
+#### Technical Details
+
+- **Root Cause of CORS Issue**:
+  - CORS configuration needed to match the access URL
+  - Now using Cloudflare Tunnel for all access via `dev.myuglyrocks.com`
+
+- **Files Modified**:
+  - `src/api/MyUglyRocks.Api/appsettings.json` - Updated CORS origins
+  - `k8s/base/api-deployment.yaml` - NodePort 30001
+  - `k8s/base/web-deployment.yaml` - NodePort 30000
+  - `src/web/src/components/specimen-multi-select.tsx` - UX improvement
+
+- **Access URL**:
+  - All access via Cloudflare Tunnel: `https://dev.myuglyrocks.com`
+
+- **Docker Rebuild Commands**:
+  ```bash
+  # Rebuild with no cache to ensure fresh image
+  docker build --no-cache -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Dockerfile .
+
+  # Force pod restart
+  kubectl delete pod -l app=myuglyrocks-api -n myuglyrocks
+  ```
+
+---
+
+### Session: 2025-12-09 - R2 Photo Upload & Runtime API Config
+
+#### Overview
+
+Fixed critical infrastructure issues: R2 photo upload signature errors, mixed content HTTPS errors, and enabled public access to R2 bucket.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| R2 Signature Fix | Fixed AWSSDK.S3 v4 signature mismatch - added `DisableDefaultChecksumValidation = true` | ✅ |
+| Runtime API URL Config | Implemented runtime config endpoint (`/config`) to avoid rebuild on URL changes | ✅ |
+| Mixed Content Fix | Fixed HTTPS web calling HTTP API - proper runtime config loading | ✅ |
+| R2 Public URL Config | Added `R2__PublicUrl` to K8s secrets and API deployment | ✅ |
+| R2 Public Access | Enabled public development URL on R2 bucket | ✅ |
+| HTTPS Ingress | nginx-ingress on port 30443 with mkcert TLS certificates | ✅ |
+
+#### Technical Details
+
+- **R2 Signature Issue Root Cause**:
+  - AWSSDK.S3 v4.0.0.3 sends `x-amz-checksum-crc32` headers by default
+  - Cloudflare R2 doesn't support these checksum headers
+  - Fix: Added `DisableDefaultChecksumValidation = true` to `PutObjectRequest`
+
+- **Runtime API URL Solution**:
+  - Created `/config` endpoint in Next.js (not `/api/config` to avoid nginx routing)
+  - Uses `API_URL` env var (not `NEXT_PUBLIC_*`) for true runtime reading
+  - Axios interceptor waits for config promise before first request
+  - AuthProvider explicitly awaits config before refresh
+
+- **R2 Public URL**:
+  - Cloudflare provides `pub-{random}.r2.dev` URL (different from account ID pattern)
+  - Added `r2-public-url` to K8s secrets
+  - API deployment reads via `R2__PublicUrl` env var
+
+#### Files Modified
+
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Infrastructure/Services/R2StorageService.cs` | Added `DisableDefaultChecksumValidation = true` |
+| `src/web/src/app/config/route.ts` | New runtime config endpoint |
+| `src/web/src/lib/api.ts` | Runtime config fetching with axios interceptor |
+| `src/web/src/providers/auth-provider.tsx` | Await config before auth refresh |
+| `src/web/Dockerfile` | Removed build-time API URL arg |
+| `k8s/base/web-deployment.yaml` | Changed to `API_URL` env var |
+| `k8s/base/api-deployment.yaml` | Added `R2__PublicUrl` from secret |
+| `CLAUDE.md` | Updated documentation for runtime config |
+
+#### Architecture Update
+
+```
+Web Frontend                     nginx-ingress (:30443)               API + R2
+┌─────────────┐                 ┌─────────────────────┐              ┌─────────────┐
+│ Next.js     │ ──HTTPS──────▶ │ / → web             │              │ .NET API    │
+│ /config     │                 │ /api → api          │ ──HTTPS───▶ │             │
+│ returns     │                 │ TLS: mkcert         │              │ R2 Upload   │
+│ API_URL     │                 └─────────────────────┘              └──────┬──────┘
+└─────────────┘                                                             │
+                                                                            ▼
+                                                        ┌───────────────────────────────┐
+                                                        │ Cloudflare R2                 │
+                                                        │ pub-{id}.r2.dev (public)      │
+                                                        │ dev-myuglyrocks-media bucket  │
+                                                        └───────────────────────────────┘
+```
+
+#### Access URLs
+
+| Service | URL |
+|---------|-----|
+| Web (HTTPS) | https://dev.myuglyrocks.com |
+| API (HTTPS) | https://dev.myuglyrocks.com/api |
+| R2 Public | https://pub-b409015555184d2ea808e87b602b1da5.r2.dev |
+
+#### Key Learnings
+
+1. **Next.js `NEXT_PUBLIC_*` vars are inlined at build time** - use non-prefixed vars for runtime config
+2. **nginx-ingress routes `/api/*` to backend** - use different path like `/config` for frontend API routes
+3. **AWSSDK.S3 v4 has breaking changes for R2** - requires both `DisablePayloadSigning` and `DisableDefaultChecksumValidation`
+4. **R2 public dev URL uses different ID than account ID** - must use Cloudflare-provided URL
+
+---
+
+## 11. Production Deployment Checklist
+
+This checklist covers all steps needed to deploy MyUglyRocks to production on Railway with Cloudflare.
+
+### 11.1 Railway Setup
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Create Railway account and project | ⏳ |
+| 2 | Create PostgreSQL database service | ⏳ |
+| 3 | Create Redis service | ⏳ |
+| 4 | Deploy API service from Docker image or GitHub | ⏳ |
+| 5 | Deploy Web service from Docker image or GitHub | ⏳ |
+| 6 | Configure environment variables (see below) | ⏳ |
+| 7 | Note Railway-provided URLs for API and Web | ⏳ |
+
+**Required Environment Variables (API):**
+```
+ASPNETCORE_ENVIRONMENT=Production
+ConnectionStrings__DefaultConnection={Railway PostgreSQL connection string}
+Redis__ConnectionString={Railway Redis connection string}
+Jwt__Secret={generate 64+ char secret}
+Jwt__Issuer=MyUglyRocks
+Jwt__Audience=MyUglyRocks
+R2__AccountId={Cloudflare account ID}
+R2__AccessKeyId={R2 access key}
+R2__SecretAccessKey={R2 secret key}
+R2__BucketName=myuglyrocks-media
+R2__PublicUrl={R2 public URL - see Cloudflare R2 setup}
+Resend__ApiKey={Resend API key}
+```
+
+**Required Environment Variables (Web):**
+```
+NODE_ENV=production
+API_URL={Railway API URL}/api
+```
+
+### 11.2 Cloudflare R2 Setup (Production Bucket)
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Create new R2 bucket `myuglyrocks-media` (production) | ⏳ |
+| 2 | Enable public access for the bucket | ⏳ |
+| 3 | Note the public URL (format: `pub-{id}.r2.dev`) | ⏳ |
+| 4 | Create new R2 API token with read/write permissions | ⏳ |
+| 5 | (Optional) Configure custom domain for R2 bucket | ⏳ |
+
+### 11.3 Cloudflare Tunnel Setup (Production)
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Go to Cloudflare Zero Trust → Access → Tunnels | ⏳ |
+| 2 | Create new tunnel: `myuglyrocks-prod-tunnel` | ⏳ |
+| 3 | Choose "Cloudflared" connector type | ⏳ |
+| 4 | Note: Railway can run cloudflared as a service OR use Cloudflare's managed connector | ⏳ |
+| 5 | Configure public hostname routes (see below) | ⏳ |
+| 6 | Cloudflare auto-creates DNS records | ⏳ |
+
+**Public Hostname Routes to Configure:**
+
+| Hostname | Service | Notes |
+|----------|---------|-------|
+| `myuglyrocks.com` | Railway Web URL | Main domain |
+| `www.myuglyrocks.com` | Railway Web URL | WWW redirect |
+| `api.myuglyrocks.com` | Railway API URL | (Optional) Direct API access |
+
+**Note:** If Railway provides public URLs with SSL, you may not need Cloudflare Tunnel. Cloudflare can just proxy DNS to Railway URLs. Tunnel is more useful when:
+- Backend is not publicly accessible (e.g., private network)
+- You want Cloudflare's WAF/DDoS protection at the edge
+- You need to hide origin server IPs
+
+### 11.4 DNS Configuration
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Transfer `myuglyrocks.com` DNS to Cloudflare (if not already) | ⏳ |
+| 2 | Configure A/CNAME records pointing to Railway or Tunnel | ⏳ |
+| 3 | Enable Cloudflare proxy (orange cloud) for DDoS protection | ⏳ |
+| 4 | Configure SSL/TLS mode to "Full (strict)" | ⏳ |
+
+### 11.5 CORS Configuration (Production)
+
+Update `appsettings.Production.json`:
+```json
+{
+  "Cors": {
+    "AllowedOrigins": [
+      "https://myuglyrocks.com",
+      "https://www.myuglyrocks.com"
+    ]
+  }
+}
+```
+
+### 11.6 Security Configuration
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Generate new JWT secret (different from dev) | ⏳ |
+| 2 | Verify HTTPS-only cookies in production | ⏳ |
+| 3 | Configure rate limiting rules in Cloudflare | ⏳ |
+| 4 | Enable Cloudflare WAF rules | ⏳ |
+| 5 | Set up Cloudflare bot protection | ⏳ |
+
+### 11.7 Monitoring & Backups
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Set up error monitoring (Sentry or similar) | ⏳ |
+| 2 | Configure Railway database backups | ⏳ |
+| 3 | Set up uptime monitoring (UptimeRobot, Cloudflare Health Checks) | ⏳ |
+| 4 | Configure Cloudflare analytics | ⏳ |
+
+### 11.8 Go-Live Checklist
+
+| Step | Description | Status |
+|------|-------------|--------|
+| 1 | Test all critical flows on production | ⏳ |
+| 2 | Verify email sending works (Resend) | ⏳ |
+| 3 | Test photo upload/download from R2 | ⏳ |
+| 4 | Verify SSL certificates are valid | ⏳ |
+| 5 | Test login/logout/password reset flows | ⏳ |
+| 6 | Monitor error logs for first 24 hours | ⏳ |
+
+---
+
+## 12. Post-Launch Roadmap (Future Features)
 
 Features to consider after initial launch:
 
@@ -1010,7 +1261,7 @@ Features to consider after initial launch:
 
 ---
 
-## 12. Next Steps
+## 13. Next Steps
 
 Current focus: **Milestone 6 - Launch Prep**
 
@@ -1019,14 +1270,583 @@ Current focus: **Milestone 6 - Launch Prep**
 - ✅ Full stack running in K8s (Web, API, PostgreSQL, Redis)
 - ✅ K8s Secrets management (including R2 credentials)
 - ✅ Seed data included in Docker images
-- ✅ R2 API keys and bucket configured in K8s secrets
+- ✅ NodePort services for network access (Web: 30000, API: 30001)
+- ✅ CORS configuration fixed for NodePort URLs
+- ✅ Specimen multi-select UX improvements
+- ✅ **R2 photo upload working** (fixed SDK v4 signature issues)
+- ✅ **Runtime API URL config** (no rebuild needed for URL changes)
+- ✅ **HTTPS via nginx-ingress** (mkcert TLS on port 30443)
+- ✅ **R2 public bucket access** enabled
+- ✅ **User Session Analytics** (ADR-006) - browser/device tracking, admin dashboard
+- ✅ **Admin link in header** for Admin/Moderator users
+- ✅ **Avatar cache busting** - new uploads display immediately with timestamp query param
+- ✅ **Gallery post uniqueness** - one post per cycle, with "View Gallery Post" button when exists
+- ✅ **API parameter naming** - renamed generic `Id` params to entity-specific names
+- ✅ **Global layout constants** - shared `PAGE_CONTAINER` for consistent width across all pages
+- ✅ **Unified max-w-3xl width** - all pages, dialogs, forms now use 768px max-width
+- ✅ **Row-based list layouts** - cycles, gallery, tumblers pages match dashboard style
+- ✅ **Dark mode row visibility** - `bg-card hover:bg-accent` for list item visibility
+- ✅ **Cloudflare Tunnel (dev)** - `dev.myuglyrocks.com` accessible with valid SSL for mobile testing
 
 **Next:**
-1. **Implement R2 photo storage** (I2.1-I2.5, B2.20-B2.22) - NOW READY
-   - Configure R2 client with credentials from K8s secrets
-   - Implement image upload/resize/delete services
-   - Connect photo API endpoints
-2. Complete remaining E2E tests (T6.2-T6.4)
-3. Perform load testing (T6.5)
-4. Complete mobile responsiveness testing (T6.6)
-5. Set up production deployment on Railway (D6.9-D6.16)
+1. **Image resizing** (I2.3) - Implement ImageSharp resize on upload
+2. **Gallery post edit page** - allow users to edit title/description after sharing
+3. Complete remaining E2E tests (T6.2-T6.4)
+4. Perform load testing (T6.5)
+5. Complete mobile responsiveness testing (T6.6)
+6. Set up production deployment on Railway (see Section 11 checklist)
+7. Configure Cloudflare Tunnel for production
+
+---
+
+### Session: 2025-12-09 (Evening) - User Session Analytics
+
+#### Overview
+
+Implemented comprehensive user session analytics system per ADR-006, tracking browser capabilities, device info, and session engagement for the admin dashboard.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| UserSession Entity | Created entity with browser, device, OS, screen size, WebP/AVIF support, timezone, language, referrer, page views, session duration | ✅ |
+| User Agent Parser | Implemented UAParser-based service with bot filtering | ✅ |
+| Session Analytics Service | Service for recording sessions, heartbeats, page views, and aggregated stats | ✅ |
+| Session Controller | REST endpoints for heartbeat, pageview, and end session | ✅ |
+| Auth Integration | Login records session with fire-and-forget pattern (IServiceScopeFactory for background task DI) | ✅ |
+| Browser Capabilities Detection | Frontend detection of WebP/AVIF support, screen size, timezone, language, referrer | ✅ |
+| Session Heartbeat | 5-minute interval heartbeat while tab is visible (visibilitychange API) | ✅ |
+| Admin Analytics Dashboard | Full dashboard with recharts: pie charts, bar charts, line charts, metric cards | ✅ |
+| Admin Nav Link | Added "Admin" link to header dropdown for Admin/Moderator users | ✅ |
+| Database Migration | Added UserSessions table with indexes on UserId and SessionStart | ✅ |
+
+#### Technical Details
+
+**Backend Files Created:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Core/Entities/UserSession.cs` | Entity with DeviceType enum |
+| `src/api/MyUglyRocks.Abstractions/Interfaces/IUserAgentParserService.cs` | Interface with DeviceTypeDto and UserAgentInfoDto |
+| `src/api/MyUglyRocks.Infrastructure/Services/UserAgentParserService.cs` | UA parsing with bot detection |
+| `src/api/MyUglyRocks.Infrastructure/Services/SessionAnalyticsService.cs` | Session recording and stats aggregation |
+| `src/api/MyUglyRocks.Api/Controllers/SessionController.cs` | Heartbeat/pageview endpoints |
+
+**Backend Files Modified:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Core/Entities/User.cs` | Added Sessions navigation property |
+| `src/api/MyUglyRocks.Infrastructure/Data/AppDbContext.cs` | Added DbSet and entity configuration |
+| `src/api/MyUglyRocks.Abstractions/DTOs/AuthDtos.cs` | Extended LoginRequest with analytics fields |
+| `src/api/MyUglyRocks.Api/Controllers/AuthController.cs` | Session recording on login (fire-and-forget with scope factory) |
+| `src/api/MyUglyRocks.Api/Controllers/AdminController.cs` | Added browser-stats endpoint |
+| `src/api/MyUglyRocks.Api/Program.cs` | Registered analytics services |
+
+**Frontend Files Created:**
+| File | Description |
+|------|-------------|
+| `src/web/src/lib/browser-capabilities.ts` | WebP/AVIF detection, screen size, timezone |
+| `src/web/src/lib/session-heartbeat.ts` | Heartbeat interval management |
+| `src/web/src/app/(protected)/admin/analytics/page.tsx` | Full dashboard with recharts |
+
+**Frontend Files Modified:**
+| File | Description |
+|------|-------------|
+| `src/web/src/types/auth.ts` | Extended LoginRequest and AuthResult |
+| `src/web/src/types/admin.ts` | Added BrowserStatsDto and SessionTrendDto |
+| `src/web/src/lib/api.ts` | Added getBrowserStats function |
+| `src/web/src/providers/auth-provider.tsx` | Capabilities detection, heartbeat integration |
+| `src/web/src/app/(protected)/admin/layout.tsx` | Added Analytics nav item |
+| `src/web/src/components/layout/header.tsx` | Added Admin link for Admin/Moderator users |
+
+#### Architecture
+
+```
+Login Flow:
+┌─────────────┐     ┌──────────────────┐     ┌─────────────────────┐
+│ Frontend    │────▶│ POST /auth/login │────▶│ SessionAnalytics    │
+│ detects     │     │ + browser caps   │     │ Service (fire-and-  │
+│ capabilities│     │ + user agent     │     │ forget with scope)  │
+└─────────────┘     └──────────────────┘     └──────────┬──────────┘
+                                                        │
+                                                        ▼
+                                             ┌─────────────────────┐
+                                             │ UserSessions table  │
+                                             │ (browser, device,   │
+                                             │ OS, screen, etc.)   │
+                                             └─────────────────────┘
+
+Heartbeat Flow:
+┌─────────────┐     ┌────────────────────────┐     ┌─────────────────┐
+│ Frontend    │────▶│ POST /session/heartbeat│────▶│ Update SessionEnd│
+│ every 5min  │     │ (only when visible)    │     │ and duration     │
+└─────────────┘     └────────────────────────┘     └─────────────────┘
+```
+
+#### Bug Fixes
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Session not recorded on login | DbContext disposed before Task.Run completed | Used IServiceScopeFactory to create new DI scope in background task |
+| TypeScript error in Pie chart | `percent` possibly undefined | Added null coalescing: `(percent ?? 0) * 100` |
+
+#### Dashboard Features
+
+- **Key Metrics**: Total sessions, WebP support %, mobile users %, avg session duration
+- **Browsers Tab**: Browser distribution pie chart, OS bar chart, AVIF support, old browser count
+- **Devices Tab**: Device type pie chart, device breakdown with progress bars
+- **Geography Tab**: Country and timezone bar charts
+- **Engagement Tab**: Sessions over time line chart, avg duration and page views
+- **Time Period Selector**: Last 7/30/90 days
+
+#### Related ADR
+
+- [ADR-006-user-session-analytics.md](decisions/ADR-006-user-session-analytics.md)
+
+---
+
+### Session: 2025-12-09 (Night) - ID Naming Convention Refactoring Plan
+
+#### Overview
+
+Created comprehensive refactoring plan to rename all entity primary keys from `Id` to `{TableName}Id` to match the naming conventions defined in `04-DATA-MODEL.md`.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Refactoring Plan Document | Created detailed 8-phase plan in `docs/plans/refactor-id-to-tablename-id.md` | ✅ |
+| Entity Inventory | Documented all 20 regular entities requiring `{TableName}Id` | ✅ |
+| Association Table Inventory | Identified 3 association tables needing composite PKs (PostPhoto, CycleSpecimen, StageRunBarrel) | ✅ |
+| DTO Mapping | Documented all 28 DTOs requiring ID field renames | ✅ |
+| Service/Controller Inventory | Listed all services (12) and controllers (9) requiring updates | ✅ |
+| Frontend Type Mapping | Documented TypeScript type changes needed | ✅ |
+
+#### Plan Document Structure
+
+| Phase | Description | Scope |
+|-------|-------------|-------|
+| Phase 1 | Backend Entities | Remove `Id` from BaseEntity, add `{TableName}Id` to 20 entities |
+| Phase 2 | Backend DTOs | Update 28 DTOs with new PK names |
+| Phase 3 | EF Core Configuration | Configure HasKey() and composite PKs in DbContext |
+| Phase 4 | Backend Services | Update 12 services with new property references |
+| Phase 5 | Backend Controllers | Update 9 controllers |
+| Phase 6 | Frontend TypeScript Types | Update type definitions |
+| Phase 7 | Frontend Components & Pages | Update all `.id` usages |
+| Phase 8 | Seed Data | Update seed files and SeedDataService |
+
+#### Key Decisions
+
+| Decision | Details |
+|----------|---------|
+| No `Id` anywhere | `Id` should never be used - always `{TableName}Id` |
+| Association tables | Use composite PKs (e.g., `PostId + PhotoId`), no separate `Id` column |
+| Shared key pattern | `UserSettings` uses `UserId` as PK (1:1 with User) |
+| PostPhotoDto | Remove `Id` field entirely - only `PostId` and `PhotoId` needed |
+| Database approach | Drop and reseed - no migration needed |
+| URL parameters | Keep `{id}` in URLs for REST convention - internal code changes only |
+
+#### Files Created
+
+| File | Description |
+|------|-------------|
+| `docs/plans/refactor-id-to-tablename-id.md` | Comprehensive 8-phase refactoring plan with verification checklist |
+
+#### Convention Reference (from 04-DATA-MODEL.md)
+
+- **Primary Keys:** `{TableName}Id` (GUID) - e.g., `UserId`, `CycleId`, `PostId`
+- **Foreign Keys:** `{ReferencedTable}Id` - same as PK of referenced table
+- **Association Tables:** Composite PK of FKs, no separate `Id` column
+
+#### Next Steps
+
+Plan is ready for execution. When approved:
+1. Start with Phase 1 (BaseEntity.cs and all entities)
+2. Proceed through all 8 phases sequentially
+3. Run `dotnet build` and `npm run build` to verify
+4. Drop database and reseed
+5. Test application end-to-end
+
+---
+
+### Session: 2025-12-10 - Content Width Constraints & UI Consistency
+
+#### Overview
+
+Implemented a global layout system with shared constants for consistent content width across all pages. Created `src/web/src/lib/layout.ts` as a single source of truth for page widths. Updated all list pages to use row-based layouts (matching dashboard style) and standardized all widths to `max-w-3xl` (768px) for a focused, Reddit-like experience.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Shared Layout Constants | Created `src/web/src/lib/layout.ts` with `PAGE_CONTAINER`, `PAGE_CONTAINER_TIGHT`, `PAGE_CONTAINER_LOOSE` | ✅ |
+| Global Width: `max-w-3xl` | Changed from `max-w-5xl` (1024px) to `max-w-3xl` (768px) for all pages | ✅ |
+| Row-Based List Pages | Converted cycles, gallery, tumblers list pages from card grids to row lists | ✅ |
+| Row Background Color | Added `bg-card hover:bg-accent` to list rows for visibility in dark mode | ✅ |
+| Dialog/Modal Width | Updated default dialog width from `sm:max-w-lg` to `sm:max-w-3xl` | ✅ |
+| Form Pages | Updated new tumbler, new cycle, share page to use `max-w-3xl` | ✅ |
+| Static Pages | Updated terms, privacy, FAQ pages to use `max-w-3xl` | ✅ |
+| Landing Page | Updated hero and CTA sections to use `max-w-3xl` | ✅ |
+
+#### Technical Details
+
+**Layout Constants (`src/web/src/lib/layout.ts`):**
+```typescript
+// Main content max-width class - change this to adjust all pages
+export const CONTENT_MAX_WIDTH = 'max-w-3xl';  // 768px
+
+// Combined class for page containers (max-width + centering + spacing)
+export const PAGE_CONTAINER = `${CONTENT_MAX_WIDTH} mx-auto space-y-6`;
+export const PAGE_CONTAINER_TIGHT = `${CONTENT_MAX_WIDTH} mx-auto space-y-4`;
+export const PAGE_CONTAINER_LOOSE = `${CONTENT_MAX_WIDTH} mx-auto space-y-8`;
+```
+
+**Row-Based List Items:**
+```tsx
+<div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent transition-colors">
+  <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
+    <p className="font-medium truncate">{cycle.name}</p>
+    <p className="text-sm text-muted-foreground">...</p>
+  </Link>
+  <DropdownMenu>...</DropdownMenu>
+</div>
+```
+
+#### Files Modified
+
+**Global/UI Components:**
+| File | Change |
+|------|--------|
+| `src/web/src/lib/layout.ts` | Changed `CONTENT_MAX_WIDTH` from `max-w-5xl` to `max-w-3xl` |
+| `src/web/src/components/ui/dialog.tsx` | Default width `sm:max-w-3xl` |
+| `src/web/src/components/ui/alert-dialog.tsx` | Default width `sm:max-w-3xl` |
+
+**List Pages (Row-Based Layout):**
+| File | Change |
+|------|--------|
+| `src/web/src/app/(protected)/cycles/page.tsx` | Row layout with `bg-card`, uses `PAGE_CONTAINER` |
+| `src/web/src/app/(protected)/gallery/page.tsx` | Row layout with thumbnail, uses `PAGE_CONTAINER` |
+| `src/web/src/app/(protected)/tumblers/page.tsx` | Row layout with `bg-card`, uses `PAGE_CONTAINER` |
+
+**Form/Detail Pages:**
+| File | Change |
+|------|--------|
+| `src/web/src/app/(protected)/tumblers/new/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/(protected)/cycles/new/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/(protected)/cycles/[id]/share/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/(protected)/cycles/[id]/page.tsx` | Dialog widths `max-w-3xl` |
+
+**Modals:**
+| File | Change |
+|------|--------|
+| `src/web/src/components/cleaning-run-modal.tsx` | `max-w-3xl` |
+| `src/web/src/components/photo-upload-modal.tsx` | `sm:max-w-3xl` |
+
+**Learn/Admin Pages:**
+| File | Change |
+|------|--------|
+| `src/web/src/app/(protected)/learn/specimens/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/learn/materials/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/learn/faq/page.tsx` | Container `max-w-3xl` |
+| `src/web/src/app/(protected)/learn/faq/[topic]/page.tsx` | Container `max-w-3xl` |
+| `src/web/src/app/(protected)/admin/materials/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/admin/specimens/page.tsx` | Dialog `max-w-3xl` |
+| `src/web/src/app/(protected)/admin/moderation/page.tsx` | Dialog `max-w-3xl` |
+
+**Static/Landing Pages:**
+| File | Change |
+|------|--------|
+| `src/web/src/app/terms/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/privacy/page.tsx` | `max-w-3xl` |
+| `src/web/src/app/page.tsx` | All sections `max-w-3xl` |
+
+#### Width Reference
+
+| Tailwind Class | Width | Use Case |
+|----------------|-------|----------|
+| `max-w-2xl` | 672px | (not used) |
+| `max-w-3xl` | 768px | **All pages, dialogs, forms** |
+| `max-w-4xl` | 896px | (not used) |
+| `max-w-5xl` | 1024px | (previously used) |
+
+#### Benefits
+
+1. **Single source of truth**: Change `CONTENT_MAX_WIDTH` in one place to adjust all pages
+2. **Mobile-friendly**: `max-w-*` classes have no effect on small screens (content fills naturally)
+3. **iOS app ready**: Pattern translates well to SwiftUI's `frame(maxWidth:)`
+4. **Reddit-like UX**: Narrower width (768px) improves readability, similar to Reddit's post content area
+5. **Consistent dialogs**: All modals/dialogs use same width as pages
+6. **Dark mode visibility**: `bg-card hover:bg-accent` makes list rows clearly visible
+
+---
+
+### Session: 2025-12-10 - Cloudflare Tunnel for Mobile Testing
+
+#### Overview
+
+Set up Cloudflare Tunnel running in Kubernetes to enable mobile testing with valid SSL certificates. This provides a permanent development URL (`dev.myuglyrocks.com`) accessible from any device without localhost limitations.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Cloudflared K8s Deployment | Created `k8s/base/cloudflared-deployment.yaml` running cloudflared container | ✅ |
+| Tunnel Token Secret | Created K8s secret `cloudflared-tunnel-token` storing the tunnel token | ✅ |
+| Cloudflare Tunnel Creation | Created `myuglyrocks-dev-tunnel` in Cloudflare Zero Trust dashboard | ✅ |
+| Public Hostname Route | Configured `dev.myuglyrocks.com` → nginx-ingress | ✅ |
+| TLS Skip Verify | Enabled "No TLS Verify" for self-signed mkcert certificates | ✅ |
+| DNS Auto-Configuration | Cloudflare auto-created CNAME record for `dev.myuglyrocks.com` | ✅ |
+| CORS Configuration | Added `https://dev.myuglyrocks.com` to CORS allowed origins | ✅ |
+
+#### Technical Details
+
+**Cloudflared Deployment (`k8s/base/cloudflared-deployment.yaml`):**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudflared
+  namespace: myuglyrocks
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: cloudflared
+          image: cloudflare/cloudflared:latest
+          args:
+            - tunnel
+            - --no-autoupdate
+            - run
+            - --token
+            - $(TUNNEL_TOKEN)
+          env:
+            - name: TUNNEL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflared-tunnel-token
+                  key: token
+```
+
+**Cloudflare Dashboard Navigation:**
+1. Access -> Tunnels -> Create tunnel
+2. Choose "Cloudflared" connector type
+3. Copy tunnel token, create K8s secret
+4. After tunnel shows HEALTHY: Click tunnel → Public Hostname tab
+5. Add public hostname: `dev.myuglyrocks.com` → nginx-ingress service
+6. Under "Additional application settings" → TLS → Enable "No TLS Verify"
+
+**CORS Configuration (`appsettings.json`):**
+```json
+"Cors": {
+  "AllowedOrigins": [
+    "https://myuglyrocks.local:30443",
+    "https://dev.myuglyrocks.com"
+  ]
+}
+```
+
+#### Access URLs
+
+| Environment | URL | Notes |
+|-------------|-----|-------|
+| Development | https://dev.myuglyrocks.com | Via Cloudflare Tunnel, valid SSL |
+
+#### Benefits
+
+1. **Valid SSL on Mobile**: Safari/iOS require trusted certificates - Cloudflare provides them
+2. **No Port Forwarding**: Access from any network without router configuration
+3. **Permanent URL**: Stable `dev.myuglyrocks.com` domain for testing
+4. **K8s Native**: Tunnel runs as a pod, restarts automatically with cluster
+
+---
+
+### Session: 2025-12-10 - Avatar Cache Busting & Gallery Post Uniqueness
+
+#### Overview
+
+Fixed avatar upload caching issue and implemented gallery post uniqueness per cycle. The avatar fix ensures new uploads display immediately by adding cache-busting query parameters. The gallery post uniqueness prevents duplicate posts for the same cycle.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Avatar Cache Busting | Added timestamp query parameter (`?v={unix_timestamp}`) to avatar URLs to force browser cache refresh | ✅ |
+| CycleDto PostId Field | Added `PostId` field to CycleDto to indicate if a gallery post exists for a cycle | ✅ |
+| Unique CycleId Validation | Added backend validation to prevent creating duplicate gallery posts for the same cycle | ✅ |
+| Dynamic Button Text | Changed "Share to Gallery" button to "View Gallery Post" when post already exists | ✅ |
+| Share Page Redirect | Share page now redirects to existing post if one already exists for the cycle | ✅ |
+| ID Parameter Naming | Updated API parameter names from generic `Id` to entity-specific names (e.g., `specimenId`, `materialId`, `cycleId`) | ✅ |
+
+#### Technical Details
+
+**Avatar Cache Busting:**
+- Problem: Browser cached old avatar images even after upload because URL path stayed the same (`avatars/{userId}.webp`)
+- Solution: Store URL with cache-busting parameter in database: `{url}?v={unixTimestamp}`
+- The `ExtractStorageKeyFromUrl` method uses `Uri.AbsolutePath` which excludes query parameters, so old avatar deletion still works
+
+**Gallery Post Uniqueness:**
+- `CycleDto` now includes optional `PostId` field
+- `CycleService.GetCycleAsync` queries for existing post and includes in response
+- `PostService.CreatePostAsync` validates no existing post for cycle before creating
+- Frontend button shows "View Gallery Post" (with Eye icon) when post exists, "Share to Gallery" (with Share icon) when not
+- Share page redirects to existing post via `router.replace()`
+
+#### Files Modified
+
+**Backend:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Core/Services/UserService.cs` | Added cache-busting timestamp to avatar URL |
+| `src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs` | Added `PostId` to CycleDto |
+| `src/api/MyUglyRocks.Core/Services/CycleService.cs` | Query for existing post, pass to MapCycleToDto |
+| `src/api/MyUglyRocks.Core/Services/PostService.cs` | Added uniqueness validation for CycleId |
+| `src/api/MyUglyRocks.Abstractions/Interfaces/IRepository.cs` | Renamed `Id` parameter to `entityId` |
+| `src/api/MyUglyRocks.Api/Controllers/ReferenceDataController.cs` | Renamed route params to `specimenId`, `materialId` |
+| `src/api/MyUglyRocks.Api/Controllers/AdminController.cs` | Renamed route params to entity-specific names |
+
+**Frontend:**
+| File | Description |
+|------|-------------|
+| `src/web/src/types/cycle.ts` | Added `postId: string \| null` to CycleDto |
+| `src/web/src/app/(protected)/cycles/[id]/page.tsx` | Dynamic button based on postId existence |
+| `src/web/src/app/(protected)/cycles/[id]/share/page.tsx` | Redirect to existing post if postId present |
+
+#### API Changes
+
+**CycleDto Response:**
+```json
+{
+  "cycleId": "...",
+  "name": "...",
+  "postId": "abc123..."  // NEW - null if no gallery post exists
+}
+```
+
+**CreatePost Validation:**
+- Returns error "A gallery post already exists for this cycle" if attempting to create duplicate
+
+#### User Experience Flow
+
+**Before:**
+- User completes cycle → "Share to Gallery" button
+- User shares → creates post
+- User returns to cycle → "Share to Gallery" still shows
+- User clicks → can create duplicate post
+
+**After:**
+- User completes cycle → "Share to Gallery" button
+- User shares → creates post
+- User returns to cycle → "View Gallery Post" button (Eye icon)
+- User clicks → goes directly to their post
+- Direct URL to share page → redirects to existing post
+
+---
+
+### Session: 2025-12-10 - Cycle Detail UI Redesign & Stage Card Enhancements
+
+#### Overview
+
+Major UI/UX improvements to the Cycle Detail page including collapsible cards, stage card redesign with lazy-loaded details, weight tracking improvements, and dialog overlap fixes.
+
+#### Completed Tasks
+
+| Task | Description | Status |
+|------|-------------|--------|
+| Goal Field Removal | Removed `goal` field from database, backend DTOs, and frontend types/UI | ✅ |
+| Cycle Overview Collapsible | Converted Cycle Overview card to collapsible format with key stats visible when collapsed | ✅ |
+| Stage Card Redesign | Redesigned StageCard with collapsible "Stage Details" section containing all details | ✅ |
+| Stage Details Lazy Loading | Stage details fetched via API only when user expands the collapsible | ✅ |
+| Photos Inside Stage Details | Moved photos section inside Stage Details with add button and thumbnail grid | ✅ |
+| Cleaning Run Inside Stage Details | Moved Cleaning Run section inside Stage Details (removed from header and ellipsis menu) | ✅ |
+| Weight After Display | Added `loadWeightAfterGrams` to StageRunDto and display with percentage loss calculation | ✅ |
+| Removed Cycle Weight Loss | Removed weight loss from Cycle Overview (not meaningful when rocks added between stages) | ✅ |
+| Add Stage Modal Improvements | Unified collapsible card styling for Duration, Cleaning Run, and Advanced Options sections | ✅ |
+| Dialog Lightbulb/X Overlap Fix | Fixed overlapping lightbulb icons and close buttons in dialogs by adding `pr-8` padding | ✅ |
+
+#### Technical Details
+
+**Goal Field Removal:**
+- Added EF migration `RemoveGoalFromCycle` to drop column
+- Removed from `CycleDto`, `CreateCycleRequest`, `UpdateCycleRequest`
+- Updated frontend types accordingly
+
+**Stage Card Architecture:**
+```
+StageCard
+├── Header: [Stage Name] [Edit] [Complete] [⋮ Delete only]
+├── Progress Bar
+└── Collapsible Stage Details (lazy loaded)
+    ├── Duration, Barrel, Materials
+    ├── Weight Before/After (with % loss)
+    ├── Fill Level, Water, Notes
+    ├── Photos (grid + Add button)
+    └── Cleaning Run (if exists)
+```
+
+**Collapsible Card Pattern (standardized):**
+```tsx
+<div className="border rounded-lg p-3 space-y-3">
+  <Collapsible>
+    <CollapsibleTrigger asChild>
+      <Button
+        type="button"
+        variant="ghost"
+        className="w-full justify-between h-auto p-0 hover:bg-transparent"
+      >
+        <div className="flex items-center gap-2">
+          <Icon className="h-4 w-4" />
+          <span className="font-medium">Label</span>
+          <span className="text-muted-foreground text-sm">(optional)</span>
+        </div>
+        <ChevronDown className="h-4 w-4" />
+      </Button>
+    </CollapsibleTrigger>
+    <CollapsibleContent className="mt-3 space-y-4">
+      {/* Content */}
+    </CollapsibleContent>
+  </Collapsible>
+</div>
+```
+
+**Weight Display in Stage Details:**
+- "Weight Before: 680g"
+- "Weight After: 650g (4.4% loss)" - percentage calculated dynamically
+
+**Dialog Overlap Fix:**
+- Added `pr-8` to `<div className="flex items-start justify-between pr-8">` in DialogHeader
+- Prevents overlap with absolute-positioned close button at `top-4 right-4`
+
+#### Files Modified
+
+**Backend:**
+| File | Description |
+|------|-------------|
+| `src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs` | Added `LoadWeightAfterGrams` to `StageRunDto` |
+| `src/api/MyUglyRocks.Core/Services/CycleService.cs` | Map `LoadWeightAfterGrams` in DTO constructor |
+| `src/api/MyUglyRocks.Core/Entities/Cycle.cs` | Removed `Goal` property |
+| EF Migration | `RemoveGoalFromCycle` - drops `goal` column |
+
+**Frontend:**
+| File | Description |
+|------|-------------|
+| `src/web/src/types/cycle.ts` | Added `loadWeightAfterGrams` to `StageRunDto` |
+| `src/web/src/app/(protected)/cycles/[id]/page.tsx` | StageCard redesign, collapsible cards, dialog fixes |
+| `src/web/src/components/photo-upload-modal.tsx` | Added `defaultStageId` prop for pre-selecting stage |
+
+#### UI/UX Improvements
+
+**Before:**
+- Stage cards showed all details expanded
+- Cleaning Run was in header and ellipsis menu
+- Weight only showed "before" value
+- Dialogs had overlapping icons
+- Collapsible sections had inconsistent styling
+
+**After:**
+- Stage cards are compact with expandable details
+- Cleaning Run consolidated inside Stage Details
+- Weight shows before, after, and percentage loss
+- Dialog icons properly spaced
+- All collapsible sections use same styling pattern
+
+---

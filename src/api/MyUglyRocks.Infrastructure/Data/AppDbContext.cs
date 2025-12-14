@@ -34,6 +34,14 @@ public class AppDbContext : DbContext
     public DbSet<StageMaterial> StageMaterials => Set<StageMaterial>();
     public DbSet<CleaningMaterial> CleaningMaterials => Set<CleaningMaterial>();
 
+    // Inventory entities
+    public DbSet<Inventory> Inventory => Set<Inventory>();
+    public DbSet<InventorySpecimen> InventorySpecimens => Set<InventorySpecimen>();
+    public DbSet<InventoryPhoto> InventoryPhotos => Set<InventoryPhoto>();
+
+    // User specimens
+    public DbSet<UserSpecimen> UserSpecimens => Set<UserSpecimen>();
+
     // Social entities
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostPhoto> PostPhotos => Set<PostPhoto>();
@@ -41,15 +49,17 @@ public class AppDbContext : DbContext
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<CommentReport> CommentReports => Set<CommentReport>();
 
+    // Waitlist
+    public DbSet<WaitlistEntry> WaitlistEntries => Set<WaitlistEntry>();
+
+    // Analytics
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
-
-        // Configure composite keys
-        modelBuilder.Entity<CycleSpecimen>()
-            .HasKey(cs => new { cs.CycleId, cs.SpecimenId });
 
         // Configure self-referencing FK for RefreshToken
         modelBuilder.Entity<RefreshToken>()
@@ -64,6 +74,32 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Photo>().HasQueryFilter(p => !p.IsDeleted);
         modelBuilder.Entity<Post>().HasQueryFilter(p => !p.IsDeleted);
         modelBuilder.Entity<Comment>().HasQueryFilter(c => !c.IsDeleted);
+        modelBuilder.Entity<Inventory>().HasQueryFilter(i => !i.IsDeleted);
+        modelBuilder.Entity<UserSpecimen>().HasQueryFilter(us => !us.IsDeleted);
+
+        // Configure UserSession entity
+        modelBuilder.Entity<UserSession>(entity =>
+        {
+            entity.HasKey(e => e.UserSessionId);
+            entity.Property(e => e.UserSessionId)
+                .HasColumnName("user_session_id")
+                .HasDefaultValueSql("gen_random_uuid()");
+
+            // Essential indexes only (Phase 1)
+            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => e.SessionStart);
+
+            // Field length constraints
+            entity.Property(e => e.UserAgent).HasMaxLength(512);
+            entity.Property(e => e.BrowserName).HasMaxLength(64);
+            entity.Property(e => e.BrowserVersion).HasMaxLength(64);
+            entity.Property(e => e.OsName).HasMaxLength(64);
+            entity.Property(e => e.OsVersion).HasMaxLength(64);
+            entity.Property(e => e.Country).HasMaxLength(2);
+            entity.Property(e => e.Timezone).HasMaxLength(64);
+            entity.Property(e => e.Language).HasMaxLength(16);
+            entity.Property(e => e.ReferrerDomain).HasMaxLength(128);
+        });
 
     }
 

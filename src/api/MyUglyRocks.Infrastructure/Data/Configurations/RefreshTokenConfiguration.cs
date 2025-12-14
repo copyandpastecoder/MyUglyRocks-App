@@ -10,10 +10,10 @@ public class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
     {
         builder.ToTable("refresh_tokens");
 
-        builder.HasKey(rt => rt.Id);
+        builder.HasKey(rt => rt.RefreshTokenId);
 
-        builder.Property(rt => rt.Id)
-            .HasColumnName("id")
+        builder.Property(rt => rt.RefreshTokenId)
+            .HasColumnName("refresh_token_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(rt => rt.UserId)

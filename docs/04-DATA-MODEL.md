@@ -446,7 +446,7 @@ A tumbling cycle tracking a batch of rocks.
 | `Name` | varchar(255) | NOT NULL | Cycle name |
 | `StartDate` | date | NOT NULL | User-set start date |
 | `EndDate` | date | NULL | Completion date |
-| `Status` | smallint | NOT NULL, DEFAULT 0 | 0=Active, 1=Completed, 2=Archived |
+| `Status` | smallint | NOT NULL, DEFAULT 0 | 0=Active, 1=Completed |
 | `Goal` | varchar(255) | NULL | "Nice polish", "Shaping only", "Test run" |
 | `DifficultyRating` | smallint | NULL | 1-5 difficulty (set by user or auto) |
 | `FinalQuality` | smallint | NULL | 1-5 rating when completed |
@@ -468,8 +468,7 @@ A tumbling cycle tracking a batch of rocks.
 public enum CycleStatus
 {
     Active = 0,
-    Completed = 1,
-    Archived = 2
+    Completed = 1
 }
 ```
 

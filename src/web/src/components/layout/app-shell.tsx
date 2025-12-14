@@ -17,6 +17,7 @@ export function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     const saved = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
     if (saved !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- localStorage initialization on mount
       setCollapsed(saved === 'true');
     }
   }, []);
@@ -33,7 +34,9 @@ export function AppShell({ children }: AppShellProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-y-auto bg-background p-6">
-          {children}
+          <div className="max-w-3xl mx-auto">
+            {children}
+          </div>
         </main>
       </div>
     </div>

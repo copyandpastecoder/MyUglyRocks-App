@@ -2,7 +2,7 @@ namespace MyUglyRocks.Abstractions.DTOs;
 
 // Comment Report DTOs
 public record CommentReportDto(
-    Guid Id,
+    Guid CommentReportId,
     Guid CommentId,
     string CommentContent,
     string CommentAuthorUsername,
@@ -19,7 +19,7 @@ public record CommentReportDto(
 );
 
 public record CommentReportListDto(
-    Guid Id,
+    Guid CommentReportId,
     string CommentExcerpt,
     string CommentAuthorUsername,
     string ReportedByUsername,
@@ -36,7 +36,7 @@ public record ResolveReportRequest(
 
 // User Management DTOs
 public record AdminUserDto(
-    Guid Id,
+    Guid UserId,
     string Username,
     string Email,
     string? DisplayName,
@@ -51,7 +51,7 @@ public record AdminUserDto(
 );
 
 public record AdminUserListDto(
-    Guid Id,
+    Guid UserId,
     string Username,
     string Email,
     string? DisplayName,
@@ -68,6 +68,14 @@ public record ChangeUserRoleRequest(
 public record BanUserRequest(
     string? Reason,
     bool DeleteContent = false
+);
+
+/// <summary>
+/// Request to create a new user (admin only).
+/// The user will need to use "Forgot Password" to set their password.
+/// </summary>
+public record CreateUserRequest(
+    string Email
 );
 
 // Admin Statistics DTOs

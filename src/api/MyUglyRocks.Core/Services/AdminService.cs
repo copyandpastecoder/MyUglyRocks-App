@@ -8,6 +8,7 @@ namespace MyUglyRocks.Core.Services;
 public class AdminService : IAdminService
 {
     private readonly DbContext _context;
+    private readonly IAuthService _authService;
 
     private DbSet<User> Users => _context.Set<User>();
     private DbSet<Cycle> Cycles => _context.Set<Cycle>();
@@ -15,9 +16,10 @@ public class AdminService : IAdminService
     private DbSet<Comment> Comments => _context.Set<Comment>();
     private DbSet<CommentReport> CommentReports => _context.Set<CommentReport>();
 
-    public AdminService(DbContext context)
+    public AdminService(DbContext context, IAuthService authService)
     {
         _context = context;
+        _authService = authService;
     }
 
     public async Task<AdminStatsDto> GetStatsAsync()
@@ -68,7 +70,7 @@ public class AdminService : IAdminService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(r => new CommentReportListDto(
-                r.Id,
+                r.CommentReportId,
                 r.Comment.Content.Length > 100
                     ? r.Comment.Content.Substring(0, 100) + "..."
                     : r.Comment.Content,
@@ -98,12 +100,12 @@ public class AdminService : IAdminService
                 .ThenInclude(c => c.Post)
             .Include(r => r.ReportedByUser)
             .Include(r => r.ResolvedByUser)
-            .FirstOrDefaultAsync(r => r.Id == reportId);
+            .FirstOrDefaultAsync(r => r.CommentReportId == reportId);
 
         if (report == null) return null;
 
         return new CommentReportDto(
-            Id: report.Id,
+            CommentReportId: report.CommentReportId,
             CommentId: report.CommentId,
             CommentContent: report.Comment.Content,
             CommentAuthorUsername: report.Comment.User.Username,
@@ -131,7 +133,7 @@ public class AdminService : IAdminService
             .Include(r => r.Comment)
                 .ThenInclude(c => c.Post)
             .Include(r => r.ReportedByUser)
-            .FirstOrDefaultAsync(r => r.Id == reportId);
+            .FirstOrDefaultAsync(r => r.CommentReportId == reportId);
 
         if (report == null)
             throw new InvalidOperationException("Report not found");
@@ -156,7 +158,7 @@ public class AdminService : IAdminService
         var resolvedByUser = await Users.FindAsync(resolvedByUserId);
 
         return new CommentReportDto(
-            Id: report.Id,
+            CommentReportId: report.CommentReportId,
             CommentId: report.CommentId,
             CommentContent: report.Comment.Content,
             CommentAuthorUsername: report.Comment.User.Username,
@@ -187,7 +189,7 @@ public class AdminService : IAdminService
         if (post != null)
         {
             post.CommentCount = await Comments.CountAsync(c =>
-                c.PostId == post.Id && !c.IsDeleted);
+                c.PostId == post.PostId && !c.IsDeleted);
         }
 
         await _context.SaveChangesAsync();
@@ -228,7 +230,7 @@ public class AdminService : IAdminService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(u => new AdminUserListDto(
-                u.Id,
+                u.UserId,
                 u.Username,
                 u.Email,
                 u.DisplayName,
@@ -250,7 +252,7 @@ public class AdminService : IAdminService
 
     public async Task<AdminUserDto?> GetUserByIdAsync(Guid userId)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null) return null;
 
         var totalCycles = await Cycles.CountAsync(c => c.UserId == userId && !c.IsDeleted);
@@ -258,7 +260,7 @@ public class AdminService : IAdminService
         var totalComments = await Comments.CountAsync(c => c.UserId == userId && !c.IsDeleted);
 
         return new AdminUserDto(
-            Id: user.Id,
+            UserId: user.UserId,
             Username: user.Username,
             Email: user.Email,
             DisplayName: user.DisplayName,
@@ -273,12 +275,75 @@ public class AdminService : IAdminService
         );
     }
 
+    public async Task<AdminUserDto> CreateUserAsync(CreateUserRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ArgumentException("Email is required");
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        // Check if email already exists
+        if (await Users.AnyAsync(u => u.Email == normalizedEmail))
+            throw new InvalidOperationException("A user with this email already exists");
+
+        var now = DateTime.UtcNow;
+
+        // Generate a random unusable password (user must use forgot password to set real password)
+        var unusablePassword = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString() + Guid.NewGuid().ToString());
+
+        // Generate username from email (before @)
+        var username = normalizedEmail.Split('@')[0].Replace(".", "_").Replace("-", "_");
+        // Ensure username is unique
+        var baseUsername = username;
+        var counter = 1;
+        while (await Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
+        {
+            username = $"{baseUsername}{counter++}";
+        }
+
+        var user = new User
+        {
+            UserId = Guid.NewGuid(),
+            Username = username,
+            Email = normalizedEmail,
+            PasswordHash = unusablePassword,
+            DisplayName = null,
+            EmailVerified = true, // Pre-verified so they can use forgot password
+            DateEmailVerified = now,
+            Role = UserRole.User,
+            IsActive = true,
+            DateCreated = now,
+            DateUpdated = now
+        };
+
+        Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        // Send password reset email so user can set their password
+        await _authService.RequestPasswordResetAsync(normalizedEmail);
+
+        return new AdminUserDto(
+            UserId: user.UserId,
+            Username: user.Username,
+            Email: user.Email,
+            DisplayName: user.DisplayName,
+            Role: user.Role.ToString(),
+            IsActive: user.IsActive,
+            EmailVerified: user.EmailVerified,
+            DateCreated: user.DateCreated,
+            DateLastLogin: user.DateLastLogin,
+            TotalCycles: 0,
+            TotalPosts: 0,
+            TotalComments: 0
+        );
+    }
+
     public async Task<AdminUserDto> ChangeUserRoleAsync(
         Guid userId,
         Guid changedByUserId,
         ChangeUserRoleRequest request)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
             throw new InvalidOperationException("User not found");
 
@@ -302,7 +367,7 @@ public class AdminService : IAdminService
         Guid bannedByUserId,
         BanUserRequest request)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
             throw new InvalidOperationException("User not found");
 
@@ -341,7 +406,7 @@ public class AdminService : IAdminService
 
     public async Task UnbanUserAsync(Guid userId, Guid unbannedByUserId)
     {
-        var user = await Users.FirstOrDefaultAsync(u => u.Id == userId);
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId);
         if (user == null)
             throw new InvalidOperationException("User not found");
 

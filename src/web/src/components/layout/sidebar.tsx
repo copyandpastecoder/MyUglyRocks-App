@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,13 +23,16 @@ import {
   MessageCircleQuestion,
   Menu,
   ChevronLeft,
+  Package,
 } from 'lucide-react';
+import { getHelpTopicFromPath } from '@/data/help-content';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'My Tumblers', href: '/tumblers', icon: Cylinder },
   { name: 'Tumbling Cycles', href: '/cycles', icon: RotateCcw },
+  { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Photo Gallery', href: '/gallery', icon: ImageIcon },
+  { name: 'My Tumblers', href: '/tumblers', icon: Cylinder },
 ];
 
 const learnNavigation = [
@@ -37,55 +41,62 @@ const learnNavigation = [
   { name: 'FAQ', href: '/learn/faq', icon: MessageCircleQuestion },
 ];
 
-const bottomNavigation = [
-  { name: 'Settings', href: '/settings', icon: Settings },
-  { name: 'Help', href: '/help', icon: HelpCircle },
-];
-
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
 }
 
+interface NavLinkProps {
+  item: typeof navigation[0];
+  isActive: boolean;
+  collapsed: boolean;
+}
+
+function NavLink({ item, isActive, collapsed }: NavLinkProps) {
+  const linkContent = (
+    <Link
+      href={item.href}
+      className={cn(
+        'group flex gap-3 rounded-md px-3 py-2 text-sm font-medium leading-6 transition-colors',
+        isActive
+          ? 'bg-sidebar-accent text-sidebar-foreground'
+          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
+        collapsed && 'justify-center px-2'
+      )}
+    >
+      <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
+      {!collapsed && <span>{item.name}</span>}
+    </Link>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={10}>
+          {item.name}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return linkContent;
+}
+
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
 
-  const NavLink = ({ item, isActive }: { item: typeof navigation[0]; isActive: boolean }) => {
-    const linkContent = (
-      <Link
-        href={item.href}
-        className={cn(
-          'group flex gap-3 rounded-md px-3 py-2 text-sm font-medium leading-6 transition-colors',
-          isActive
-            ? 'bg-sidebar-accent text-sidebar-foreground'
-            : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground',
-          collapsed && 'justify-center px-2'
-        )}
-      >
-        <item.icon className="h-5 w-5 shrink-0" aria-hidden="true" />
-        {!collapsed && <span>{item.name}</span>}
-      </Link>
-    );
-
-    if (collapsed) {
-      return (
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-          <TooltipContent side="right" sideOffset={10}>
-            {item.name}
-          </TooltipContent>
-        </Tooltip>
-      );
-    }
-
-    return linkContent;
-  };
+  // Get context-aware help link based on current page
+  const helpHref = useMemo(() => {
+    const topic = getHelpTopicFromPath(pathname);
+    return `/learn/faq/${topic}`;
+  }, [pathname]);
 
   return (
     <TooltipProvider>
       <div
         className={cn(
-          'flex h-full flex-col bg-sidebar transition-all duration-300 ease-in-out',
+          'hidden md:flex h-full flex-col bg-sidebar transition-all duration-300 ease-in-out',
           collapsed ? 'w-16' : 'w-64'
         )}
       >
@@ -117,7 +128,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <li key={item.name}>
-                  <NavLink item={item} isActive={isActive} />
+                  <NavLink item={item} isActive={isActive} collapsed={collapsed} />
                 </li>
               );
             })}
@@ -133,20 +144,28 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
               return (
                 <li key={item.name}>
-                  <NavLink item={item} isActive={isActive} />
+                  <NavLink item={item} isActive={isActive} collapsed={collapsed} />
                 </li>
               );
             })}
           </ul>
           <ul role="list" className="mt-auto flex flex-col gap-1">
-            {bottomNavigation.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <li key={item.name}>
-                  <NavLink item={item} isActive={isActive} />
-                </li>
-              );
-            })}
+            {/* Settings link */}
+            <li>
+              <NavLink
+                item={{ name: 'Settings', href: '/settings', icon: Settings }}
+                isActive={pathname === '/settings' || pathname.startsWith('/settings/')}
+                collapsed={collapsed}
+              />
+            </li>
+            {/* Context-aware Help link */}
+            <li>
+              <NavLink
+                item={{ name: 'Help', href: helpHref, icon: HelpCircle }}
+                isActive={pathname.startsWith('/learn/faq')}
+                collapsed={collapsed}
+              />
+            </li>
           </ul>
         </nav>
       </div>

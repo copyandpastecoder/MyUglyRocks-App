@@ -29,18 +29,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Gem, AlertCircle } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 
 const MATERIAL_TYPES = ['Rock', 'Mineral', 'Gemstone', 'Fossil', 'Glass', 'Other'];
 const DIFFICULTY_LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
-
-function getHardnessColor(min: number | null, max: number | null): string {
-  if (min == null) return 'bg-muted text-muted-foreground';
-  const hardness = max ? (min + max) / 2 : min;
-  if (hardness <= 3) return 'bg-green-100 text-green-800';
-  if (hardness <= 5) return 'bg-yellow-100 text-yellow-800';
-  if (hardness <= 7) return 'bg-orange-100 text-orange-800';
-  return 'bg-red-100 text-red-800';
-}
 
 function getDifficultyColor(difficulty: string | null): string {
   switch (difficulty?.toLowerCase()) {
@@ -67,6 +59,7 @@ export default function SpecimensPage() {
   const { data: selectedSpecimen } = useSpecimen(selectedId);
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Rock & Mineral Database</h1>
@@ -77,7 +70,7 @@ export default function SpecimensPage() {
 
       {/* Search and Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -144,67 +137,69 @@ export default function SpecimensPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[300px]">Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Family</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Hardness</TableHead>
-                <TableHead>Difficulty</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {specimens?.map((specimen) => (
-                <TableRow
-                  key={specimen.id}
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => setSelectedId(specimen.id)}
-                >
-                  <TableCell className="font-medium">{specimen.commonName}</TableCell>
-                  <TableCell className="hidden sm:table-cell text-muted-foreground">
-                    {specimen.rockFamily || '—'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {specimen.materialType}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {specimen.mohsHardnessMin != null ? (
-                      <Badge className={getHardnessColor(specimen.mohsHardnessMin, specimen.mohsHardnessMax)}>
-                        {specimen.mohsHardnessMin}
-                        {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
-                          ? `-${specimen.mohsHardnessMax}`
-                          : ''}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {specimen.tumblingDifficulty ? (
-                      <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
-                        {specimen.tumblingDifficulty}
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
+        <Card>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead className="hidden sm:table-cell">Family</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Hardness</TableHead>
+                  <TableHead>Difficulty</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="px-4 py-2 border-t text-sm text-muted-foreground">
-            {specimens?.length} specimens
-          </div>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {specimens?.map((specimen) => (
+                  <TableRow
+                    key={specimen.specimenId}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedId(specimen.specimenId)}
+                  >
+                    <TableCell className="font-medium">{specimen.commonName}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-muted-foreground">
+                      {specimen.rockFamily || '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="text-xs">
+                        {specimen.materialType}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {specimen.mohsHardnessMin != null ? (
+                        <Badge variant="outline" className="text-xs">
+                          {specimen.mohsHardnessMin}
+                          {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
+                            ? `-${specimen.mohsHardnessMax}`
+                            : ''}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {specimen.tumblingDifficulty ? (
+                        <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
+                          {specimen.tumblingDifficulty}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="pt-4 text-sm text-muted-foreground">
+              {specimens?.length} specimens
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedId} onOpenChange={(open) => !open && setSelectedId(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           {selectedSpecimen && (
             <>
               <DialogHeader>
@@ -216,7 +211,7 @@ export default function SpecimensPage() {
               <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline">{selectedSpecimen.materialType}</Badge>
-                  <Badge className={getHardnessColor(selectedSpecimen.mohsHardnessMin, selectedSpecimen.mohsHardnessMax)}>
+                  <Badge variant="outline">
                     Mohs: {selectedSpecimen.mohsHardnessMin}
                     {selectedSpecimen.mohsHardnessMax && selectedSpecimen.mohsHardnessMax !== selectedSpecimen.mohsHardnessMin
                       ? `-${selectedSpecimen.mohsHardnessMax}`
@@ -265,5 +260,6 @@ export default function SpecimensPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PageTransition>
   );
 }

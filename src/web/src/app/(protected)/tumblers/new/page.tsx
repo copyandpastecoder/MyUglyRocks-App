@@ -11,7 +11,7 @@ import { useTumblerModels, useBarrelNicknames } from '@/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -42,6 +42,21 @@ import Link from 'next/link';
 
 // Brands that allow user-editable motor capacity (per ADR-001)
 const EDITABLE_CAPACITY_BRANDS = ['Generic', 'Other', 'DIY', 'MJR Tumblers'];
+
+// UUID helper with fallback for older browsers
+function generateUUID(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    // Fallback for browsers where randomUUID is not available
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
+    const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  }
+}
 
 // Local barrel type for managing barrels before tumbler creation
 interface LocalBarrel {
@@ -76,13 +91,14 @@ export default function NewTumblerPage() {
 
   // Local barrel state
   const [barrels, setBarrels] = useState<LocalBarrel[]>([
-    { id: crypto.randomUUID(), barrelNumber: 1 }
+    { id: generateUUID(), barrelNumber: 1 }
   ]);
   const [editingBarrel, setEditingBarrel] = useState<LocalBarrel | null>(null);
   const [barrelNickname, setBarrelNickname] = useState('');
   const [barrelCapacity, setBarrelCapacity] = useState('');
 
   const form = useForm<FormValues>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
     resolver: zodResolver(formSchema) as any,
     defaultValues: {
       brand: '',
@@ -142,7 +158,7 @@ export default function NewTumblerPage() {
       const newBarrels: LocalBarrel[] = Array.from(
         { length: selectedModel.defaultBarrelCount },
         (_, i) => ({
-          id: crypto.randomUUID(),
+          id: generateUUID(),
           barrelNumber: i + 1,
           nickname: getRandomNickname(),
           capacityLbs: selectedModel.defaultCapacityLbs ?? undefined,
@@ -168,7 +184,7 @@ export default function NewTumblerPage() {
   const handleAddBarrel = () => {
     const nextNumber = Math.max(...barrels.map(b => b.barrelNumber), 0) + 1;
     setBarrels([...barrels, {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       barrelNumber: nextNumber,
       nickname: getRandomNickname(),
       capacityLbs: selectedModel?.defaultCapacityLbs ?? undefined,
@@ -224,7 +240,7 @@ export default function NewTumblerPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/tumblers">
@@ -232,8 +248,8 @@ export default function NewTumblerPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Add New Tumbler</h1>
-          <p className="text-muted-foreground">Add a new rock tumbler to your collection</p>
+          <h1 className="text-2xl font-bold tracking-tight">New Tumbler</h1>
+          <p className="text-muted-foreground">Add a rock tumbler to your collection</p>
         </div>
       </div>
 
@@ -263,7 +279,7 @@ export default function NewTumblerPage() {
                       </SelectContent>
                     </Select>
                     <FormDescription className="text-helpful-tip">
-                      Don't see your tumbler? Choose "Generic" or "Other"
+                      Don&apos;t see your tumbler? Choose &quot;Generic&quot; or &quot;Other&quot;
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -288,7 +304,7 @@ export default function NewTumblerPage() {
                       </FormControl>
                       <SelectContent>
                         {modelsForBrand.map(m => (
-                          <SelectItem key={m.id} value={m.model}>{m.model}</SelectItem>
+                          <SelectItem key={m.tumblerModelId} value={m.model}>{m.model}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -303,7 +319,7 @@ export default function NewTumblerPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type</FormLabel>
-                    <Select value={field.value} disabled>
+                    <Select value={field.value} disabled key={field.value}>
                       <FormControl>
                         <SelectTrigger className="bg-muted">
                           <SelectValue placeholder="Auto-populated from model" />
@@ -333,8 +349,9 @@ export default function NewTumblerPage() {
                     <FormControl>
                       <Input
                         type="number"
-                        min={1}
+                        min={0.1}
                         max={maxCapacity}
+                        step={0.1}
                         {...field}
                         value={field.value ?? ''}
                         disabled={!isCapacityEditable}
@@ -369,6 +386,142 @@ export default function NewTumblerPage() {
                 )}
               />
 
+              {/* Barrels Section */}
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold">Barrels</h3>
+                    <p className="text-sm text-helpful-tip">
+                      Add all barrels you might run on this tumbler. For example, if your tumbler can run two 3lb barrels or one 6lb barrel, add all three here.
+                    </p>
+                  </div>
+                  <Button type="button" size="sm" onClick={handleAddBarrel} disabled={barrels.length >= 10}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Barrel
+                  </Button>
+                </div>
+                {barrels.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-6">
+                    No barrels configured. Add a barrel to get started.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {barrels.sort((a, b) => a.barrelNumber - b.barrelNumber).map((barrel) => (
+                      <div
+                        key={barrel.id}
+                        className="flex items-center justify-between p-4 rounded-lg border"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              Barrel #{barrel.barrelNumber}
+                              {barrel.nickname && ` - "${barrel.nickname}"`}
+                            </span>
+                          </div>
+                          {barrel.capacityLbs && (
+                            <div className="text-sm text-muted-foreground">
+                              {barrel.capacityLbs} lbs
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Dialog
+                            open={editingBarrel?.id === barrel.id}
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                setEditingBarrel(null);
+                                setBarrelNickname('');
+                                setBarrelCapacity('');
+                              }
+                            }}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleEditBarrel(barrel)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>Edit Barrel #{barrel.barrelNumber}</DialogTitle>
+                                <DialogDescription>
+                                  Configure barrel settings
+                                </DialogDescription>
+                              </DialogHeader>
+                              <div className="space-y-4 py-4">
+                                <div className="space-y-2">
+                                  <label className="text-sm font-medium">Nickname</label>
+                                  <div className="flex gap-2">
+                                    <Input
+                                      placeholder="e.g., Big Blue"
+                                      value={barrelNickname}
+                                      onChange={(e) => setBarrelNickname(e.target.value)}
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      onClick={() => {
+                                        const newNickname = getRandomNickname();
+                                        if (newNickname) setBarrelNickname(newNickname);
+                                      }}
+                                      title="Generate random nickname"
+                                    >
+                                      <RefreshCw className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="text-sm font-medium">Capacity (lbs)</label>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    min="0"
+                                    placeholder="e.g., 3"
+                                    value={barrelCapacity}
+                                    onChange={(e) => setBarrelCapacity(e.target.value)}
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => {
+                                    setEditingBarrel(null);
+                                    setBarrelNickname('');
+                                    setBarrelCapacity('');
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button type="button" onClick={handleSaveBarrel}>
+                                  Save
+                                </Button>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                          {barrels.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteBarrel(barrel.id)}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-500" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-4">
                 <Button
                   type="button"
@@ -381,147 +534,11 @@ export default function NewTumblerPage() {
                   {createMutation.isPending && (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                  Add Tumbler
+                  Create Tumbler
                 </Button>
               </div>
             </form>
           </Form>
-        </CardContent>
-      </Card>
-
-      {/* Barrels Card */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Barrels</CardTitle>
-            <CardDescription className="text-helpful-tip">
-              Add all barrels you might run on this tumbler. For example, if your tumbler can run two 3lb barrels or one 6lb barrel, add all three here.
-            </CardDescription>
-          </div>
-          <Button size="sm" onClick={handleAddBarrel} disabled={barrels.length >= 10}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Barrel
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {barrels.length === 0 ? (
-            <p className="text-muted-foreground text-center py-6">
-              No barrels configured. Add a barrel to get started.
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {barrels.sort((a, b) => a.barrelNumber - b.barrelNumber).map((barrel) => (
-                <div
-                  key={barrel.id}
-                  className="flex items-center justify-between p-4 rounded-lg border"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        Barrel #{barrel.barrelNumber}
-                        {barrel.nickname && ` - "${barrel.nickname}"`}
-                      </span>
-                    </div>
-                    {barrel.capacityLbs && (
-                      <div className="text-sm text-muted-foreground">
-                        {barrel.capacityLbs} lbs
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Dialog
-                      open={editingBarrel?.id === barrel.id}
-                      onOpenChange={(open) => {
-                        if (!open) {
-                          setEditingBarrel(null);
-                          setBarrelNickname('');
-                          setBarrelCapacity('');
-                        }
-                      }}
-                    >
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditBarrel(barrel)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Edit Barrel #{barrel.barrelNumber}</DialogTitle>
-                          <DialogDescription>
-                            Configure barrel settings
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Nickname</label>
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="e.g., Big Blue"
-                                value={barrelNickname}
-                                onChange={(e) => setBarrelNickname(e.target.value)}
-                              />
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                onClick={() => {
-                                  const newNickname = getRandomNickname();
-                                  if (newNickname) setBarrelNickname(newNickname);
-                                }}
-                                title="Generate random nickname"
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Capacity (lbs)</label>
-                            <Input
-                              type="number"
-                              step="0.1"
-                              min="0"
-                              placeholder="e.g., 3"
-                              value={barrelCapacity}
-                              onChange={(e) => setBarrelCapacity(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                              setEditingBarrel(null);
-                              setBarrelNickname('');
-                              setBarrelCapacity('');
-                            }}
-                          >
-                            Cancel
-                          </Button>
-                          <Button type="button" onClick={handleSaveBarrel}>
-                            Save
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    {barrels.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteBarrel(barrel.id)}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>

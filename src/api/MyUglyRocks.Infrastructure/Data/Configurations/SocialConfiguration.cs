@@ -10,10 +10,10 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
     {
         builder.ToTable("posts");
 
-        builder.HasKey(p => p.Id);
+        builder.HasKey(p => p.PostId);
 
-        builder.Property(p => p.Id)
-            .HasColumnName("id")
+        builder.Property(p => p.PostId)
+            .HasColumnName("post_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(p => p.UserId)
@@ -21,8 +21,10 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             .IsRequired();
 
         builder.Property(p => p.CycleId)
-            .HasColumnName("cycle_id")
-            .IsRequired();
+            .HasColumnName("cycle_id");
+
+        builder.Property(p => p.InventoryId)
+            .HasColumnName("inventory_id");
 
         builder.Property(p => p.Title)
             .HasColumnName("title")
@@ -63,6 +65,11 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             .HasColumnName("date_updated")
             .HasDefaultValueSql("now()");
 
+        // XOR constraint: exactly one of CycleId or InventoryId must be set
+        builder.ToTable(t => t.HasCheckConstraint(
+            "chk_post_source_xor",
+            "(cycle_id IS NOT NULL AND inventory_id IS NULL) OR (cycle_id IS NULL AND inventory_id IS NOT NULL)"));
+
         // Relationships
         builder.HasOne(p => p.User)
             .WithMany(u => u.Posts)
@@ -72,6 +79,11 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.HasOne(p => p.Cycle)
             .WithMany()
             .HasForeignKey(p => p.CycleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(p => p.Inventory)
+            .WithMany()
+            .HasForeignKey(p => p.InventoryId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes for gallery queries
@@ -99,6 +111,10 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         // Index for user posts lookup
         builder.HasIndex(p => new { p.UserId, p.Status, p.PublishedDate })
             .HasDatabaseName("ix_posts_user_status_date");
+
+        // Index for inventory posts lookup
+        builder.HasIndex(p => p.InventoryId)
+            .HasDatabaseName("ix_posts_inventory_id");
     }
 }
 
@@ -108,11 +124,8 @@ public class PostPhotoConfiguration : IEntityTypeConfiguration<PostPhoto>
     {
         builder.ToTable("post_photos");
 
-        builder.HasKey(pp => pp.Id);
-
-        builder.Property(pp => pp.Id)
-            .HasColumnName("id")
-            .HasDefaultValueSql("gen_random_uuid()");
+        // Composite primary key
+        builder.HasKey(pp => new { pp.PostId, pp.PhotoId });
 
         builder.Property(pp => pp.PostId)
             .HasColumnName("post_id")
@@ -168,10 +181,10 @@ public class VoteConfiguration : IEntityTypeConfiguration<Vote>
     {
         builder.ToTable("votes");
 
-        builder.HasKey(v => v.Id);
+        builder.HasKey(v => v.VoteId);
 
-        builder.Property(v => v.Id)
-            .HasColumnName("id")
+        builder.Property(v => v.VoteId)
+            .HasColumnName("vote_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(v => v.PostId)
@@ -222,10 +235,10 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
     {
         builder.ToTable("comments");
 
-        builder.HasKey(c => c.Id);
+        builder.HasKey(c => c.CommentId);
 
-        builder.Property(c => c.Id)
-            .HasColumnName("id")
+        builder.Property(c => c.CommentId)
+            .HasColumnName("comment_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(c => c.PostId)
@@ -309,10 +322,10 @@ public class CommentReportConfiguration : IEntityTypeConfiguration<CommentReport
     {
         builder.ToTable("comment_reports");
 
-        builder.HasKey(r => r.Id);
+        builder.HasKey(r => r.CommentReportId);
 
-        builder.Property(r => r.Id)
-            .HasColumnName("id")
+        builder.Property(r => r.CommentReportId)
+            .HasColumnName("comment_report_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(r => r.CommentId)

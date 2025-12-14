@@ -47,8 +47,8 @@ import { toast } from 'sonner';
 import { Loader2, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import type { SpecimenDetailDto, SpecimenListDto, CreateSpecimenRequest, UpdateSpecimenRequest } from '@/types/admin';
 
-const materialTypes = ['Rock', 'Mineral', 'Glass', 'Fossil', 'Other'];
-const difficulties = ['Easy', 'Medium', 'Hard'];
+const materialTypes = ['Rock', 'Mineral', 'Glass', 'Fossil', 'Gemstone', 'Other'];
+const difficulties = ['Easy', 'Medium', 'Hard', 'Expert'];
 
 const defaultFormData: CreateSpecimenRequest = {
   commonName: '',
@@ -133,7 +133,7 @@ export default function SpecimensAdminPage() {
 
   const handleOpenEdit = async (specimen: SpecimenListDto) => {
     try {
-      const detail = await adminApi.getSpecimen(specimen.id);
+      const detail = await adminApi.getSpecimen(specimen.specimenId);
       setSelectedSpecimen(detail);
       setFormData({
         commonName: detail.commonName,
@@ -171,7 +171,7 @@ export default function SpecimensAdminPage() {
 
     if (selectedSpecimen) {
       updateMutation.mutate({
-        id: selectedSpecimen.id,
+        id: selectedSpecimen.specimenId,
         data: { ...formData, isActive: true },
       });
     } else {
@@ -197,7 +197,7 @@ export default function SpecimensAdminPage() {
             </div>
             <Button onClick={handleOpenCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Specimen
+              New Specimen
             </Button>
           </div>
         </CardHeader>
@@ -260,7 +260,7 @@ export default function SpecimensAdminPage() {
                 </TableHeader>
                 <TableBody>
                   {specimens?.items.map((specimen) => (
-                    <TableRow key={specimen.id}>
+                    <TableRow key={specimen.specimenId}>
                       <TableCell className="font-medium">{specimen.commonName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{specimen.materialType}</Badge>
@@ -343,9 +343,9 @@ export default function SpecimensAdminPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedSpecimen ? 'Edit Specimen' : 'Add Specimen'}</DialogTitle>
+            <DialogTitle>{selectedSpecimen ? 'Edit Specimen' : 'New Specimen'}</DialogTitle>
             <DialogDescription>
               {selectedSpecimen ? 'Update specimen details' : 'Add a new specimen to the database'}
             </DialogDescription>
@@ -523,7 +523,7 @@ export default function SpecimensAdminPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => selectedSpecimen && deleteMutation.mutate(selectedSpecimen.id)}
+              onClick={() => selectedSpecimen && deleteMutation.mutate(selectedSpecimen.specimenId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

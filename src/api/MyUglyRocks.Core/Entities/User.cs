@@ -9,6 +9,7 @@ public enum UserRole
 
 public class User : BaseEntity
 {
+    public Guid UserId { get; set; }
     public required string Email { get; set; }
     public required string Username { get; set; }
     public required string PasswordHash { get; set; }
@@ -34,4 +35,5 @@ public class User : BaseEntity
     public virtual ICollection<Tumbler> Tumblers { get; set; } = [];
     public virtual ICollection<Cycle> Cycles { get; set; } = [];
     public virtual ICollection<Post> Posts { get; set; } = [];
+    public virtual ICollection<UserSession> Sessions { get; set; } = [];
 }

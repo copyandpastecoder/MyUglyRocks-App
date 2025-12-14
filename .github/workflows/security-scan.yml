@@ -1,0 +1,112 @@
+# Security vulnerability scanning for dependencies
+# Runs on push, PR, and weekly schedule
+
+name: Security Scan
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    # Run weekly on Mondays at 9am UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  dotnet-vulnerabilities:
+    name: .NET Dependency Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj
+
+      - name: Check for vulnerable packages
+        run: |
+          echo "Scanning .NET packages for vulnerabilities..."
+          dotnet list src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj package --vulnerable --include-transitive 2>&1 | tee vulnerability-report.txt
+
+          # Fail if vulnerabilities found (excluding "no vulnerable packages")
+          if grep -q "has the following vulnerable packages" vulnerability-report.txt; then
+            echo "::error::Vulnerable .NET packages detected!"
+            exit 1
+          fi
+          echo "No vulnerable .NET packages found."
+
+  npm-vulnerabilities:
+    name: NPM Dependency Scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: src/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          echo "Scanning NPM packages for vulnerabilities..."
+          # Audit with moderate+ severity, allow exit code 0 for info/low
+          npm audit --audit-level=moderate || {
+            echo "::error::NPM vulnerabilities found at moderate+ severity!"
+            exit 1
+          }
+          echo "No moderate+ NPM vulnerabilities found."
+
+  codeql-analysis:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ['csharp', 'javascript']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          config-file: .github/codeql/codeql-config.yml
+
+      - name: Setup .NET (for C# analysis)
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore .NET dependencies (for C# analysis)
+        if: matrix.language == 'csharp'
+        run: dotnet restore src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj
+
+      - name: Build .NET project (for C# analysis)
+        if: matrix.language == 'csharp'
+        run: dotnet build src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj --no-restore
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"

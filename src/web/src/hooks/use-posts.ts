@@ -95,7 +95,7 @@ export function useVoteMutation() {
         (old: PostListDto[] | undefined) => {
           if (!old) return old;
           return old.map(post =>
-            post.id === postId
+            post.postId === postId
               ? { ...post, voteCount: post.voteCount + (hasVoted ? -1 : 1) }
               : post
           );

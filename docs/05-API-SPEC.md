@@ -20,8 +20,8 @@
 
 ### 1.2 Base URL
 ```
-Production: https://api.myuglyrocks.com/api/v1
-Development: http://localhost:5000/api/v1
+Production: https://myuglyrocks.com/api/v1
+Development: https://dev.myuglyrocks.com/api/v1
 ```
 
 ### 1.3 Common Headers
@@ -505,7 +505,7 @@ List user's cycles with filtering and pagination.
 **Query Parameters:**
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `status` | string | `all` | `active`, `completed`, `archived`, `all` |
+| `status` | string | `all` | `active`, `completed`, `all` |
 | `sort` | string | `recent` | `recent`, `oldest`, `name` |
 | `specimen` | uuid | - | Filter by specimen ID |
 | `page` | int | 1 | Page number |
@@ -685,15 +685,6 @@ Mark cycle as completed.
 ```
 
 **Response (200 OK):** Updated cycle with status "Completed"
-
----
-
-#### POST /cycles/:cycleId/archive
-Archive a completed cycle.
-
-**Auth Required:** Yes (must be owner)
-
-**Response (200 OK):** Updated cycle with status "Archived"
 
 ---
 
@@ -2005,7 +1996,6 @@ Get user's activity feed with pagination.
 |------|-------------|
 | `cycle_started` | New cycle created |
 | `cycle_completed` | Cycle marked as completed |
-| `cycle_archived` | Cycle archived |
 | `stage_started` | New stage run started |
 | `stage_completed` | Stage run completed |
 | `cleaning_completed` | Cleaning run completed |

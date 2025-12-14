@@ -11,7 +11,9 @@ import { useSpecimens } from '@/hooks/use-specimens';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle } from 'lucide-react';
 import {
   Form,
   FormControl,
@@ -21,7 +23,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { SpecimenMultiSelect } from '@/components/specimen-multi-select';
+import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
+import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -38,8 +41,15 @@ type FormValues = z.infer<typeof formSchema>;
 export default function NewCyclePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [selectedSpecimenIds, setSelectedSpecimenIds] = useState<string[]>([]);
+  const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
   const [specimenError, setSpecimenError] = useState<string | null>(null);
+  const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
+
+  // Handle when a custom specimen is created - add it to the selection
+  const handleCustomSpecimenCreated = (specimenId: string) => {
+    setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
+    setSpecimenError(null);
+  };
 
   const { data: tumblers } = useQuery({
     queryKey: ['tumblers'],
@@ -64,9 +74,14 @@ export default function NewCyclePage() {
     },
   });
 
+  // Extract IDs from selections for API calls
+  const selectedSpecimenIds = useMemo(() => {
+    return selectedSpecimenItems.map(s => s.id);
+  }, [selectedSpecimenItems]);
+
   // Get selected specimens for cycle name generation
   const selectedSpecimens = useMemo(() => {
-    return specimens.filter((s) => selectedSpecimenIds.includes(s.id));
+    return specimens.filter((s) => selectedSpecimenIds.includes(s.specimenId));
   }, [specimens, selectedSpecimenIds]);
 
   // Watch start date for cycle name auto-population
@@ -114,7 +129,8 @@ export default function NewCyclePage() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['cycles'] });
       toast.success('Cycle created successfully');
-      router.push(`/cycles/${data.id}`);
+      // Navigate with ?addStage=true to auto-open the Add Stage dialog
+      router.push(`/cycles/${data.cycleId}?addStage=true`);
     },
     onError: () => {
       toast.error('Failed to create cycle');
@@ -144,7 +160,7 @@ export default function NewCyclePage() {
   const hasTumblers = tumblers && tumblers.length > 0;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href="/cycles">
@@ -158,16 +174,15 @@ export default function NewCyclePage() {
       </div>
 
       {!hasTumblers && (
-        <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="pt-6">
-            <p className="text-yellow-800">
-              You need to add a tumbler before starting a cycle.{' '}
-              <Link href="/tumblers/new" className="font-medium underline">
-                Add a tumbler first
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            You need to add a tumbler before starting a cycle.{' '}
+            <Link href="/tumblers/new" className="font-medium underline hover:text-amber-100">
+              Add a tumbler first
+            </Link>
+          </AlertDescription>
+        </Alert>
       )}
 
       <Card>
@@ -197,17 +212,16 @@ export default function NewCyclePage() {
               <FormItem>
                 <FormLabel>Rocks/Specimens *</FormLabel>
                 <SpecimenMultiSelect
-                  specimens={specimens}
-                  selectedIds={selectedSpecimenIds}
-                  onSelectionChange={(ids) => {
-                    setSelectedSpecimenIds(ids);
-                    if (ids.length > 0) setSpecimenError(null);
+                  selectedItems={selectedSpecimenItems}
+                  onSelectionChange={(items) => {
+                    setSelectedSpecimenItems(items);
+                    if (items.length > 0) setSpecimenError(null);
                   }}
                   placeholder="Select specimens from the list..."
-                  isLoading={specimensLoading}
+                  onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
                 />
                 <FormDescription className="text-helpful-tip">
-                  Select the types of rocks you're tumbling. Search by name, alias, variety, or family.
+                  Select the types of rocks you&apos;re tumbling. Search by name, alias, variety, or family.
                 </FormDescription>
                 {specimenError && (
                   <p className="text-sm font-medium text-destructive">{specimenError}</p>
@@ -293,6 +307,13 @@ export default function NewCyclePage() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Add Custom Specimen Dialog */}
+      <AddCustomSpecimenDialog
+        open={isAddSpecimenDialogOpen}
+        onOpenChange={setIsAddSpecimenDialogOpen}
+        onSuccess={handleCustomSpecimenCreated}
+      />
     </div>
   );
 }

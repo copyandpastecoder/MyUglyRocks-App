@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
 
 namespace MyUglyRocks.Infrastructure.Data;
@@ -7,7 +9,10 @@ namespace MyUglyRocks.Infrastructure.Data;
 public class SeedDataService
 {
     private readonly AppDbContext _context;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<SeedDataService> _logger;
+    private readonly IStorageService _storageService;
+    private readonly IImageProcessingService _imageProcessingService;
     private static readonly Guid SystemUserId = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid TestUserId = Guid.Parse("00000000-0000-0000-0000-000000000002");
 
@@ -51,29 +56,49 @@ public class SeedDataService
         return result;
     }
 
-    public SeedDataService(AppDbContext context, ILogger<SeedDataService> logger)
+    public SeedDataService(
+        AppDbContext context,
+        IConfiguration configuration,
+        ILogger<SeedDataService> logger,
+        IStorageService storageService,
+        IImageProcessingService imageProcessingService)
     {
         _context = context;
+        _configuration = configuration;
         _logger = logger;
+        _storageService = storageService;
+        _imageProcessingService = imageProcessingService;
     }
 
     public async Task SeedAllAsync()
     {
         await EnsureSystemUserAsync();
         await EnsureTestUserAsync();
+        await EnsureAdminUserAsync();
         await SeedSpecimensAsync();
         await SeedMaterialsAsync();
         await SeedTumblerModelsAsync();
         await SeedBarrelNicknamesAsync();
+        await SeedDemoUserAsync();
+    }
+
+    private async Task SeedDemoUserAsync()
+    {
+        var demoSeedService = new DemoUserSeedService(
+            _context,
+            _logger,
+            _storageService,
+            _imageProcessingService);
+        await demoSeedService.SeedDemoUserAsync();
     }
 
     private async Task EnsureSystemUserAsync()
     {
-        if (!await _context.Users.AnyAsync(u => u.Id == SystemUserId))
+        if (!await _context.Users.AnyAsync(u => u.UserId == SystemUserId))
         {
             _context.Users.Add(new User
             {
-                Id = SystemUserId,
+                UserId = SystemUserId,
                 Username = "system",
                 Email = "system@myuglyrocks.local",
                 PasswordHash = "SYSTEM_USER_NO_LOGIN",
@@ -90,12 +115,12 @@ public class SeedDataService
 
     private async Task EnsureTestUserAsync()
     {
-        if (!await _context.Users.AnyAsync(u => u.Id == TestUserId))
+        if (!await _context.Users.AnyAsync(u => u.UserId == TestUserId))
         {
             var now = DateTime.UtcNow;
             _context.Users.Add(new User
             {
-                Id = TestUserId,
+                UserId = TestUserId,
                 Username = "testuser",
                 Email = "test@myuglyrocks.local",
                 // Password: "Test123!" - pre-hashed for convenience
@@ -113,6 +138,62 @@ public class SeedDataService
             await _context.SaveChangesAsync();
             _logger.LogInformation("Created test user (test@myuglyrocks.local / Test123!)");
         }
+    }
+
+    /// <summary>
+    /// Creates an admin user from ADMIN_EMAIL environment variable if set.
+    /// The admin must use "Forgot Password" to set their password on first login.
+    /// </summary>
+    private async Task EnsureAdminUserAsync()
+    {
+        var adminEmail = _configuration["ADMIN_EMAIL"];
+        if (string.IsNullOrWhiteSpace(adminEmail))
+        {
+            _logger.LogDebug("ADMIN_EMAIL not configured, skipping admin user seed");
+            return;
+        }
+
+        var normalizedEmail = adminEmail.Trim().ToLowerInvariant();
+
+        // Check if admin user already exists
+        if (await _context.Users.AnyAsync(u => u.Email == normalizedEmail))
+        {
+            _logger.LogDebug("Admin user {Email} already exists", normalizedEmail);
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+
+        // Generate a random unusable password (user must use forgot password to set real password)
+        var unusablePassword = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString() + Guid.NewGuid().ToString());
+
+        // Generate username from email (before @)
+        var username = normalizedEmail.Split('@')[0].Replace(".", "_").Replace("-", "_");
+        // Ensure username is unique
+        var baseUsername = username;
+        var counter = 1;
+        while (await _context.Users.AnyAsync(u => u.Username.ToLower() == username.ToLower()))
+        {
+            username = $"{baseUsername}{counter++}";
+        }
+
+        _context.Users.Add(new User
+        {
+            UserId = Guid.NewGuid(),
+            Username = username,
+            Email = normalizedEmail,
+            PasswordHash = unusablePassword,
+            DisplayName = "Admin",
+            EmailVerified = true, // Pre-verified so they can use forgot password
+            DateEmailVerified = now,
+            Role = UserRole.Admin,
+            IsActive = true,
+            DateCreated = now,
+            DateUpdated = now
+        });
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Created admin user {Email} - use Forgot Password to set password", normalizedEmail);
     }
 
     private async Task SeedSpecimensAsync()
@@ -212,7 +293,7 @@ public class SeedDataService
 
             specimens.Add(new Specimen
             {
-                Id = Guid.NewGuid(),
+                SpecimenId = Guid.NewGuid(),
                 CommonName = commonName,
                 ScientificName = string.IsNullOrWhiteSpace(scientificName) ? null : scientificName,
                 Alias = string.IsNullOrWhiteSpace(alias) ? null : alias,
@@ -304,7 +385,7 @@ public class SeedDataService
 
             materials.Add(new Material
             {
-                Id = Guid.NewGuid(),
+                MaterialId = Guid.NewGuid(),
                 CommonName = commonName,
                 Category = category,
                 MaterialType = string.IsNullOrWhiteSpace(materialType) ? null : materialType,
@@ -398,7 +479,7 @@ public class SeedDataService
 
             models.Add(new TumblerModel
             {
-                Id = Guid.NewGuid(),
+                TumblerModelId = Guid.NewGuid(),
                 Brand = brand,
                 Model = model,
                 TumblerType = tumblerType,
@@ -463,7 +544,7 @@ public class SeedDataService
 
             nicknames.Add(new BarrelNickname
             {
-                Id = Guid.NewGuid(),
+                BarrelNicknameId = Guid.NewGuid(),
                 Name = name,
                 Category = category,
                 UserCreated = SystemUserId,

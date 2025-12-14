@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Accordion,
   AccordionContent,
@@ -7,6 +8,10 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
+import { ScrollAnimate } from '@/components/ui/scroll-animate';
+import { getMainHelpTopics } from '@/data/help-content';
+import { ChevronRight, HelpCircle } from 'lucide-react';
 
 const faqCategories = [
   {
@@ -113,38 +118,91 @@ const faqCategories = [
 ];
 
 export default function FAQPage() {
-  return (
-    <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Frequently Asked Questions</h1>
-        <p className="text-muted-foreground">
-          Everything you need to know about rock tumbling
-        </p>
-      </div>
+  const helpTopics = getMainHelpTopics();
 
-      <div className="space-y-6">
-        {faqCategories.map((category) => (
-          <Card key={category.title}>
-            <CardHeader>
-              <CardTitle>{category.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Accordion type="single" collapsible className="w-full">
-                {category.questions.map((item, index) => (
-                  <AccordionItem key={index} value={`item-${index}`}>
-                    <AccordionTrigger className="text-left">
-                      {item.question}
-                    </AccordionTrigger>
-                    <AccordionContent className="text-muted-foreground">
-                      {item.answer}
-                    </AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
-            </CardContent>
-          </Card>
-        ))}
+  return (
+    <PageTransition>
+      <div className="space-y-8">
+        {/* Header */}
+        <div>
+          <div className="flex items-center gap-3 mb-2">
+            <HelpCircle className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold tracking-tight">Help Center</h1>
+          </div>
+          <p className="text-lg text-muted-foreground">
+            Get help with MyUglyRocks features and learn about rock tumbling
+          </p>
+        </div>
+
+        {/* Topic Cards */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Feature Guides</h2>
+          <StaggerContainer className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {helpTopics.map((topic) => {
+              const Icon = topic.icon;
+              return (
+                <StaggerItem key={topic.slug}>
+                  <Link href={`/learn/faq/${topic.slug}`}>
+                    <Card className="h-full hover:bg-muted/50 hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 cursor-pointer">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-primary/10">
+                            <Icon className="h-5 w-5 text-primary" />
+                          </div>
+                          <CardTitle className="text-lg">{topic.title}</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <CardDescription className="line-clamp-2">
+                          {topic.description}
+                        </CardDescription>
+                        <div className="flex items-center gap-1 mt-3 text-sm text-primary font-medium">
+                          Learn more
+                          <ChevronRight className="h-4 w-4" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </StaggerItem>
+              );
+            })}
+          </StaggerContainer>
+        </div>
+
+        {/* FAQ Section */}
+        <div>
+          <h2 className="text-xl font-semibold mb-4">Frequently Asked Questions</h2>
+          <p className="text-muted-foreground mb-6">
+            General questions about rock tumbling
+          </p>
+
+          <div className="space-y-6">
+            {faqCategories.map((category, idx) => (
+              <ScrollAnimate key={category.title} animation="slideUp" delay={idx * 0.1}>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{category.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Accordion type="single" collapsible className="w-full">
+                      {category.questions.map((item, index) => (
+                        <AccordionItem key={index} value={`item-${index}`}>
+                          <AccordionTrigger className="text-left">
+                            {item.question}
+                          </AccordionTrigger>
+                          <AccordionContent className="text-muted-foreground">
+                            {item.answer}
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </CardContent>
+                </Card>
+              </ScrollAnimate>
+            ))}
+          </div>
+        </div>
       </div>
-    </div>
+    </PageTransition>
   );
 }

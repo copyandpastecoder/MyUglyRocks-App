@@ -14,15 +14,26 @@ spec:
       labels:
         app: myuglyrocks-web
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
       - name: web
         image: myuglyrocks-web:latest
         imagePullPolicy: Never  # Use local image for dev
         ports:
         - containerPort: 3000
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: false  # Next.js needs writable .next
         env:
-        - name: NEXT_PUBLIC_API_URL
-          value: "http://myuglyrocks-api"
+        - name: API_URL
+          value: "https://dev.myuglyrocks.com"
         resources:
           requests:
             memory: "128Mi"
@@ -54,4 +65,5 @@ spec:
   ports:
   - port: 80
     targetPort: 3000
-  type: ClusterIP
+    nodePort: 30000
+  type: NodePort

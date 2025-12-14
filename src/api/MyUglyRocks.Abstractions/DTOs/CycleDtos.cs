@@ -1,77 +1,136 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MyUglyRocks.Abstractions.DTOs;
 
 public record CycleDto(
-    Guid Id,
+    Guid CycleId,
     string Name,
     DateOnly StartDate,
     DateOnly? EndDate,
     string Status,
-    string? Goal,
     int? DifficultyRating,
     int? FinalQuality,
     string? AdditionalSpecimens,
     string? Notes,
     DateTime DateCreated,
     IEnumerable<StageRunSummaryDto> StageRuns,
-    IEnumerable<SpecimenDto> Specimens
+    IEnumerable<SpecimenDto> Specimens,
+    // Computed fields
+    int ElapsedDays,
+    int TotalRuntimeHours,
+    int CompletedStagesCount,
+    string? ActiveStageName,
+    DateTime? LastUpdated,
+    decimal? WeightLossGrams,
+    decimal? WeightLossPercent,
+    int PhotoCount,
+    // Gallery info
+    Guid? PostId = null,
+    int GalleryLikes = 0,
+    // Tumbler/Barrel info (from most recent stage)
+    string? TumblerName = null,
+    string? BarrelName = null
 );
 
 public record CycleListDto(
-    Guid Id,
+    Guid CycleId,
     string Name,
     DateOnly StartDate,
     DateOnly? EndDate,
     string Status,
-    string? Goal,
     int? DifficultyRating,
     int StageCount,
     int ActiveStageCount,
-    DateTime DateCreated
+    bool IsOverdue,
+    DateTime DateCreated,
+    // Active stage progress info (null if no active stages)
+    DateTime? ActiveStageStartDateTime = null,
+    DateTime? ActiveStageDurationEstimateEndDate = null,
+    int? ActiveStageDaysOverdue = null,
+    // Active tumbler/barrel info (from most recent active stage, or most recent completed stage if no active)
+    string? ActiveTumblerName = null,
+    int? ActiveBarrelNumber = null,
+    string? ActiveBarrelNickname = null
 );
 
 public record CreateCycleRequest(
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(255, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 255 characters")]
     string Name,
+
+    [Required(ErrorMessage = "Start date is required")]
     DateOnly StartDate,
-    string? Goal,
+
+    [Range(1, 5, ErrorMessage = "Difficulty rating must be between 1 and 5")]
     int? DifficultyRating,
+
+    [StringLength(500, ErrorMessage = "Additional specimens must be at most 500 characters")]
     string? AdditionalSpecimens,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes,
-    Guid[]? SpecimenIds
+
+    /// <summary>System specimen IDs (from reference data)</summary>
+    Guid[]? SpecimenIds,
+
+    /// <summary>User specimen IDs (custom user-created specimens)</summary>
+    Guid[]? UserSpecimenIds
 );
 
 public record UpdateCycleRequest(
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(255, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 255 characters")]
     string Name,
+
+    [Required(ErrorMessage = "Start date is required")]
     DateOnly StartDate,
-    string? Goal,
+
+    [Range(1, 5, ErrorMessage = "Difficulty rating must be between 1 and 5")]
     int? DifficultyRating,
+
+    [StringLength(500, ErrorMessage = "Additional specimens must be at most 500 characters")]
     string? AdditionalSpecimens,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes
 );
 
 public record CompleteCycleRequest(
+    [Range(1, 5, ErrorMessage = "Final quality must be between 1 and 5")]
     int? FinalQuality,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes
 );
 
 public record StageRunSummaryDto(
-    Guid Id,
+    Guid StageRunId,
     string StageName,
+    int RunNumber,
+    int TotalRuns,
     DateTime StartDateTime,
-    DateTime EndDateTime,
+    DateTime? EndDateTime,  // Actual end - only set when completed/aborted
+    DateTime? DurationEstimateEndDate,  // Calculated estimate based on duration
     string Status,
-    int? ResultRating
+    int? ResultRating,
+    CleaningRunDto? CleaningRun
 );
 
 public record StageRunDto(
-    Guid Id,
+    Guid StageRunId,
     Guid CycleId,
     string StageName,
+    int RunNumber,
+    int TotalRuns,
     DateTime StartDateTime,
     int DurationDays,
     int DurationHours,
-    DateTime EndDateTime,
+    DateTime? EndDateTime,  // Actual end - only set when completed/aborted
+    DateTime? DurationEstimateEndDate,  // Calculated estimate based on duration
     string Status,
     bool ReminderEnabled,
+    decimal? LoadWeightBeforeGrams,
+    decimal? LoadWeightAfterGrams,
     int? FillLevelPercent,
     string? WaterLevel,
     int? WaterAmountMl,
@@ -86,56 +145,126 @@ public record StageRunDto(
 );
 
 public record CreateStageRunRequest(
+    [Required(ErrorMessage = "At least one barrel is required")]
+    [MinLength(1, ErrorMessage = "At least one barrel is required")]
     Guid[] BarrelIds,
+
+    [Required(ErrorMessage = "Stage name is required")]
+    [StringLength(50, ErrorMessage = "Stage name must be at most 50 characters")]
     string StageName,
+
+    [Required(ErrorMessage = "Start date/time is required")]
     DateTime StartDateTime,
+
+    [Range(0, 365, ErrorMessage = "Duration days must be between 0 and 365")]
     int DurationDays,
+
+    [Range(0, 23, ErrorMessage = "Duration hours must be between 0 and 23")]
     int DurationHours,
+
     bool ReminderEnabled,
+
+    [Range(0, 365, ErrorMessage = "Remind after days must be between 0 and 365")]
     int? RemindAfterDays,
+
     bool? RemindAtEndOfStage,
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightBeforeGrams,
+
+    [Range(0, 100, ErrorMessage = "Fill level must be between 0 and 100 percent")]
     int? FillLevelPercent,
+
+    [StringLength(50, ErrorMessage = "Water level must be at most 50 characters")]
     string? WaterLevel,
+
+    [Range(0, 10000, ErrorMessage = "Water amount must be between 0 and 10000 ml")]
     int? WaterAmountMl,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes,
-    IEnumerable<CreateStageMaterialRequest>? Materials
+
+    IEnumerable<CreateStageMaterialRequest>? Materials,
+    CreateCleaningRunRequest? CleaningRun
 );
 
 public record UpdateStageRunRequest(
     Guid[]? BarrelIds,
+
+    [Required(ErrorMessage = "Stage name is required")]
+    [StringLength(50, ErrorMessage = "Stage name must be at most 50 characters")]
     string StageName,
+
+    [Required(ErrorMessage = "Start date/time is required")]
     DateTime StartDateTime,
+
+    [Range(0, 365, ErrorMessage = "Duration days must be between 0 and 365")]
     int DurationDays,
+
+    [Range(0, 23, ErrorMessage = "Duration hours must be between 0 and 23")]
     int DurationHours,
+
     bool ReminderEnabled,
+
+    [Range(0, 365, ErrorMessage = "Remind after days must be between 0 and 365")]
     int? RemindAfterDays,
+
     bool? RemindAtEndOfStage,
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightBeforeGrams,
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightAfterGrams,
+
+    [Range(0, 100, ErrorMessage = "Fill level must be between 0 and 100 percent")]
     int? FillLevelPercent,
+
+    [StringLength(50, ErrorMessage = "Water level must be at most 50 characters")]
     string? WaterLevel,
+
+    [Range(0, 10000, ErrorMessage = "Water amount must be between 0 and 10000 ml")]
     int? WaterAmountMl,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes
 );
 
 public record CompleteStageRunRequest(
+    [Range(1, 5, ErrorMessage = "Result rating must be between 1 and 5")]
     int? ResultRating,
+
+    [Range(1, 5, ErrorMessage = "Shape rounding must be between 1 and 5")]
     int? ResultShapeRounding,
+
+    [Range(1, 5, ErrorMessage = "Scratch level must be between 1 and 5")]
     int? ResultScratchLevel,
+
+    [Range(1, 5, ErrorMessage = "Pitting must be between 1 and 5")]
     int? ResultPitting,
+
+    [Range(1, 5, ErrorMessage = "Shine must be between 1 and 5")]
     int? ResultShine,
+
     bool? IssueScratches,
     bool? IssueChips,
     bool? IssueUnderRounded,
     bool? IssueContamination,
+
+    [StringLength(2000, ErrorMessage = "Lessons learned must be at most 2000 characters")]
     string? LessonsLearned,
+
+    [StringLength(500, ErrorMessage = "Next action must be at most 500 characters")]
     string? NextAction,
-    decimal? LoadWeightAfterGrams
+
+    [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
+    decimal? LoadWeightAfterGrams,
+
+    DateTime? ActualEndDateTime
 );
 
 public record CleaningRunDto(
-    Guid Id,
+    Guid CleaningRunId,
     int DurationMinutes,
     string? Purpose,
     string Status,
@@ -145,15 +274,22 @@ public record CleaningRunDto(
 );
 
 public record CreateCleaningRunRequest(
+    [Range(1, 1440, ErrorMessage = "Duration must be between 1 and 1440 minutes")]
     int DurationMinutes,
+
+    [StringLength(200, ErrorMessage = "Purpose must be at most 200 characters")]
     string? Purpose,
+
     bool ReminderEnabled,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
     string? Notes,
+
     IEnumerable<CreateCleaningMaterialRequest>? Materials
 );
 
 public record StageMaterialDto(
-    Guid Id,
+    Guid StageMaterialId,
     Guid MaterialId,
     string MaterialName,
     decimal? DisplayAmount,
@@ -162,13 +298,18 @@ public record StageMaterialDto(
 );
 
 public record CreateStageMaterialRequest(
+    [Required(ErrorMessage = "Material ID is required")]
     Guid MaterialId,
+
+    [Range(0, 100000, ErrorMessage = "Amount must be between 0 and 100000")]
     decimal? DisplayAmount,
+
+    [StringLength(20, ErrorMessage = "Unit must be at most 20 characters")]
     string? DisplayUnit
 );
 
 public record CleaningMaterialDto(
-    Guid Id,
+    Guid CleaningMaterialId,
     Guid MaterialId,
     string MaterialName,
     decimal? DisplayAmount,
@@ -177,32 +318,50 @@ public record CleaningMaterialDto(
 );
 
 public record CreateCleaningMaterialRequest(
+    [Required(ErrorMessage = "Material ID is required")]
     Guid MaterialId,
+
+    [Range(0, 100000, ErrorMessage = "Amount must be between 0 and 100000")]
     decimal? DisplayAmount,
+
+    [StringLength(20, ErrorMessage = "Unit must be at most 20 characters")]
     string? DisplayUnit
 );
 
 public record PhotoDto(
-    Guid Id,
+    Guid PhotoId,
     string Url,
     string? FileName,
     string PhotoType,
+    string? Caption,
     int SortOrder,
-    DateTime DateCreated
+    DateTime DateCreated,
+    string? ThumbnailUrl = null,
+    string? MediumUrl = null,
+    string? LargeUrl = null,
+    string? BlurHash = null,
+    int? Width = null,
+    int? Height = null,
+    string ProcessingStatus = "Completed",  // Processing, Completed, Failed
+    string? ProcessingError = null
 );
 
 public record SpecimenDto(
-    Guid Id,
+    Guid SpecimenId,
     string CommonName,
     string? ScientificName,
     string MaterialType,
     decimal? MohsHardnessMin,
     decimal? MohsHardnessMax,
-    string? TumblingDifficulty
+    string? TumblingDifficulty,
+    /// <summary>Source: "system" for reference specimens, "user" for custom user specimens</summary>
+    string Source = "system",
+    /// <summary>Only set for user specimens - the user who created it</summary>
+    Guid? UserId = null
 );
 
 public record MaterialDto(
-    Guid Id,
+    Guid MaterialId,
     string CommonName,
     string Category,
     string? MaterialType,
@@ -211,4 +370,28 @@ public record MaterialDto(
     int MeshSize,
     bool IsCleaning,
     bool IsActive
+);
+
+/// <summary>
+/// Photo with stage context for cycle photo selection
+/// </summary>
+public record CyclePhotoDto(
+    Guid PhotoId,
+    string Url,
+    string? FileName,
+    string PhotoType,
+    string? Caption,
+    int SortOrder,
+    DateTime DateCreated,
+    string? ThumbnailUrl,
+    string? MediumUrl,
+    string? LargeUrl,
+    string? BlurHash,
+    int? Width,
+    int? Height,
+    string ProcessingStatus,
+    // Stage context
+    Guid StageRunId,
+    string StageName,
+    int RunNumber
 );

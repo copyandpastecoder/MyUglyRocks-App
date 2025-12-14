@@ -1,24 +1,34 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace MyUglyRocks.Abstractions.DTOs;
 
 // User profile DTOs
 public record UserProfileDto(
-    Guid Id,
+    Guid UserId,
     string Username,
     string Email,
     string? DisplayName,
     string? Bio,
     string? AvatarUrl,
     bool EmailVerified,
+    string Role,
     DateTime DateCreated
 );
 
 public record UpdateProfileRequest(
+    [StringLength(100, ErrorMessage = "Display name must be at most 100 characters")]
     string? DisplayName,
+
+    [StringLength(500, ErrorMessage = "Bio must be at most 500 characters")]
     string? Bio
 );
 
 public record ChangePasswordRequest(
+    [Required(ErrorMessage = "Current password is required")]
     string CurrentPassword,
+
+    [Required(ErrorMessage = "New password is required")]
+    [StringLength(128, MinimumLength = 12, ErrorMessage = "Password must be between 12 and 128 characters")]
     string NewPassword
 );
 
@@ -30,7 +40,6 @@ public record UserSettingsDto(
     string Timezone,
     string FirstDayOfWeek,
     bool ShowRelativeTimes,
-    string TrackingMode,
     string FontSize,
     string Density,
     string DefaultHomeSection,
@@ -51,35 +60,67 @@ public record UserSettingsDto(
 );
 
 public record UpdateSettingsRequest(
+    [StringLength(20, ErrorMessage = "Measurement system must be at most 20 characters")]
     string? MeasurementSystem = null,
+
+    [StringLength(20, ErrorMessage = "Date format must be at most 20 characters")]
     string? DateFormat = null,
+
+    [StringLength(20, ErrorMessage = "Time format must be at most 20 characters")]
     string? TimeFormat = null,
+
+    [StringLength(64, ErrorMessage = "Timezone must be at most 64 characters")]
     string? Timezone = null,
+
+    [StringLength(20, ErrorMessage = "First day of week must be at most 20 characters")]
     string? FirstDayOfWeek = null,
+
     bool? ShowRelativeTimes = null,
-    string? TrackingMode = null,
+
+    [StringLength(20, ErrorMessage = "Font size must be at most 20 characters")]
     string? FontSize = null,
+
+    [StringLength(20, ErrorMessage = "Density must be at most 20 characters")]
     string? Density = null,
+
+    [StringLength(50, ErrorMessage = "Default home section must be at most 50 characters")]
     string? DefaultHomeSection = null,
+
     bool? NotifyStageReminders = null,
     bool? NotifyComments = null,
     bool? NotifyReplies = null,
     bool? NotifyUglyRocks = null,
     bool? NotifyRecipeCloned = null,
     bool? QuietHoursEnabled = null,
+
+    [StringLength(10, ErrorMessage = "Quiet hours start must be at most 10 characters")]
     string? QuietHoursStart = null,
+
+    [StringLength(10, ErrorMessage = "Quiet hours end must be at most 10 characters")]
     string? QuietHoursEnd = null,
+
+    [StringLength(20, ErrorMessage = "Digest frequency must be at most 20 characters")]
     string? DigestFrequency = null,
+
+    [StringLength(20, ErrorMessage = "Photo upload quality must be at most 20 characters")]
     string? PhotoUploadQuality = null,
+
     bool? AddWatermark = null,
     bool? AutoFillFromLastRun = null,
+
+    [StringLength(20, ErrorMessage = "Default post visibility must be at most 20 characters")]
     string? DefaultPostVisibility = null,
+
+    [StringLength(50, ErrorMessage = "Theme must be at most 50 characters")]
     string? Theme = null
 );
 
 // Account DTOs
 public record DeactivateAccountRequest(
+    [Required(ErrorMessage = "Password is required")]
     string Password,
+
+    [StringLength(500, ErrorMessage = "Reason must be at most 500 characters")]
     string? Reason
 );
 

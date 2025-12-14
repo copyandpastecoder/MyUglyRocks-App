@@ -1,8 +1,12 @@
 // Post types
+export type PostType = 'Cycle' | 'Inventory';
+
 export interface PostDto {
-  id: string;
+  postId: string;
   userId: string;
-  cycleId: string;
+  cycleId: string | null;
+  inventoryId: string | null;
+  postType: PostType;
   title: string;
   description: string | null;
   status: string;
@@ -10,12 +14,14 @@ export interface PostDto {
   voteCount: number;
   commentCount: number;
   author: PostAuthorDto;
-  cycle: CyclePreviewDto;
+  cycle: CyclePreviewDto | null;
+  inventory: InventoryPreviewDto | null;
   photos: PostPhotoDto[];
 }
 
 export interface PostListDto {
-  id: string;
+  postId: string;
+  postType: PostType;
   title: string;
   description: string | null;
   publishedDate: string;
@@ -23,38 +29,70 @@ export interface PostListDto {
   commentCount: number;
   author: PostAuthorDto;
   coverPhotoUrl: string | null;
+  coverPhotoThumbnailUrl: string | null;
+  coverPhotoBlurHash: string | null;
   photoCount: number;
+  // Inventory-specific fields for gallery card display
+  sourceType: string | null;
+  specimenNames: string[];
+  sizeCategories: string[];
 }
 
 export interface PostAuthorDto {
-  id: string;
+  userId: string;
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
 }
 
 export interface PostPhotoDto {
-  id: string;
+  postId: string;
   photoId: string;
   url: string;
   sortOrder: number;
   isCover: boolean;
+  thumbnailUrl: string | null;
+  mediumUrl: string | null;
+  largeUrl: string | null;
+  blurHash: string | null;
+  width: number | null;
+  height: number | null;
 }
 
 export interface CyclePreviewDto {
-  id: string;
+  cycleId: string;
   name: string;
   status: string;
   startDate: string;
   endDate: string | null;
-  goal: string | null;
   difficultyRating: number | null;
   finalQuality: number | null;
   stageCount: number;
+  // Extended fields for gallery display
+  elapsedDays: number;
+  totalRuntimeHours: number;
+  photoCount: number;
+  tumblerName: string | null;
+  barrelName: string | null;
+  specimenNames: string[];
+}
+
+export interface InventoryPreviewDto {
+  inventoryId: string;
+  name: string;
+  sourceType: string;
+  sourceName: string | null;
+  sourceLocation: string | null;
+  acquiredDate: string;
+  condition: string;
+  specimenNames: string[];
+  sizeCategories: string[];
+  photoCount: number;
 }
 
 export interface CreatePostRequest {
-  cycleId: string;
+  cycleId?: string;
+  inventoryId?: string;
   title: string;
   description?: string;
   photoIds?: string[];
@@ -68,7 +106,7 @@ export interface UpdatePostRequest {
 
 // Vote types
 export interface VoteDto {
-  id: string;
+  voteId: string;
   postId: string;
   userId: string;
   dateCreated: string;
@@ -82,7 +120,7 @@ export interface VoteCountDto {
 
 // Comment types
 export interface CommentDto {
-  id: string;
+  commentId: string;
   postId: string;
   parentCommentId: string | null;
   content: string;
@@ -94,7 +132,7 @@ export interface CommentDto {
 }
 
 export interface CommentAuthorDto {
-  id: string;
+  userId: string;
   username: string;
   displayName: string | null;
   avatarUrl: string | null;

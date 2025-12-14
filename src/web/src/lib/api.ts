@@ -1,29 +1,91 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { AuthResult, LoginRequest, RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest } from '@/types/auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Runtime config - fetched once on app load
+let runtimeApiUrl: string | null = null;
+let configPromise: Promise<string> | null = null;
+
+// Fetch config from server (reads env vars at runtime, not build time)
+async function fetchConfig(): Promise<string> {
+  // In browser, fetch from our API route (using /_config to avoid nginx /api routing)
+  if (typeof window !== 'undefined') {
+    try {
+      const response = await fetch('/config');
+      const config = await response.json();
+      return config.apiUrl;
+    } catch {
+      // Fallback to build-time value or default
+      return process.env.NEXT_PUBLIC_API_URL || '';
+    }
+  }
+  // On server, use env directly
+  return process.env.NEXT_PUBLIC_API_URL || '';
+}
+
+// Get API URL (cached after first fetch)
+export async function getApiUrl(): Promise<string> {
+  if (runtimeApiUrl) return runtimeApiUrl;
+  if (!configPromise) {
+    configPromise = fetchConfig().then(url => {
+      runtimeApiUrl = url;
+      // Update axios baseURL once we have the runtime config
+      api.defaults.baseURL = `${url}/api`;
+      return url;
+    });
+  }
+  return configPromise;
+}
+
+// Initialize with build-time value, will be updated at runtime
+const initialApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
 
 export const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: `${initialApiUrl}/api`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-let accessToken: string | null = null;
+// Ensure config is loaded before first request
+if (typeof window !== 'undefined') {
+  getApiUrl();
+}
+
+// Access token storage using closure pattern for better encapsulation
+// Note: Memory storage is the recommended pattern for SPAs with refresh tokens in HttpOnly cookies
+// The token is intentionally NOT persisted to localStorage/sessionStorage (XSS risk)
+// On page refresh, the token is lost and refreshed via the HttpOnly refresh token cookie
+const tokenStorage = (() => {
+  let accessToken: string | null = null;
+
+  return {
+    set: (token: string | null) => {
+      accessToken = token;
+    },
+    get: () => accessToken,
+    clear: () => {
+      accessToken = null;
+    },
+  };
+})();
 
 export const setAccessToken = (token: string | null) => {
-  accessToken = token;
+  tokenStorage.set(token);
 };
 
-export const getAccessToken = () => accessToken;
+export const getAccessToken = () => tokenStorage.get();
 
-// Request interceptor to add auth header
+// Request interceptor to ensure config is loaded and add auth header
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+  async (config: InternalAxiosRequestConfig) => {
+    // Wait for runtime config to be loaded before first request
+    if (typeof window !== 'undefined' && configPromise) {
+      await configPromise;
+    }
+    const token = tokenStorage.get();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
@@ -48,13 +110,13 @@ api.interceptors.response.use(
       try {
         const response = await api.post<AuthResult>('/auth/refresh');
         if (response.data.success && response.data.accessToken) {
-          setAccessToken(response.data.accessToken);
+          tokenStorage.set(response.data.accessToken);
           originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
           isRefreshing = false;
           return api(originalRequest);
         }
       } catch {
-        setAccessToken(null);
+        tokenStorage.clear();
         isRefreshing = false;
         // Only redirect if not already on login/register/public pages
         if (typeof window !== 'undefined' && !window.location.pathname.match(/^\/(login|register|forgot-password|reset-password|gallery|learn)?$/)) {
@@ -137,7 +199,7 @@ export const tumblerApi = {
     // First get the list, then fetch full details for each
     const listResponse = await api.get<TumblerListDto[]>('/tumblers');
     const fullTumblers = await Promise.all(
-      listResponse.data.map(t => api.get<TumblerDto>(`/tumblers/${t.id}`))
+      listResponse.data.map(t => api.get<TumblerDto>(`/tumblers/${t.tumblerId}`))
     );
     return fullTumblers.map(r => r.data);
   },
@@ -177,7 +239,7 @@ export const tumblerApi = {
 };
 
 // Cycle API functions
-import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest } from '@/types/cycle';
+import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest, CleaningRunDto, CreateCleaningRunRequest, CyclePhotoDto } from '@/types/cycle';
 
 export const cycleApi = {
   getAll: async (status?: string): Promise<CycleListDto[]> => {
@@ -210,11 +272,6 @@ export const cycleApi = {
     return response.data;
   },
 
-  archive: async (id: string): Promise<CycleDto> => {
-    const response = await api.post<CycleDto>(`/cycles/${id}/archive`);
-    return response.data;
-  },
-
   // Stage Run operations
   getStageRun: async (id: string): Promise<StageRunDto> => {
     const response = await api.get<StageRunDto>(`/cycles/stages/${id}`);
@@ -238,6 +295,26 @@ export const cycleApi = {
 
   deleteStageRun: async (id: string): Promise<void> => {
     await api.delete(`/cycles/stages/${id}`);
+  },
+
+  // Cleaning Run operations
+  addCleaningRun: async (stageId: string, data: CreateCleaningRunRequest): Promise<CleaningRunDto> => {
+    const response = await api.post<CleaningRunDto>(`/cycles/stages/${stageId}/cleaning`, data);
+    return response.data;
+  },
+
+  completeCleaningRun: async (id: string): Promise<void> => {
+    await api.post(`/cycles/cleaning/${id}/complete`);
+  },
+
+  deleteCleaningRun: async (id: string): Promise<void> => {
+    await api.delete(`/cycles/cleaning/${id}`);
+  },
+
+  // Photo operations
+  getPhotos: async (cycleId: string): Promise<CyclePhotoDto[]> => {
+    const response = await api.get<CyclePhotoDto[]>(`/cycles/${cycleId}/photos`);
+    return response.data;
   },
 };
 
@@ -490,6 +567,7 @@ import type {
   UpdateSpecimenRequest,
   CreateMaterialRequest,
   UpdateMaterialRequest,
+  BrowserStatsDto,
 } from '@/types/admin';
 
 export const adminApi = {
@@ -621,5 +699,225 @@ export const adminApi = {
 
   deleteMaterial: async (id: string): Promise<void> => {
     await api.delete(`/admin/materials/${id}`);
+  },
+
+  // User Creation
+  createUser: async (email: string): Promise<AdminUserDto> => {
+    const response = await api.post<AdminUserDto>('/admin/users', { email });
+    return response.data;
+  },
+
+  // Browser/Session Analytics
+  getBrowserStats: async (days = 30): Promise<BrowserStatsDto> => {
+    const response = await api.get<BrowserStatsDto>('/admin/browser-stats', {
+      params: { days },
+    });
+    return response.data;
+  },
+};
+
+// Waitlist API functions (public)
+export const waitlistApi = {
+  join: async (email: string): Promise<{ success: boolean; message?: string }> => {
+    const response = await api.post<{ success: boolean; message?: string }>('/waitlist', { email });
+    return response.data;
+  },
+};
+
+// Photos API functions
+import type { PhotoDto } from '@/types/cycle';
+
+export interface UploadPhotoResponse {
+  success: boolean;
+  photo?: PhotoDto;
+  error?: string;
+}
+
+export interface StorageStatus {
+  configured: boolean;
+}
+
+export const photosApi = {
+  getStagePhotos: async (stageRunId: string): Promise<PhotoDto[]> => {
+    const response = await api.get<PhotoDto[]>(`/photos/stage/${stageRunId}`);
+    return response.data;
+  },
+
+  uploadStagePhoto: async (
+    stageRunId: string,
+    file: File,
+    photoType: 'before' | 'during' | 'after' = 'during',
+    caption?: string
+  ): Promise<UploadPhotoResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('photoType', photoType);
+    if (caption) {
+      formData.append('caption', caption);
+    }
+    const response = await api.post<UploadPhotoResponse>(
+      `/photos/stage/${stageRunId}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  deletePhoto: async (photoId: string): Promise<void> => {
+    await api.delete(`/photos/${photoId}`);
+  },
+
+  reorderPhotos: async (stageRunId: string, photoIds: string[]): Promise<void> => {
+    await api.put(`/photos/stage/${stageRunId}/reorder`, { photoIds });
+  },
+
+  getStorageStatus: async (): Promise<StorageStatus> => {
+    const response = await api.get<StorageStatus>('/photos/status');
+    return response.data;
+  },
+};
+
+// Inventory API functions
+import type {
+  InventoryDto,
+  InventoryListDto,
+  CreateInventoryRequest,
+  UpdateInventoryRequest,
+  UpdateInventoryStatusRequest,
+  UpdateInventorySpecimensRequest,
+  InventoryStatsDto,
+  InventoryFilters,
+  InventoryPhotoDto,
+  UploadInventoryPhotoResponse,
+} from '@/types/inventory';
+
+export const inventoryApi = {
+  getAll: async (filters?: InventoryFilters, skip = 0, take = 20): Promise<InventoryListDto[]> => {
+    const params = {
+      ...filters,
+      skip,
+      take,
+    };
+    const response = await api.get<InventoryListDto[]>('/inventory', { params });
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<InventoryDto> => {
+    const response = await api.get<InventoryDto>(`/inventory/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateInventoryRequest): Promise<InventoryDto> => {
+    const response = await api.post<InventoryDto>('/inventory', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: UpdateInventoryRequest): Promise<InventoryDto> => {
+    const response = await api.put<InventoryDto>(`/inventory/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/inventory/${id}`);
+  },
+
+  updateStatus: async (id: string, data: UpdateInventoryStatusRequest): Promise<InventoryDto> => {
+    const response = await api.patch<InventoryDto>(`/inventory/${id}/status`, data);
+    return response.data;
+  },
+
+  updateSpecimens: async (id: string, data: UpdateInventorySpecimensRequest): Promise<InventoryDto> => {
+    const response = await api.put<InventoryDto>(`/inventory/${id}/specimens`, data);
+    return response.data;
+  },
+
+  getStats: async (): Promise<InventoryStatsDto> => {
+    const response = await api.get<InventoryStatsDto>('/inventory/stats');
+    return response.data;
+  },
+
+  // Photo management
+  getPhotos: async (inventoryId: string): Promise<InventoryPhotoDto[]> => {
+    const response = await api.get<InventoryPhotoDto[]>(`/photos/inventory/${inventoryId}`);
+    return response.data;
+  },
+
+  uploadPhoto: async (
+    inventoryId: string,
+    file: File,
+    caption?: string,
+    isCover?: boolean
+  ): Promise<UploadInventoryPhotoResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (caption) {
+      formData.append('caption', caption);
+    }
+    if (isCover !== undefined) {
+      formData.append('isCover', String(isCover));
+    }
+    const response = await api.post<UploadInventoryPhotoResponse>(
+      `/photos/inventory/${inventoryId}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  deletePhoto: async (photoId: string): Promise<void> => {
+    await api.delete(`/photos/inventory/${photoId}`);
+  },
+
+  setCoverPhoto: async (inventoryId: string, photoId: string): Promise<void> => {
+    await api.put(`/photos/inventory/${inventoryId}/cover/${photoId}`);
+  },
+};
+
+// User Specimen API functions
+import type {
+  UserSpecimenDto,
+  UserSpecimenListDto,
+  CreateUserSpecimenRequest,
+  UpdateUserSpecimenRequest,
+  SpecimenOptionDto,
+  UserSpecimenFilters,
+} from '@/types/user-specimen';
+
+export const userSpecimenApi = {
+  getAll: async (filters?: UserSpecimenFilters, skip = 0, take = 20): Promise<UserSpecimenListDto[]> => {
+    const params = {
+      ...filters,
+      skip,
+      take,
+    };
+    const response = await api.get<UserSpecimenListDto[]>('/user-specimens', { params });
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<UserSpecimenDto> => {
+    const response = await api.get<UserSpecimenDto>(`/user-specimens/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateUserSpecimenRequest): Promise<UserSpecimenDto> => {
+    const response = await api.post<UserSpecimenDto>('/user-specimens', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: UpdateUserSpecimenRequest): Promise<UserSpecimenDto> => {
+    const response = await api.put<UserSpecimenDto>(`/user-specimens/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/user-specimens/${id}`);
+  },
+
+  // Combined search for specimen pickers - includes system, user's own, and public specimens
+  searchAll: async (search?: string, includePublic = true, skip = 0, take = 1000): Promise<SpecimenOptionDto[]> => {
+    const response = await api.get<SpecimenOptionDto[]>('/user-specimens/search', {
+      params: { search, includePublic, skip, take },
+    });
+    return response.data;
   },
 };

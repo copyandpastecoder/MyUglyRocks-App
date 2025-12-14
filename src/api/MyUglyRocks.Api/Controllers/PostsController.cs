@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Api.Helpers;
 
 namespace MyUglyRocks.Api.Controllers;
 
@@ -35,6 +36,13 @@ public class PostsController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
     {
+        // Validate sort parameter against whitelist
+        sort = PaginationHelper.ValidatePostSort(sort);
+
+        // Validate pagination parameters to prevent resource exhaustion
+        skip = PaginationHelper.ClampSkip(skip);
+        take = PaginationHelper.ClampTake(take);
+
         var posts = await _postService.GetPostsAsync(sort, skip, take);
         return Ok(posts);
     }
@@ -42,12 +50,12 @@ public class PostsController : ControllerBase
     /// <summary>
     /// Get post by ID
     /// </summary>
-    [HttpGet("{id:guid}")]
+    [HttpGet("{postId:guid}")]
     [ProducesResponseType(typeof(PostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<PostDto>> GetPost(Guid id)
+    public async Task<ActionResult<PostDto>> GetPost(Guid postId)
     {
-        var post = await _postService.GetPostByIdAsync(id, GetCurrentUserId());
+        var post = await _postService.GetPostByIdAsync(postId, GetCurrentUserId());
         if (post == null) return NotFound();
         return Ok(post);
     }
@@ -62,6 +70,14 @@ public class PostsController : ControllerBase
         [FromQuery] int skip = 0,
         [FromQuery] int take = 20)
     {
+        // Validate username format
+        if (!PaginationHelper.IsValidUsername(username, out var usernameError))
+            return BadRequest(new { error = usernameError });
+
+        // Validate pagination parameters to prevent resource exhaustion
+        skip = PaginationHelper.ClampSkip(skip);
+        take = PaginationHelper.ClampTake(take);
+
         var posts = await _postService.GetUserPostsAsync(username, skip, take);
         return Ok(posts);
     }
@@ -74,36 +90,43 @@ public class PostsController : ControllerBase
     [ProducesResponseType(typeof(PostDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<PostDto>> CreatePost([FromBody] CreatePostRequest request)
+    public async Task<ActionResult<PostDto>> CreatePost([FromBody] CreatePostRequest request, [FromServices] ILogger<PostsController> logger)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue) return Unauthorized();
 
         try
         {
+            logger.LogInformation("Creating post for cycle {CycleId} with {PhotoCount} photos", request.CycleId, request.PhotoIds.Count);
             var post = await _postService.CreatePostAsync(userId.Value, request);
-            return CreatedAtAction(nameof(GetPost), new { id = post.Id }, post);
+            return CreatedAtAction(nameof(GetPost), new { postId = post.PostId }, post);
         }
         catch (InvalidOperationException ex)
         {
+            logger.LogWarning(ex, "Invalid operation while creating post for cycle {CycleId}", request.CycleId);
             return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating post for cycle {CycleId}", request.CycleId);
+            throw;
         }
     }
 
     /// <summary>
     /// Update a post
     /// </summary>
-    [HttpPut("{id:guid}")]
+    [HttpPut("{postId:guid}")]
     [Authorize]
     [ProducesResponseType(typeof(PostDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<PostDto>> UpdatePost(Guid id, [FromBody] UpdatePostRequest request)
+    public async Task<ActionResult<PostDto>> UpdatePost(Guid postId, [FromBody] UpdatePostRequest request)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue) return Unauthorized();
 
-        var post = await _postService.UpdatePostAsync(id, userId.Value, request);
+        var post = await _postService.UpdatePostAsync(postId, userId.Value, request);
         if (post == null) return NotFound();
         return Ok(post);
     }
@@ -111,17 +134,17 @@ public class PostsController : ControllerBase
     /// <summary>
     /// Delete a post
     /// </summary>
-    [HttpDelete("{id:guid}")]
+    [HttpDelete("{postId:guid}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<IActionResult> DeletePost(Guid id)
+    public async Task<IActionResult> DeletePost(Guid postId)
     {
         var userId = GetCurrentUserId();
         if (!userId.HasValue) return Unauthorized();
 
-        var deleted = await _postService.DeletePostAsync(id, userId.Value);
+        var deleted = await _postService.DeletePostAsync(postId, userId.Value);
         if (!deleted) return NotFound();
         return NoContent();
     }

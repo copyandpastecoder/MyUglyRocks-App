@@ -1,5 +1,6 @@
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
@@ -9,10 +10,20 @@ namespace MyUglyRocks.Core.Services;
 public class UserService : IUserService
 {
     private readonly DbContext _context;
+    private readonly IStorageService _storageService;
+    private readonly IImageProcessingService _imageProcessingService;
+    private readonly ILogger<UserService> _logger;
 
-    public UserService(DbContext context)
+    public UserService(
+        DbContext context,
+        IStorageService storageService,
+        IImageProcessingService imageProcessingService,
+        ILogger<UserService> logger)
     {
         _context = context;
+        _storageService = storageService;
+        _imageProcessingService = imageProcessingService;
+        _logger = logger;
     }
 
     private DbSet<User> Users => _context.Set<User>();
@@ -29,7 +40,7 @@ public class UserService : IUserService
     {
         var user = await Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         return user?.Adapt<UserProfileDto>();
     }
@@ -37,7 +48,7 @@ public class UserService : IUserService
     public async Task<UserProfileDto?> UpdateProfileAsync(Guid userId, UpdateProfileRequest request)
     {
         var user = await Users
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null) return null;
 
@@ -54,10 +65,73 @@ public class UserService : IUserService
 
     public async Task<string?> UploadAvatarAsync(Guid userId, Stream imageStream, string fileName, string contentType)
     {
-        // TODO: Implement R2 storage upload
-        // For now, return null as R2 integration is deferred
-        await Task.CompletedTask;
-        return null;
+        if (!_storageService.IsConfigured)
+        {
+            _logger.LogWarning("Storage not configured, avatar upload skipped for user {UserId}", userId);
+            return null;
+        }
+
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
+        if (user == null) return null;
+
+        try
+        {
+            // Delete old avatar if exists
+            if (!string.IsNullOrEmpty(user.AvatarUrl))
+            {
+                var oldKey = ExtractStorageKeyFromUrl(user.AvatarUrl);
+                if (!string.IsNullOrEmpty(oldKey))
+                {
+                    await _storageService.DeleteAsync(oldKey);
+                }
+            }
+
+            // Process the image: crop to square and resize to 256x256 WebP
+            var processedAvatar = await _imageProcessingService.ProcessAvatarAsync(imageStream, fileName);
+
+            // Upload with a consistent key based on user ID
+            var key = $"{userId}.webp";
+            var folder = "avatars";
+
+            var avatarUrl = await _storageService.UploadAsync(
+                processedAvatar.Stream,
+                $"{userId}.webp",
+                folder,
+                key);
+
+            // Dispose the processed stream
+            await processedAvatar.Stream.DisposeAsync();
+
+            // Update user record with cache-busting timestamp
+            var cacheBustUrl = $"{avatarUrl}?v={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+            user.AvatarUrl = cacheBustUrl;
+            user.DateUpdated = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Avatar uploaded for user {UserId}: {AvatarUrl}", userId, cacheBustUrl);
+
+            return cacheBustUrl;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload avatar for user {UserId}", userId);
+            return null;
+        }
+    }
+
+    private static string? ExtractStorageKeyFromUrl(string url)
+    {
+        if (string.IsNullOrEmpty(url)) return null;
+
+        try
+        {
+            var uri = new Uri(url);
+            return uri.AbsolutePath.TrimStart('/');
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     #endregion
@@ -105,8 +179,6 @@ public class UserService : IUserService
             settings.FirstDayOfWeek = fdw;
         if (request.ShowRelativeTimes.HasValue)
             settings.ShowRelativeTimes = request.ShowRelativeTimes.Value;
-        if (request.TrackingMode != null && Enum.TryParse<TrackingMode>(request.TrackingMode, true, out var tm))
-            settings.TrackingMode = tm;
         if (request.FontSize != null && Enum.TryParse<FontSize>(request.FontSize, true, out var fs))
             settings.FontSize = fs;
         if (request.Density != null && Enum.TryParse<Density>(request.Density, true, out var d))
@@ -156,7 +228,6 @@ public class UserService : IUserService
             Timezone: settings.Timezone,
             FirstDayOfWeek: settings.FirstDayOfWeek.ToString(),
             ShowRelativeTimes: settings.ShowRelativeTimes,
-            TrackingMode: settings.TrackingMode.ToString(),
             FontSize: settings.FontSize.ToString(),
             Density: settings.Density.ToString(),
             DefaultHomeSection: settings.DefaultHomeSection.ToString(),
@@ -184,7 +255,7 @@ public class UserService : IUserService
     public async Task<bool> ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {
         var user = await Users
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null) return false;
 
@@ -203,7 +274,7 @@ public class UserService : IUserService
     public async Task<bool> DeactivateAccountAsync(Guid userId, DeactivateAccountRequest request)
     {
         var user = await Users
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null) return false;
 
@@ -237,7 +308,7 @@ public class UserService : IUserService
     {
         var user = await Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(u => u.Id == userId);
+            .FirstOrDefaultAsync(u => u.UserId == userId);
 
         if (user == null)
             throw new KeyNotFoundException("User not found");
@@ -252,10 +323,10 @@ public class UserService : IUserService
             .CountAsync(p => p.UserId == userId);
 
         var totalVotesReceived = await Votes
-            .CountAsync(v => Posts.Any(p => p.Id == v.PostId && p.UserId == userId));
+            .CountAsync(v => Posts.Any(p => p.PostId == v.PostId && p.UserId == userId));
 
         var totalCommentsReceived = await Comments
-            .CountAsync(c => Posts.Any(p => p.Id == c.PostId && p.UserId == userId));
+            .CountAsync(c => Posts.Any(p => p.PostId == c.PostId && p.UserId == userId));
 
         return new UserStatsDto(
             TotalCycles: totalCycles,

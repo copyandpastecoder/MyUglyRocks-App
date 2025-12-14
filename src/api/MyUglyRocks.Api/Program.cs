@@ -1,14 +1,19 @@
 using System.IO.Compression;
+using System.Net;
 using System.Text;
 using System.Threading.RateLimiting;
+using Amazon.S3;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Api.Authorization;
+using MyUglyRocks.Api.Middleware;
 using MyUglyRocks.Core.Mappings;
 using MyUglyRocks.Core.Services;
 using MyUglyRocks.Infrastructure.Configuration;
@@ -29,8 +34,20 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configuration is loaded from environment variables (injected by K8s from secrets)
-    // No external secrets provider needed - K8s handles secret injection
+    // Load secrets from volume mounts (more secure than env vars)
+    // K8s mounts secrets as files to /etc/secrets/
+    var secretsPath = "/etc/secrets";
+    if (Directory.Exists(secretsPath))
+    {
+        builder.Configuration.AddKeyPerFile(secretsPath, optional: true, reloadOnChange: true);
+        Log.Information("Loading secrets from volume mount: {SecretsPath}", secretsPath);
+    }
+    else
+    {
+        Log.Warning("Secrets volume mount not found at {SecretsPath}, falling back to env vars", secretsPath);
+    }
+
+    // Environment variables still work as fallback for local development
 
     // Configure Serilog
     builder.Host.UseSerilog((context, services, configuration) => configuration
@@ -48,7 +65,9 @@ try
 
     // Configure PostgreSQL with EF Core
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+               .ConfigureWarnings(warnings =>
+                   warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
     // Register DbContext as base type for services that depend on it
     builder.Services.AddScoped<DbContext>(provider => provider.GetRequiredService<AppDbContext>());
@@ -88,6 +107,25 @@ try
     builder.Services.AddTransient<IResend, ResendClient>();
     builder.Services.AddScoped<IEmailService, EmailService>();
 
+    // Configure R2 Storage (required)
+    builder.Services.Configure<R2Settings>(builder.Configuration.GetSection(R2Settings.SectionName));
+    var r2Settings = builder.Configuration.GetSection(R2Settings.SectionName).Get<R2Settings>();
+    if (r2Settings?.IsConfigured != true)
+    {
+        throw new InvalidOperationException("R2 storage configuration is required. Please configure R2 settings in appsettings.json or environment variables.");
+    }
+    builder.Services.AddSingleton<IAmazonS3>(sp =>
+    {
+        var config = new AmazonS3Config
+        {
+            ServiceURL = r2Settings.Endpoint,
+            ForcePathStyle = true
+        };
+        return new AmazonS3Client(r2Settings.AccessKeyId, r2Settings.SecretAccessKey, config);
+    });
+    builder.Services.AddScoped<IStorageService, R2StorageService>();
+    builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
+
     // Configure Hangfire for background jobs
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddHangfire(config => config
@@ -98,7 +136,7 @@ try
     builder.Services.AddHangfireServer();
 
     // Configure Redis caching
-    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
+    var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";
     builder.Services.AddStackExchangeRedisCache(options =>
     {
         options.Configuration = redisConnection;
@@ -132,18 +170,52 @@ try
     builder.Services.AddScoped<IExportService, ExportService>();
     builder.Services.AddScoped<IAdminService, AdminService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddScoped<IInventoryService, InventoryService>();
+    builder.Services.AddScoped<IUserSpecimenService, UserSpecimenService>();
     builder.Services.AddScoped<SeedDataService>();
 
+    // Session analytics services
+    builder.Services.AddSingleton<IUserAgentParserService, UserAgentParserService>();
+    builder.Services.AddScoped<SessionAnalyticsService>();
+    builder.Services.AddScoped<ISessionAnalyticsService>(sp => sp.GetRequiredService<SessionAnalyticsService>());
+
+    // Background jobs
+    builder.Services.AddScoped<MyUglyRocks.Infrastructure.Jobs.PhotoProcessingJob>();
+
     // Configure CORS
+    // Default origins + config-based origins
+    var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    var defaultOrigins = new[] { "https://myuglyrocks.local:30443", "https://dev.myuglyrocks.com" };
+    var allowedOrigins = configOrigins != null && configOrigins.Length > 0 ? configOrigins : defaultOrigins;
+    Log.Information("Configured CORS origins: {Origins}", string.Join(", ", allowedOrigins));
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000"])
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
+            policy.WithOrigins(allowedOrigins)
+                .WithMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
+                .WithHeaders(
+                    "Authorization",
+                    "Content-Type",
+                    "Accept",
+                    "Origin",
+                    "X-Requested-With",
+                    "Cache-Control")
+                .AllowCredentials()
+                .SetPreflightMaxAge(TimeSpan.FromMinutes(10));
         });
+    });
+
+    // Configure forwarded headers for reverse proxy (nginx-ingress, Cloudflare)
+    // This ensures the app sees the original client IP and HTTPS scheme
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+        // Trust proxies in the K8s cluster and Cloudflare
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+        // In K8s, we trust all forwarded headers from the cluster network
+        // Cloudflare also forwards X-Forwarded-* headers
     });
 
     // Configure response compression
@@ -157,34 +229,89 @@ try
     builder.Services.Configure<BrotliCompressionProviderOptions>(options => options.Level = CompressionLevel.Fastest);
     builder.Services.Configure<GzipCompressionProviderOptions>(options => options.Level = CompressionLevel.SmallestSize);
 
-    // Configure rate limiting
+    // Configure rate limiting with per-user partitioning
     builder.Services.AddRateLimiter(options =>
     {
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
         // Strict rate limit for authentication endpoints (login, register, password reset)
-        options.AddFixedWindowLimiter("auth", limiterOptions =>
+        // Partitioned by IP address since users aren't authenticated yet
+        options.AddPolicy("auth", context =>
+            RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = 5,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                }));
+
+        // Per-user rate limit for authenticated API endpoints
+        // Falls back to IP address for unauthenticated requests
+        options.AddPolicy("api", context =>
         {
-            limiterOptions.PermitLimit = 5;
-            limiterOptions.Window = TimeSpan.FromMinutes(1);
-            limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            limiterOptions.QueueLimit = 0;
+            // Try to get user ID from JWT claims
+            var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? context.User?.FindFirst("sub")?.Value;
+
+            // Use user ID if authenticated, otherwise fall back to IP
+            var partitionKey = !string.IsNullOrEmpty(userId)
+                ? $"user:{userId}"
+                : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+            return RateLimitPartition.GetSlidingWindowLimiter(
+                partitionKey: partitionKey,
+                factory: _ => new SlidingWindowRateLimiterOptions
+                {
+                    // 600 requests/minute per user allows heavy usage:
+                    // - Cycle detail page: ~20 requests (photos per stage + details)
+                    // - Navigating cycles: ~30 views per minute possible
+                    // - Plenty of headroom for normal usage patterns
+                    PermitLimit = 600,
+                    Window = TimeSpan.FromMinutes(1),
+                    SegmentsPerWindow = 6, // 10-second segments for smoother burst handling
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                });
         });
 
-        // Standard rate limit for general API endpoints
-        options.AddSlidingWindowLimiter("api", limiterOptions =>
+        // Strict per-user limit for resource-intensive operations (uploads, exports)
+        options.AddPolicy("intensive", context =>
         {
-            limiterOptions.PermitLimit = 100;
-            limiterOptions.Window = TimeSpan.FromMinutes(1);
-            limiterOptions.SegmentsPerWindow = 4;
-            limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-            limiterOptions.QueueLimit = 0;
+            var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? context.User?.FindFirst("sub")?.Value;
+
+            var partitionKey = !string.IsNullOrEmpty(userId)
+                ? $"user:{userId}"
+                : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: partitionKey,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    // 30 intensive operations per minute (uploads, exports, etc.)
+                    PermitLimit = 30,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                });
         });
     });
 
     var app = builder.Build();
 
     // Configure the HTTP request pipeline
+    // IMPORTANT: UseForwardedHeaders must be called first to properly handle X-Forwarded-* headers
+    // from reverse proxies (nginx-ingress, Cloudflare). This ensures:
+    // - Request.Scheme is "https" (needed for Secure cookies)
+    // - Request.Host reflects the original host
+    // - HttpContext.Connection.RemoteIpAddress is the client IP, not the proxy IP
+    app.UseForwardedHeaders();
+
+    // Global exception handling - must be early in pipeline
+    app.UseGlobalExceptionHandler();
+
     app.UseResponseCompression();
     app.UseSerilogRequestLogging();
 
@@ -196,6 +323,19 @@ try
         context.Response.Headers.Append("X-XSS-Protection", "0");
         context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
         context.Response.Headers.Append("Permissions-Policy", "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()");
+
+        // Content Security Policy - restrictive for API
+        context.Response.Headers.Append("Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none'; form-action 'none'");
+
+        // HSTS - only in production with HTTPS
+        if (!app.Environment.IsDevelopment())
+        {
+            // max-age=31536000 (1 year), includeSubDomains, preload
+            context.Response.Headers.Append("Strict-Transport-Security",
+                "max-age=31536000; includeSubDomains; preload");
+        }
+
         await next();
     });
 
@@ -208,17 +348,29 @@ try
             options.Theme = ScalarTheme.Purple;
         });
 
-        // Hangfire Dashboard (only in development)
-        app.MapHangfireDashboard("/hangfire");
+        // Hangfire Dashboard (only in development, requires Admin authentication)
+        app.MapHangfireDashboard("/hangfire", new DashboardOptions
+        {
+            Authorization = new[] { new HangfireAuthorizationFilter() },
+            IsReadOnlyFunc = _ => false
+        });
     }
 
-    app.UseHttpsRedirection();
+    // Only use HTTPS redirect in production
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
+
     app.UseCors("AllowFrontend");
-    app.UseRateLimiter();
+    app.UseCsrfProtection();  // Validate Origin header for state-changing requests
     app.UseAuthentication();
+    app.UseRateLimiter();  // Rate limiter AFTER auth so it can access user claims
     app.UseAuthorization();
 
-    app.MapControllers();
+    // Apply "api" rate limit policy globally to all controllers
+    // Individual endpoints can override with [EnableRateLimiting("auth")] or [EnableRateLimiting("intensive")]
+    app.MapControllers().RequireRateLimiting("api");
 
     // Health check endpoint
     app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))

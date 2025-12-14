@@ -1,5 +1,5 @@
 # Build stage
-FROM node:22-alpine AS builder
+FROM node:25-alpine AS builder
 WORKDIR /app
 
 # Copy package files
@@ -11,15 +11,11 @@ RUN npm ci
 # Copy source code
 COPY src/web/ .
 
-# Set API URL for build
-ARG NEXT_PUBLIC_API_URL=http://myuglyrocks-api
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
-# Build the app
+# Build the app (no API URL needed at build time anymore)
 RUN npm run build
 
 # Production stage
-FROM node:22-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
@@ -39,5 +35,8 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+# API URL is now set at runtime via K8s deployment, not build time
+# Empty = use relative URLs through ingress (recommended for K8s)
+ENV NEXT_PUBLIC_API_URL=""
 
 CMD ["node", "server.js"]

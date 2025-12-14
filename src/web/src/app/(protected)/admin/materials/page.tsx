@@ -130,7 +130,7 @@ export default function MaterialsAdminPage() {
 
   const handleOpenEdit = async (material: MaterialListDto) => {
     try {
-      const detail = await adminApi.getMaterial(material.id);
+      const detail = await adminApi.getMaterial(material.materialId);
       setSelectedMaterial(detail);
       setFormData({
         commonName: detail.commonName,
@@ -164,7 +164,7 @@ export default function MaterialsAdminPage() {
 
     if (selectedMaterial) {
       updateMutation.mutate({
-        id: selectedMaterial.id,
+        id: selectedMaterial.materialId,
         data: { ...formData, isActive: true },
       });
     } else {
@@ -190,7 +190,7 @@ export default function MaterialsAdminPage() {
             </div>
             <Button onClick={handleOpenCreate}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Material
+              New Material
             </Button>
           </div>
         </CardHeader>
@@ -253,7 +253,7 @@ export default function MaterialsAdminPage() {
                 </TableHeader>
                 <TableBody>
                   {materials?.items.map((material) => (
-                    <TableRow key={material.id}>
+                    <TableRow key={material.materialId}>
                       <TableCell className="font-medium">{material.commonName}</TableCell>
                       <TableCell>
                         <Badge variant="outline">{material.category}</Badge>
@@ -321,9 +321,9 @@ export default function MaterialsAdminPage() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedMaterial ? 'Edit Material' : 'Add Material'}</DialogTitle>
+            <DialogTitle>{selectedMaterial ? 'Edit Material' : 'New Material'}</DialogTitle>
             <DialogDescription>
               {selectedMaterial ? 'Update material details' : 'Add a new tumbling material'}
             </DialogDescription>
@@ -476,7 +476,7 @@ export default function MaterialsAdminPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => selectedMaterial && deleteMutation.mutate(selectedMaterial.id)}
+              onClick={() => selectedMaterial && deleteMutation.mutate(selectedMaterial.materialId)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

@@ -30,6 +30,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Sparkles, AlertCircle } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 import type { MaterialListDto, MaterialDetailDto } from '@/types/reference';
 
 const CATEGORIES = ['Abrasive', 'Polish', 'Media', 'Additive'];
@@ -87,9 +88,10 @@ export default function MaterialsPage() {
   }, {} as Record<string, MaterialListDto[]>);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Grits & Polishes</h1>
+    <PageTransition>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Grits & Polishes</h1>
         <p className="text-muted-foreground">
           Reference guide for tumbling materials and their uses
         </p>
@@ -97,7 +99,7 @@ export default function MaterialsPage() {
 
       {/* Search and Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-col gap-4 md:flex-row md:items-center">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -188,9 +190,9 @@ export default function MaterialsPage() {
                   <TableBody>
                     {items.map((material) => (
                       <TableRow
-                        key={material.id}
+                        key={material.materialId}
                         className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setSelectedId(material.id)}
+                        onClick={() => setSelectedId(material.materialId)}
                       >
                         <TableCell className="font-medium">
                           {material.commonName}
@@ -220,7 +222,7 @@ export default function MaterialsPage() {
 
       {/* Detail Dialog */}
       <Dialog open={!!selectedId} onOpenChange={(open) => !open && setSelectedId(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           {selectedMaterial && (
             <>
               <DialogHeader>
@@ -278,6 +280,7 @@ export default function MaterialsPage() {
           )}
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </PageTransition>
   );
 }

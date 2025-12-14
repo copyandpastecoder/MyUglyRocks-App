@@ -63,6 +63,7 @@ import {
   Ban,
   CheckCircle,
   Users,
+  UserPlus,
 } from 'lucide-react';
 import type { AdminUserListDto, AdminUserDto } from '@/types/admin';
 
@@ -101,9 +102,11 @@ export default function UserManagementPage() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [isBanDialogOpen, setIsBanDialogOpen] = useState(false);
+  const [isCreateUserDialogOpen, setIsCreateUserDialogOpen] = useState(false);
   const [newRole, setNewRole] = useState('User');
   const [banReason, setBanReason] = useState('');
   const [deleteContent, setDeleteContent] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['admin', 'users', search, roleFilter, statusFilter, page],
@@ -117,9 +120,9 @@ export default function UserManagementPage() {
   });
 
   const userDetailQuery = useQuery({
-    queryKey: ['admin', 'user', selectedUser?.id],
-    queryFn: () => adminApi.getUser(selectedUser!.id),
-    enabled: !!selectedUser?.id && isDetailDialogOpen,
+    queryKey: ['admin', 'user', selectedUser?.userId],
+    queryFn: () => adminApi.getUser(selectedUser!.userId),
+    enabled: !!selectedUser?.userId && isDetailDialogOpen,
   });
 
   const changeRoleMutation = useMutation({
@@ -128,7 +131,7 @@ export default function UserManagementPage() {
     onSuccess: () => {
       toast.success('User role updated successfully');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.userId] });
       setIsRoleDialogOpen(false);
     },
     onError: (error: Error) => {
@@ -145,7 +148,7 @@ export default function UserManagementPage() {
     onSuccess: () => {
       toast.success('User has been banned');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.userId] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
       setIsBanDialogOpen(false);
       setBanReason('');
@@ -161,13 +164,33 @@ export default function UserManagementPage() {
     onSuccess: () => {
       toast.success('User has been unbanned');
       queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.id] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'user', selectedUser?.userId] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
     },
     onError: () => {
       toast.error('Failed to unban user');
     },
   });
+
+  const createUserMutation = useMutation({
+    mutationFn: (email: string) => adminApi.createUser(email),
+    onSuccess: (user) => {
+      toast.success(`User ${user.email} created. They can use "Forgot Password" to set their password.`);
+      queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      setIsCreateUserDialogOpen(false);
+      setNewUserEmail('');
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || 'Failed to create user');
+    },
+  });
+
+  const handleCreateUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserEmail.trim()) return;
+    createUserMutation.mutate(newUserEmail.trim());
+  };
 
   const handleViewUser = (user: AdminUserListDto) => {
     setSelectedUser(user as unknown as AdminUserDto);
@@ -187,13 +210,13 @@ export default function UserManagementPage() {
 
   const handleChangeRole = () => {
     if (!selectedUser) return;
-    changeRoleMutation.mutate({ userId: selectedUser.id, role: newRole });
+    changeRoleMutation.mutate({ userId: selectedUser?.userId, role: newRole });
   };
 
   const handleBanUser = () => {
     if (!selectedUser) return;
     banUserMutation.mutate({
-      userId: selectedUser.id,
+      userId: selectedUser?.userId,
       reason: banReason || undefined,
       deleteContent,
     });
@@ -206,9 +229,15 @@ export default function UserManagementPage() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>View and manage all users on the platform</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle>User Management</CardTitle>
+            <CardDescription>View and manage all users on the platform</CardDescription>
+          </div>
+          <Button onClick={() => setIsCreateUserDialogOpen(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add User
+          </Button>
         </CardHeader>
         <CardContent>
           {/* Filters */}
@@ -283,7 +312,7 @@ export default function UserManagementPage() {
                   {users?.items.map((user) => {
                     const RoleIcon = roleIcon[user.role] || Shield;
                     return (
-                      <TableRow key={user.id}>
+                      <TableRow key={user.userId}>
                         <TableCell>
                           <div>
                             <p className="font-medium">{user.username}</p>
@@ -343,7 +372,7 @@ export default function UserManagementPage() {
                                   Ban User
                                 </DropdownMenuItem>
                               ) : (
-                                <DropdownMenuItem onClick={() => handleUnbanUser(user.id)}>
+                                <DropdownMenuItem onClick={() => handleUnbanUser(user.userId)}>
                                   Unban User
                                 </DropdownMenuItem>
                               )}
@@ -555,6 +584,49 @@ export default function UserManagementPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={isCreateUserDialogOpen} onOpenChange={setIsCreateUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New User</DialogTitle>
+            <DialogDescription>
+              Create a new user account. The user will need to use &quot;Forgot Password&quot; to set their password.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateUser}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="newUserEmail">Email Address</Label>
+                <Input
+                  id="newUserEmail"
+                  type="email"
+                  placeholder="user@example.com"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsCreateUserDialogOpen(false);
+                  setNewUserEmail('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createUserMutation.isPending}>
+                {createUserMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Create User
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

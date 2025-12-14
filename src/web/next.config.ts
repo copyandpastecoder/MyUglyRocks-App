@@ -9,12 +9,13 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   output: "standalone",
 
-  // Allow LAN access for mobile testing
-  allowedDevOrigins: ["http://10.80.80.181:3000"],
+  // Allow dev access
+  allowedDevOrigins: ["https://dev.myuglyrocks.com"],
 
   // Optimize images
+  // Note: AVIF removed - encoding is too slow on-demand and WEBP provides excellent compression
   images: {
-    formats: ["image/avif", "image/webp"],
+    formats: ["image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
   },

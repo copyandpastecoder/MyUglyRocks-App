@@ -10,10 +10,10 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
     {
         builder.ToTable("cycles");
 
-        builder.HasKey(c => c.Id);
+        builder.HasKey(c => c.CycleId);
 
-        builder.Property(c => c.Id)
-            .HasColumnName("id")
+        builder.Property(c => c.CycleId)
+            .HasColumnName("cycle_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(c => c.UserId)
@@ -33,12 +33,8 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
             .HasColumnName("end_date");
 
         builder.Property(c => c.Status)
-            .HasColumnName("status")
-            .HasDefaultValue(CycleStatus.Active);
-
-        builder.Property(c => c.Goal)
-            .HasColumnName("goal")
-            .HasMaxLength(255);
+            .HasColumnName("status");
+        // Note: No database default - entity has C# default of Active
 
         builder.Property(c => c.DifficultyRating)
             .HasColumnName("difficulty_rating");
@@ -94,10 +90,10 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
     {
         builder.ToTable("stage_runs");
 
-        builder.HasKey(s => s.Id);
+        builder.HasKey(s => s.StageRunId);
 
-        builder.Property(s => s.Id)
-            .HasColumnName("id")
+        builder.Property(s => s.StageRunId)
+            .HasColumnName("stage_run_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.CycleId)
@@ -122,12 +118,17 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
             .HasDefaultValue(0);
 
         builder.Property(s => s.EndDateTime)
-            .HasColumnName("end_date_time")
-            .IsRequired();
+            .HasColumnName("end_date_time");
+        // Note: Now nullable - only set on completion/abort
+
+        builder.Property(s => s.DurationEstimateEndDate)
+            .HasColumnName("duration_estimate_end_date");
+        // Note: Calculated estimate based on StartDateTime + Duration
 
         builder.Property(s => s.Status)
-            .HasColumnName("status")
-            .HasDefaultValue(StageRunStatus.Active);
+            .HasColumnName("status");
+        // Note: No database default - entity has C# default of Active, and we need
+        // to be able to explicitly set Planned status (CLR default 0) during seeding
 
         builder.Property(s => s.ReminderEnabled)
             .HasColumnName("reminder_enabled")
@@ -241,10 +242,10 @@ public class CleaningRunConfiguration : IEntityTypeConfiguration<CleaningRun>
     {
         builder.ToTable("cleaning_runs");
 
-        builder.HasKey(cr => cr.Id);
+        builder.HasKey(cr => cr.CleaningRunId);
 
-        builder.Property(cr => cr.Id)
-            .HasColumnName("id")
+        builder.Property(cr => cr.CleaningRunId)
+            .HasColumnName("cleaning_run_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(cr => cr.StageRunId)
@@ -259,8 +260,8 @@ public class CleaningRunConfiguration : IEntityTypeConfiguration<CleaningRun>
             .HasColumnName("purpose");
 
         builder.Property(cr => cr.Status)
-            .HasColumnName("status")
-            .HasDefaultValue(CleaningRunStatus.Active);
+            .HasColumnName("status");
+        // Note: No database default - entity has C# default of Active
 
         builder.Property(cr => cr.ReminderEnabled)
             .HasColumnName("reminder_enabled")
@@ -302,10 +303,10 @@ public class PhotoConfiguration : IEntityTypeConfiguration<Photo>
     {
         builder.ToTable("photos");
 
-        builder.HasKey(p => p.Id);
+        builder.HasKey(p => p.PhotoId);
 
-        builder.Property(p => p.Id)
-            .HasColumnName("id")
+        builder.Property(p => p.PhotoId)
+            .HasColumnName("photo_id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(p => p.StageRunId)

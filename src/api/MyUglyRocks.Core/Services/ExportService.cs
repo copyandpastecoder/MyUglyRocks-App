@@ -42,16 +42,16 @@ public class ExportService : IExportService
         if (request?.EndDate.HasValue == true)
             query = query.Where(c => c.StartDate <= request.EndDate.Value);
 
-        if (!string.IsNullOrEmpty(request?.Status))
+        if (!string.IsNullOrEmpty(request?.Status) &&
+            Enum.TryParse<CycleStatus>(request.Status, true, out var status))
         {
-            if (Enum.TryParse<CycleStatus>(request.Status, true, out var status))
-                query = query.Where(c => c.Status == status);
+            query = query.Where(c => c.Status == status);
         }
 
         var cycles = await query.OrderByDescending(c => c.StartDate).ToListAsync();
 
         var rows = cycles.Select(c => new CycleCsvRow(
-            CycleId: c.Id,
+            CycleId: c.CycleId,
             CycleName: c.Name,
             Status: c.Status.ToString(),
             StartDate: c.StartDate,
@@ -59,7 +59,6 @@ public class ExportService : IExportService
             DifficultyRating: c.DifficultyRating,
             FinalQuality: c.FinalQuality,
             Specimens: GetSpecimensString(c),
-            Goal: c.Goal,
             Notes: c.Notes,
             TotalStages: c.StageRuns.Count,
             CompletedStages: c.StageRuns.Count(s => s.Status == StageRunStatus.Completed)
@@ -74,7 +73,7 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportCycleAsync(Guid userId, Guid cycleId)
     {
         var cycle = await Cycles
-            .Where(c => c.Id == cycleId && c.UserId == userId && !c.IsDeleted)
+            .Where(c => c.CycleId == cycleId && c.UserId == userId && !c.IsDeleted)
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageRunBarrels)
                     .ThenInclude(srb => srb.Barrel)
@@ -86,13 +85,14 @@ public class ExportService : IExportService
             throw new InvalidOperationException("Cycle not found or access denied");
 
         var rows = cycle.StageRuns.OrderBy(s => s.StartDateTime).Select(s => new StageCsvRow(
-            StageId: s.Id,
-            CycleId: cycle.Id,
+            StageId: s.StageRunId,
+            CycleId: cycle.CycleId,
             CycleName: cycle.Name,
             StageName: s.StageName,
             Status: s.Status.ToString(),
             StartDateTime: s.StartDateTime,
             EndDateTime: s.EndDateTime,
+            DurationEstimateEndDate: s.DurationEstimateEndDate,
             DurationDays: s.DurationDays,
             DurationHours: s.DurationHours,
             BarrelName: GetBarrelNamesString(s),
@@ -128,22 +128,23 @@ public class ExportService : IExportService
         if (request?.EndDate.HasValue == true)
             query = query.Where(s => DateOnly.FromDateTime(s.StartDateTime) <= request.EndDate.Value);
 
-        if (!string.IsNullOrEmpty(request?.Status))
+        if (!string.IsNullOrEmpty(request?.Status) &&
+            Enum.TryParse<CycleStatus>(request.Status, true, out var cycleStatus))
         {
-            if (Enum.TryParse<CycleStatus>(request.Status, true, out var cycleStatus))
-                query = query.Where(s => s.Cycle.Status == cycleStatus);
+            query = query.Where(s => s.Cycle.Status == cycleStatus);
         }
 
         var stages = await query.OrderByDescending(s => s.StartDateTime).ToListAsync();
 
         var rows = stages.Select(s => new StageCsvRow(
-            StageId: s.Id,
+            StageId: s.StageRunId,
             CycleId: s.CycleId,
             CycleName: s.Cycle.Name,
             StageName: s.StageName,
             Status: s.Status.ToString(),
             StartDateTime: s.StartDateTime,
             EndDateTime: s.EndDateTime,
+            DurationEstimateEndDate: s.DurationEstimateEndDate,
             DurationDays: s.DurationDays,
             DurationHours: s.DurationHours,
             BarrelName: GetBarrelNamesString(s),
@@ -172,7 +173,7 @@ public class ExportService : IExportService
             .ToListAsync();
 
         var rows = tumblers.Select(t => new TumblerCsvRow(
-            TumblerId: t.Id,
+            TumblerId: t.TumblerId,
             Brand: t.Brand,
             Model: t.Model,
             TumblerType: t.TumblerType.ToString(),
@@ -197,7 +198,7 @@ public class ExportService : IExportService
             .ToListAsync();
 
         var rows = posts.Select(p => new PostCsvRow(
-            PostId: p.Id,
+            PostId: p.PostId,
             Title: p.Title,
             Description: p.Description,
             Status: p.Status.ToString(),
@@ -205,7 +206,9 @@ public class ExportService : IExportService
             CommentCount: p.CommentCount,
             DateCreated: p.DateCreated,
             LinkedCycleId: p.CycleId,
-            LinkedCycleName: p.Cycle?.Name
+            LinkedCycleName: p.Cycle?.Name,
+            LinkedInventoryId: p.InventoryId,
+            LinkedInventoryName: p.Inventory?.Name
         )).ToList();
 
         var csv = GenerateCsv(rows);
@@ -219,7 +222,7 @@ public class ExportService : IExportService
         // Verify password first
         var user = await Users
             .Include(u => u.Settings)
-            .FirstOrDefaultAsync(u => u.Id == userId && u.IsActive);
+            .FirstOrDefaultAsync(u => u.UserId == userId && u.IsActive);
 
         if (user == null)
             throw new InvalidOperationException("User not found");
@@ -365,7 +368,7 @@ public class ExportService : IExportService
     {
         var sb = new StringBuilder();
         sb.AppendLine("Field,Value");
-        sb.AppendLine($"UserId,{EscapeCsvField(user.Id.ToString())}");
+        sb.AppendLine($"UserId,{EscapeCsvField(user.UserId.ToString())}");
         sb.AppendLine($"Username,{EscapeCsvField(user.Username)}");
         sb.AppendLine($"Email,{EscapeCsvField(user.Email)}");
         sb.AppendLine($"DisplayName,{EscapeCsvField(user.DisplayName)}");
@@ -389,7 +392,6 @@ public class ExportService : IExportService
         sb.AppendLine($"FirstDayOfWeek,{settings.FirstDayOfWeek}");
         sb.AppendLine($"ShowRelativeTimes,{(settings.ShowRelativeTimes ? "Yes" : "No")}");
         sb.AppendLine($"Theme,{settings.Theme}");
-        sb.AppendLine($"TrackingMode,{settings.TrackingMode}");
         sb.AppendLine($"NotifyStageReminders,{(settings.NotifyStageReminders ? "Yes" : "No")}");
         sb.AppendLine($"NotifyComments,{(settings.NotifyComments ? "Yes" : "No")}");
         sb.AppendLine($"NotifyReplies,{(settings.NotifyReplies ? "Yes" : "No")}");
@@ -411,7 +413,7 @@ public class ExportService : IExportService
 
         foreach (var comment in comments)
         {
-            sb.AppendLine($"{comment.Id},{comment.PostId},{EscapeCsvField(comment.Post?.Title)},{EscapeCsvField(comment.Content)},{comment.DateCreated:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"{comment.CommentId},{comment.PostId},{EscapeCsvField(comment.Post?.Title)},{EscapeCsvField(comment.Content)},{comment.DateCreated:yyyy-MM-dd HH:mm:ss}");
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());
@@ -430,7 +432,7 @@ public class ExportService : IExportService
 
         foreach (var vote in votes)
         {
-            sb.AppendLine($"{vote.Id},{vote.PostId},{EscapeCsvField(vote.Post?.Title)},{vote.DateCreated:yyyy-MM-dd HH:mm:ss}");
+            sb.AppendLine($"{vote.VoteId},{vote.PostId},{EscapeCsvField(vote.Post?.Title)},{vote.DateCreated:yyyy-MM-dd HH:mm:ss}");
         }
 
         return Encoding.UTF8.GetBytes(sb.ToString());

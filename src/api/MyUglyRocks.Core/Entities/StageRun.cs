@@ -24,18 +24,22 @@ public enum StageNextAction
 
 public class StageRun : SoftDeletableEntity
 {
+    public Guid StageRunId { get; set; }
+
     // Foreign keys
     public Guid CycleId { get; set; }
 
     // Basic info
     public required string StageName { get; set; }
+    public int RunNumber { get; set; } = 1; // Which run of this stage (1st, 2nd, etc.)
     public StageRunStatus Status { get; set; } = StageRunStatus.Active;
 
     // Timing
     public DateTime StartDateTime { get; set; }
     public int DurationDays { get; set; }
     public int DurationHours { get; set; }
-    public DateTime EndDateTime { get; set; }
+    public DateTime? EndDateTime { get; set; }  // Actual end date - only set on completion/abort
+    public DateTime? DurationEstimateEndDate { get; set; }  // Calculated estimate based on StartDateTime + Duration
 
     // Reminder settings
     public bool ReminderEnabled { get; set; }

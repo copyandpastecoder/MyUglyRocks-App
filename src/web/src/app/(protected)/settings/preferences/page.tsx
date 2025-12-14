@@ -17,6 +17,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { PageTransition } from '@/components/ui/page-transition';
 import type { UpdateSettingsRequest } from '@/types/user';
 
 export default function PreferencesPage() {
@@ -56,8 +57,9 @@ export default function PreferencesPage() {
   if (!settings) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Display Settings */}
+    <PageTransition>
+      <div className="space-y-6">
+        {/* Display Settings */}
       <Card>
         <CardHeader>
           <CardTitle>Display</CardTitle>
@@ -84,7 +86,7 @@ export default function PreferencesPage() {
                 <SelectItem value="bumblebee-jasper">Bumblebee Jasper (Dark)</SelectItem>
                 <SelectItem value="malachite">Malachite (Dark)</SelectItem>
                 <SelectItem value="rose-quartz">Rose Quartz (Dark)</SelectItem>
-                <SelectItem value="tigers-eye">Tiger's Eye (Dark)</SelectItem>
+                <SelectItem value="tigers-eye">Tiger&apos;s Eye (Dark)</SelectItem>
                 <SelectItem value="snowflake-obsidian">Snowflake Obsidian (Light)</SelectItem>
               </SelectContent>
             </Select>
@@ -374,29 +376,6 @@ export default function PreferencesPage() {
         <CardContent className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label>Tracking Mode</Label>
-              <p className="text-sm text-muted-foreground">
-                How you prefer to track your cycles
-              </p>
-            </div>
-            <Select
-              value={settings.trackingMode}
-              onValueChange={(value) => handleUpdate({ trackingMode: value })}
-            >
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Simple">Simple</SelectItem>
-                <SelectItem value="Detailed">Detailed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
               <Label>Auto-fill from Last Run</Label>
               <p className="text-sm text-muted-foreground">
                 Pre-fill new stages with previous settings
@@ -446,6 +425,7 @@ export default function PreferencesPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PageTransition>
   );
 }

@@ -627,11 +627,6 @@ Base unit: **4px** (0.25rem)
 <span class="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
   Completed
 </span>
-
-<!-- Archived -->
-<span class="px-2.5 py-1 bg-slate-100 text-slate-600 text-xs font-medium rounded-full">
-  Archived
-</span>
 ```
 
 #### Count Badge

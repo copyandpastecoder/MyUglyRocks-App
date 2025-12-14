@@ -2,6 +2,8 @@ namespace MyUglyRocks.Core.Entities;
 
 public class TumblerModel : BaseEntity
 {
+    public Guid TumblerModelId { get; set; }
+
     // Basic info
     public required string Brand { get; set; }
     public required string Model { get; set; }

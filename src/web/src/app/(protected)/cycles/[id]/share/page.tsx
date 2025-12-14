@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -30,8 +30,13 @@ import {
   AlertCircle,
   ImageIcon,
   CheckCircle2,
+  Check,
+  Star,
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
+import { LazyImage } from '@/components/lazy-image';
+import type { CyclePhotoDto } from '@/types/cycle';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -45,10 +50,23 @@ export default function ShareCyclePage() {
   const router = useRouter();
   const cycleId = params.id as string;
 
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
+  const [coverPhotoId, setCoverPhotoId] = useState<string | null>(null);
+  const hasInitializedPhotos = useRef(false);
+
   const { data: cycle, isLoading } = useQuery({
     queryKey: ['cycle', cycleId],
     queryFn: () => cycleApi.getById(cycleId),
   });
+
+  const { data: photos, isLoading: photosLoading } = useQuery({
+    queryKey: ['cycle-photos', cycleId],
+    queryFn: () => cycleApi.getPhotos(cycleId),
+    enabled: !!cycle && cycle.status === 'Completed',
+  });
+
+  // Filter to only show completed photos (not processing or failed)
+  const completedPhotos = photos?.filter(p => p.processingStatus === 'Completed') ?? [];
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -59,11 +77,26 @@ export default function ShareCyclePage() {
   });
 
   // Set default title once cycle loads
-  useState(() => {
+  useEffect(() => {
     if (cycle) {
       form.setValue('title', cycle.name);
+      // If a post already exists for this cycle, redirect to it
+      if (cycle.postId) {
+        router.replace(`/gallery/${cycle.postId}`);
+      }
     }
-  });
+  }, [cycle, form, router]);
+
+  // Auto-select all completed photos and set first as cover when photos load (once only)
+  useEffect(() => {
+    if (!hasInitializedPhotos.current && completedPhotos.length > 0) {
+      hasInitializedPhotos.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
+      setSelectedPhotoIds(completedPhotos.map(p => p.photoId));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setCoverPhotoId(completedPhotos[0].photoId);
+    }
+  }, [completedPhotos]);
 
   const createPostMutation = useMutation({
     mutationFn: (data: FormValues) =>
@@ -71,11 +104,12 @@ export default function ShareCyclePage() {
         cycleId,
         title: data.title,
         description: data.description || undefined,
-        photoIds: [], // Photos will be added when R2 is set up
+        photoIds: selectedPhotoIds,
+        coverPhotoId: coverPhotoId || undefined,
       }),
     onSuccess: (post) => {
       toast.success('Post created! Your rocks are now in the gallery.');
-      router.push(`/gallery/${post.id}`);
+      router.push(`/gallery/${post.postId}`);
     },
     onError: (error: Error) => {
       toast.error(error.message || 'Failed to create post');
@@ -86,9 +120,60 @@ export default function ShareCyclePage() {
     createPostMutation.mutate(data);
   };
 
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedPhotoIds(prev => {
+      if (prev.includes(photoId)) {
+        // If removing and it's the cover, unset cover
+        if (coverPhotoId === photoId) {
+          const remaining = prev.filter(id => id !== photoId);
+          setCoverPhotoId(remaining.length > 0 ? remaining[0] : null);
+        }
+        return prev.filter(id => id !== photoId);
+      } else {
+        // If this is the first selection, make it the cover
+        if (prev.length === 0) {
+          setCoverPhotoId(photoId);
+        }
+        return [...prev, photoId];
+      }
+    });
+  };
+
+  const setCoverPhoto = (photoId: string) => {
+    // Ensure photo is selected
+    if (!selectedPhotoIds.includes(photoId)) {
+      setSelectedPhotoIds(prev => [...prev, photoId]);
+    }
+    setCoverPhotoId(photoId);
+  };
+
+  const selectAllPhotos = () => {
+    if (completedPhotos.length > 0) {
+      setSelectedPhotoIds(completedPhotos.map(p => p.photoId));
+      if (!coverPhotoId) {
+        setCoverPhotoId(completedPhotos[0].photoId);
+      }
+    }
+  };
+
+  const deselectAllPhotos = () => {
+    setSelectedPhotoIds([]);
+    setCoverPhotoId(null);
+  };
+
+  // Group photos by stage
+  const groupedPhotos = completedPhotos.reduce((acc, photo) => {
+    const key = `${photo.stageName} (Run ${photo.runNumber})`;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(photo);
+    return acc;
+  }, {} as Record<string, CyclePhotoDto[]>);
+
   if (isLoading) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="space-y-6">
         <Skeleton className="h-10 w-48" />
         <Skeleton className="h-64" />
       </div>
@@ -109,7 +194,7 @@ export default function ShareCyclePage() {
 
   if (cycle.status !== 'Completed') {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" asChild>
             <Link href={`/cycles/${cycleId}`}>
@@ -142,7 +227,7 @@ export default function ShareCyclePage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
           <Link href={`/cycles/${cycleId}`}>
@@ -166,7 +251,7 @@ export default function ShareCyclePage() {
             </Badge>
           </div>
           <CardDescription>
-            {cycle.stageRuns.length} stages - {cycle.goal || 'No goal specified'}
+            {cycle.stageRuns.length} stages
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3 text-sm">
@@ -177,25 +262,152 @@ export default function ShareCyclePage() {
           <div>
             <p className="text-muted-foreground">Difficulty</p>
             <p className="font-medium">
-              {cycle.difficultyRating ? `${cycle.difficultyRating}/5` : 'Not rated'}
+              {cycle.specimens && cycle.specimens.length > 0
+                ? (() => {
+                    const difficulties = cycle.specimens
+                      .map(s => s.tumblingDifficulty)
+                      .filter(Boolean);
+                    if (difficulties.length === 0) return 'Not rated';
+                    if (difficulties.includes('Hard')) return 'Hard';
+                    if (difficulties.includes('Medium')) return 'Medium';
+                    return 'Easy';
+                  })()
+                : cycle.difficultyRating
+                  ? `${cycle.difficultyRating}/5`
+                  : 'Not rated'}
             </p>
           </div>
           <div>
             <p className="text-muted-foreground">Specimens</p>
-            <p className="font-medium">{cycle.additionalSpecimens || 'Not specified'}</p>
+            <p className="font-medium">
+              {cycle.specimens && cycle.specimens.length > 0
+                ? cycle.specimens.map(s => s.commonName).join(', ')
+                : cycle.additionalSpecimens || 'Not specified'}
+            </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Photo Selection Placeholder */}
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center py-12">
-          <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">Photo Selection Coming Soon</h3>
-          <p className="text-muted-foreground text-center max-w-md">
-            Once photo uploads are enabled, you'll be able to select which photos
-            to include in your post. For now, posts will be created without photos.
-          </p>
+      {/* Photo Selection */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Select Photos</CardTitle>
+              <CardDescription>
+                Choose which photos to include in your post. Click the star to set the cover photo.
+              </CardDescription>
+            </div>
+            {completedPhotos.length > 0 && (
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={selectAllPhotos}>
+                  Select All
+                </Button>
+                <Button variant="outline" size="sm" onClick={deselectAllPhotos}>
+                  Deselect All
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {photosLoading ? (
+            <div className="grid grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <Skeleton key={i} className="aspect-square" />
+              ))}
+            </div>
+          ) : completedPhotos.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <ImageIcon className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold">No Photos Available</h3>
+              <p className="text-muted-foreground max-w-md">
+                This cycle doesn&apos;t have any photos yet. You can still share your cycle,
+                but consider adding photos to your stage runs first for a more engaging post.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(groupedPhotos).map(([stageName, stagePhotos]) => (
+                <div key={stageName}>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">{stageName}</h4>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                    {stagePhotos.map((photo) => {
+                      const isSelected = selectedPhotoIds.includes(photo.photoId);
+                      const isCover = coverPhotoId === photo.photoId;
+
+                      return (
+                        <div key={photo.photoId} className="relative group">
+                          <button
+                            type="button"
+                            onClick={() => togglePhotoSelection(photo.photoId)}
+                            className={cn(
+                              'relative aspect-square w-full overflow-hidden rounded-lg border-2 transition-all',
+                              isSelected
+                                ? 'border-primary ring-2 ring-primary/20'
+                                : 'border-transparent hover:border-muted-foreground/30'
+                            )}
+                          >
+                            <LazyImage
+                              src={photo.thumbnailUrl || photo.url}
+                              alt={photo.caption || `Photo from ${stageName}`}
+                              blurHash={photo.blurHash}
+                              className="w-full h-full object-cover"
+                              wrapperClassName="w-full h-full"
+                            />
+                            {/* Selection indicator */}
+                            <div
+                              className={cn(
+                                'absolute top-2 left-2 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors',
+                                isSelected
+                                  ? 'bg-primary border-primary text-primary-foreground'
+                                  : 'bg-background/80 border-muted-foreground/50'
+                              )}
+                            >
+                              {isSelected && <Check className="h-3 w-3" />}
+                            </div>
+                          </button>
+
+                          {/* Cover photo button */}
+                          {isSelected && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCoverPhoto(photo.photoId);
+                              }}
+                              className={cn(
+                                'absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center transition-colors',
+                                isCover
+                                  ? 'bg-yellow-500 text-white'
+                                  : 'bg-background/80 text-muted-foreground hover:bg-yellow-500/20 hover:text-yellow-600'
+                              )}
+                              title={isCover ? 'Cover photo' : 'Set as cover photo'}
+                            >
+                              <Star className={cn('h-3.5 w-3.5', isCover && 'fill-current')} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t">
+                <span>{selectedPhotoIds.length} photo{selectedPhotoIds.length !== 1 ? 's' : ''} selected</span>
+                {coverPhotoId && (
+                  <>
+                    <span>-</span>
+                    <span className="flex items-center gap-1">
+                      <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
+                      Cover photo set
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -220,7 +432,6 @@ export default function ShareCyclePage() {
                       <Input
                         placeholder="e.g., My First Batch of Agates"
                         {...field}
-                        defaultValue={cycle.name}
                       />
                     </FormControl>
                     <FormMessage />

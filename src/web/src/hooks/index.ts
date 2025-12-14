@@ -1,6 +1,27 @@
 // Query keys and cache configuration
 export { queryKeys, cacheConfig } from '@/lib/query-keys';
 
+// Shared utility hooks
+export {
+  useCrudMutation,
+  useCrudMutationWithId,
+  useDeleteMutation,
+} from './use-crud-mutation';
+
+export {
+  useModalState,
+  useModalStates,
+  useConfirmDialog,
+} from './use-modal-state';
+
+export {
+  usePagination,
+  useSearchFilterPagination,
+} from './use-pagination';
+
+// Material list management
+export { useMaterialList } from './use-material-list';
+
 // Specimens hooks
 export { useSpecimens, useSpecimen, useBarrelNicknames } from './use-specimens';
 
@@ -47,7 +68,6 @@ export {
   useUpdateCycle,
   useDeleteCycle,
   useCompleteCycle,
-  useArchiveCycle,
   useAddStageRun,
   useCompleteStageRun,
   useDeleteStageRun,
@@ -86,3 +106,25 @@ export {
   useUpdateMaterial,
   useDeleteMaterial,
 } from './use-admin';
+
+// Inventory hooks
+export {
+  useInventory,
+  useInventoryItem,
+  useInventoryStats,
+  useCreateInventory,
+  useUpdateInventory,
+  useDeleteInventory,
+  useUpdateInventoryStatus,
+  useUpdateInventorySpecimens,
+} from './use-inventory';
+
+// User Specimen hooks
+export {
+  useUserSpecimens,
+  useUserSpecimen,
+  useSpecimenSearch,
+  useCreateUserSpecimen,
+  useUpdateUserSpecimen,
+  useDeleteUserSpecimen,
+} from './use-user-specimens';

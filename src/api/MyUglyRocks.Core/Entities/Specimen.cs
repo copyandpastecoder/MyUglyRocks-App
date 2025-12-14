@@ -6,18 +6,21 @@ public enum SpecimenMaterialType
     Mineral = 1,
     Glass = 2,
     Fossil = 3,
-    Other = 4
+    Gemstone = 4,
+    Other = 5
 }
 
 public enum TumblingDifficulty
 {
     Easy = 0,
     Medium = 1,
-    Hard = 2
+    Hard = 2,
+    Expert = 3
 }
 
 public class Specimen : UserAuditedEntity
 {
+    public Guid SpecimenId { get; set; }
     public required string CommonName { get; set; }
     public string? ScientificName { get; set; }
     public string? Alias { get; set; }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Api.Helpers;
 
 namespace MyUglyRocks.Api.Controllers;
 
@@ -13,11 +14,16 @@ public class AdminController : ControllerBase
 {
     private readonly IAdminService _adminService;
     private readonly IReferenceDataService _referenceDataService;
+    private readonly ISessionAnalyticsService _sessionAnalyticsService;
 
-    public AdminController(IAdminService adminService, IReferenceDataService referenceDataService)
+    public AdminController(
+        IAdminService adminService,
+        IReferenceDataService referenceDataService,
+        ISessionAnalyticsService sessionAnalyticsService)
     {
         _adminService = adminService;
         _referenceDataService = referenceDataService;
+        _sessionAnalyticsService = sessionAnalyticsService;
     }
 
     private Guid? GetCurrentUserId()
@@ -44,6 +50,20 @@ public class AdminController : ControllerBase
         return Ok(stats);
     }
 
+    /// <summary>
+    /// Get browser/device analytics for admin dashboard
+    /// </summary>
+    [HttpGet("browser-stats")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BrowserStatsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<BrowserStatsDto>> GetBrowserStats(
+        [FromQuery] int days = 30,
+        CancellationToken cancellationToken = default)
+    {
+        var stats = await _sessionAnalyticsService.GetBrowserStatsAsync(days, cancellationToken);
+        return Ok(stats);
+    }
+
     #endregion
 
     #region Comment Reports
@@ -58,6 +78,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var reports = await _adminService.GetReportsAsync(status, page, pageSize);
         return Ok(reports);
     }
@@ -138,6 +162,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var users = await _adminService.GetUsersAsync(search, role, isActive, page, pageSize);
         return Ok(users);
     }
@@ -154,6 +182,30 @@ public class AdminController : ControllerBase
         var user = await _adminService.GetUserByIdAsync(userId);
         if (user == null) return NotFound();
         return Ok(user);
+    }
+
+    /// <summary>
+    /// Create a new user (admin only). The user must use "Forgot Password" to set their password.
+    /// </summary>
+    [HttpPost("users")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(AdminUserDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<AdminUserDto>> CreateUser([FromBody] CreateUserRequest request)
+    {
+        try
+        {
+            var user = await _adminService.CreateUserAsync(request);
+            return CreatedAtAction(nameof(GetUser), new { userId = user.UserId }, user);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
@@ -252,6 +304,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var specimens = await _referenceDataService.GetSpecimensPaginatedAsync(
             search, materialType, isActive, page, pageSize);
         return Ok(specimens);
@@ -268,19 +324,19 @@ public class AdminController : ControllerBase
         [FromBody] CreateSpecimenRequest request)
     {
         var specimen = await _referenceDataService.CreateSpecimenAsync(request);
-        return CreatedAtAction(nameof(GetSpecimen), new { id = specimen.Id }, specimen);
+        return CreatedAtAction(nameof(GetSpecimen), new { specimenId = specimen.SpecimenId }, specimen);
     }
 
     /// <summary>
     /// Get a specific specimen (admin - includes inactive)
     /// </summary>
-    [HttpGet("specimens/{id:guid}")]
+    [HttpGet("specimens/{specimenId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(SpecimenDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<SpecimenDetailDto>> GetSpecimen(Guid id)
+    public async Task<ActionResult<SpecimenDetailDto>> GetSpecimen(Guid specimenId)
     {
-        var specimen = await _referenceDataService.GetSpecimenByIdAsync(id);
+        var specimen = await _referenceDataService.GetSpecimenByIdAsync(specimenId);
         if (specimen == null) return NotFound();
         return Ok(specimen);
     }
@@ -288,17 +344,17 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Update a specimen (admin only)
     /// </summary>
-    [HttpPut("specimens/{id:guid}")]
+    [HttpPut("specimens/{specimenId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(SpecimenDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<SpecimenDetailDto>> UpdateSpecimen(
-        Guid id,
+        Guid specimenId,
         [FromBody] UpdateSpecimenRequest request)
     {
         try
         {
-            var specimen = await _referenceDataService.UpdateSpecimenAsync(id, request);
+            var specimen = await _referenceDataService.UpdateSpecimenAsync(specimenId, request);
             return Ok(specimen);
         }
         catch (InvalidOperationException)
@@ -310,15 +366,15 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Delete a specimen (soft delete - admin only)
     /// </summary>
-    [HttpDelete("specimens/{id:guid}")]
+    [HttpDelete("specimens/{specimenId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteSpecimen(Guid id)
+    public async Task<IActionResult> DeleteSpecimen(Guid specimenId)
     {
         try
         {
-            await _referenceDataService.DeleteSpecimenAsync(id);
+            await _referenceDataService.DeleteSpecimenAsync(specimenId);
             return NoContent();
         }
         catch (InvalidOperationException)
@@ -344,6 +400,10 @@ public class AdminController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
+        // Validate pagination parameters to prevent resource exhaustion
+        page = PaginationHelper.ClampPage(page);
+        pageSize = PaginationHelper.ClampPageSize(pageSize);
+
         var materials = await _referenceDataService.GetMaterialsPaginatedAsync(
             search, category, isActive, page, pageSize);
         return Ok(materials);
@@ -360,19 +420,19 @@ public class AdminController : ControllerBase
         [FromBody] CreateMaterialRequest request)
     {
         var material = await _referenceDataService.CreateMaterialAsync(request);
-        return CreatedAtAction(nameof(GetMaterial), new { id = material.Id }, material);
+        return CreatedAtAction(nameof(GetMaterial), new { materialId = material.MaterialId }, material);
     }
 
     /// <summary>
     /// Get a specific material (admin - includes inactive)
     /// </summary>
-    [HttpGet("materials/{id:guid}")]
+    [HttpGet("materials/{materialId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(MaterialDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MaterialDetailDto>> GetMaterial(Guid id)
+    public async Task<ActionResult<MaterialDetailDto>> GetMaterial(Guid materialId)
     {
-        var material = await _referenceDataService.GetMaterialByIdAsync(id);
+        var material = await _referenceDataService.GetMaterialByIdAsync(materialId);
         if (material == null) return NotFound();
         return Ok(material);
     }
@@ -380,17 +440,17 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Update a material (admin only)
     /// </summary>
-    [HttpPut("materials/{id:guid}")]
+    [HttpPut("materials/{materialId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(MaterialDetailDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<MaterialDetailDto>> UpdateMaterial(
-        Guid id,
+        Guid materialId,
         [FromBody] UpdateMaterialRequest request)
     {
         try
         {
-            var material = await _referenceDataService.UpdateMaterialAsync(id, request);
+            var material = await _referenceDataService.UpdateMaterialAsync(materialId, request);
             return Ok(material);
         }
         catch (InvalidOperationException)
@@ -402,15 +462,15 @@ public class AdminController : ControllerBase
     /// <summary>
     /// Delete a material (soft delete - admin only)
     /// </summary>
-    [HttpDelete("materials/{id:guid}")]
+    [HttpDelete("materials/{materialId:guid}")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> DeleteMaterial(Guid id)
+    public async Task<IActionResult> DeleteMaterial(Guid materialId)
     {
         try
         {
-            await _referenceDataService.DeleteMaterialAsync(id);
+            await _referenceDataService.DeleteMaterialAsync(materialId);
             return NoContent();
         }
         catch (InvalidOperationException)
