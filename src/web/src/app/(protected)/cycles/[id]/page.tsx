@@ -1397,7 +1397,11 @@ export default function CycleDetailPage() {
                           No active barrels available
                         </p>
                       ) : (
-                        [...allBarrels].sort((a, b) => a.barrelNumber - b.barrelNumber).map(barrel => (
+                        [...allBarrels].sort((a, b) => {
+                          const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
+                          if (tumblerCompare !== 0) return tumblerCompare;
+                          return a.barrelNumber - b.barrelNumber;
+                        }).map(barrel => (
                           <div key={barrel.barrelId} className="flex items-center space-x-2">
                             <Checkbox
                               id={`barrel-top-${barrel.barrelId}`}
