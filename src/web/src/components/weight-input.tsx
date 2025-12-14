@@ -12,13 +12,15 @@ interface WeightInputProps {
   label: string;
   /** Value in grams (stored internally) */
   valueGrams: number | null;
-  /** Called with new value in grams */
-  onValueChange: (grams: number | null) => void;
+  /** Called with new value in grams and display unit */
+  onValueChange: (grams: number | null, displayUnit?: string) => void;
   placeholder?: string;
   /** Barrel capacity in lbs for validation (optional) */
   barrelCapacityLbs?: number;
   /** Called when validation state changes */
   onValidationChange?: (isValid: boolean, message?: string) => void;
+  /** Initial display unit (optional, defaults to user's setting) */
+  initialDisplayUnit?: string;
 }
 
 // Conversion constants
@@ -38,6 +40,7 @@ export function WeightInput({
   placeholder,
   barrelCapacityLbs,
   onValidationChange,
+  initialDisplayUnit,
 }: WeightInputProps) {
   const { data: settings } = useSettings();
 
@@ -45,14 +48,20 @@ export function WeightInput({
   const [isMetric, setIsMetric] = useState(false);
   const hasInitializedMetric = useRef(false);
 
-  // Initialize unit system from settings when available (once only)
+  // Initialize unit system from settings or initial display unit when available (once only)
   useEffect(() => {
-    if (!hasInitializedMetric.current && settings?.measurementSystem) {
-      hasInitializedMetric.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from settings
-      setIsMetric(settings.measurementSystem === 'Metric');
+    if (!hasInitializedMetric.current) {
+      if (initialDisplayUnit) {
+        hasInitializedMetric.current = true;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization
+        setIsMetric(initialDisplayUnit === 'g' || initialDisplayUnit === 'kg');
+      } else if (settings?.measurementSystem) {
+        hasInitializedMetric.current = true;
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from settings
+        setIsMetric(settings.measurementSystem === 'Metric');
+      }
     }
-  }, [settings?.measurementSystem]);
+  }, [settings?.measurementSystem, initialDisplayUnit]);
 
   // Local state for the two input fields
   const [primary, setPrimary] = useState('');
@@ -142,14 +151,27 @@ export function WeightInput({
     }
   };
 
+  // Get display unit based on current system
+  const getDisplayUnit = (metric: boolean): string => {
+    return metric ? 'g' : 'lb';
+  };
+
   const handlePrimaryChange = (value: string) => {
     setPrimary(value);
-    onValueChange(calculateGrams(value, secondary, isMetric));
+    onValueChange(calculateGrams(value, secondary, isMetric), getDisplayUnit(isMetric));
   };
 
   const handleSecondaryChange = (value: string) => {
     setSecondary(value);
-    onValueChange(calculateGrams(primary, value, isMetric));
+    onValueChange(calculateGrams(primary, value, isMetric), getDisplayUnit(isMetric));
+  };
+
+  // When unit system changes, notify parent of the new display unit
+  const handleUnitChange = (newIsMetric: boolean) => {
+    setIsMetric(newIsMetric);
+    // Recalculate and notify with new display unit
+    const newGrams = calculateGrams(primary, secondary, newIsMetric);
+    onValueChange(newGrams, getDisplayUnit(newIsMetric));
   };
 
   // Calculate total display for the secondary unit field placeholder
@@ -210,7 +232,7 @@ export function WeightInput({
         <div className="flex rounded-md border overflow-hidden">
           <button
             type="button"
-            onClick={() => setIsMetric(false)}
+            onClick={() => handleUnitChange(false)}
             className={cn(
               'px-2 py-1 text-xs font-medium transition-colors',
               !isMetric
@@ -222,7 +244,7 @@ export function WeightInput({
           </button>
           <button
             type="button"
-            onClick={() => setIsMetric(true)}
+            onClick={() => handleUnitChange(true)}
             className={cn(
               'px-2 py-1 text-xs font-medium transition-colors border-l',
               isMetric

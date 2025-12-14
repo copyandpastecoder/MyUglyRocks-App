@@ -142,3 +142,67 @@ export function useUpdateInventorySpecimens() {
     },
   });
 }
+
+/**
+ * Hook for uploading inventory photos
+ */
+export function useUploadInventoryPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ inventoryId, file, caption, isCover }: {
+      inventoryId: string;
+      file: File;
+      caption?: string;
+      isCover?: boolean;
+    }) => inventoryApi.uploadPhoto(inventoryId, file, caption, isCover),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(variables.inventoryId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.lists() });
+      toast.success('Photo uploaded');
+    },
+    onError: () => {
+      toast.error('Failed to upload photo');
+    },
+  });
+}
+
+/**
+ * Hook for deleting inventory photos
+ */
+export function useDeleteInventoryPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ inventoryId, photoId }: { inventoryId: string; photoId: string }) =>
+      inventoryApi.deletePhoto(photoId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(variables.inventoryId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.lists() });
+      toast.success('Photo deleted');
+    },
+    onError: () => {
+      toast.error('Failed to delete photo');
+    },
+  });
+}
+
+/**
+ * Hook for setting cover photo
+ */
+export function useSetInventoryCoverPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ inventoryId, photoId }: { inventoryId: string; photoId: string }) =>
+      inventoryApi.setCoverPhoto(inventoryId, photoId),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(variables.inventoryId) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.lists() });
+      toast.success('Cover photo updated');
+    },
+    onError: () => {
+      toast.error('Failed to set cover photo');
+    },
+  });
+}

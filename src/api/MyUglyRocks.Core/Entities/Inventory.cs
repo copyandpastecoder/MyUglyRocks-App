@@ -29,11 +29,13 @@ public enum InventoryStatus
 
 public enum SizeCategory
 {
-    Small = 0,      // < 0.5 inch
-    Medium = 1,     // 0.5 - 1.5 inch
-    Large = 2,      // > 1.5 inch
-    Mixed = 3,      // Various sizes
-    Assorted = 4    // Deliberately mixed sizes
+    ZeroToOne = 0,      // 0 - 1"
+    OneToTwo = 1,       // 1" - 2"
+    TwoToThree = 2,     // 2" - 3"
+    ThreeToFour = 3,    // 3" - 4"
+    FourToFive = 4,     // 4" - 5"
+    GreaterThanFive = 5,// Greater than 5"
+    Assorted = 6        // Assorted
 }
 
 public class Inventory : SoftDeletableEntity
@@ -51,7 +53,7 @@ public class Inventory : SoftDeletableEntity
     public string DisplayUnit { get; set; } = "g";
     public decimal? Cost { get; set; }
     public InventoryCondition Condition { get; set; } = InventoryCondition.Raw;
-    public SizeCategory? SizeCategory { get; set; }
+    public string? SizeCategories { get; set; }  // Comma-separated list of SizeCategory values
     public int? QualityRating { get; set; } // 1-5
     public InventoryStatus Status { get; set; } = InventoryStatus.Available;
     public string? StorageLocation { get; set; }

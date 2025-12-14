@@ -21,8 +21,10 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             .IsRequired();
 
         builder.Property(p => p.CycleId)
-            .HasColumnName("cycle_id")
-            .IsRequired();
+            .HasColumnName("cycle_id");
+
+        builder.Property(p => p.InventoryId)
+            .HasColumnName("inventory_id");
 
         builder.Property(p => p.Title)
             .HasColumnName("title")
@@ -63,6 +65,11 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             .HasColumnName("date_updated")
             .HasDefaultValueSql("now()");
 
+        // XOR constraint: exactly one of CycleId or InventoryId must be set
+        builder.ToTable(t => t.HasCheckConstraint(
+            "chk_post_source_xor",
+            "(cycle_id IS NOT NULL AND inventory_id IS NULL) OR (cycle_id IS NULL AND inventory_id IS NOT NULL)"));
+
         // Relationships
         builder.HasOne(p => p.User)
             .WithMany(u => u.Posts)
@@ -72,6 +79,11 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.HasOne(p => p.Cycle)
             .WithMany()
             .HasForeignKey(p => p.CycleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(p => p.Inventory)
+            .WithMany()
+            .HasForeignKey(p => p.InventoryId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Indexes for gallery queries
@@ -99,6 +111,10 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         // Index for user posts lookup
         builder.HasIndex(p => new { p.UserId, p.Status, p.PublishedDate })
             .HasDatabaseName("ix_posts_user_status_date");
+
+        // Index for inventory posts lookup
+        builder.HasIndex(p => p.InventoryId)
+            .HasDatabaseName("ix_posts_inventory_id");
     }
 }
 

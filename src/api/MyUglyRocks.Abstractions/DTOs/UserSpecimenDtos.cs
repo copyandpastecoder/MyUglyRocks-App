@@ -122,6 +122,7 @@ public record SpecimenOptionDto(
     Guid Id,
     string CommonName,
     string? ScientificName,
+    string? Alias,
     string MaterialType,
     string? TumblingDifficulty,
     decimal? MohsHardnessMax,  // For hardness warning calculation

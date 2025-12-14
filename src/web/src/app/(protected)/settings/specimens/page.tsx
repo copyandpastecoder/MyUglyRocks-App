@@ -394,14 +394,14 @@ export default function MySpecimensPage() {
                 <div className="space-y-2">
                   <Label htmlFor="tumblingDifficulty">Tumbling Difficulty</Label>
                   <Select
-                    value={form.watch('tumblingDifficulty') || ''}
-                    onValueChange={(value) => form.setValue('tumblingDifficulty', value || null)}
+                    value={form.watch('tumblingDifficulty') || '__none__'}
+                    onValueChange={(value) => form.setValue('tumblingDifficulty', value === '__none__' ? null : value)}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select difficulty" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Not specified</SelectItem>
+                      <SelectItem value="__none__">Not specified</SelectItem>
                       {difficulties.map((diff) => (
                         <SelectItem key={diff} value={diff}>
                           {diff}

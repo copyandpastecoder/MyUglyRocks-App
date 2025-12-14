@@ -787,6 +787,8 @@ import type {
   UpdateInventorySpecimensRequest,
   InventoryStatsDto,
   InventoryFilters,
+  InventoryPhotoDto,
+  UploadInventoryPhotoResponse,
 } from '@/types/inventory';
 
 export const inventoryApi = {
@@ -833,6 +835,42 @@ export const inventoryApi = {
     const response = await api.get<InventoryStatsDto>('/inventory/stats');
     return response.data;
   },
+
+  // Photo management
+  getPhotos: async (inventoryId: string): Promise<InventoryPhotoDto[]> => {
+    const response = await api.get<InventoryPhotoDto[]>(`/photos/inventory/${inventoryId}`);
+    return response.data;
+  },
+
+  uploadPhoto: async (
+    inventoryId: string,
+    file: File,
+    caption?: string,
+    isCover?: boolean
+  ): Promise<UploadInventoryPhotoResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (caption) {
+      formData.append('caption', caption);
+    }
+    if (isCover !== undefined) {
+      formData.append('isCover', String(isCover));
+    }
+    const response = await api.post<UploadInventoryPhotoResponse>(
+      `/photos/inventory/${inventoryId}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  deletePhoto: async (photoId: string): Promise<void> => {
+    await api.delete(`/photos/inventory/${photoId}`);
+  },
+
+  setCoverPhoto: async (inventoryId: string, photoId: string): Promise<void> => {
+    await api.put(`/photos/inventory/${inventoryId}/cover/${photoId}`);
+  },
 };
 
 // User Specimen API functions
@@ -876,7 +914,7 @@ export const userSpecimenApi = {
   },
 
   // Combined search for specimen pickers - includes system, user's own, and public specimens
-  searchAll: async (search?: string, includePublic = true, skip = 0, take = 50): Promise<SpecimenOptionDto[]> => {
+  searchAll: async (search?: string, includePublic = true, skip = 0, take = 1000): Promise<SpecimenOptionDto[]> => {
     const response = await api.get<SpecimenOptionDto[]>('/user-specimens/search', {
       params: { search, includePublic, skip, take },
     });

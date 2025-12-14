@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, X, Search, AlertTriangle, Plus, User } from 'lucide-react';
+import { ChevronsUpDown, X, Search, AlertTriangle, Plus, User, Settings2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,10 +19,37 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSpecimenSearch } from '@/hooks/use-user-specimens';
 import type { SpecimenOptionDto } from '@/types/user-specimen';
+
+// Column visibility configuration
+type ColumnKey = 'scientificName' | 'alias' | 'hardness' | 'difficulty' | 'materialType';
+
+interface ColumnConfig {
+  key: ColumnKey;
+  label: string;
+  defaultVisible: boolean;
+}
+
+const AVAILABLE_COLUMNS: ColumnConfig[] = [
+  { key: 'scientificName', label: 'Scientific Name', defaultVisible: true },
+  { key: 'alias', label: 'Alias', defaultVisible: true },
+  { key: 'hardness', label: 'Hardness', defaultVisible: true },
+  { key: 'difficulty', label: 'Tumbling Difficulty', defaultVisible: true },
+  { key: 'materialType', label: 'Material Type', defaultVisible: false },
+];
+
+const STORAGE_KEY = 'specimen-dropdown-columns';
 
 // Selection item that tracks both ID and source
 export interface SpecimenSelection {
@@ -50,6 +77,34 @@ export function SpecimenMultiSelect({
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
+
+  // Column visibility state - load from localStorage
+  const [visibleColumns, setVisibleColumns] = React.useState<Record<ColumnKey, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          // Invalid JSON, use defaults
+        }
+      }
+    }
+    // Default visibility
+    return AVAILABLE_COLUMNS.reduce((acc, col) => {
+      acc[col.key] = col.defaultVisible;
+      return acc;
+    }, {} as Record<ColumnKey, boolean>);
+  });
+
+  // Save column visibility to localStorage
+  const toggleColumn = (key: ColumnKey) => {
+    setVisibleColumns((prev) => {
+      const newState = { ...prev, [key]: !prev[key] };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+      return newState;
+    });
+  };
 
   // Debounce search query
   React.useEffect(() => {
@@ -144,6 +199,19 @@ export function SpecimenMultiSelect({
 
   const renderSpecimenItem = (specimen: SpecimenOptionDto) => {
     const selected = isSelected(specimen);
+
+    // Build secondary info line based on visible columns
+    const secondaryParts: React.ReactNode[] = [];
+    if (visibleColumns.scientificName && specimen.scientificName) {
+      secondaryParts.push(<span key="sci" className="italic">{specimen.scientificName}</span>);
+    }
+    if (visibleColumns.alias && specimen.alias) {
+      secondaryParts.push(<span key="alias">aka "{specimen.alias}"</span>);
+    }
+    if (visibleColumns.materialType) {
+      secondaryParts.push(<span key="mat">{specimen.materialType}</span>);
+    }
+
     return (
       <CommandItem
         key={`${specimen.source}-${specimen.id}`}
@@ -162,14 +230,24 @@ export function SpecimenMultiSelect({
               </Badge>
             )}
           </div>
-          {specimen.scientificName && (
-            <div className="text-xs text-muted-foreground italic truncate">
-              {specimen.scientificName}
+          {secondaryParts.length > 0 && (
+            <div className="text-xs text-muted-foreground truncate">
+              {secondaryParts.map((part, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && ' • '}
+                  {part}
+                </React.Fragment>
+              ))}
             </div>
           )}
         </div>
-        <div className="text-xs text-muted-foreground w-16 text-right">
-          {specimen.tumblingDifficulty || '-'}
+        <div className="flex flex-col items-end gap-0.5 text-xs text-muted-foreground">
+          {visibleColumns.difficulty && (
+            <span className="w-16 text-right">{specimen.tumblingDifficulty || '-'}</span>
+          )}
+          {visibleColumns.hardness && specimen.mohsHardnessMax && (
+            <span className="w-16 text-right text-[10px]">H: {specimen.mohsHardnessMax}</span>
+          )}
         </div>
       </CommandItem>
     );
@@ -209,6 +287,28 @@ export function SpecimenMultiSelect({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               />
+              {/* Column selector dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-1">
+                    <Settings2 className="h-4 w-4" />
+                    <span className="sr-only">Toggle columns</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Show Columns</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {AVAILABLE_COLUMNS.map((column) => (
+                    <DropdownMenuCheckboxItem
+                      key={column.key}
+                      checked={visibleColumns[column.key]}
+                      onCheckedChange={() => toggleColumn(column.key)}
+                    >
+                      {column.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             <CommandList>

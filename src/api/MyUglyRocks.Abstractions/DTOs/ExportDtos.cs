@@ -83,6 +83,8 @@ public record PostCsvRow(
     int VoteCount,
     int CommentCount,
     DateTime DateCreated,
-    Guid LinkedCycleId,
-    string? LinkedCycleName
+    Guid? LinkedCycleId,
+    string? LinkedCycleName,
+    Guid? LinkedInventoryId,
+    string? LinkedInventoryName
 );

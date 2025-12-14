@@ -6,7 +6,9 @@ public record PostDto
 {
     public Guid PostId { get; init; }
     public Guid UserId { get; init; }
-    public Guid CycleId { get; init; }
+    public Guid? CycleId { get; init; }
+    public Guid? InventoryId { get; init; }
+    public required string PostType { get; init; } // "Cycle" or "Inventory"
     public required string Title { get; init; }
     public string? Description { get; init; }
     public string Status { get; init; } = "Published";
@@ -14,13 +16,15 @@ public record PostDto
     public int VoteCount { get; init; }
     public int CommentCount { get; init; }
     public PostAuthorDto Author { get; init; } = null!;
-    public CyclePreviewDto Cycle { get; init; } = null!;
+    public CyclePreviewDto? Cycle { get; init; }
+    public InventoryPreviewDto? Inventory { get; init; }
     public IEnumerable<PostPhotoDto> Photos { get; init; } = [];
 }
 
 public record PostListDto
 {
     public Guid PostId { get; init; }
+    public required string PostType { get; init; } // "Cycle" or "Inventory"
     public required string Title { get; init; }
     public string? Description { get; init; }
     public DateTime PublishedDate { get; init; }
@@ -31,6 +35,10 @@ public record PostListDto
     public string? CoverPhotoThumbnailUrl { get; init; }
     public string? CoverPhotoBlurHash { get; init; }
     public int PhotoCount { get; init; }
+    // Inventory-specific fields for gallery card display
+    public string? SourceType { get; init; }
+    public IEnumerable<string> SpecimenNames { get; init; } = [];
+    public IEnumerable<string> SizeCategories { get; init; } = [];
 }
 
 public record PostAuthorDto
@@ -75,10 +83,25 @@ public record CyclePreviewDto
     public IEnumerable<string> SpecimenNames { get; init; } = [];
 }
 
+public record InventoryPreviewDto
+{
+    public Guid InventoryId { get; init; }
+    public required string Name { get; init; }
+    public required string SourceType { get; init; }
+    public string? SourceName { get; init; }
+    public string? SourceLocation { get; init; }
+    public DateOnly AcquiredDate { get; init; }
+    public string Condition { get; init; } = "Raw";
+    public IEnumerable<string> SpecimenNames { get; init; } = [];
+    public IEnumerable<string> SizeCategories { get; init; } = [];
+    public int PhotoCount { get; init; }
+}
+
 public record CreatePostRequest
 {
-    [Required(ErrorMessage = "Cycle ID is required")]
-    public required Guid CycleId { get; init; }
+    // Either CycleId or InventoryId must be provided (validated in service)
+    public Guid? CycleId { get; init; }
+    public Guid? InventoryId { get; init; }
 
     [Required(ErrorMessage = "Title is required")]
     [StringLength(200, MinimumLength = 1, ErrorMessage = "Title must be between 1 and 200 characters")]

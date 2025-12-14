@@ -73,7 +73,9 @@
       "Bash(find:*)",
       "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIwMDAwMDAwMC0wMDAwLTAwMDAtMDAwMC0wMDAwMDAwMDAwMDMiLCJlbWFpbCI6ImRlbW9AbXl1Z2x5cm9ja3MuY29tIiwidXNlcm5hbWUiOiJEZW1vVXNlciIsImp0aSI6IjljMTU1NGMzLTk5NjYtNDNhYS05ZjQ2LTk0Y2MzNjVlNzM1NyIsImlhdCI6MTc2NTU0NDYxMCwiZXhwIjoxNzY1NTQ1NTEwLCJpc3MiOiJNeVVnbHlSb2NrcyIsImF1ZCI6Ik15VWdseVJvY2tzIn0.KwepUNYTB280syf9LW5wncKpIDqZxhXaUJnd65R6P_0\" curl -s \"https://dev.myuglyrocks.com/api/tumblers/00000000-0000-0000-0001-000000000003\" -H \"Authorization: Bearer $TOKEN\" -H \"Origin: https://dev.myuglyrocks.com\")",
       "Bash(wrangler whoami:*)",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(mv:*)",
+      "Bash(Select-Object -Last 15)"
     ],
     "deny": [],
     "ask": []

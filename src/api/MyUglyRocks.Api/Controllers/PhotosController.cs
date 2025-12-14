@@ -40,6 +40,8 @@ public class PhotosController : ControllerBase
     private DbSet<Photo> Photos => _context.Set<Photo>();
     private DbSet<StageRun> StageRuns => _context.Set<StageRun>();
     private DbSet<Cycle> Cycles => _context.Set<Cycle>();
+    private DbSet<Inventory> Inventory => _context.Set<Inventory>();
+    private DbSet<InventoryPhoto> InventoryPhotos => _context.Set<InventoryPhoto>();
 
     /// <summary>
     /// Upload a photo to a stage run
@@ -176,6 +178,287 @@ public class PhotosController : ControllerBase
             _logger.LogError(ex, "Failed to upload photo for stage {StageRunId}: {Message}", stageRunId, ex.Message);
             return BadRequest(new UploadPhotoResponse(false, Error: $"Failed to upload photo: {ex.Message}"));
         }
+    }
+
+    /// <summary>
+    /// Upload a photo to an inventory item
+    /// </summary>
+    [HttpPost("inventory/{inventoryId}")]
+    [EnableRateLimiting("intensive")]
+    [ProducesResponseType(typeof(UploadPhotoResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(UploadPhotoResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [RequestSizeLimit(MaxFileSize)]
+    public async Task<IActionResult> UploadInventoryPhoto(
+        Guid inventoryId,
+        [FromForm] IFormFile file,
+        [FromForm] string? caption = null,
+        [FromForm] bool isCover = false,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        // Validate file
+        if (file == null || file.Length == 0)
+        {
+            return BadRequest(new UploadPhotoResponse(false, Error: "No file provided"));
+        }
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedExtensions.Contains(extension))
+        {
+            return BadRequest(new UploadPhotoResponse(false, Error: $"File type not allowed. Allowed: {string.Join(", ", AllowedExtensions)}"));
+        }
+
+        if (file.Length > MaxFileSize)
+        {
+            return BadRequest(new UploadPhotoResponse(false, Error: "File size exceeds 10 MB limit"));
+        }
+
+        // Verify inventory exists and belongs to user
+        var inventory = await Inventory
+            .Include(i => i.InventoryPhotos)
+            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId && !i.IsDeleted, cancellationToken);
+
+        if (inventory == null)
+        {
+            return NotFound(new UploadPhotoResponse(false, Error: "Inventory not found"));
+        }
+
+        if (inventory.UserId != userId)
+        {
+            return Forbid();
+        }
+
+        // Check storage is configured
+        if (!_storageService.IsConfigured)
+        {
+            return BadRequest(new UploadPhotoResponse(false, Error: "Photo storage is not configured"));
+        }
+
+        try
+        {
+            _logger.LogDebug("Starting inventory photo upload for inventory {InventoryId}, extension: {Extension}, size: {Size}",
+                inventoryId, PiiMaskingHelper.SanitizeForLog(extension), file.Length);
+
+            var photoId = Guid.NewGuid();
+            var folder = $"photos/inventory/{inventoryId}";
+            var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
+
+            // Read file into memory for background processing
+            byte[] imageData;
+            await using (var inputStream = file.OpenReadStream())
+            {
+                using var memoryStream = new MemoryStream();
+                await inputStream.CopyToAsync(memoryStream, cancellationToken);
+                imageData = memoryStream.ToArray();
+            }
+
+            // If this is set as cover, unset existing cover
+            if (isCover)
+            {
+                foreach (var existingPhoto in inventory.InventoryPhotos.Where(p => p.IsCover))
+                {
+                    existingPhoto.IsCover = false;
+                }
+            }
+
+            // Create photo record immediately with "Processing" status
+            var sortOrder = inventory.InventoryPhotos.Count;
+            var photo = new InventoryPhoto
+            {
+                InventoryPhotoId = photoId,
+                InventoryId = inventoryId,
+                StorageKey = $"{folder}/{baseKey}-original.webp",  // Placeholder, updated by job
+                Url = "",  // Will be set by background job
+                FileName = $"{photoId:N}{extension}",
+                MimeType = "image/webp",
+                FileSizeBytes = file.Length,
+                Caption = caption,
+                IsCover = isCover || inventory.InventoryPhotos.Count == 0, // First photo is auto-cover
+                SortOrder = sortOrder,
+                ProcessingStatus = PhotoProcessingStatus.Processing,
+                DateCreated = DateTime.UtcNow,
+                DateUpdated = DateTime.UtcNow
+            };
+
+            await InventoryPhotos.AddAsync(photo, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            // Enqueue background job for image processing (variants + upload)
+            _backgroundJobClient.Enqueue<InventoryPhotoProcessingJob>(
+                job => job.ProcessPhotoAsync(photoId, imageData, file.FileName));
+
+            _logger.LogInformation("Inventory photo {PhotoId} queued for background processing", photoId);
+
+            var dto = new InventoryPhotoDto(
+                photo.InventoryPhotoId,
+                photo.Url,
+                photo.FileName,
+                photo.Caption,
+                photo.IsCover,
+                photo.SortOrder,
+                photo.DateCreated,
+                photo.ThumbnailUrl,
+                photo.MediumUrl,
+                photo.LargeUrl,
+                photo.BlurHash,
+                photo.Width,
+                photo.Height,
+                photo.ProcessingStatus.ToString(),
+                photo.ProcessingError
+            );
+
+            return Ok(new UploadInventoryPhotoResponse(true, dto));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload photo for inventory {InventoryId}: {Message}", inventoryId, ex.Message);
+            return BadRequest(new UploadPhotoResponse(false, Error: $"Failed to upload photo: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Delete an inventory photo
+    /// </summary>
+    [HttpDelete("inventory/{photoId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteInventoryPhoto(Guid photoId, CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var photo = await InventoryPhotos
+            .Include(p => p.Inventory)
+            .FirstOrDefaultAsync(p => p.InventoryPhotoId == photoId, cancellationToken);
+
+        if (photo == null)
+        {
+            return NotFound();
+        }
+
+        if (photo.Inventory.UserId != userId)
+        {
+            return Forbid();
+        }
+
+        // Delete all variants from storage
+        try
+        {
+            var keysToDelete = new List<string> { photo.StorageKey };
+            if (!string.IsNullOrEmpty(photo.ThumbnailStorageKey))
+                keysToDelete.Add(photo.ThumbnailStorageKey);
+            if (!string.IsNullOrEmpty(photo.MediumStorageKey))
+                keysToDelete.Add(photo.MediumStorageKey);
+            if (!string.IsNullOrEmpty(photo.LargeStorageKey))
+                keysToDelete.Add(photo.LargeStorageKey);
+
+            await _storageService.DeleteManyAsync(keysToDelete, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete inventory photo variants from storage: {StorageKey}", PiiMaskingHelper.SanitizeForLog(photo.StorageKey));
+        }
+
+        // Hard delete the record (inventory photos don't use soft delete)
+        InventoryPhotos.Remove(photo);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Inventory photo deleted: {PhotoId}", photoId);
+
+        return Ok(new { message = "Photo deleted" });
+    }
+
+    /// <summary>
+    /// Get all photos for an inventory item
+    /// </summary>
+    [HttpGet("inventory/{inventoryId}")]
+    [ProducesResponseType(typeof(List<InventoryPhotoDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetInventoryPhotos(Guid inventoryId, CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var inventory = await Inventory
+            .Include(i => i.InventoryPhotos)
+            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId && !i.IsDeleted, cancellationToken);
+
+        if (inventory == null)
+        {
+            return NotFound();
+        }
+
+        if (inventory.UserId != userId)
+        {
+            return Forbid();
+        }
+
+        var photos = inventory.InventoryPhotos
+            .OrderBy(p => p.SortOrder)
+            .Select(p => new InventoryPhotoDto(
+                p.InventoryPhotoId,
+                p.Url,
+                p.FileName,
+                p.Caption,
+                p.IsCover,
+                p.SortOrder,
+                p.DateCreated,
+                p.ThumbnailUrl,
+                p.MediumUrl,
+                p.LargeUrl,
+                p.BlurHash,
+                p.Width,
+                p.Height,
+                p.ProcessingStatus.ToString(),
+                p.ProcessingError
+            ))
+            .ToList();
+
+        return Ok(photos);
+    }
+
+    /// <summary>
+    /// Set cover photo for an inventory item
+    /// </summary>
+    [HttpPut("inventory/{inventoryId}/cover/{photoId}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetInventoryCoverPhoto(Guid inventoryId, Guid photoId, CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var inventory = await Inventory
+            .Include(i => i.InventoryPhotos)
+            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId && !i.IsDeleted, cancellationToken);
+
+        if (inventory == null)
+        {
+            return NotFound();
+        }
+
+        if (inventory.UserId != userId)
+        {
+            return Forbid();
+        }
+
+        var targetPhoto = inventory.InventoryPhotos.FirstOrDefault(p => p.InventoryPhotoId == photoId);
+        if (targetPhoto == null)
+        {
+            return NotFound(new { error = "Photo not found in this inventory" });
+        }
+
+        // Unset all covers and set the new one
+        foreach (var photo in inventory.InventoryPhotos)
+        {
+            photo.IsCover = photo.InventoryPhotoId == photoId;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return Ok(new { message = "Cover photo updated" });
     }
 
     /// <summary>

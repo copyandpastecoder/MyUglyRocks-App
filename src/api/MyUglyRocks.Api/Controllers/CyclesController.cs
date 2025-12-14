@@ -55,7 +55,7 @@ public class CyclesController : ControllerBase
     public async Task<IActionResult> CreateCycle([FromBody] CreateCycleRequest request, CancellationToken cancellationToken)
     {
         var cycle = await _cycleService.CreateCycleAsync(GetUserId(), request, cancellationToken);
-        return CreatedAtAction(nameof(GetCycle), new { id = cycle.CycleId }, cycle);
+        return CreatedAtAction(nameof(GetCycle), new { cycleId = cycle.CycleId }, cycle);
     }
 
     /// <summary>
@@ -123,7 +123,7 @@ public class CyclesController : ControllerBase
         if (stageRun == null)
             return NotFound();
 
-        return CreatedAtAction(nameof(GetStageRun), new { id = stageRun.StageRunId }, stageRun);
+        return CreatedAtAction(nameof(GetStageRun), new { stageRunId = stageRun.StageRunId }, stageRun);
     }
 
     /// <summary>
@@ -198,7 +198,7 @@ public class CyclesController : ControllerBase
         if (cleaningRun == null)
             return NotFound();
 
-        return CreatedAtAction(nameof(GetStageRun), new { id = stageId }, cleaningRun);
+        return CreatedAtAction(nameof(GetStageRun), new { stageRunId = stageId }, cleaningRun);
     }
 
     /// <summary>
@@ -244,7 +244,7 @@ public class CyclesController : ControllerBase
         if (material == null)
             return NotFound();
 
-        return CreatedAtAction(nameof(GetStageRun), new { id = stageId }, material);
+        return CreatedAtAction(nameof(GetStageRun), new { stageRunId = stageId }, material);
     }
 
     /// <summary>

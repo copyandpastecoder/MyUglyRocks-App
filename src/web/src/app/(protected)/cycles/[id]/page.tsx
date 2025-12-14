@@ -305,10 +305,100 @@ export default function CycleDetailPage() {
   const completeStageMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: CompleteStageRunRequest }) =>
       cycleApi.completeStageRun(id, data),
-    onSuccess: () => {
+    onSuccess: async (_result, variables) => {
+      const shouldAutoRepeat = variables.data.nextAction === 'Repeat';
+      const shouldAutoAdvance = variables.data.nextAction === 'Advance';
+
+      // Check if there are any planned stages
+      const hasPlannedStages = cycle?.stageRuns.some(s => s.status === 'Planned') ?? false;
+
+      // Auto-create stage if Repeat or Advance selected and no planned stages
+      if ((shouldAutoRepeat || shouldAutoAdvance) && cycle && !hasPlannedStages) {
+        try {
+          // Fetch the full stage details to copy from
+          const completedStage = await cycleApi.getStageRun(variables.id);
+
+          // Get active barrel IDs (filter out any that may have been deleted)
+          const activeBarrelIds = completedStage.barrels
+            ?.map(b => b.barrelId)
+            .filter(id => allBarrels.some(b => b.barrelId === id)) || [];
+
+          // Calculate start date from completed stage's end date
+          const endDateString = completedStage.endDateTime ?? completedStage.durationEstimateEndDate;
+          const startDateTime = endDateString
+            ? new Date(endDateString).toISOString()
+            : new Date().toISOString();
+
+          // Determine stage name based on action
+          let newStageName = completedStage.stageName;
+          if (shouldAutoAdvance) {
+            // Get next stage in progression: Coarse → Medium → Fine → Pre-Polish → Polish → Burnish
+            const stageProgression = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish'];
+            const currentIndex = stageProgression.indexOf(completedStage.stageName);
+            if (currentIndex >= 0 && currentIndex < stageProgression.length - 1) {
+              newStageName = stageProgression[currentIndex + 1];
+            } else if (currentIndex === -1) {
+              // Custom stage name - default to next logical stage or keep same
+              newStageName = 'Medium'; // Default fallback
+            }
+            // If already at Burnish, don't auto-create (cycle should be completed)
+            if (currentIndex === stageProgression.length - 1) {
+              toast.success('Stage completed. Cycle appears to be at final stage.');
+              queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
+              queryClient.invalidateQueries({ queryKey: ['cycles'] });
+              setIsCompleteStageOpen(false);
+              resetCompleteStageForm();
+              return;
+            }
+          }
+
+          // For Repeat: copy materials. For Advance: don't copy (different grit needed)
+          const materials = shouldAutoRepeat
+            ? completedStage.materials?.map(m => ({
+                materialId: m.materialId,
+                displayAmount: m.displayAmount ?? undefined,
+                displayUnit: m.displayUnit || 'tbsp',
+              }))
+            : undefined;
+
+          // Copy cleaning run if present (useful for both repeat and advance)
+          const cleaningRun = completedStage.cleaningRun ? {
+            durationMinutes: completedStage.cleaningRun.durationMinutes,
+            purpose: completedStage.cleaningRun.purpose ?? undefined,
+            notes: completedStage.cleaningRun.notes ?? undefined,
+            materials: completedStage.cleaningRun.materials?.map(m => ({
+              materialId: m.materialId,
+              displayAmount: m.displayAmount ?? undefined,
+              displayUnit: m.displayUnit || 'tbsp',
+            })),
+          } : undefined;
+
+          // Create the new stage run
+          await cycleApi.addStageRun(cycleId, {
+            barrelIds: activeBarrelIds,
+            stageName: newStageName,
+            startDateTime,
+            durationDays: completedStage.durationDays,
+            durationHours: completedStage.durationHours,
+            notes: shouldAutoRepeat ? (completedStage.notes ?? undefined) : undefined,
+            reminderEnabled: false,
+            materials,
+            cleaningRun,
+          });
+
+          const actionWord = shouldAutoRepeat ? 'repeat' : 'advance';
+          toast.success(`Stage completed and "${newStageName}" stage auto-created for ${actionWord}`);
+        } catch {
+          // If auto-create fails, still show completion success
+          toast.success('Stage completed');
+          toast.error('Failed to auto-create next stage. Please add it manually.');
+        }
+      } else {
+        toast.success('Stage completed');
+      }
+
       queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
       queryClient.invalidateQueries({ queryKey: ['cycles'] });
-      toast.success('Stage completed');
       setIsCompleteStageOpen(false);
       resetCompleteStageForm();
     },

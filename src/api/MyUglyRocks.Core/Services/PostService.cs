@@ -44,6 +44,14 @@ public class PostService : IPostService
             .Include(p => p.User)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventoryPhotos)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventorySpecimens)
+                    .ThenInclude(s => s.Specimen)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventorySpecimens)
+                    .ThenInclude(s => s.UserSpecimen)
             .Where(p => p.Status == PostStatus.Published);
 
         query = sortBy?.ToLower() switch
@@ -79,16 +87,24 @@ public class PostService : IPostService
         var post = await _context.Set<Post>()
             .Include(p => p.User)
             .Include(p => p.Cycle)
-                .ThenInclude(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+                .ThenInclude(c => c!.StageRuns.Where(sr => !sr.IsDeleted))
                     .ThenInclude(sr => sr.StageRunBarrels)
                         .ThenInclude(srb => srb.Barrel)
                             .ThenInclude(b => b.Tumbler)
             .Include(p => p.Cycle)
-                .ThenInclude(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+                .ThenInclude(c => c!.StageRuns.Where(sr => !sr.IsDeleted))
                     .ThenInclude(sr => sr.Photos.Where(ph => !ph.IsDeleted))
             .Include(p => p.Cycle)
-                .ThenInclude(c => c.CycleSpecimens)
+                .ThenInclude(c => c!.CycleSpecimens)
                     .ThenInclude(cs => cs.Specimen)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventorySpecimens)
+                    .ThenInclude(s => s.Specimen)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventorySpecimens)
+                    .ThenInclude(s => s.UserSpecimen)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventoryPhotos)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)
             .FirstOrDefaultAsync(p => p.PostId == postId && p.Status == PostStatus.Published);
@@ -106,6 +122,14 @@ public class PostService : IPostService
             .Include(p => p.User)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventoryPhotos)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventorySpecimens)
+                    .ThenInclude(s => s.Specimen)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i!.InventorySpecimens)
+                    .ThenInclude(s => s.UserSpecimen)
             .Where(p => p.User.Username == username && p.Status == PostStatus.Published)
             .OrderByDescending(p => p.PublishedDate)
             .Skip(skip)
@@ -117,32 +141,74 @@ public class PostService : IPostService
 
     public async Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request)
     {
-        var cycle = await _context.Set<Cycle>()
-            .Include(c => c.StageRuns)
-            .FirstOrDefaultAsync(c => c.CycleId == request.CycleId && c.UserId == userId);
+        // Validate that exactly one of CycleId or InventoryId is provided
+        if (!request.CycleId.HasValue && !request.InventoryId.HasValue)
+            throw new InvalidOperationException("Either CycleId or InventoryId must be provided");
 
-        if (cycle == null)
-            throw new InvalidOperationException("Cycle not found or doesn't belong to user");
+        if (request.CycleId.HasValue && request.InventoryId.HasValue)
+            throw new InvalidOperationException("Only one of CycleId or InventoryId can be provided");
 
-        if (cycle.Status != CycleStatus.Completed)
-            throw new InvalidOperationException("Can only share completed cycles");
+        Post post;
 
-        // Check if a post already exists for this cycle
-        var existingPost = await _context.Set<Post>()
-            .AnyAsync(p => p.CycleId == request.CycleId && !p.IsDeleted);
-
-        if (existingPost)
-            throw new InvalidOperationException("A gallery post already exists for this cycle");
-
-        var post = new Post
+        if (request.CycleId.HasValue)
         {
-            UserId = userId,
-            CycleId = request.CycleId,
-            Title = request.Title,
-            Description = request.Description,
-            Status = PostStatus.Published,
-            PublishedDate = DateTime.UtcNow
-        };
+            var cycle = await _context.Set<Cycle>()
+                .Include(c => c.StageRuns)
+                .FirstOrDefaultAsync(c => c.CycleId == request.CycleId && c.UserId == userId);
+
+            if (cycle == null)
+                throw new InvalidOperationException("Cycle not found or doesn't belong to user");
+
+            if (cycle.Status != CycleStatus.Completed)
+                throw new InvalidOperationException("Can only share completed cycles");
+
+            // Check if a post already exists for this cycle
+            var existingCyclePost = await _context.Set<Post>()
+                .AnyAsync(p => p.CycleId == request.CycleId && !p.IsDeleted);
+
+            if (existingCyclePost)
+                throw new InvalidOperationException("A gallery post already exists for this cycle");
+
+            post = new Post
+            {
+                UserId = userId,
+                CycleId = request.CycleId,
+                Title = request.Title,
+                Description = request.Description,
+                Status = PostStatus.Published,
+                PublishedDate = DateTime.UtcNow
+            };
+        }
+        else
+        {
+            var inventory = await _context.Set<Inventory>()
+                .Include(i => i.InventoryPhotos)
+                .FirstOrDefaultAsync(i => i.InventoryId == request.InventoryId && i.UserId == userId && !i.IsDeleted);
+
+            if (inventory == null)
+                throw new InvalidOperationException("Inventory not found or doesn't belong to user");
+
+            // Check if inventory has photos
+            if (!inventory.InventoryPhotos.Any())
+                throw new InvalidOperationException("Inventory must have at least one photo to share");
+
+            // Check if a post already exists for this inventory
+            var existingInventoryPost = await _context.Set<Post>()
+                .AnyAsync(p => p.InventoryId == request.InventoryId && !p.IsDeleted);
+
+            if (existingInventoryPost)
+                throw new InvalidOperationException("A gallery post already exists for this inventory");
+
+            post = new Post
+            {
+                UserId = userId,
+                InventoryId = request.InventoryId,
+                Title = request.Title,
+                Description = request.Description,
+                Status = PostStatus.Published,
+                PublishedDate = DateTime.UtcNow
+            };
+        }
 
         _context.Set<Post>().Add(post);
 
@@ -417,79 +483,65 @@ public class PostService : IPostService
 
     private static PostListDto MapToListDto(Post post)
     {
-        var coverPhoto = post.PostPhotos.FirstOrDefault(pp => pp.IsCover) ?? post.PostPhotos.FirstOrDefault();
+        var postType = post.CycleId.HasValue ? "Cycle" : "Inventory";
+
+        // Get cover photo and photo count - different sources for cycle vs inventory posts
+        string? coverPhotoUrl = null;
+        string? coverPhotoThumbnailUrl = null;
+        string? coverPhotoBlurHash = null;
+        int photoCount = 0;
+
+        // Get inventory-specific fields if this is an inventory post
+        string? sourceType = null;
+        IEnumerable<string> specimenNames = [];
+        IEnumerable<string> sizeCategories = [];
+
+        if (post.Inventory != null)
+        {
+            // Inventory post - use InventoryPhotos
+            var inventoryPhotos = post.Inventory.InventoryPhotos
+                .Where(p => p.ProcessingStatus == PhotoProcessingStatus.Completed)
+                .OrderBy(p => p.SortOrder)
+                .ToList();
+            var coverPhoto = inventoryPhotos.FirstOrDefault(p => p.IsCover) ?? inventoryPhotos.FirstOrDefault();
+
+            coverPhotoUrl = coverPhoto?.ThumbnailUrl ?? coverPhoto?.Url;
+            coverPhotoThumbnailUrl = coverPhoto?.ThumbnailUrl;
+            coverPhotoBlurHash = coverPhoto?.BlurHash;
+            photoCount = inventoryPhotos.Count;
+
+            sourceType = post.Inventory.SourceType.ToString();
+            specimenNames = post.Inventory.InventorySpecimens
+                .Select(s => s.Specimen?.CommonName ?? s.UserSpecimen?.CommonName ?? "")
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
+            sizeCategories = !string.IsNullOrEmpty(post.Inventory.SizeCategories)
+                ? post.Inventory.SizeCategories.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                : [];
+        }
+        else
+        {
+            // Cycle post - use PostPhotos
+            var coverPhoto = post.PostPhotos.FirstOrDefault(pp => pp.IsCover) ?? post.PostPhotos.FirstOrDefault();
+            coverPhotoUrl = coverPhoto?.Photo?.ThumbnailUrl ?? coverPhoto?.Photo?.Url;
+            coverPhotoThumbnailUrl = coverPhoto?.Photo?.ThumbnailUrl;
+            coverPhotoBlurHash = coverPhoto?.Photo?.BlurHash;
+            photoCount = post.PostPhotos.Count;
+        }
 
         return new PostListDto
         {
             PostId = post.PostId,
+            PostType = postType,
             Title = post.Title,
             Description = post.Description,
             PublishedDate = post.PublishedDate,
             VoteCount = post.VoteCount,
             CommentCount = post.CommentCount,
-            CoverPhotoUrl = coverPhoto?.Photo?.ThumbnailUrl ?? coverPhoto?.Photo?.Url,
-            CoverPhotoThumbnailUrl = coverPhoto?.Photo?.ThumbnailUrl,
-            CoverPhotoBlurHash = coverPhoto?.Photo?.BlurHash,
-            PhotoCount = post.PostPhotos.Count,
-            Author = new PostAuthorDto
-            {
-                UserId = post.User.UserId,
-                Username = post.User.Username,
-                DisplayName = post.User.DisplayName,
-                AvatarUrl = post.User.AvatarUrl
-            }
-        };
-    }
-
-    private static PostDto MapToDto(Post post)
-    {
-        var cycle = post.Cycle;
-        var stageRuns = cycle.StageRuns.ToList();
-
-        // Calculate elapsed days
-        var endDate = cycle.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var elapsedDays = endDate.DayNumber - cycle.StartDate.DayNumber;
-
-        // Calculate total runtime hours from stage runs
-        var totalRuntimeHours = stageRuns
-            .Where(sr => sr.Status == StageRunStatus.Completed)
-            .Sum(sr => ((long)sr.DurationDays * 24) + sr.DurationHours);
-
-        // Get tumbler/barrel from most recent stage
-        var mostRecentStage = stageRuns
-            .OrderByDescending(sr => sr.StartDateTime)
-            .FirstOrDefault();
-        var mostRecentBarrel = mostRecentStage?.StageRunBarrels.FirstOrDefault()?.Barrel;
-
-        // Get specimen names
-        var specimenNames = cycle.CycleSpecimens
-            .Select(cs => cs.Specimen?.CommonName ?? "")
-            .Where(n => !string.IsNullOrEmpty(n))
-            .ToList();
-
-        // Get tumbler name (Brand + Model)
-        string? tumblerName = null;
-        if (mostRecentBarrel?.Tumbler != null)
-        {
-            tumblerName = !string.IsNullOrEmpty(mostRecentBarrel.Tumbler.Model)
-                ? $"{mostRecentBarrel.Tumbler.Brand} {mostRecentBarrel.Tumbler.Model}"
-                : mostRecentBarrel.Tumbler.Brand;
-        }
-
-        // Count photos across all stages
-        var photoCount = stageRuns.Sum(sr => sr.Photos.Count());
-
-        return new PostDto
-        {
-            PostId = post.PostId,
-            UserId = post.UserId,
-            CycleId = post.CycleId,
-            Title = post.Title,
-            Description = post.Description,
-            Status = post.Status.ToString(),
-            PublishedDate = post.PublishedDate,
-            VoteCount = post.VoteCount,
-            CommentCount = post.CommentCount,
+            CoverPhotoUrl = coverPhotoUrl,
+            CoverPhotoThumbnailUrl = coverPhotoThumbnailUrl,
+            CoverPhotoBlurHash = coverPhotoBlurHash,
+            PhotoCount = photoCount,
             Author = new PostAuthorDto
             {
                 UserId = post.User.UserId,
@@ -497,7 +549,58 @@ public class PostService : IPostService
                 DisplayName = post.User.DisplayName,
                 AvatarUrl = post.User.AvatarUrl
             },
-            Cycle = new CyclePreviewDto
+            SourceType = sourceType,
+            SpecimenNames = specimenNames,
+            SizeCategories = sizeCategories
+        };
+    }
+
+    private static PostDto MapToDto(Post post)
+    {
+        var postType = post.CycleId.HasValue ? "Cycle" : "Inventory";
+
+        CyclePreviewDto? cyclePreview = null;
+        InventoryPreviewDto? inventoryPreview = null;
+
+        if (post.Cycle != null)
+        {
+            var cycle = post.Cycle;
+            var stageRuns = cycle.StageRuns.ToList();
+
+            // Calculate elapsed days
+            var endDate = cycle.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+            var elapsedDays = endDate.DayNumber - cycle.StartDate.DayNumber;
+
+            // Calculate total runtime hours from stage runs
+            var totalRuntimeHours = stageRuns
+                .Where(sr => sr.Status == StageRunStatus.Completed)
+                .Sum(sr => ((long)sr.DurationDays * 24) + sr.DurationHours);
+
+            // Get tumbler/barrel from most recent stage
+            var mostRecentStage = stageRuns
+                .OrderByDescending(sr => sr.StartDateTime)
+                .FirstOrDefault();
+            var mostRecentBarrel = mostRecentStage?.StageRunBarrels.FirstOrDefault()?.Barrel;
+
+            // Get specimen names
+            var specimenNames = cycle.CycleSpecimens
+                .Select(cs => cs.Specimen?.CommonName ?? "")
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
+
+            // Get tumbler name (Brand + Model)
+            string? tumblerName = null;
+            if (mostRecentBarrel?.Tumbler != null)
+            {
+                tumblerName = !string.IsNullOrEmpty(mostRecentBarrel.Tumbler.Model)
+                    ? $"{mostRecentBarrel.Tumbler.Brand} {mostRecentBarrel.Tumbler.Model}"
+                    : mostRecentBarrel.Tumbler.Brand;
+            }
+
+            // Count photos across all stages
+            var photoCount = stageRuns.Sum(sr => sr.Photos.Count());
+
+            cyclePreview = new CyclePreviewDto
             {
                 CycleId = cycle.CycleId,
                 Name = cycle.Name,
@@ -513,8 +616,63 @@ public class PostService : IPostService
                 TumblerName = tumblerName,
                 BarrelName = mostRecentBarrel?.Nickname,
                 SpecimenNames = specimenNames
-            },
-            Photos = post.PostPhotos.OrderBy(pp => pp.SortOrder).Select(pp => new PostPhotoDto
+            };
+        }
+        else if (post.Inventory != null)
+        {
+            var inventory = post.Inventory;
+
+            var specimenNames = inventory.InventorySpecimens
+                .Select(s => s.Specimen?.CommonName ?? s.UserSpecimen?.CommonName ?? "")
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
+
+            var sizeCategories = !string.IsNullOrEmpty(inventory.SizeCategories)
+                ? inventory.SizeCategories.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()
+                : new List<string>();
+
+            inventoryPreview = new InventoryPreviewDto
+            {
+                InventoryId = inventory.InventoryId,
+                Name = inventory.Name,
+                SourceType = inventory.SourceType.ToString(),
+                SourceName = inventory.SourceName,
+                SourceLocation = inventory.SourceLocation,
+                AcquiredDate = inventory.AcquiredDate,
+                Condition = inventory.Condition.ToString(),
+                SpecimenNames = specimenNames,
+                SizeCategories = sizeCategories,
+                PhotoCount = inventory.InventoryPhotos.Count
+            };
+        }
+
+        // Get photos - different sources for cycle vs inventory posts
+        IEnumerable<PostPhotoDto> photos;
+        if (post.Inventory != null)
+        {
+            // Inventory post - use InventoryPhotos
+            photos = post.Inventory.InventoryPhotos
+                .Where(p => p.ProcessingStatus == PhotoProcessingStatus.Completed)
+                .OrderBy(p => p.SortOrder)
+                .Select(p => new PostPhotoDto
+                {
+                    PostId = post.PostId,
+                    PhotoId = p.InventoryPhotoId,
+                    Url = p.Url,
+                    SortOrder = p.SortOrder,
+                    IsCover = p.IsCover,
+                    ThumbnailUrl = p.ThumbnailUrl,
+                    MediumUrl = p.MediumUrl,
+                    LargeUrl = p.LargeUrl,
+                    BlurHash = p.BlurHash,
+                    Width = p.Width,
+                    Height = p.Height
+                });
+        }
+        else
+        {
+            // Cycle post - use PostPhotos
+            photos = post.PostPhotos.OrderBy(pp => pp.SortOrder).Select(pp => new PostPhotoDto
             {
                 PostId = pp.PostId,
                 PhotoId = pp.PhotoId,
@@ -527,7 +685,32 @@ public class PostService : IPostService
                 BlurHash = pp.Photo.BlurHash,
                 Width = pp.Photo.Width,
                 Height = pp.Photo.Height
-            })
+            });
+        }
+
+        return new PostDto
+        {
+            PostId = post.PostId,
+            UserId = post.UserId,
+            CycleId = post.CycleId,
+            InventoryId = post.InventoryId,
+            PostType = postType,
+            Title = post.Title,
+            Description = post.Description,
+            Status = post.Status.ToString(),
+            PublishedDate = post.PublishedDate,
+            VoteCount = post.VoteCount,
+            CommentCount = post.CommentCount,
+            Author = new PostAuthorDto
+            {
+                UserId = post.User.UserId,
+                Username = post.User.Username,
+                DisplayName = post.User.DisplayName,
+                AvatarUrl = post.User.AvatarUrl
+            },
+            Cycle = cyclePreview,
+            Inventory = inventoryPreview,
+            Photos = photos
         };
     }
 

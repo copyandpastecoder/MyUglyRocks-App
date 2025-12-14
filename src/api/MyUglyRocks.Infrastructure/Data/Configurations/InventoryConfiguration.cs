@@ -64,8 +64,9 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
         builder.Property(i => i.Condition)
             .HasColumnName("condition");
 
-        builder.Property(i => i.SizeCategory)
-            .HasColumnName("size_category");
+        builder.Property(i => i.SizeCategories)
+            .HasColumnName("size_categories")
+            .HasMaxLength(255);
 
         builder.Property(i => i.QualityRating)
             .HasColumnName("quality_rating");
@@ -269,8 +270,7 @@ public class InventoryPhotoConfiguration : IEntityTypeConfiguration<InventoryPho
             .HasMaxLength(500);
 
         builder.Property(p => p.BlurHash)
-            .HasColumnName("blur_hash")
-            .HasMaxLength(100);
+            .HasColumnName("blur_hash");
 
         builder.Property(p => p.ThumbnailStorageKey)
             .HasColumnName("thumbnail_storage_key")

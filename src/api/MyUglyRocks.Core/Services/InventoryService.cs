@@ -112,7 +112,9 @@ public class InventoryService : IInventoryService
             DisplayUnit = request.DisplayUnit ?? "g",
             Cost = request.Cost,
             Condition = Enum.Parse<InventoryCondition>(request.Condition, true),
-            SizeCategory = string.IsNullOrEmpty(request.SizeCategory) ? null : Enum.Parse<SizeCategory>(request.SizeCategory, true),
+            SizeCategories = request.SizeCategories != null && request.SizeCategories.Length > 0
+                ? string.Join(",", request.SizeCategories)
+                : null,
             QualityRating = request.QualityRating,
             Status = string.IsNullOrEmpty(request.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(request.Status, true),
             StorageLocation = request.StorageLocation,
@@ -163,7 +165,9 @@ public class InventoryService : IInventoryService
         inventory.DisplayUnit = request.DisplayUnit ?? "g";
         inventory.Cost = request.Cost;
         inventory.Condition = Enum.Parse<InventoryCondition>(request.Condition, true);
-        inventory.SizeCategory = string.IsNullOrEmpty(request.SizeCategory) ? null : Enum.Parse<SizeCategory>(request.SizeCategory, true);
+        inventory.SizeCategories = request.SizeCategories != null && request.SizeCategories.Length > 0
+            ? string.Join(",", request.SizeCategories)
+            : null;
         inventory.QualityRating = request.QualityRating;
         inventory.Status = string.IsNullOrEmpty(request.Status) ? inventory.Status : Enum.Parse<InventoryStatus>(request.Status, true);
         inventory.StorageLocation = request.StorageLocation;
@@ -329,7 +333,9 @@ public class InventoryService : IInventoryService
             inventory.DisplayUnit,
             inventory.Cost,
             inventory.Condition.ToString(),
-            inventory.SizeCategory?.ToString(),
+            string.IsNullOrEmpty(inventory.SizeCategories)
+                ? null
+                : inventory.SizeCategories.Split(',', StringSplitOptions.RemoveEmptyEntries),
             inventory.QualityRating,
             inventory.Status.ToString(),
             inventory.StorageLocation,
