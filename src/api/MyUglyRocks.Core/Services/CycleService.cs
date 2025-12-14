@@ -489,6 +489,15 @@ public class CycleService : ICycleService
             stageRun.WaterLevel?.ToString(),
             stageRun.WaterAmountMl,
             stageRun.ResultRating,
+            stageRun.ResultShapeRounding,
+            stageRun.ResultScratchLevel,
+            stageRun.ResultPitting,
+            stageRun.ResultShine,
+            stageRun.IssueScratches,
+            stageRun.IssueChips,
+            stageRun.IssueUnderRounded,
+            stageRun.IssueContamination,
+            stageRun.LessonsLearned,
             stageRun.NextAction?.ToString(),
             stageRun.Notes,
             stageRun.DateCreated,
@@ -675,6 +684,26 @@ public class CycleService : ICycleService
             : null;
         stageRun.WaterAmountMl = request.WaterAmountMl;
         stageRun.Notes = request.Notes;
+
+        // Quality ratings
+        stageRun.ResultRating = request.ResultRating;
+        stageRun.ResultShapeRounding = request.ResultShapeRounding;
+        stageRun.ResultScratchLevel = request.ResultScratchLevel;
+        stageRun.ResultPitting = request.ResultPitting;
+        stageRun.ResultShine = request.ResultShine;
+
+        // Issues
+        stageRun.IssueScratches = request.IssueScratches;
+        stageRun.IssueChips = request.IssueChips;
+        stageRun.IssueUnderRounded = request.IssueUnderRounded;
+        stageRun.IssueContamination = request.IssueContamination;
+
+        // Lessons and next action
+        stageRun.LessonsLearned = request.LessonsLearned;
+        stageRun.NextAction = !string.IsNullOrEmpty(request.NextAction)
+            ? Enum.Parse<StageNextAction>(request.NextAction, true)
+            : null;
+
         stageRun.DateUpdated = DateTime.UtcNow;
 
         // Update barrels if provided

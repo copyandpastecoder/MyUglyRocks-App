@@ -135,6 +135,15 @@ public record StageRunDto(
     string? WaterLevel,
     int? WaterAmountMl,
     int? ResultRating,
+    int? ResultShapeRounding,
+    int? ResultScratchLevel,
+    int? ResultPitting,
+    int? ResultShine,
+    bool? IssueScratches,
+    bool? IssueChips,
+    bool? IssueUnderRounded,
+    bool? IssueContamination,
+    string? LessonsLearned,
     string? NextAction,
     string? Notes,
     DateTime DateCreated,
@@ -227,7 +236,36 @@ public record UpdateStageRunRequest(
     int? WaterAmountMl,
 
     [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
-    string? Notes
+    string? Notes,
+
+    // Quality ratings (added to allow editing like complete stage)
+    [Range(1, 5, ErrorMessage = "Result rating must be between 1 and 5")]
+    int? ResultRating,
+
+    [Range(0, 100, ErrorMessage = "Shape rounding must be between 0 and 100")]
+    int? ResultShapeRounding,
+
+    [Range(0, 100, ErrorMessage = "Scratch level must be between 0 and 100")]
+    int? ResultScratchLevel,
+
+    [Range(0, 100, ErrorMessage = "Pitting must be between 0 and 100")]
+    int? ResultPitting,
+
+    [Range(0, 100, ErrorMessage = "Shine must be between 0 and 100")]
+    int? ResultShine,
+
+    // Issues
+    bool? IssueScratches,
+    bool? IssueChips,
+    bool? IssueUnderRounded,
+    bool? IssueContamination,
+
+    // Lessons and next action
+    [StringLength(2000, ErrorMessage = "Lessons learned must be at most 2000 characters")]
+    string? LessonsLearned,
+
+    [StringLength(500, ErrorMessage = "Next action must be at most 500 characters")]
+    string? NextAction
 );
 
 public record CompleteStageRunRequest(
