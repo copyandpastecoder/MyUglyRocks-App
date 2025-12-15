@@ -6,6 +6,24 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+#### Full Edit Stage Modal
+- **Feature**: Edit Stage modal now has all the same fields as Create Stage modal
+- **New Shared Components** in `src/web/src/components/stage/`:
+  - `StageNameSelector` - Stage name buttons with custom name input
+  - `BarrelSelector` - Barrel selection checkboxes
+  - `StageMaterialsSection` - Materials management with add/remove
+  - `CleaningRunSection` - Cleaning run config with duration, purpose, materials
+  - `StageAdvancedOptions` - Weight before, fill level, water amount
+  - `ReminderSettings` - Reminder checkbox with afterDays/atEnd options
+- **Edit Stage Modal now includes**:
+  - Barrel selection (change which barrels the stage uses)
+  - Start date/time editing
+  - Materials section (add/remove/edit materials)
+  - Reminder settings
+  - Cleaning run configuration
+  - Advanced options (weight before, fill level, water)
+  - Plus existing quality/results fields (rating, issues, weight after, etc.)
+
 #### Individual Specimen Weights in Inventory
 - **Feature**: Inventory items can now track individual weights per specimen instead of just batch weight
 - **Files**:
