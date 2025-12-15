@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cycleApi, tumblerApi } from '@/lib/api';
@@ -21,15 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { AmountInput } from '@/components/amount-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -45,16 +37,16 @@ import {
   Trash2,
   Play,
   Share2,
-  X,
   Star,
   ChevronDown,
   ChevronUp,
   Pencil,
-  Copy,
   Sparkles,
   Lightbulb,
   Eye,
   Image as ImageIcon,
+  Trophy,
+  PartyPopper,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -83,21 +75,18 @@ import { PhotoUploadModal } from '@/components/photo-upload-modal';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
-import { useSettings } from '@/hooks/use-user';
+import { StageFormModal, type BarrelInfo } from '@/components/stage/stage-form-modal';
+import {
+  CleaningRunSection,
+} from '@/components/stage';
+import { useSettings, useTimezone } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
-import { formatDateTimeLocal, combineDateWithCurrentTime, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
+import { calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes, formatDurationMinutes } from '@/lib/duration-utils';
-import { CLEANING_PURPOSES, CLEANING_DURATION_PRESETS, formatCleaningPurpose } from '@/lib/cleaning-constants';
+import { formatCleaningPurpose } from '@/lib/cleaning-constants';
 import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
-import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
-import type { BarrelDto } from '@/types/tumbler';
+import type { StageRunSummaryDto, StageRunDto, CompleteStageRunRequest, UpdateCycleRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import { PageTransition } from '@/components/ui/page-transition';
-
-const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish', 'Custom'];
-const WATER_UNITS = [
-  { value: 'ml', label: 'ml' },
-  { value: 'floz', label: 'fl oz' },
-];
 
 export default function CycleDetailPage() {
   const params = useParams();
@@ -106,38 +95,12 @@ export default function CycleDetailPage() {
   const queryClient = useQueryClient();
   const cycleId = params.id as string;
 
-  // Track if we've already handled the addStage query param
-  const [hasHandledAddStage, setHasHandledAddStage] = useState(false);
+  // Track if we've already handled the addStage query param (ref since no re-render needed)
+  const hasHandledAddStageRef = useRef(false);
 
-  // Add Stage Dialog State
-  const [isAddStageOpen, setIsAddStageOpen] = useState(false);
-  const [selectedBarrelIds, setSelectedBarrelIds] = useState<string[]>([]);
-  const [stageName, setStageName] = useState<string>('Coarse');
-  const [customStageName, setCustomStageName] = useState<string>('');
-  const [stageStartDateTime, setStageStartDateTime] = useState<string>('');
-  const [durationDays, setDurationDays] = useState<string>('7');
-  const [durationHours, setDurationHours] = useState<string>('0');
-  const [notes, setNotes] = useState<string>('');
-  const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [reminderType, setReminderType] = useState<'afterDays' | 'atEnd'>('atEnd');
-  const [remindAfterDays, setRemindAfterDays] = useState<string>('7');
-  const [selectedMaterials, setSelectedMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
-  // Advanced fields
-  const [loadWeightBeforeGrams, setLoadWeightBeforeGrams] = useState<number | null>(null);
-  const [weightBeforeValidationError, setWeightBeforeValidationError] = useState(false);
-  const [fillLevelPercent, setFillLevelPercent] = useState<string>('');
-  const [waterAmount, setWaterAmount] = useState<string>('');
-  const [waterUnit, setWaterUnit] = useState<string>('ml');
-  // State for Copy from Previous
-  const [isCopyingFromPrevious, setIsCopyingFromPrevious] = useState(false);
-  // Cleaning Run state for Add Stage modal
-  const [addCleaningRun, setAddCleaningRun] = useState(false);
-  const [cleaningDurationDays, setCleaningDurationDays] = useState<string>('0');
-  const [cleaningDurationHours, setCleaningDurationHours] = useState<string>('0');
-  const [cleaningDurationMinutes, setCleaningDurationMinutes] = useState<string>('0');
-  const [cleaningPurpose, setCleaningPurpose] = useState<string>('');
-  const [cleaningNotes, setCleaningNotes] = useState<string>('');
-  const [cleaningMaterials, setCleaningMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
+  // Stage Form Modal State (shared for New and Edit)
+  const [isStageFormOpen, setIsStageFormOpen] = useState(false);
+  const [editStageId, setEditStageId] = useState<string | undefined>(undefined);
 
   // Complete Stage Modal State
   const [isCompleteStageOpen, setIsCompleteStageOpen] = useState(false);
@@ -148,6 +111,7 @@ export default function CycleDetailPage() {
   const [completeStageStartDateTime, setCompleteStageStartDateTime] = useState<string>('');
   const [completeStageDurationDays, setCompleteStageDurationDays] = useState<string>('7');
   const [completeStageDurationHours, setCompleteStageDurationHours] = useState<string>('0');
+  const [completeStageDurationMinutes, setCompleteStageDurationMinutes] = useState<string>('0');
   const [resultRating, setResultRating] = useState<number>(0);
   const [showAdvancedQuality, setShowAdvancedQuality] = useState(false);
   const [resultShapeRounding, setResultShapeRounding] = useState<number>(50);
@@ -159,13 +123,33 @@ export default function CycleDetailPage() {
   const [issueUnderRounded, setIssueUnderRounded] = useState(false);
   const [issueContamination, setIssueContamination] = useState(false);
   const [lessonsLearned, setLessonsLearned] = useState('');
-  const [nextAction, setNextAction] = useState<string>('Advance');
+  const [nextAction, setNextAction] = useState<string>('');
+  const [nextActionError, setNextActionError] = useState(false);
   const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
   const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
   // Barrel capacity for the stage being completed (for validation)
   const [completeStageBarrelCapacity, setCompleteStageBarrelCapacity] = useState<number | null>(null);
-  // Cleaning run info for Complete Stage modal (read-only display)
+  // Cleaning run info for Complete Stage modal (read-only display of existing)
   const [completeStageCleaningRun, setCompleteStageCleaningRun] = useState<CleaningRunDto | null>(null);
+  // Editable cleaning run state for Complete Stage modal
+  const [completeStageEditableCleaningRun, setCompleteStageEditableCleaningRun] = useState<{
+    enabled: boolean;
+    cleaningRunId?: string;
+    durationDays: string;
+    durationHours: string;
+    durationMinutes: string;
+    purpose: string;
+    notes: string;
+    materials: Array<{ materialId: string; displayAmount: string; displayUnit: string }>;
+  }>({
+    enabled: false,
+    durationDays: '0',
+    durationHours: '0',
+    durationMinutes: '0',
+    purpose: '',
+    notes: '',
+    materials: [],
+  });
   // Weight before (from when stage was started)
   const [completeStageWeightBefore, setCompleteStageWeightBefore] = useState<number | null>(null);
 
@@ -175,20 +159,10 @@ export default function CycleDetailPage() {
   const [editCycleStartDate, setEditCycleStartDate] = useState('');
   const [editCycleNotes, setEditCycleNotes] = useState('');
 
-  // Edit Stage Dialog State
-  const [isEditStageOpen, setIsEditStageOpen] = useState(false);
-  const [editStageId, setEditStageId] = useState<string | null>(null);
-  const [editStageName, setEditStageName] = useState('');
-  const [editCustomStageName, setEditCustomStageName] = useState('');
-  const [editStageStartDateTime, setEditStageStartDateTime] = useState('');
-  const [editStageDurationDays, setEditStageDurationDays] = useState('');
-  const [editStageDurationHours, setEditStageDurationHours] = useState('');
-  const [editStageNotes, setEditStageNotes] = useState('');
-
   // Cleaning Run Modal State
   const [isCleaningRunOpen, setIsCleaningRunOpen] = useState(false);
-  const [cleaningRunStageId, setCleaningRunStageId] = useState<string | null>(null);
-  const [cleaningRunStageName, setCleaningRunStageName] = useState('');
+  const [cleaningRunStageId] = useState<string | null>(null);
+  const [cleaningRunStageName] = useState('');
 
   // Complete Cycle Dialog State
   const [isCompleteCycleOpen, setIsCompleteCycleOpen] = useState(false);
@@ -214,6 +188,7 @@ export default function CycleDetailPage() {
 
   const { data: settings } = useSettings();
   const { data: materials } = useMaterials();
+  const { toUserTz, isToday, now: getNow, formatForInput, formatDate } = useTimezone();
 
   // Query for viewing stage details
   const { data: viewStageData, isLoading: viewStageLoading } = useQuery({
@@ -225,70 +200,18 @@ export default function CycleDetailPage() {
   // Auto-open Add Stage dialog when ?addStage=true query param is present
   useEffect(() => {
     const shouldOpenAddStage = searchParams.get('addStage') === 'true';
-    if (shouldOpenAddStage && cycle && cycle.status === 'Active' && !hasHandledAddStage) {
-      setHasHandledAddStage(true);
+    if (shouldOpenAddStage && cycle && cycle.status === 'Active' && !hasHandledAddStageRef.current) {
+      hasHandledAddStageRef.current = true;
       // Use setTimeout to ensure all data is ready
-      setTimeout(async () => {
-        await openAddStageModal();
+      setTimeout(() => {
+        // Open add stage modal (inline to avoid TDZ)
+        setEditStageId(undefined);
+        setIsStageFormOpen(true);
         // Remove the query param from URL to prevent re-opening on page refresh
         router.replace(`/cycles/${cycleId}`, { scroll: false });
       }, 100);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- openAddStageModal uses refs internally
-  }, [searchParams, cycle, hasHandledAddStage, cycleId, router]);
-
-  const addStageMutation = useMutation({
-    mutationFn: (data: {
-      barrelIds: string[];
-      stageName: string;
-      startDateTime: string;
-      durationDays: number;
-      durationHours: number;
-      notes?: string;
-      reminderEnabled: boolean;
-      remindAfterDays?: number;
-      remindAtEndOfStage?: boolean;
-      loadWeightBeforeGrams?: number;
-      fillLevelPercent?: number;
-      waterLevel?: string;
-      waterAmountMl?: number;
-      materials?: CreateStageMaterialRequest[];
-      cleaningRun?: {
-        durationMinutes: number;
-        purpose?: string;
-        reminderEnabled?: boolean;
-        notes?: string;
-        materials?: CreateCleaningMaterialRequest[];
-      };
-    }) =>
-      cycleApi.addStageRun(cycleId, {
-        barrelIds: data.barrelIds,
-        stageName: data.stageName,
-        startDateTime: data.startDateTime,
-        durationDays: data.durationDays,
-        durationHours: data.durationHours,
-        notes: data.notes,
-        reminderEnabled: data.reminderEnabled,
-        remindAfterDays: data.remindAfterDays,
-        remindAtEndOfStage: data.remindAtEndOfStage,
-        loadWeightBeforeGrams: data.loadWeightBeforeGrams,
-        fillLevelPercent: data.fillLevelPercent,
-        waterLevel: data.waterLevel,
-        waterAmountMl: data.waterAmountMl,
-        materials: data.materials,
-        cleaningRun: data.cleaningRun,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
-      queryClient.invalidateQueries({ queryKey: ['cycles'] });
-      toast.success('Stage added successfully');
-      setIsAddStageOpen(false);
-      resetAddStageForm();
-    },
-    onError: () => {
-      toast.error('Failed to add stage');
-    },
-  });
+  }, [searchParams, cycle, cycleId, router]);
 
   const deleteStageRunMutation = useMutation({
     mutationFn: cycleApi.deleteStageRun,
@@ -308,6 +231,7 @@ export default function CycleDetailPage() {
     onSuccess: async (_result, variables) => {
       const shouldAutoRepeat = variables.data.nextAction === 'Repeat';
       const shouldAutoAdvance = variables.data.nextAction === 'Advance';
+      const shouldCompleteCycle = variables.data.nextAction === 'Complete';
 
       // Check if there are any planned stages
       const hasPlannedStages = cycle?.stageRuns.some(s => s.status === 'Planned') ?? false;
@@ -393,6 +317,15 @@ export default function CycleDetailPage() {
           toast.success('Stage completed');
           toast.error('Failed to auto-create next stage. Please add it manually.');
         }
+      } else if (shouldCompleteCycle) {
+        // Open the Complete Cycle modal
+        toast.success('Stage completed! Now complete your cycle.');
+        queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
+        queryClient.invalidateQueries({ queryKey: ['cycles'] });
+        setIsCompleteStageOpen(false);
+        resetCompleteStageForm();
+        setIsCompleteCycleOpen(true);
+        return;
       } else {
         toast.success('Stage completed');
       }
@@ -420,21 +353,6 @@ export default function CycleDetailPage() {
     },
   });
 
-  const updateStageMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateStageRunRequest }) =>
-      cycleApi.updateStageRun(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
-      queryClient.invalidateQueries({ queryKey: ['cycles'] });
-      toast.success('Stage updated');
-      setIsEditStageOpen(false);
-      setEditStageId(null);
-    },
-    onError: () => {
-      toast.error('Failed to update stage');
-    },
-  });
-
   const completeCycleMutation = useMutation({
     mutationFn: (data: CompleteCycleRequest) => cycleApi.complete(cycleId, data),
     onSuccess: () => {
@@ -449,34 +367,6 @@ export default function CycleDetailPage() {
       toast.error('Failed to complete cycle');
     },
   });
-
-  const resetAddStageForm = () => {
-    setSelectedBarrelIds([]);
-    setStageName('Coarse');
-    setCustomStageName('');
-    setStageStartDateTime('');
-    setDurationDays('7');
-    setDurationHours('0');
-    setNotes('');
-    setReminderEnabled(false);
-    setReminderType('atEnd');
-    setRemindAfterDays('7');
-    setSelectedMaterials([]);
-    setLoadWeightBeforeGrams(null);
-    setWeightBeforeValidationError(false);
-    setFillLevelPercent('');
-    setWaterAmount('');
-    // Set water unit based on user preference
-    setWaterUnit(settings?.measurementSystem === 'Imperial' ? 'floz' : 'ml');
-    // Reset cleaning run state
-    setAddCleaningRun(false);
-    setCleaningDurationDays('0');
-    setCleaningDurationHours('0');
-    setCleaningDurationMinutes('0');
-    setCleaningPurpose('');
-    setCleaningNotes('');
-    setCleaningMaterials([]);
-  };
 
   const resetCompleteStageForm = () => {
     setCompleteStageId(null);
@@ -497,7 +387,7 @@ export default function CycleDetailPage() {
     setIssueUnderRounded(false);
     setIssueContamination(false);
     setLessonsLearned('');
-    setNextAction('Advance');
+    setNextAction('');
     setLoadWeightAfterGrams(null);
     setWeightAfterValidationError(false);
     setCompleteStageBarrelCapacity(null);
@@ -505,265 +395,80 @@ export default function CycleDetailPage() {
     setCompleteStageWeightBefore(null);
   };
 
-  const handleAddStage = () => {
-    if (selectedBarrelIds.length === 0) {
-      toast.error('Please select at least one barrel');
-      return;
-    }
-    if (!stageStartDateTime) {
-      toast.error('Please set a start date/time');
-      return;
-    }
-    // Validate stage name (don't allow "Custom" as the actual name)
-    if (stageName === 'Custom' || !stageName.trim()) {
-      toast.error('Please enter a stage name');
-      return;
-    }
-
-    // Validate stage start date is not before cycle start date
-    if (cycle && isStageStartBeforeCycleStart(cycle.startDate, stageStartDateTime)) {
-      toast.error('Stage start date cannot be before the cycle start date');
-      return;
-    }
-
-    // Validate weight before if entered
-    if (weightBeforeValidationError) {
-      toast.error('Weight exceeds 150% of barrel capacity. Please correct before saving.');
-      return;
-    }
-
-    // Validate cleaning run if enabled
-    if (addCleaningRun) {
-      const cleaningTotalMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
-      if (cleaningTotalMinutes <= 0) {
-        toast.error('Cleaning run duration must be at least 1 minute');
-        return;
-      }
-    }
-
-    const materialsToSubmit: CreateStageMaterialRequest[] = selectedMaterials
-      .filter(m => m.materialId)
-      .map(m => ({
-        materialId: m.materialId,
-        displayAmount: m.displayAmount ? parseFloat(m.displayAmount) : undefined,
-        displayUnit: m.displayUnit || undefined,
-      }));
-
-    // Build cleaning run request if enabled
-    let cleaningRunRequest = undefined;
-    if (addCleaningRun) {
-      const cleaningTotalMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
-      const cleaningMaterialsToSubmit: CreateCleaningMaterialRequest[] = cleaningMaterials
-        .filter(m => m.materialId)
-        .map(m => ({
-          materialId: m.materialId,
-          displayAmount: m.displayAmount ? parseFloat(m.displayAmount) : undefined,
-          displayUnit: m.displayUnit || undefined,
-        }));
-
-      cleaningRunRequest = {
-        durationMinutes: cleaningTotalMinutes,
-        purpose: cleaningPurpose || undefined,
-        reminderEnabled: false,
-        notes: cleaningNotes || undefined,
-        materials: cleaningMaterialsToSubmit.length > 0 ? cleaningMaterialsToSubmit : undefined,
-      };
-    }
-
-    addStageMutation.mutate({
-      barrelIds: selectedBarrelIds,
-      stageName,
-      startDateTime: new Date(stageStartDateTime).toISOString(),
-      durationDays: parseInt(durationDays) || 0,
-      durationHours: parseInt(durationHours) || 0,
-      notes: notes || undefined,
-      reminderEnabled,
-      remindAfterDays: reminderType === 'afterDays' ? parseInt(remindAfterDays) : undefined,
-      remindAtEndOfStage: reminderType === 'atEnd' ? true : undefined,
-      loadWeightBeforeGrams: loadWeightBeforeGrams || undefined,
-      fillLevelPercent: fillLevelPercent ? parseInt(fillLevelPercent) : undefined,
-      // Convert water amount to ml (1 fl oz = 29.5735 ml)
-      waterAmountMl: waterAmount ? Math.round(parseFloat(waterAmount) * (waterUnit === 'floz' ? 29.5735 : 1)) : undefined,
-      materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
-      cleaningRun: cleaningRunRequest,
-    });
+  // Open stage form modal for creating new stage
+  const openAddStageModal = () => {
+    setEditStageId(undefined);
+    setIsStageFormOpen(true);
   };
 
-  const openAddStageModal = async () => {
-    resetAddStageForm();
-    // First stage uses cycle start date with current time, subsequent stages use "now"
-    if (cycle && cycle.stageRuns.length === 0) {
-      // First stage: use cycle's start date with current time
-      setStageStartDateTime(formatDateTimeLocal(combineDateWithCurrentTime(cycle.startDate)));
-    } else {
-      // Subsequent stages: default to now
-      setStageStartDateTime(formatDateTimeLocal(new Date()));
-    }
-    setIsAddStageOpen(true);
-
-    // Check if the last completed stage had "Repeat" as next action - if so, auto-populate
-    if (cycle && cycle.stageRuns.length > 0) {
-      const lastCompletedStage = [...cycle.stageRuns]
-        .reverse()
-        .find(s => s.status === 'Completed');
-
-      if (lastCompletedStage) {
-        try {
-          const fullStage: StageRunDto = await cycleApi.getStageRun(lastCompletedStage.stageRunId);
-          if (fullStage.nextAction === 'Repeat') {
-            // Auto-populate from the repeated stage (excluding advanced options)
-            setStageName(fullStage.stageName);
-
-            // Set start date to previous stage's end date (use estimate as fallback)
-            const endDateString = fullStage.endDateTime ?? fullStage.durationEstimateEndDate;
-            if (endDateString) {
-              const previousEndDate = new Date(endDateString);
-              setStageStartDateTime(formatDateTimeLocal(previousEndDate));
-            }
-
-            // Copy barrels
-            if (fullStage.barrels && fullStage.barrels.length > 0) {
-              const previousBarrelIds = fullStage.barrels.map(b => b.barrelId);
-              // Only select barrels that are still active
-              const activeBarrelIds = previousBarrelIds.filter(id =>
-                allBarrels.some(b => b.barrelId === id)
-              );
-              setSelectedBarrelIds(activeBarrelIds);
-            }
-
-            // Copy materials
-            if (fullStage.materials && fullStage.materials.length > 0) {
-              const copiedMaterials = fullStage.materials.map(m => ({
-                materialId: m.materialId,
-                displayAmount: m.displayAmount ? String(m.displayAmount) : '',
-                displayUnit: m.displayUnit || 'tbsp',
-              }));
-              setSelectedMaterials(copiedMaterials);
-            }
-
-            // Copy duration
-            setDurationDays(String(fullStage.durationDays));
-            setDurationHours(String(fullStage.durationHours));
-
-            // Copy notes
-            if (fullStage.notes) {
-              setNotes(fullStage.notes);
-            }
-
-            // Copy cleaning run if present
-            if (fullStage.cleaningRun) {
-              setAddCleaningRun(true);
-              const { days, hours, mins } = convertMinutesToDaysHoursMinutes(fullStage.cleaningRun.durationMinutes);
-              setCleaningDurationDays(String(days));
-              setCleaningDurationHours(String(hours));
-              setCleaningDurationMinutes(String(mins));
-              setCleaningPurpose(fullStage.cleaningRun.purpose || 'PostStageClean');
-              setCleaningNotes(fullStage.cleaningRun.notes || '');
-              if (fullStage.cleaningRun.materials && fullStage.cleaningRun.materials.length > 0) {
-                const copiedCleaningMaterials = fullStage.cleaningRun.materials.map(m => ({
-                  materialId: m.materialId,
-                  displayAmount: m.displayAmount ? String(m.displayAmount) : '',
-                  displayUnit: m.displayUnit || 'tbsp',
-                }));
-                setCleaningMaterials(copiedCleaningMaterials);
-              }
-            }
-
-            toast.info(`Auto-filled from previous "${fullStage.stageName}" stage (marked for repeat)`);
-          }
-        } catch {
-          // Ignore error - just don't auto-populate
-        }
-      }
-    }
-  };
-
-  // Copy settings from previous stage run
-  const copyFromPreviousStage = async () => {
-    if (!cycle || cycle.stageRuns.length === 0) return;
-
-    // Find the most recent stage (last one in the list, whether completed or active)
-    const previousStageSummary = cycle.stageRuns[cycle.stageRuns.length - 1];
-
-    setIsCopyingFromPrevious(true);
-    try {
-      // Fetch full details of the previous stage
-      const previousStage: StageRunDto = await cycleApi.getStageRun(previousStageSummary.stageRunId);
-
-      // Set start date to previous stage's end date (use estimate as fallback)
-      const endDateString = previousStage.endDateTime ?? previousStage.durationEstimateEndDate;
-      if (endDateString) {
-        const previousEndDate = new Date(endDateString);
-        setStageStartDateTime(formatDateTimeLocal(previousEndDate));
-      }
-
-      // Copy barrels
-      if (previousStage.barrels && previousStage.barrels.length > 0) {
-        const previousBarrelIds = previousStage.barrels.map(b => b.barrelId);
-        // Only select barrels that are still active
-        const activeBarrelIds = previousBarrelIds.filter(id =>
-          allBarrels.some(b => b.barrelId === id)
-        );
-        setSelectedBarrelIds(activeBarrelIds);
-      }
-
-      // Copy materials if same stage type
-      if (stageName === previousStage.stageName && previousStage.materials && previousStage.materials.length > 0) {
-        const copiedMaterials = previousStage.materials.map(m => ({
-          materialId: m.materialId,
-          displayAmount: m.displayAmount ? String(m.displayAmount) : '',
-          displayUnit: m.displayUnit || 'tbsp',
-        }));
-        setSelectedMaterials(copiedMaterials);
-      }
-
-      // Copy duration
-      setDurationDays(String(previousStage.durationDays));
-      setDurationHours(String(previousStage.durationHours));
-
-      // Copy cleaning run if present
-      if (previousStage.cleaningRun) {
-        setAddCleaningRun(true);
-        const { days, hours, mins } = convertMinutesToDaysHoursMinutes(previousStage.cleaningRun.durationMinutes);
-        setCleaningDurationDays(String(days));
-        setCleaningDurationHours(String(hours));
-        setCleaningDurationMinutes(String(mins));
-        setCleaningPurpose(previousStage.cleaningRun.purpose || 'PostStageClean');
-        setCleaningNotes(previousStage.cleaningRun.notes || '');
-        if (previousStage.cleaningRun.materials && previousStage.cleaningRun.materials.length > 0) {
-          const copiedCleaningMaterials = previousStage.cleaningRun.materials.map(m => ({
-            materialId: m.materialId,
-            displayAmount: m.displayAmount ? String(m.displayAmount) : '',
-            displayUnit: m.displayUnit || 'tbsp',
-          }));
-          setCleaningMaterials(copiedCleaningMaterials);
-        }
-      }
-
-      toast.success(`Copied settings from previous ${previousStage.stageName} stage`);
-    } catch {
-      toast.error('Failed to copy from previous stage');
-    } finally {
-      setIsCopyingFromPrevious(false);
-    }
+  // Open stage form modal for editing existing stage
+  const openEditStageModal = (stage: StageRunSummaryDto) => {
+    setEditStageId(stage.stageRunId);
+    setIsStageFormOpen(true);
   };
 
   const openCompleteStageModal = async (stage: StageRunSummaryDto) => {
-    const startDate = new Date(stage.startDateTime);
+    // Convert UTC start date to user's timezone
+    const startDateInTz = toUserTz(stage.startDateTime);
+    if (!startDateInTz) return;
+
     // Use durationEstimateEndDate for active stages (endDateTime is null until completed)
     const endDateString = stage.endDateTime ?? stage.durationEstimateEndDate;
-    const endDate = endDateString ? new Date(endDateString) : new Date();
-    const { days, hours } = calculateDurationFromDates(startDate, endDate);
+    let endDateInTz = endDateString ? toUserTz(endDateString) : getNow();
+    if (!endDateInTz) endDateInTz = getNow();
+
+    // If end date is today in user's timezone, use current time instead
+    const endDateIsToday = isToday(endDateString);
+    if (endDateIsToday && !stage.endDateTime) {
+      endDateInTz = getNow();
+    }
+
+    const { days, hours, minutes } = calculateDurationFromDates(startDateInTz, endDateInTz);
 
     setCompleteStageId(stage.stageRunId);
     setCompleteStageName(stage.stageName);
     setCompleteStageRunNumber(stage.runNumber);
     setCompleteStageTotalRuns(stage.totalRuns);
-    setCompleteStageStartDateTime(stage.startDateTime.slice(0, 16)); // Format for display
+    setCompleteStageStartDateTime(formatForInput(stage.startDateTime)); // Format for display in user's timezone
     setCompleteStageDurationDays(String(days));
     setCompleteStageDurationHours(String(hours));
+    setCompleteStageDurationMinutes(String(minutes));
     // Store cleaning run info for display
     setCompleteStageCleaningRun(stage.cleaningRun);
+    // Initialize editable cleaning run from existing data or reset
+    if (stage.cleaningRun) {
+      const { days, hours, mins } = convertMinutesToDaysHoursMinutes(stage.cleaningRun.durationMinutes);
+      setCompleteStageEditableCleaningRun({
+        enabled: true,
+        cleaningRunId: stage.cleaningRun.cleaningRunId,
+        durationDays: String(days),
+        durationHours: String(hours),
+        durationMinutes: String(mins),
+        purpose: stage.cleaningRun.purpose || '',
+        notes: stage.cleaningRun.notes || '',
+        materials: stage.cleaningRun.materials?.map(m => ({
+          materialId: m.materialId,
+          displayAmount: m.displayAmount?.toString() || '',
+          displayUnit: m.displayUnit || 'tbsp',
+        })) || [],
+      });
+    } else {
+      setCompleteStageEditableCleaningRun({
+        enabled: false,
+        durationDays: '0',
+        durationHours: '0',
+        durationMinutes: '0',
+        purpose: '',
+        notes: '',
+        materials: [],
+      });
+    }
+    // Reset form state
+    setNextAction('');
+    setNextActionError(false);
+    setResultRating(0);
+    setLessonsLearned('');
+    setLoadWeightAfterGrams(null);
     setIsCompleteStageOpen(true);
 
     // Fetch full stage details to get weight before and barrel capacity
@@ -780,10 +485,20 @@ export default function CycleDetailPage() {
     }
   };
 
-  const handleCompleteStage = () => {
+  const handleCompleteStage = async () => {
     if (!completeStageId) return;
-    if (resultRating === 0) {
+
+    // Result rating is only required for Polish stage
+    const isPolishStage = completeStageName.toLowerCase() === 'polish';
+    if (isPolishStage && resultRating === 0) {
       toast.error('Please rate the stage result (1-5 stars)');
+      return;
+    }
+
+    // What's next is always required
+    if (!nextAction) {
+      setNextActionError(true);
+      toast.error('Please select what\'s next for this cycle', { duration: 5000 });
       return;
     }
 
@@ -793,14 +508,52 @@ export default function CycleDetailPage() {
       return;
     }
 
+    // Handle cleaning run - add if enabled and new (no existing cleaningRunId)
+    if (completeStageEditableCleaningRun.enabled && !completeStageEditableCleaningRun.cleaningRunId) {
+      const totalMinutes =
+        (parseInt(completeStageEditableCleaningRun.durationDays) || 0) * 1440 +
+        (parseInt(completeStageEditableCleaningRun.durationHours) || 0) * 60 +
+        (parseInt(completeStageEditableCleaningRun.durationMinutes) || 0);
+
+      if (totalMinutes > 0) {
+        try {
+          const cleaningMaterials = completeStageEditableCleaningRun.materials
+            .filter(m => m.materialId)
+            .map(m => ({
+              materialId: m.materialId,
+              displayAmount: m.displayAmount ? parseFloat(m.displayAmount) : undefined,
+              displayUnit: m.displayUnit || undefined,
+            }));
+
+          await cycleApi.addCleaningRun(completeStageId, {
+            durationMinutes: totalMinutes,
+            purpose: completeStageEditableCleaningRun.purpose || undefined,
+            notes: completeStageEditableCleaningRun.notes || undefined,
+            materials: cleaningMaterials.length > 0 ? cleaningMaterials : undefined,
+          });
+        } catch {
+          toast.error('Failed to add cleaning run');
+          return;
+        }
+      }
+    }
+
     // Calculate the actual end date from start date + duration
     const days = parseInt(completeStageDurationDays) || 0;
     const hours = parseInt(completeStageDurationHours) || 0;
+    const mins = parseInt(completeStageDurationMinutes) || 0;
     const startDate = new Date(completeStageStartDateTime);
-    const actualEndDate = new Date(startDate.getTime() + (days * 24 + hours) * 60 * 60 * 1000);
+
+    // Guard against invalid start date
+    if (isNaN(startDate.getTime())) {
+      toast.error('Invalid start date. Please refresh and try again.');
+      return;
+    }
+
+    const actualEndDate = new Date(startDate.getTime() + ((days * 24 + hours) * 60 + mins) * 60 * 1000);
 
     const data: CompleteStageRunRequest = {
-      resultRating,
+      resultRating: resultRating > 0 ? resultRating : undefined,  // Only send if rated (1-5)
       nextAction,
       issueScratches: issueScratches || undefined,
       issueChips: issueChips || undefined,
@@ -843,129 +596,13 @@ export default function CycleDetailPage() {
     });
   };
 
-  const openEditStageModal = (stage: StageRunSummaryDto) => {
-    const startDate = new Date(stage.startDateTime);
-    // Use durationEstimateEndDate for active/planned stages (endDateTime is null until completed)
-    const endDateString = stage.endDateTime ?? stage.durationEstimateEndDate;
-    const endDate = endDateString ? new Date(endDateString) : new Date();
-    const { days, hours } = calculateDurationFromDates(startDate, endDate);
-
-    setEditStageId(stage.stageRunId);
-    setEditStageName(stage.stageName);
-    // Set custom stage name if it's not a standard stage name
-    const standardNames = STAGE_NAMES.slice(0, -1); // Exclude 'Custom' from standard names
-    setEditCustomStageName(!standardNames.includes(stage.stageName) ? stage.stageName : '');
-    setEditStageStartDateTime(stage.startDateTime.slice(0, 16)); // Format for datetime-local input
-    setEditStageDurationDays(String(days));
-    setEditStageDurationHours(String(hours));
-    setEditStageNotes('');
-    setIsEditStageOpen(true);
-  };
-
-  const handleEditStage = () => {
-    if (!editStageId) return;
-    const durationDays = parseInt(editStageDurationDays) || 0;
-    const durationHours = parseInt(editStageDurationHours) || 0;
-
-    if (durationDays === 0 && durationHours === 0) {
-      toast.error('Duration must be at least 1 hour');
-      return;
-    }
-
-    // Validate stage name (don't allow "Custom" as the actual name)
-    if (editStageName === 'Custom' || !editStageName.trim()) {
-      toast.error('Please enter a stage name');
-      return;
-    }
-
-    // Validate stage start date is not before cycle start date
-    if (cycle && editStageStartDateTime) {
-      if (isStageStartBeforeCycleStart(cycle.startDate, editStageStartDateTime)) {
-        toast.error('Stage start date cannot be before the cycle start date');
-        return;
-      }
-    }
-
-    updateStageMutation.mutate({
-      id: editStageId,
-      data: {
-        stageName: editStageName,
-        startDateTime: new Date(editStageStartDateTime).toISOString(),
-        durationDays,
-        durationHours,
-        notes: editStageNotes || undefined,
-      },
-    });
-  };
-
   const openViewStageModal = (stage: StageRunSummaryDto) => {
     setViewStageId(stage.stageRunId);
     setIsViewStageOpen(true);
   };
 
-  const addMaterial = () => {
-    setSelectedMaterials([...selectedMaterials, { materialId: '', displayAmount: '', displayUnit: 'tbsp' }]);
-  };
-
-  const removeMaterial = (index: number) => {
-    setSelectedMaterials(selectedMaterials.filter((_, i) => i !== index));
-  };
-
-  const updateMaterial = (index: number, field: 'materialId' | 'displayAmount' | 'displayUnit', value: string) => {
-    const updated = [...selectedMaterials];
-    updated[index] = { ...updated[index], [field]: value };
-    setSelectedMaterials(updated);
-  };
-
-  // Cleaning material helpers
-  const addCleaningMaterial = () => {
-    setCleaningMaterials([...cleaningMaterials, { materialId: '', displayAmount: '', displayUnit: 'tbsp' }]);
-  };
-
-  const removeCleaningMaterial = (index: number) => {
-    setCleaningMaterials(cleaningMaterials.filter((_, i) => i !== index));
-  };
-
-  const updateCleaningMaterial = (index: number, field: 'materialId' | 'displayAmount' | 'displayUnit', value: string) => {
-    const updated = [...cleaningMaterials];
-    updated[index] = { ...updated[index], [field]: value };
-    setCleaningMaterials(updated);
-  };
-
-  const handleCleaningDurationPreset = (minutes: number) => {
-    const { days, hours, mins } = convertMinutesToDaysHoursMinutes(minutes);
-    setCleaningDurationDays(String(days));
-    setCleaningDurationHours(String(hours));
-    setCleaningDurationMinutes(String(mins));
-    // Auto-populate purpose if empty
-    if (!cleaningPurpose) {
-      setCleaningPurpose('PostStageClean');
-    }
-  };
-
-  // Auto-populate purpose when duration changes
-  const handleCleaningDurationChange = (setter: (val: string) => void) => (value: string) => {
-    setter(value);
-    // If any duration is set and purpose is empty, default to PostStageClean
-    const newDays = setter === setCleaningDurationDays ? parseInt(value) || 0 : parseInt(cleaningDurationDays) || 0;
-    const newHours = setter === setCleaningDurationHours ? parseInt(value) || 0 : parseInt(cleaningDurationHours) || 0;
-    const newMins = setter === setCleaningDurationMinutes ? parseInt(value) || 0 : parseInt(cleaningDurationMinutes) || 0;
-    const totalMinutes = newDays * 1440 + newHours * 60 + newMins;
-    if (totalMinutes > 0 && !cleaningPurpose) {
-      setCleaningPurpose('PostStageClean');
-    }
-  };
-
-  const toggleBarrel = (barrelId: string) => {
-    setSelectedBarrelIds(prev =>
-      prev.includes(barrelId)
-        ? prev.filter(id => id !== barrelId)
-        : [...prev, barrelId]
-    );
-  };
-
   // Get all active barrels from all active tumblers
-  const allBarrels: (BarrelDto & { tumblerName: string; tumblerId: string })[] = tumblers?.flatMap(t =>
+  const allBarrels: BarrelInfo[] = tumblers?.flatMap(t =>
     t.isActive && t.barrels
       ? t.barrels.filter(b => b.isActive).map(b => ({
           ...b,
@@ -974,12 +611,6 @@ export default function CycleDetailPage() {
         }))
       : []
   ) || [];
-
-  // Calculate total barrel capacity from selected barrels (for weight validation)
-  const selectedBarrelCapacityLbs = selectedBarrelIds.reduce((total, id) => {
-    const barrel = allBarrels.find(b => b.barrelId === id);
-    return total + (barrel?.capacityLbs || 0);
-  }, 0);
 
   if (cycleLoading) {
     return (
@@ -1037,17 +668,27 @@ export default function CycleDetailPage() {
 
       {/* Collapsible Cycle Overview Card */}
       <Collapsible open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
-        <Card>
+        <Card className={cycle.status === 'Completed' ? 'border-green-500/50 bg-gradient-to-br from-green-500/5 to-transparent dark:from-green-500/10' : ''}>
           <CollapsibleTrigger asChild>
             <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
               <div className="flex items-center justify-between gap-3">
                 {/* Left: Title and metadata */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge variant={cycle.status === 'Active' ? 'default' : 'secondary'} className="text-xs shrink-0">
-                      {cycle.status}
-                    </Badge>
+                    {cycle.status === 'Completed' ? (
+                      <Badge className="text-xs shrink-0 bg-green-600 hover:bg-green-600 text-white gap-1">
+                        <Trophy className="h-3 w-3" />
+                        Completed
+                      </Badge>
+                    ) : (
+                      <Badge variant="default" className="text-xs shrink-0">
+                        {cycle.status}
+                      </Badge>
+                    )}
                     <CardTitle className="text-base sm:text-lg leading-tight truncate">{cycle.name}</CardTitle>
+                    {cycle.status === 'Completed' && (
+                      <PartyPopper className="h-4 w-4 text-green-500 shrink-0" />
+                    )}
                   </div>
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     <span>Day {cycle.elapsedDays}</span>
@@ -1062,7 +703,7 @@ export default function CycleDetailPage() {
                     {cycle.status === 'Completed' && cycle.finalQuality && (
                       <>
                         <span>•</span>
-                        <span>{cycle.finalQuality}/5 ★</span>
+                        <span className="text-yellow-500 font-medium">{cycle.finalQuality}/5 ★</span>
                       </>
                     )}
                   </div>
@@ -1110,12 +751,12 @@ export default function CycleDetailPage() {
               {/* Row 1: Key stats */}
               <div>
                 <p className="text-sm text-muted-foreground">Started</p>
-                <p className="font-medium">{new Date(cycle.startDate).toLocaleDateString()}</p>
+                <p className="font-medium">{formatDate(cycle.startDate, 'MMM d, yyyy')}</p>
               </div>
               {cycle.status === 'Completed' && cycle.endDate && (
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="font-medium">{new Date(cycle.endDate).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatDate(cycle.endDate, 'MMM d, yyyy')}</p>
                 </div>
               )}
               <div>
@@ -1183,7 +824,7 @@ export default function CycleDetailPage() {
               {cycle.lastUpdated && (
                 <div>
                   <p className="text-sm text-muted-foreground">Last Updated</p>
-                  <p className="font-medium">{new Date(cycle.lastUpdated).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatDate(cycle.lastUpdated, 'MMM d, yyyy')}</p>
                 </div>
               )}
 
@@ -1204,565 +845,10 @@ export default function CycleDetailPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Stage Runs</h2>
           {cycle.status === 'Active' && (
-            <Dialog open={isAddStageOpen} onOpenChange={setIsAddStageOpen}>
-              <Button onClick={openAddStageModal}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Stage
-              </Button>
-              <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-                <DialogHeader className="flex-shrink-0">
-                  <div className="flex items-start justify-between pr-8">
-                    <div>
-                      <DialogTitle>New Stage</DialogTitle>
-                      <DialogDescription>
-                        Start a new tumbling stage for this cycle
-                      </DialogDescription>
-                    </div>
-                    <Link
-                      href="/learn/faq/stages"
-                      target="_blank"
-                      className="p-1 hover:bg-muted rounded-md transition-colors"
-                      title="Stage Tips"
-                    >
-                      <Lightbulb className="h-5 w-5 text-yellow-500" />
-                    </Link>
-                  </div>
-                </DialogHeader>
-
-                {/* Scrollable content area */}
-                <div className="flex-1 overflow-y-auto min-h-0 pr-2">
-                  <div className="space-y-4 py-4">
-                  {/* Stage Name */}
-                  <div className="space-y-2">
-                    <Label>Stage Name</Label>
-                    <div className="flex flex-wrap gap-1">
-                      {STAGE_NAMES.map(name => (
-                        <Button
-                          key={name}
-                          type="button"
-                          variant={stageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(stageName)) ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={() => {
-                            if (name === 'Custom') {
-                              setStageName('Custom');
-                              setCustomStageName('');
-                            } else {
-                              setStageName(name);
-                              setCustomStageName('');
-                            }
-                          }}
-                        >
-                          {name}
-                        </Button>
-                      ))}
-                    </div>
-                    {/* Custom stage name input - show when Custom is selected or when stage name is not in standard list */}
-                    {(stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName)) && (
-                      <Input
-                        placeholder="Enter custom stage name..."
-                        value={stageName === 'Custom' ? customStageName : stageName}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setCustomStageName(value);
-                          if (value) {
-                            setStageName(value);
-                          } else {
-                            setStageName('Custom');
-                          }
-                        }}
-                        className="mt-2"
-                      />
-                    )}
-                    {/* Copy from Previous button - only show when there are previous stages */}
-                    {cycle && cycle.stageRuns.length > 0 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={copyFromPreviousStage}
-                        disabled={isCopyingFromPrevious}
-                        className="mt-2"
-                      >
-                        {isCopyingFromPrevious ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Copy className="mr-2 h-4 w-4" />
-                        )}
-                        Copy from Previous Stage
-                      </Button>
-                    )}
-                  </div>
-
-                  {/* Barrel Selection - moved up */}
-                  <div className="space-y-2">
-                    <Label>Select Barrel(s)</Label>
-                    <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                      {allBarrels.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-2">
-                          No active barrels available
-                        </p>
-                      ) : (
-                        [...allBarrels].sort((a, b) => a.barrelNumber - b.barrelNumber).map(barrel => (
-                          <div key={barrel.barrelId} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`barrel-top-${barrel.barrelId}`}
-                              checked={selectedBarrelIds.includes(barrel.barrelId)}
-                              onCheckedChange={() => toggleBarrel(barrel.barrelId)}
-                            />
-                            <label
-                              htmlFor={`barrel-top-${barrel.barrelId}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                              {barrel.tumblerName} - Barrel #{barrel.barrelNumber}
-                              {barrel.nickname && ` (${barrel.nickname})`}
-                              {barrel.capacityLbs && (
-                                <span className="text-muted-foreground ml-1">
-                                  - {barrel.capacityLbs} lbs
-                                </span>
-                              )}
-                            </label>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    {selectedBarrelIds.length > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        {selectedBarrelIds.length} barrel(s) selected
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Start Date/Time */}
-                  <div className="space-y-2">
-                    <Label>Start Date/Time</Label>
-                    <Input
-                      type="datetime-local"
-                      value={stageStartDateTime}
-                      onChange={(e) => setStageStartDateTime(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      {cycle.stageRuns.length === 0
-                        ? 'First stage defaults to cycle start date'
-                        : 'Defaults to current date/time'}
-                    </p>
-                  </div>
-
-                  {/* Duration - Collapsible */}
-                  <div className="border rounded-lg p-3 space-y-3">
-                    <Collapsible defaultOpen>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="w-full justify-between h-auto p-0 hover:bg-transparent"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Clock className="h-4 w-4" />
-                            <span className="font-medium">Duration</span>
-                            {(parseInt(durationDays) > 0 || parseInt(durationHours) > 0) && (
-                              <span className="text-muted-foreground text-sm">
-                                ({durationDays}d {durationHours}h)
-                              </span>
-                            )}
-                          </div>
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3">
-                        <DurationPicker
-                          durationDays={durationDays}
-                          durationHours={durationHours}
-                          onDaysChange={setDurationDays}
-                          onHoursChange={setDurationHours}
-                          startDateTime={stageStartDateTime}
-                          hideLabel
-                        />
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-
-                  {/* Materials Section */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Materials</Label>
-                      <Button type="button" variant="ghost" size="sm" onClick={addMaterial}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add
-                      </Button>
-                    </div>
-                    {selectedMaterials.length === 0 ? (
-                      <p className="text-sm text-muted-foreground py-2">
-                        No materials added yet. Click &quot;Add&quot; to add grit, polish, or media.
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {selectedMaterials.map((mat, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <Select
-                              value={mat.materialId}
-                              onValueChange={(value) => updateMaterial(index, 'materialId', value)}
-                            >
-                              <SelectTrigger className="flex-1">
-                                <SelectValue placeholder="Select material..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {materials?.map(m => (
-                                  <SelectItem key={m.materialId} value={m.materialId}>
-                                    {m.commonName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <AmountInput
-                              min={0}
-                              placeholder="Amt"
-                              className="w-20"
-                              value={mat.displayAmount}
-                              onChange={(e) => updateMaterial(index, 'displayAmount', e.target.value)}
-                            />
-                            <Select
-                              value={mat.displayUnit}
-                              onValueChange={(value) => updateMaterial(index, 'displayUnit', value)}
-                            >
-                              <SelectTrigger className="w-24">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="tbsp">tbsp</SelectItem>
-                                <SelectItem value="tsp">tsp</SelectItem>
-                                <SelectItem value="cup">cup</SelectItem>
-                                <SelectItem value="oz">oz</SelectItem>
-                                <SelectItem value="g">g</SelectItem>
-                                <SelectItem value="ml">ml</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => removeMaterial(index)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Material Notes */}
-                  <div className="space-y-2">
-                    <Label>Material Notes (optional)</Label>
-                    <Textarea
-                      placeholder="Any notes about materials or this stage..."
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-
-                  {/* Reminder Settings */}
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="reminderEnabled"
-                        checked={reminderEnabled}
-                        onCheckedChange={(checked) => setReminderEnabled(checked as boolean)}
-                      />
-                      <Label htmlFor="reminderEnabled">Set a reminder to check this stage</Label>
-                    </div>
-                    {reminderEnabled && (
-                      <div className="ml-6 space-y-2">
-                        <RadioGroup value={reminderType} onValueChange={(v) => setReminderType(v as 'afterDays' | 'atEnd')}>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="afterDays" id="afterDays" />
-                            <Label htmlFor="afterDays" className="flex items-center gap-2">
-                              Remind after
-                              <Input
-                                type="number"
-                                min="1"
-                                className="w-16 h-8"
-                                value={remindAfterDays}
-                                onChange={(e) => setRemindAfterDays(e.target.value)}
-                                disabled={reminderType !== 'afterDays'}
-                              />
-                              days from start
-                            </Label>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="atEnd" id="atEnd" />
-                            <Label htmlFor="atEnd">Remind at end of stage</Label>
-                          </div>
-                        </RadioGroup>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cleaning Run Section - Collapsible Card */}
-                  <div className="border rounded-lg p-3 space-y-3">
-                    <Collapsible open={addCleaningRun} onOpenChange={setAddCleaningRun}>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="w-full justify-between h-auto p-0 hover:bg-transparent"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Sparkles className="h-4 w-4" />
-                            <span className="font-medium">Cleaning Run</span>
-                            {addCleaningRun && (parseInt(cleaningDurationDays) > 0 || parseInt(cleaningDurationHours) > 0 || parseInt(cleaningDurationMinutes) > 0) && (
-                              <span className="text-muted-foreground text-sm">
-                                ({cleaningDurationDays}d {cleaningDurationHours}h {cleaningDurationMinutes}m)
-                              </span>
-                            )}
-                            {!addCleaningRun && (
-                              <span className="text-muted-foreground text-sm">(optional)</span>
-                            )}
-                          </div>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${addCleaningRun ? 'rotate-180' : ''}`} />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3 space-y-4">
-                      {/* Cleaning Duration */}
-                      <div className="space-y-2">
-                        <Label>Cleaning Duration</Label>
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Days</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              value={cleaningDurationDays}
-                              onChange={(e) => handleCleaningDurationChange(setCleaningDurationDays)(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Hours</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="23"
-                              value={cleaningDurationHours}
-                              onChange={(e) => handleCleaningDurationChange(setCleaningDurationHours)(e.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Minutes</Label>
-                            <Input
-                              type="number"
-                              min="0"
-                              max="59"
-                              value={cleaningDurationMinutes}
-                              onChange={(e) => handleCleaningDurationChange(setCleaningDurationMinutes)(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        {/* Duration Presets */}
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {CLEANING_DURATION_PRESETS.map((preset) => {
-                            const currentMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
-                            return (
-                              <Button
-                                key={preset.minutes}
-                                type="button"
-                                variant={currentMinutes === preset.minutes ? 'default' : 'outline'}
-                                size="sm"
-                                onClick={() => handleCleaningDurationPreset(preset.minutes)}
-                              >
-                                {preset.label}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Cleaning Purpose */}
-                      <div className="space-y-2">
-                        <Label>Purpose (optional)</Label>
-                        <Select value={cleaningPurpose} onValueChange={setCleaningPurpose}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select purpose..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {CLEANING_PURPOSES.map((p) => (
-                              <SelectItem key={p.value} value={p.value}>
-                                {p.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Cleaning Materials */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label>Cleaning Materials</Label>
-                          <Button type="button" variant="ghost" size="sm" onClick={addCleaningMaterial}>
-                            <Plus className="h-4 w-4 mr-1" />
-                            Add
-                          </Button>
-                        </div>
-                        {cleaningMaterials.length === 0 ? (
-                          <p className="text-sm text-muted-foreground py-2">
-                            No materials added. Click &quot;Add&quot; to add soap, media, etc.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            {cleaningMaterials.map((mat, index) => (
-                              <div key={index} className="flex items-center gap-2">
-                                <Select
-                                  value={mat.materialId}
-                                  onValueChange={(value) => updateCleaningMaterial(index, 'materialId', value)}
-                                >
-                                  <SelectTrigger className="flex-1">
-                                    <SelectValue placeholder="Select material..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {materials?.filter(m => m.category !== 'Abrasive').map((m) => (
-                                      <SelectItem key={m.materialId} value={m.materialId}>
-                                        {m.commonName}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <AmountInput
-                                  min={0}
-                                  placeholder="Amt"
-                                  className="w-20"
-                                  value={mat.displayAmount}
-                                  onChange={(e) => updateCleaningMaterial(index, 'displayAmount', e.target.value)}
-                                />
-                                <Select
-                                  value={mat.displayUnit}
-                                  onValueChange={(value) => updateCleaningMaterial(index, 'displayUnit', value)}
-                                >
-                                  <SelectTrigger className="w-24">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="tbsp">tbsp</SelectItem>
-                                    <SelectItem value="tsp">tsp</SelectItem>
-                                    <SelectItem value="cup">cup</SelectItem>
-                                    <SelectItem value="oz">oz</SelectItem>
-                                    <SelectItem value="g">g</SelectItem>
-                                    <SelectItem value="ml">ml</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8"
-                                  onClick={() => removeCleaningMaterial(index)}
-                                >
-                                  <X className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Cleaning Notes */}
-                      <div className="space-y-2">
-                        <Label>Cleaning Notes (optional)</Label>
-                        <Textarea
-                          placeholder="e.g., Extra rinse to remove all grit residue..."
-                          value={cleaningNotes}
-                          onChange={(e) => setCleaningNotes(e.target.value)}
-                          rows={2}
-                        />
-                      </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-
-                  {/* Advanced Options - Collapsible Card */}
-                  <div className="border rounded-lg p-3 space-y-3">
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="w-full justify-between h-auto p-0 hover:bg-transparent"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Advanced Options</span>
-                            <span className="text-muted-foreground text-sm">(optional)</span>
-                          </div>
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-3 space-y-4">
-                      {/* Load Weight */}
-                      <WeightInput
-                        label="Load Weight Before"
-                        valueGrams={loadWeightBeforeGrams}
-                        onValueChange={setLoadWeightBeforeGrams}
-                        barrelCapacityLbs={selectedBarrelCapacityLbs > 0 ? selectedBarrelCapacityLbs : undefined}
-                        onValidationChange={(isValid) => setWeightBeforeValidationError(!isValid)}
-                      />
-
-                      {/* Fill Level */}
-                      <div className="space-y-2">
-                        <Label>Barrel Fill Level (%)</Label>
-                        <Input
-                          type="number"
-                          min="0"
-                          max="100"
-                          placeholder="e.g., 75"
-                          value={fillLevelPercent}
-                          onChange={(e) => setFillLevelPercent(e.target.value)}
-                        />
-                      </div>
-
-                      {/* Water Amount */}
-                      <div className="space-y-2">
-                        <Label>Water Amount</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.1"
-                            placeholder="e.g., 250"
-                            value={waterAmount}
-                            onChange={(e) => setWaterAmount(e.target.value)}
-                            className="flex-1"
-                          />
-                          <Select value={waterUnit} onValueChange={setWaterUnit}>
-                            <SelectTrigger className="w-24">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {WATER_UNITS.map(unit => (
-                                <SelectItem key={unit.value} value={unit.value}>
-                                  {unit.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-
-                  </div>
-                </div>
-                <DialogFooter className="flex-shrink-0">
-                  <Button variant="outline" onClick={() => setIsAddStageOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddStage} disabled={addStageMutation.isPending}>
-                    {addStageMutation.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Create Stage
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button onClick={openAddStageModal}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Stage
+            </Button>
           )}
         </div>
 
@@ -1814,7 +900,6 @@ export default function CycleDetailPage() {
                     onEdit={() => openEditStageModal(stage)}
                     onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
                     isPlanned
-                    canStartEarly={activeStages.length === 0}
                   />
                 ))}
               </div>
@@ -1873,9 +958,9 @@ export default function CycleDetailPage() {
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     <span>Actual Duration</span>
-                    {(parseInt(completeStageDurationDays) > 0 || parseInt(completeStageDurationHours) > 0) && (
+                    {(parseInt(completeStageDurationDays) > 0 || parseInt(completeStageDurationHours) > 0 || parseInt(completeStageDurationMinutes) > 0) && (
                       <span className="text-muted-foreground text-sm">
-                        ({completeStageDurationDays}d {completeStageDurationHours}h)
+                        ({completeStageDurationDays}d {completeStageDurationHours}h {completeStageDurationMinutes}m)
                       </span>
                     )}
                   </div>
@@ -1886,8 +971,10 @@ export default function CycleDetailPage() {
                 <DurationPicker
                   durationDays={completeStageDurationDays}
                   durationHours={completeStageDurationHours}
+                  durationMinutes={completeStageDurationMinutes}
                   onDaysChange={setCompleteStageDurationDays}
                   onHoursChange={setCompleteStageDurationHours}
+                  onMinutesChange={setCompleteStageDurationMinutes}
                   startDateTime={completeStageStartDateTime}
                   hideLabel
                   helperText="Adjust if the stage finished earlier or later than originally planned."
@@ -1895,9 +982,86 @@ export default function CycleDetailPage() {
               </CollapsibleContent>
             </Collapsible>
 
+            {/* End Date Not Today Warning */}
+            {(() => {
+              const days = parseInt(completeStageDurationDays) || 0;
+              const hours = parseInt(completeStageDurationHours) || 0;
+              const mins = parseInt(completeStageDurationMinutes) || 0;
+              const startDate = new Date(completeStageStartDateTime);
+
+              // Guard against invalid start date
+              if (isNaN(startDate.getTime())) return null;
+
+              const endDate = new Date(startDate.getTime() + ((days * 24 + hours) * 60 + mins) * 60 * 1000);
+              const nowDate = getNow();
+
+              // Check if end date's date (ignoring time) is not today's date
+              const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+              const todayOnly = new Date(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
+              const isNotToday = endDateOnly.getTime() !== todayOnly.getTime();
+
+              if (!isNotToday) return null;
+
+              const isFuture = endDate > nowDate;
+              const handleSetToNow = () => {
+                const start = new Date(completeStageStartDateTime);
+                const now = getNow();
+                const { days: newDays, hours: newHours, minutes: newMins } = calculateDurationFromDates(start, now);
+                setCompleteStageDurationDays(String(newDays));
+                setCompleteStageDurationHours(String(newHours));
+                setCompleteStageDurationMinutes(String(newMins));
+              };
+
+              const formattedEndDate = formatDate(endDate.toISOString(), 'MMM d, yyyy h:mm a');
+
+              return (
+                <Alert variant="default" className="border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription className="flex items-center justify-between">
+                    <span className="text-yellow-800 dark:text-yellow-200">
+                      End date is <strong>{formattedEndDate}</strong> ({isFuture ? 'in the future' : 'in the past'})
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSetToNow}
+                      className="ml-2 border-yellow-500 text-yellow-700 hover:bg-yellow-100 dark:text-yellow-200 dark:hover:bg-yellow-900/30"
+                    >
+                      Set to Now
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              );
+            })()}
+
+            {/* Cleaning Run Section */}
+            <CleaningRunSection
+              data={{
+                enabled: completeStageEditableCleaningRun.enabled,
+                durationDays: completeStageEditableCleaningRun.durationDays,
+                durationHours: completeStageEditableCleaningRun.durationHours,
+                durationMinutes: completeStageEditableCleaningRun.durationMinutes,
+                purpose: completeStageEditableCleaningRun.purpose,
+                notes: completeStageEditableCleaningRun.notes,
+                materials: completeStageEditableCleaningRun.materials,
+              }}
+              availableMaterials={materials || []}
+              onChange={(data) => setCompleteStageEditableCleaningRun({
+                ...completeStageEditableCleaningRun,
+                enabled: data.enabled,
+                durationDays: data.durationDays,
+                durationHours: data.durationHours,
+                durationMinutes: data.durationMinutes,
+                purpose: data.purpose,
+                notes: data.notes,
+                materials: data.materials,
+              })}
+            />
+
             {/* Result Rating */}
             <div className="space-y-2">
-              <Label>How did this stage turn out? *</Label>
+              <Label>How did this stage turn out?{completeStageName.toLowerCase() === 'polish' ? ' *' : ' (optional)'}</Label>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map(star => (
                   <button
@@ -2035,21 +1199,44 @@ export default function CycleDetailPage() {
 
             {/* What's Next */}
             <div className="space-y-2">
-              <Label>What&apos;s next?</Label>
-              <RadioGroup value={nextAction} onValueChange={setNextAction}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Advance" id="advance" />
-                  <Label htmlFor="advance">Advance to next stage</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Repeat" id="repeat" />
-                  <Label htmlFor="repeat">Repeat this stage</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Abort" id="abort" />
-                  <Label htmlFor="abort">Stop here (abort / re-cut stones)</Label>
-                </div>
-              </RadioGroup>
+              <Label className={nextActionError ? 'text-destructive' : ''}>
+                What&apos;s next? *
+              </Label>
+              <div className={`rounded-lg p-3 border-2 transition-colors ${
+                nextActionError
+                  ? 'border-destructive bg-destructive/5 animate-pulse'
+                  : 'border-transparent'
+              }`}>
+                <RadioGroup
+                  value={nextAction}
+                  onValueChange={(value) => {
+                    setNextAction(value);
+                    setNextActionError(false);
+                  }}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Advance" id="advance" />
+                    <Label htmlFor="advance">Advance to next stage</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Repeat" id="repeat" />
+                    <Label htmlFor="repeat">Repeat this stage</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Complete" id="complete" />
+                    <Label htmlFor="complete">Cycle Complete (No more ugly rocks!)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Abort" id="abort" />
+                    <Label htmlFor="abort">Stop here (abort / re-cut stones)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              {nextActionError && (
+                <p className="text-sm text-destructive font-medium">
+                  Please select what happens next
+                </p>
+              )}
             </div>
 
             {/* Cleaning Run Display */}
@@ -2157,100 +1344,22 @@ export default function CycleDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Stage Modal */}
-      <Dialog open={isEditStageOpen} onOpenChange={setIsEditStageOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <div className="flex items-start justify-between pr-8">
-              <div>
-                <DialogTitle>Edit Stage</DialogTitle>
-                <DialogDescription>
-                  Adjust the stage duration. Use this if the stage finished earlier or later than planned.
-                </DialogDescription>
-              </div>
-              <Link
-                href="/learn/faq/stages"
-                target="_blank"
-                className="p-1 hover:bg-muted rounded-md transition-colors"
-                title="Stage Tips"
-              >
-                <Lightbulb className="h-5 w-5 text-yellow-500" />
-              </Link>
-            </div>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Stage Name</Label>
-              <div className="flex flex-wrap gap-1">
-                {STAGE_NAMES.map(name => (
-                  <Button
-                    key={name}
-                    type="button"
-                    variant={editStageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(editStageName)) ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      if (name === 'Custom') {
-                        setEditStageName('Custom');
-                        setEditCustomStageName('');
-                      } else {
-                        setEditStageName(name);
-                        setEditCustomStageName('');
-                      }
-                    }}
-                  >
-                    {name}
-                  </Button>
-                ))}
-              </div>
-              {/* Custom stage name input - show when Custom is selected or when stage name is not in standard list */}
-              {(editStageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(editStageName)) && (
-                <Input
-                  placeholder="Enter custom stage name..."
-                  value={editStageName === 'Custom' ? editCustomStageName : editStageName}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setEditCustomStageName(value);
-                    if (value) {
-                      setEditStageName(value);
-                    } else {
-                      setEditStageName('Custom');
-                    }
-                  }}
-                  className="mt-2"
-                />
-              )}
-            </div>
-            <DurationPicker
-              durationDays={editStageDurationDays}
-              durationHours={editStageDurationHours}
-              onDaysChange={setEditStageDurationDays}
-              onHoursChange={setEditStageDurationHours}
-              startDateTime={editStageStartDateTime}
-              helperText="Tip: If the stage finished early (e.g., 3 days instead of 7), reduce the duration here before marking complete."
-            />
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea
-                value={editStageNotes}
-                onChange={(e) => setEditStageNotes(e.target.value)}
-                placeholder="Any notes about this change..."
-                rows={2}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditStageOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditStage} disabled={updateStageMutation.isPending}>
-              {updateStageMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Stage Form Modal (New and Edit) */}
+      {cycle && (
+        <StageFormModal
+          open={isStageFormOpen}
+          onOpenChange={setIsStageFormOpen}
+          cycleId={cycleId}
+          cycle={cycle}
+          stageRunId={editStageId}
+          allBarrels={allBarrels}
+          materials={materials || []}
+          onSuccess={() => {
+            setIsStageFormOpen(false);
+            setEditStageId(undefined);
+          }}
+        />
+      )}
 
       {/* Cleaning Run Modal */}
       {cleaningRunStageId && (
@@ -2364,13 +1473,13 @@ export default function CycleDetailPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Started</p>
-                  <p className="font-medium">{new Date(viewStageData.startDateTime).toLocaleString()}</p>
+                  <p className="font-medium">{formatDate(viewStageData.startDateTime, 'MMM d, yyyy h:mm a')}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Completed</p>
                   <p className="font-medium">
                     {viewStageData.endDateTime
-                      ? new Date(viewStageData.endDateTime).toLocaleString()
+                      ? formatDate(viewStageData.endDateTime, 'MMM d, yyyy h:mm a')
                       : 'In Progress'}
                   </p>
                 </div>
@@ -2414,7 +1523,7 @@ export default function CycleDetailPage() {
               )}
 
               {/* Load Details */}
-              {(viewStageData.loadWeightBeforeGrams || viewStageData.fillLevelPercent || viewStageData.waterLevel || viewStageData.waterAmountMl) && (
+              {(viewStageData.loadWeightBeforeGrams || viewStageData.waterAmountMl) && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium text-muted-foreground">Load Details</p>
                   <div className="grid gap-3 sm:grid-cols-2 p-3 bg-muted/50 rounded-lg">
@@ -2422,18 +1531,6 @@ export default function CycleDetailPage() {
                       <div>
                         <span className="text-sm text-muted-foreground">Load Weight:</span>
                         <span className="ml-2">{viewStageData.loadWeightBeforeGrams}g</span>
-                      </div>
-                    )}
-                    {viewStageData.fillLevelPercent && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Fill Level:</span>
-                        <span className="ml-2">{viewStageData.fillLevelPercent}%</span>
-                      </div>
-                    )}
-                    {viewStageData.waterLevel && (
-                      <div>
-                        <span className="text-sm text-muted-foreground">Water Level:</span>
-                        <span className="ml-2">{viewStageData.waterLevel}</span>
                       </div>
                     )}
                     {viewStageData.waterAmountMl && (
@@ -2570,24 +1667,18 @@ function StageCard({
   onEdit,
   onDelete,
   onView,
-  onStartEarly: _onStartEarly,
   isCompleting,
-  isStartingEarly: _isStartingEarly,
   cycleId,
   isPlanned,
-  canStartEarly: _canStartEarly,
 }: {
   stage: StageRunSummaryDto;
   onComplete?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onView?: () => void;
-  onStartEarly?: () => void;
   isCompleting?: boolean;
-  isStartingEarly?: boolean;
   cycleId: string;
   isPlanned?: boolean;
-  canStartEarly?: boolean;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -2595,16 +1686,18 @@ function StageCard({
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { toUserTz, now: getNow, formatDate } = useTimezone();
 
   const isActive = stage.status === 'Active';
-  const startDate = new Date(stage.startDateTime);
+  // Convert UTC dates to user's timezone
+  const startDate = toUserTz(stage.startDateTime) || new Date(stage.startDateTime);
   // Use durationEstimateEndDate for active/planned stages, endDateTime for completed
   const effectiveEndDate = stage.endDateTime
-    ? new Date(stage.endDateTime)
+    ? toUserTz(stage.endDateTime)
     : stage.durationEstimateEndDate
-      ? new Date(stage.durationEstimateEndDate)
+      ? toUserTz(stage.durationEstimateEndDate)
       : null;
-  const now = new Date();
+  const now = getNow();
   const isOverdue = isActive && effectiveEndDate && effectiveEndDate < now;
   const displayName = formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns);
 
@@ -2614,9 +1707,6 @@ function StageCard({
   const progressPercent = isActive && totalDuration > 0 ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100)) : (stage.status === 'Completed' ? 100 : 0);
 
   const totalDays = totalDuration > 0 ? Math.ceil(totalDuration / (1000 * 60 * 60 * 24)) : 0;
-  const currentDay = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
-
-  const timeRemaining = isActive && effectiveEndDate ? getTimeRemaining(effectiveEndDate) : null;
 
   // Load stage details when collapsible is opened
   const loadStageDetails = async () => {
@@ -2706,19 +1796,19 @@ function StageCard({
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlanned ? (
-                <>Scheduled for {startDate.toLocaleDateString()}{effectiveEndDate && <> · ~{totalDays}d duration</>}</>
+                <>Scheduled for {formatDate(stage.startDateTime, 'MMM d, yyyy')}{effectiveEndDate && <> · ~{totalDays}d duration</>}</>
               ) : isActive && effectiveEndDate ? (
                 (() => {
                   const progressText = getStageProgressText(startDate, effectiveEndDate);
                   const isOverdueText = progressText.includes('overdue') || progressText === 'Due Today';
                   return isOverdueText ? (
-                    <span className="text-yellow-600">Started {startDate.toLocaleDateString()} · {progressText}</span>
+                    <span className="text-yellow-600">Started {formatDate(stage.startDateTime, 'MMM d, yyyy')} · {progressText}</span>
                   ) : (
-                    <>Started {startDate.toLocaleDateString()} · {progressText}</>
+                    <>Started {formatDate(stage.startDateTime, 'MMM d, yyyy')} · {progressText}</>
                   );
                 })()
               ) : (
-                <>{startDate.toLocaleDateString()}{effectiveEndDate && <> → {effectiveEndDate.toLocaleDateString()}</>}</>
+                <>{formatDate(stage.startDateTime, 'MMM d, yyyy')}{effectiveEndDate && <> → {formatDate(stage.endDateTime || stage.durationEstimateEndDate, 'MMM d, yyyy')}</>}</>
               )}
             </p>
           </div>
@@ -2817,9 +1907,9 @@ function StageCard({
                       <span className="text-muted-foreground">End Date:</span>
                       <span>
                         {stageDetails.endDateTime
-                          ? new Date(stageDetails.endDateTime).toLocaleDateString()
+                          ? formatDate(stageDetails.endDateTime, 'MMM d, yyyy')
                           : stageDetails.durationEstimateEndDate
-                            ? `~${new Date(stageDetails.durationEstimateEndDate).toLocaleDateString()}`
+                            ? `~${formatDate(stageDetails.durationEstimateEndDate, 'MMM d, yyyy')}`
                             : '-'}
                       </span>
                     </div>
@@ -2869,14 +1959,6 @@ function StageCard({
                             </span>
                           )}
                         </span>
-                      </div>
-                    )}
-
-                    {/* Fill Level */}
-                    {stageDetails.fillLevelPercent && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Fill Level:</span>
-                        <span>{stageDetails.fillLevelPercent}%</span>
                       </div>
                     )}
 
@@ -2996,19 +2078,4 @@ function StageCard({
       />
     </>
   );
-}
-
-function getTimeRemaining(endDate: Date): string {
-  const now = new Date();
-  const diff = endDate.getTime() - now.getTime();
-
-  if (diff <= 0) return 'Overdue';
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-  return `${hours}h`;
 }

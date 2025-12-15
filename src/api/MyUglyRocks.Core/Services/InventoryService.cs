@@ -107,15 +107,7 @@ public class InventoryService : IInventoryService
             SourceName = request.SourceName,
             SourceLocation = request.SourceLocation,
             SourceUrl = request.SourceUrl,
-            TotalWeightGrams = request.TotalWeightGrams,
-            RemainingWeightGrams = request.RemainingWeightGrams ?? request.TotalWeightGrams,
             DisplayUnit = request.DisplayUnit ?? "g",
-            Cost = request.Cost,
-            Condition = Enum.Parse<InventoryCondition>(request.Condition, true),
-            SizeCategories = request.SizeCategories != null && request.SizeCategories.Length > 0
-                ? string.Join(",", request.SizeCategories)
-                : null,
-            QualityRating = request.QualityRating,
             Status = string.IsNullOrEmpty(request.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(request.Status, true),
             StorageLocation = request.StorageLocation,
             Notes = request.Notes,
@@ -135,20 +127,40 @@ public class InventoryService : IInventoryService
                     InventoryId = inventory.InventoryId,
                     SpecimenId = specimenRequest.SpecimenId,
                     UserSpecimenId = specimenRequest.UserSpecimenId,
-                    EstimatedPercentage = specimenRequest.EstimatedPercentage,
+                    WeightGrams = specimenRequest.WeightGrams,
+                    Cost = specimenRequest.Cost,
+                    Condition = string.IsNullOrEmpty(specimenRequest.Condition)
+                        ? InventoryCondition.Raw
+                        : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
+                    QualityRating = specimenRequest.QualityRating,
+                    SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
+                        ? string.Join(",", specimenRequest.SizeCategories)
+                        : null,
                     Notes = specimenRequest.Notes
                 };
                 InventorySpecimens.Add(inventorySpecimen);
             }
             await _context.SaveChangesAsync(cancellationToken);
+
+            // Reload and recalculate aggregates
+            inventory = await Inventories
+                .Include(i => i.InventorySpecimens)
+                .FirstOrDefaultAsync(i => i.InventoryId == inventory.InventoryId, cancellationToken);
+
+            if (inventory != null)
+            {
+                RecalculateAggregatesFromSpecimens(inventory);
+                await _context.SaveChangesAsync(cancellationToken);
+            }
         }
 
-        return (await GetInventoryAsync(inventory.InventoryId, userId, cancellationToken))!;
+        return (await GetInventoryAsync(inventory!.InventoryId, userId, cancellationToken))!;
     }
 
     public async Task<InventoryDto?> UpdateInventoryAsync(Guid inventoryId, Guid userId, UpdateInventoryRequest request, CancellationToken cancellationToken = default)
     {
         var inventory = await Inventories
+            .Include(i => i.InventorySpecimens)
             .FirstOrDefaultAsync(i => i.InventoryId == inventoryId && i.UserId == userId, cancellationToken);
 
         if (inventory == null)
@@ -160,21 +172,50 @@ public class InventoryService : IInventoryService
         inventory.SourceName = request.SourceName;
         inventory.SourceLocation = request.SourceLocation;
         inventory.SourceUrl = request.SourceUrl;
-        inventory.TotalWeightGrams = request.TotalWeightGrams;
-        inventory.RemainingWeightGrams = request.RemainingWeightGrams;
         inventory.DisplayUnit = request.DisplayUnit ?? "g";
-        inventory.Cost = request.Cost;
-        inventory.Condition = Enum.Parse<InventoryCondition>(request.Condition, true);
-        inventory.SizeCategories = request.SizeCategories != null && request.SizeCategories.Length > 0
-            ? string.Join(",", request.SizeCategories)
-            : null;
-        inventory.QualityRating = request.QualityRating;
         inventory.Status = string.IsNullOrEmpty(request.Status) ? inventory.Status : Enum.Parse<InventoryStatus>(request.Status, true);
         inventory.StorageLocation = request.StorageLocation;
         inventory.Notes = request.Notes;
         inventory.IsFavorite = request.IsFavorite ?? inventory.IsFavorite;
 
+        // Update specimens if provided
+        if (request.Specimens != null)
+        {
+            // Remove existing specimens
+            InventorySpecimens.RemoveRange(inventory.InventorySpecimens);
+
+            // Add new specimens using Select for cleaner mapping
+            var newSpecimens = request.Specimens.Select(specimenRequest => new InventorySpecimen
+            {
+                InventoryId = inventoryId,
+                SpecimenId = specimenRequest.SpecimenId,
+                UserSpecimenId = specimenRequest.UserSpecimenId,
+                WeightGrams = specimenRequest.WeightGrams,
+                Cost = specimenRequest.Cost,
+                Condition = string.IsNullOrEmpty(specimenRequest.Condition)
+                    ? InventoryCondition.Raw
+                    : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
+                QualityRating = specimenRequest.QualityRating,
+                SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
+                    ? string.Join(",", specimenRequest.SizeCategories)
+                    : null,
+                Notes = specimenRequest.Notes
+            });
+            InventorySpecimens.AddRange(newSpecimens);
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Reload inventory with new specimens to recalculate aggregates
+        inventory = await Inventories
+            .Include(i => i.InventorySpecimens)
+            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId, cancellationToken);
+
+        if (inventory != null)
+        {
+            RecalculateAggregatesFromSpecimens(inventory);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         return await GetInventoryAsync(inventoryId, userId, cancellationToken);
     }
@@ -227,13 +268,32 @@ public class InventoryService : IInventoryService
                 InventoryId = inventoryId,
                 SpecimenId = specimenRequest.SpecimenId,
                 UserSpecimenId = specimenRequest.UserSpecimenId,
-                EstimatedPercentage = specimenRequest.EstimatedPercentage,
+                WeightGrams = specimenRequest.WeightGrams,
+                Cost = specimenRequest.Cost,
+                Condition = string.IsNullOrEmpty(specimenRequest.Condition)
+                    ? InventoryCondition.Raw
+                    : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
+                QualityRating = specimenRequest.QualityRating,
+                SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
+                    ? string.Join(",", specimenRequest.SizeCategories)
+                    : null,
                 Notes = specimenRequest.Notes
             };
             InventorySpecimens.Add(inventorySpecimen);
         }
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Reload inventory with new specimens to recalculate aggregates
+        inventory = await Inventories
+            .Include(i => i.InventorySpecimens)
+            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId, cancellationToken);
+
+        if (inventory != null)
+        {
+            RecalculateAggregatesFromSpecimens(inventory);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         return await GetInventoryAsync(inventoryId, userId, cancellationToken);
     }
@@ -270,7 +330,7 @@ public class InventoryService : IInventoryService
             inventory.RemainingWeightGrams,
             inventory.DisplayUnit,
             inventory.Cost,
-            inventory.Condition.ToString(),
+            inventory.QualityRating,
             inventory.Status.ToString(),
             inventory.IsFavorite,
             inventory.DateCreated,
@@ -296,29 +356,51 @@ public class InventoryService : IInventoryService
                 specimen?.ScientificName ?? userSpecimen?.ScientificName,
                 (specimen?.MaterialType ?? userSpecimen?.MaterialType ?? SpecimenMaterialType.Rock).ToString(),
                 (specimen?.TumblingDifficulty ?? userSpecimen?.TumblingDifficulty)?.ToString(),
-                s.EstimatedPercentage,
+                s.WeightGrams,
+                s.Cost,
+                s.Condition?.ToString(),
+                s.QualityRating,
+                string.IsNullOrEmpty(s.SizeCategories)
+                    ? null
+                    : s.SizeCategories.Split(',', StringSplitOptions.RemoveEmptyEntries),
                 s.Notes,
                 specimen != null ? "system" : "user"
             );
         }).ToList();
 
-        var photos = inventory.InventoryPhotos.Select(p => new InventoryPhotoDto(
-            p.InventoryPhotoId,
-            p.Url,
-            p.FileName,
-            p.Caption,
-            p.IsCover,
-            p.SortOrder,
-            p.DateCreated,
-            p.ThumbnailUrl,
-            p.MediumUrl,
-            p.LargeUrl,
-            p.BlurHash,
-            p.Width,
-            p.Height,
-            p.ProcessingStatus.ToString(),
-            p.ProcessingError
-        )).ToList();
+        var photos = inventory.InventoryPhotos.Select(p => {
+            // Find specimen name if linked
+            string? specimenName = null;
+            if (p.InventorySpecimenId.HasValue)
+            {
+                var linkedSpecimen = inventory.InventorySpecimens
+                    .FirstOrDefault(s => s.InventorySpecimenId == p.InventorySpecimenId);
+                if (linkedSpecimen != null)
+                {
+                    specimenName = linkedSpecimen.Specimen?.CommonName
+                        ?? linkedSpecimen.UserSpecimen?.CommonName;
+                }
+            }
+            return new InventoryPhotoDto(
+                p.InventoryPhotoId,
+                p.Url,
+                p.FileName,
+                p.Caption,
+                p.IsCover,
+                p.SortOrder,
+                p.DateCreated,
+                p.ThumbnailUrl,
+                p.MediumUrl,
+                p.LargeUrl,
+                p.BlurHash,
+                p.Width,
+                p.Height,
+                p.ProcessingStatus.ToString(),
+                p.ProcessingError,
+                p.InventorySpecimenId,
+                specimenName
+            );
+        }).ToList();
 
         return new InventoryDto(
             inventory.InventoryId,
@@ -332,7 +414,6 @@ public class InventoryService : IInventoryService
             inventory.RemainingWeightGrams,
             inventory.DisplayUnit,
             inventory.Cost,
-            inventory.Condition.ToString(),
             string.IsNullOrEmpty(inventory.SizeCategories)
                 ? null
                 : inventory.SizeCategories.Split(',', StringSplitOptions.RemoveEmptyEntries),
@@ -350,5 +431,67 @@ public class InventoryService : IInventoryService
             inventory.RemainingWeightGrams,
             inventory.InventoryPhotos.Count
         );
+    }
+
+    /// <summary>
+    /// Recalculates aggregated values from individual specimens.
+    /// - TotalWeightGrams: Sum of all specimen weights
+    /// - RemainingWeightGrams: Same as total (or preserved if already set and different)
+    /// - Cost: Sum of all specimen costs
+    /// - QualityRating: Average of all specimen quality ratings (rounded)
+    /// - SizeCategories: Union of all specimen size categories
+    /// </summary>
+    private static void RecalculateAggregatesFromSpecimens(Inventory inventory)
+    {
+        var specimens = inventory.InventorySpecimens.ToList();
+
+        if (specimens.Count == 0)
+        {
+            inventory.TotalWeightGrams = null;
+            inventory.RemainingWeightGrams = null;
+            inventory.Cost = null;
+            inventory.QualityRating = null;
+            inventory.SizeCategories = null;
+            return;
+        }
+
+        // Sum of weights
+        var specimensWithWeight = specimens.Where(s => s.WeightGrams.HasValue).ToList();
+        if (specimensWithWeight.Count > 0)
+        {
+            var oldTotalWeight = inventory.TotalWeightGrams;
+            var totalWeight = specimensWithWeight.Sum(s => s.WeightGrams!.Value);
+            inventory.TotalWeightGrams = totalWeight;
+
+            // If remaining weight isn't set or equals the old total, update it too
+            if (!inventory.RemainingWeightGrams.HasValue || inventory.RemainingWeightGrams == oldTotalWeight)
+            {
+                inventory.RemainingWeightGrams = totalWeight;
+            }
+        }
+
+        // Sum of costs
+        var specimensWithCost = specimens.Where(s => s.Cost.HasValue).ToList();
+        inventory.Cost = specimensWithCost.Count > 0
+            ? specimensWithCost.Sum(s => s.Cost!.Value)
+            : null;
+
+        // Average of quality ratings (rounded)
+        var specimensWithQuality = specimens.Where(s => s.QualityRating.HasValue).ToList();
+        inventory.QualityRating = specimensWithQuality.Count > 0
+            ? (int)Math.Round(specimensWithQuality.Average(s => s.QualityRating!.Value))
+            : null;
+
+        // Union of size categories
+        var allSizeCategories = specimens
+            .Where(s => !string.IsNullOrEmpty(s.SizeCategories))
+            .SelectMany(s => s.SizeCategories!.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            .Distinct()
+            .OrderBy(c => c)
+            .ToList();
+
+        inventory.SizeCategories = allSizeCategories.Count > 0
+            ? string.Join(",", allSizeCategories)
+            : null;
     }
 }

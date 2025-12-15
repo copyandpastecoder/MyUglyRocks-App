@@ -61,9 +61,6 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
             .HasColumnName("cost")
             .HasPrecision(10, 2);
 
-        builder.Property(i => i.Condition)
-            .HasColumnName("condition");
-
         builder.Property(i => i.SizeCategories)
             .HasColumnName("size_categories")
             .HasMaxLength(255);
@@ -146,8 +143,23 @@ public class InventorySpecimenConfiguration : IEntityTypeConfiguration<Inventory
         builder.Property(i => i.UserSpecimenId)
             .HasColumnName("user_specimen_id");
 
-        builder.Property(i => i.EstimatedPercentage)
-            .HasColumnName("estimated_percentage");
+        builder.Property(i => i.WeightGrams)
+            .HasColumnName("weight_grams")
+            .HasPrecision(10, 2);
+
+        builder.Property(i => i.Cost)
+            .HasColumnName("cost")
+            .HasPrecision(10, 2);
+
+        builder.Property(i => i.Condition)
+            .HasColumnName("condition");
+
+        builder.Property(i => i.QualityRating)
+            .HasColumnName("quality_rating");
+
+        builder.Property(i => i.SizeCategories)
+            .HasColumnName("size_categories")
+            .HasMaxLength(255);
 
         builder.Property(i => i.Notes)
             .HasColumnName("notes");
@@ -208,6 +220,9 @@ public class InventoryPhotoConfiguration : IEntityTypeConfiguration<InventoryPho
         builder.Property(p => p.InventoryId)
             .HasColumnName("inventory_id")
             .IsRequired();
+
+        builder.Property(p => p.InventorySpecimenId)
+            .HasColumnName("inventory_specimen_id");
 
         builder.Property(p => p.StorageKey)
             .HasColumnName("storage_key")
@@ -298,9 +313,17 @@ public class InventoryPhotoConfiguration : IEntityTypeConfiguration<InventoryPho
             .HasForeignKey(p => p.InventoryId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(p => p.InventorySpecimen)
+            .WithMany()
+            .HasForeignKey(p => p.InventorySpecimenId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Indexes
         builder.HasIndex(p => p.InventoryId)
             .HasDatabaseName("ix_inventory_photos_inventory_id");
+
+        builder.HasIndex(p => p.InventorySpecimenId)
+            .HasDatabaseName("ix_inventory_photos_inventory_specimen_id");
 
         builder.HasIndex(p => p.IsCover)
             .HasDatabaseName("ix_inventory_photos_is_cover");

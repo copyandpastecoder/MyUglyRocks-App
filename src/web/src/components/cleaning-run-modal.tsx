@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { cycleApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
@@ -19,13 +19,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
 import { Input } from '@/components/ui/input';
 import { AmountInput } from '@/components/amount-input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Loader2, Plus, X } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, Plus, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useMaterials } from '@/hooks/use-materials';
 import { CLEANING_PURPOSES, CLEANING_DURATION_PRESETS } from '@/lib/cleaning-constants';
 import { MATERIAL_UNITS, formatMaterialsForSubmission } from '@/lib/material-utils';
@@ -133,6 +147,17 @@ export function CleaningRunModal({
 
   const currentMinutes = (parseInt(durationDays) || 0) * 1440 + (parseInt(durationHours) || 0) * 60 + (parseInt(durationMinutes) || 0);
 
+  // Filter out abrasives and sort alphabetically by name
+  const sortedMaterials = useMemo(() => {
+    if (!materials) return [];
+    return [...materials]
+      .filter(m => m.category !== 'Abrasive')
+      .sort((a, b) => a.commonName.localeCompare(b.commonName));
+  }, [materials]);
+
+  // Track which material popovers are open
+  const [openPopovers, setOpenPopovers] = useState<Record<number, boolean>>({});
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -225,56 +250,96 @@ export function CleaningRunModal({
               </p>
             ) : (
               <div className="space-y-2">
-                {selectedMaterials.map((mat, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <Select
-                      value={mat.materialId}
-                      onValueChange={(value) => updateMaterial(index, 'materialId', value)}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select material..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {materials?.filter(m => m.category !== 'Abrasive').map((m) => (
-                          <SelectItem key={m.materialId} value={m.materialId}>
-                            {m.commonName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <AmountInput
-                      min={0}
-                      placeholder="Amt"
-                      className="w-20"
-                      value={mat.displayAmount}
-                      onChange={(e) => updateMaterial(index, 'displayAmount', e.target.value)}
-                    />
-                    <Select
-                      value={mat.displayUnit}
-                      onValueChange={(value) => updateMaterial(index, 'displayUnit', value)}
-                    >
-                      <SelectTrigger className="w-24">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MATERIAL_UNITS.map((unit) => (
-                          <SelectItem key={unit.value} value={unit.value}>
-                            {unit.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => removeMaterial(index)}
-                    >
-                      <X className="h-4 w-4" />
+                {selectedMaterials.map((mat, index) => {
+                  const selectedMaterial = sortedMaterials.find(m => m.materialId === mat.materialId);
+                  return (
+                    <div key={index} className="flex items-center gap-2">
+                      {/* Searchable Material Combobox */}
+                      <Popover
+                        open={openPopovers[index] || false}
+                        onOpenChange={(open) => setOpenPopovers(prev => ({ ...prev, [index]: open }))}
+                        modal={false}
+                      >
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={openPopovers[index] || false}
+                            className="flex-1 justify-between font-normal"
+                          >
+                            <span className={cn(!selectedMaterial && "text-muted-foreground")}>
+                              {selectedMaterial?.commonName || "Select material..."}
+                            </span>
+                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent
+                          className="w-[400px] p-0"
+                          align="start"
+                          onWheelCapture={(e) => e.stopPropagation()}
+                        >
+                          <Command>
+                            <CommandInput placeholder="Search materials..." />
+                            <CommandList>
+                              <CommandEmpty>No material found.</CommandEmpty>
+                              <CommandGroup>
+                                {sortedMaterials.map((m) => (
+                                  <CommandItem
+                                    key={m.materialId}
+                                    value={m.commonName}
+                                    onSelect={() => {
+                                      updateMaterial(index, 'materialId', m.materialId);
+                                      setOpenPopovers(prev => ({ ...prev, [index]: false }));
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        mat.materialId === m.materialId ? "opacity-100" : "opacity-0"
+                                      )}
+                                    />
+                                    {m.commonName}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      <AmountInput
+                        min={0}
+                        placeholder="Amt"
+                        className="w-20"
+                        value={mat.displayAmount}
+                        onChange={(e) => updateMaterial(index, 'displayAmount', e.target.value)}
+                      />
+                      <Select
+                        value={mat.displayUnit}
+                        onValueChange={(value) => updateMaterial(index, 'displayUnit', value)}
+                      >
+                        <SelectTrigger className="w-24">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MATERIAL_UNITS.map((unit) => (
+                            <SelectItem key={unit.value} value={unit.value}>
+                              {unit.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => removeMaterial(index)}
+                      >
+                        <X className="h-4 w-4" />
                     </Button>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

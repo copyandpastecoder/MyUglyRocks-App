@@ -14,10 +14,9 @@ export interface InventoryDto {
   totalWeightGrams: number | null;
   remainingWeightGrams: number | null;
   displayUnit: string;
-  cost: number | null;
-  condition: InventoryCondition;
-  sizeCategories: SizeCategory[] | null;
-  qualityRating: number | null;
+  cost: number | null;  // Aggregated from specimens
+  sizeCategories: SizeCategory[] | null;  // Aggregated from specimens
+  qualityRating: number | null;  // Aggregated from specimens (average)
   status: InventoryStatus;
   storageLocation: string | null;
   notes: string | null;
@@ -41,8 +40,8 @@ export interface InventoryListDto {
   totalWeightGrams: number | null;
   remainingWeightGrams: number | null;
   displayUnit: string;
-  cost: number | null;
-  condition: InventoryCondition;
+  cost: number | null;  // Aggregated from specimens
+  qualityRating: number | null;  // Aggregated from specimens (average)
   status: InventoryStatus;
   isFavorite: boolean;
   dateCreated: string;
@@ -59,13 +58,7 @@ export interface CreateInventoryRequest {
   sourceName?: string;
   sourceLocation?: string;
   sourceUrl?: string;
-  totalWeightGrams?: number;
-  remainingWeightGrams?: number;
   displayUnit?: string;
-  cost?: number;
-  condition: InventoryCondition;
-  sizeCategories?: SizeCategory[];
-  qualityRating?: number;
   status?: InventoryStatus;
   storageLocation?: string;
   notes?: string;
@@ -80,17 +73,12 @@ export interface UpdateInventoryRequest {
   sourceName?: string;
   sourceLocation?: string;
   sourceUrl?: string;
-  totalWeightGrams?: number;
-  remainingWeightGrams?: number;
   displayUnit?: string;
-  cost?: number;
-  condition: InventoryCondition;
-  sizeCategories?: SizeCategory[];
-  qualityRating?: number;
   status?: InventoryStatus;
   storageLocation?: string;
   notes?: string;
   isFavorite?: boolean;
+  specimens?: CreateInventorySpecimenRequest[];
 }
 
 export interface UpdateInventoryStatusRequest {
@@ -109,7 +97,11 @@ export interface InventorySpecimenDto {
   scientificName: string | null;
   materialType: string;
   tumblingDifficulty: string | null;
-  estimatedPercentage: number | null;
+  weightGrams: number | null;
+  cost: number | null;
+  condition: InventoryCondition | null;
+  qualityRating: number | null;
+  sizeCategories: SizeCategory[] | null;
   notes: string | null;
   source: 'system' | 'user';
 }
@@ -117,7 +109,11 @@ export interface InventorySpecimenDto {
 export interface CreateInventorySpecimenRequest {
   specimenId?: string;
   userSpecimenId?: string;
-  estimatedPercentage?: number;
+  weightGrams?: number;
+  cost?: number;
+  condition?: InventoryCondition;
+  qualityRating?: number;
+  sizeCategories?: SizeCategory[];
   notes?: string;
 }
 
@@ -137,6 +133,9 @@ export interface InventoryPhotoDto {
   height: number | null;
   processingStatus: 'Processing' | 'Completed' | 'Failed';
   processingError: string | null;
+  // Specimen link
+  inventorySpecimenId: string | null;
+  specimenName: string | null;
 }
 
 export interface InventoryStatsDto {

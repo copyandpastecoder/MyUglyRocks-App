@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useInventoryItem } from '@/hooks/use-inventory';
+import { useTimezone } from '@/hooks/use-user';
 import { postApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,7 +38,6 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { LazyImage } from '@/components/lazy-image';
-import type { InventoryPhotoDto } from '@/types/inventory';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -49,6 +49,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function ShareInventoryPage() {
   const params = useParams();
   const router = useRouter();
+  const { formatDate } = useTimezone();
   const inventoryId = params.id as string;
 
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
@@ -76,15 +77,15 @@ export default function ShareInventoryPage() {
   }, [inventory, form]);
 
   // Auto-select all completed photos and set first as cover when photos load (once only)
+  /* eslint-disable react-hooks/set-state-in-effect -- One-time initialization from async data */
   useEffect(() => {
     if (!hasInitializedPhotos.current && completedPhotos.length > 0) {
       hasInitializedPhotos.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
       setSelectedPhotoIds(completedPhotos.map(p => p.inventoryPhotoId));
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoverPhotoId(completedPhotos[0].inventoryPhotoId);
     }
   }, [completedPhotos]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const createPostMutation = useMutation({
     mutationFn: (data: FormValues) =>
@@ -229,13 +230,13 @@ export default function ShareInventoryPage() {
             <Badge variant="secondary">{inventory.sourceType}</Badge>
           </div>
           <CardDescription>
-            Acquired {new Date(inventory.acquiredDate).toLocaleDateString()}
+            Acquired {formatDate(inventory.acquiredDate, 'MMM d, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3 text-sm">
           <div>
-            <p className="text-muted-foreground">Condition</p>
-            <p className="font-medium">{inventory.condition}</p>
+            <p className="text-muted-foreground">Source</p>
+            <p className="font-medium">{inventory.sourceName || 'Not specified'}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Specimens</p>

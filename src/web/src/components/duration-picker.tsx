@@ -10,8 +10,10 @@ const DURATION_PRESETS = [1, 2, 3, 5, 7, 10];
 interface DurationPickerProps {
   durationDays: string;
   durationHours: string;
+  durationMinutes?: string;
   onDaysChange: (value: string) => void;
   onHoursChange: (value: string) => void;
+  onMinutesChange?: (value: string) => void;
   startDateTime?: string;
   label?: string;
   helperText?: string;
@@ -21,21 +23,25 @@ interface DurationPickerProps {
 export function DurationPicker({
   durationDays,
   durationHours,
+  durationMinutes = '0',
   onDaysChange,
   onHoursChange,
+  onMinutesChange,
   startDateTime,
   label = 'Duration',
   helperText,
   hideLabel = false,
 }: DurationPickerProps) {
   const showEndDatePicker = !!startDateTime;
+  const showMinutes = !!onMinutesChange;
 
   const calculateEndDate = () => {
     if (!startDateTime) return null;
     const start = new Date(startDateTime);
     const days = parseInt(durationDays) || 0;
     const hours = parseInt(durationHours) || 0;
-    return new Date(start.getTime() + (days * 24 + hours) * 60 * 60 * 1000);
+    const minutes = parseInt(durationMinutes) || 0;
+    return new Date(start.getTime() + ((days * 24 + hours) * 60 + minutes) * 60 * 1000);
   };
 
   // When user picks an end date, calculate and update duration
@@ -49,12 +55,14 @@ export function DurationPicker({
     if (end <= start) {
       onDaysChange('0');
       onHoursChange('1');
+      onMinutesChange?.('0');
       return;
     }
 
-    const { days, hours } = calculateDurationFromDates(start, end);
+    const { days, hours, minutes } = calculateDurationFromDates(start, end);
     onDaysChange(String(days));
     onHoursChange(String(hours));
+    onMinutesChange?.(String(minutes));
   };
 
   const endDate = calculateEndDate();
@@ -62,7 +70,7 @@ export function DurationPicker({
   return (
     <div className="space-y-2">
       {!hideLabel && <Label>{label}</Label>}
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid gap-4 ${showMinutes ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <div className="space-y-1">
           <Label className="text-xs text-muted-foreground">Days</Label>
           <Input
@@ -82,17 +90,30 @@ export function DurationPicker({
             onChange={(e) => onHoursChange(e.target.value)}
           />
         </div>
+        {showMinutes && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Minutes</Label>
+            <Input
+              type="number"
+              min="0"
+              max="59"
+              value={durationMinutes}
+              onChange={(e) => onMinutesChange?.(e.target.value)}
+            />
+          </div>
+        )}
       </div>
       <div className="flex flex-wrap gap-1 mt-2">
         {DURATION_PRESETS.map(days => (
           <Button
             key={days}
             type="button"
-            variant={durationDays === String(days) && durationHours === '0' ? 'default' : 'outline'}
+            variant={durationDays === String(days) && durationHours === '0' && (!showMinutes || durationMinutes === '0') ? 'default' : 'outline'}
             size="sm"
             onClick={() => {
               onDaysChange(String(days));
               onHoursChange('0');
+              onMinutesChange?.('0');
             }}
           >
             {days}d

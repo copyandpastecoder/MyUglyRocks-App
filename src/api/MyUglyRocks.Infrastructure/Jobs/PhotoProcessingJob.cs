@@ -7,8 +7,8 @@ using MyUglyRocks.Infrastructure.Data;
 namespace MyUglyRocks.Infrastructure.Jobs;
 
 /// <summary>
-/// Hangfire background job for processing photo variants.
-/// Uploads image variants to R2 storage and updates the photo record.
+/// Hangfire background job for processing stage photo variants.
+/// Uses two-phase processing: thumbnail first (fast), then large variants (background).
 /// </summary>
 public class PhotoProcessingJob
 {
@@ -30,37 +30,92 @@ public class PhotoProcessingJob
     }
 
     /// <summary>
-    /// Process a photo: create variants and upload to storage.
-    /// Called by Hangfire in the background.
+    /// Phase 1: Process thumbnail only and mark as completed immediately.
+    /// User sees the thumbnail right away without waiting for large variants.
     /// </summary>
-    public async Task ProcessPhotoAsync(Guid photoId, byte[] imageData, string fileName)
+    public async Task ProcessThumbnailAsync(Guid photoId, byte[] imageData, string fileName)
     {
-        _logger.LogInformation("Starting background processing for photo {PhotoId}", photoId);
+        _logger.LogInformation("Starting thumbnail processing for photo {PhotoId}", photoId);
 
         var photo = await _dbContext.Set<Photo>()
             .FirstOrDefaultAsync(p => p.PhotoId == photoId);
 
         if (photo == null)
         {
-            _logger.LogWarning("Photo {PhotoId} not found for processing", photoId);
+            _logger.LogWarning("Photo {PhotoId} not found for thumbnail processing", photoId);
             return;
         }
 
         try
         {
-            // Process image into variants
             using var inputStream = new MemoryStream(imageData);
-            var processed = await _imageProcessingService.ProcessImageAsync(inputStream, fileName);
+            var result = await _imageProcessingService.ProcessThumbnailAsync(inputStream, fileName);
+
+            var folder = $"photos/stages/{photo.StageRunId}";
+            var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
+            var thumbnailKey = $"{baseKey}-thumbnail";
+
+            // Upload thumbnail
+            var (_, url, storageKey) = await UploadVariantAsync(result.Thumbnail, folder, thumbnailKey);
+
+            // Update photo with thumbnail - mark as Completed so user sees it immediately
+            photo.ThumbnailUrl = url;
+            photo.ThumbnailStorageKey = storageKey;
+            photo.Width = result.OriginalWidth;
+            photo.Height = result.OriginalHeight;
+            photo.BlurHash = result.BlurHash;
+            photo.ProcessingStatus = PhotoProcessingStatus.Completed;  // User sees thumbnail now!
+            photo.ProcessingError = null;
+            photo.DateUpdated = DateTime.UtcNow;
+
+            await result.Thumbnail.Stream.DisposeAsync();
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Thumbnail ready for photo {PhotoId}: {Width}x{Height}",
+                photoId, result.Thumbnail.Width, result.Thumbnail.Height);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to process thumbnail for photo {PhotoId}", photoId);
+
+            photo.ProcessingStatus = PhotoProcessingStatus.Failed;
+            photo.ProcessingError = ex.Message;
+            photo.DateUpdated = DateTime.UtcNow;
+
+            await _dbContext.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
+    /// Phase 2: Process large variants in background. User doesn't wait for this.
+    /// </summary>
+    public async Task ProcessLargeVariantsAsync(Guid photoId, byte[] imageData, string fileName)
+    {
+        _logger.LogInformation("Starting large variant processing for photo {PhotoId}", photoId);
+
+        var photo = await _dbContext.Set<Photo>()
+            .FirstOrDefaultAsync(p => p.PhotoId == photoId);
+
+        if (photo == null)
+        {
+            _logger.LogWarning("Photo {PhotoId} not found for large variant processing", photoId);
+            return;
+        }
+
+        try
+        {
+            using var inputStream = new MemoryStream(imageData);
+            var result = await _imageProcessingService.ProcessLargeVariantsAsync(inputStream, fileName);
 
             var folder = $"photos/stages/{photo.StageRunId}";
             var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
 
-            // Upload all variants in parallel for speed
+            // Upload large variants in parallel
             var uploadTasks = new List<Task<(string Size, string Url, string StorageKey)>>();
-
-            foreach (var variant in processed.Variants)
+            foreach (var variant in result.Variants)
             {
-                var variantKey = $"{baseKey}-{variant.Size}{variant.Extension}";
+                var variantKey = $"{baseKey}-{variant.Size}";
                 uploadTasks.Add(UploadVariantAsync(variant, folder, variantKey));
             }
 
@@ -75,14 +130,6 @@ public class PhotoProcessingJob
                         photo.Url = url;
                         photo.StorageKey = storageKey;
                         break;
-                    case "thumbnail":
-                        photo.ThumbnailUrl = url;
-                        photo.ThumbnailStorageKey = storageKey;
-                        break;
-                    case "medium":
-                        photo.MediumUrl = url;
-                        photo.MediumStorageKey = storageKey;
-                        break;
                     case "large":
                         photo.LargeUrl = url;
                         photo.LargeStorageKey = storageKey;
@@ -91,35 +138,22 @@ public class PhotoProcessingJob
             }
 
             // Dispose variant streams
-            foreach (var variant in processed.Variants)
+            foreach (var variant in result.Variants)
             {
                 await variant.Stream.DisposeAsync();
             }
 
-            // Update photo metadata
-            photo.Width = processed.OriginalWidth;
-            photo.Height = processed.OriginalHeight;
-            photo.BlurHash = processed.BlurHash;
-            photo.ProcessingStatus = PhotoProcessingStatus.Completed;
-            photo.ProcessingError = null;
             photo.DateUpdated = DateTime.UtcNow;
-
             await _dbContext.SaveChangesAsync();
 
             _logger.LogInformation(
-                "Completed processing photo {PhotoId}: {VariantCount} variants uploaded in parallel",
-                photoId, results.Length);
+                "Large variants ready for photo {PhotoId}: {Sizes}",
+                photoId, string.Join(", ", results.Select(r => r.Size)));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to process photo {PhotoId}", photoId);
-
-            // Mark photo as failed
-            photo.ProcessingStatus = PhotoProcessingStatus.Failed;
-            photo.ProcessingError = ex.Message;
-            photo.DateUpdated = DateTime.UtcNow;
-
-            await _dbContext.SaveChangesAsync();
+            // Don't mark as failed - thumbnail is already showing
+            _logger.LogError(ex, "Failed to process large variants for photo {PhotoId}", photoId);
         }
     }
 

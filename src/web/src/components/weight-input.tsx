@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Scale } from 'lucide-react';
 import { useSettings } from '@/hooks/use-user';
 import { cn } from '@/lib/utils';
 
@@ -28,10 +27,52 @@ const LB_TO_GRAMS = 453.592;
 const OZ_TO_GRAMS = 28.3495;
 const KG_TO_GRAMS = 1000;
 
+// Session storage key for remembering expanded state
+const EXPANDED_STATE_KEY = 'weightInput_expanded';
+const METRIC_STATE_KEY = 'weightInput_metric';
+
+// Helper to convert grams to display values
+function gramsToDisplay(
+  grams: number | null,
+  isMetric: boolean,
+  showLargeUnit: boolean
+): { large: string; small: string } {
+  if (grams === null || grams === undefined) {
+    return { large: '', small: '' };
+  }
+
+  if (isMetric) {
+    if (showLargeUnit) {
+      // Metric expanded: kg + g
+      const kg = Math.floor(grams / KG_TO_GRAMS);
+      const g = Math.round(grams % KG_TO_GRAMS);
+      return { large: kg > 0 ? String(kg) : '', small: String(g) };
+    } else {
+      // Metric collapsed: just g
+      return { large: '', small: String(Math.round(grams)) };
+    }
+  } else {
+    if (showLargeUnit) {
+      // Imperial expanded: lbs + oz
+      const totalOz = grams / OZ_TO_GRAMS;
+      const lbs = Math.floor(totalOz / 16);
+      const oz = Math.round((totalOz % 16) * 10) / 10;
+      return { large: lbs > 0 ? String(lbs) : '', small: String(oz) };
+    } else {
+      // Imperial collapsed: just oz
+      const totalOz = Math.round((grams / OZ_TO_GRAMS) * 10) / 10;
+      return { large: '', small: String(totalOz) };
+    }
+  }
+}
+
 /**
- * Weight input that shows lbs + oz for Imperial or kg + g for Metric.
+ * Weight input with collapsible large unit display.
+ * Default: shows only oz (Imperial) or g (Metric)
+ * Expanded: shows lbs + oz (Imperial) or kg + g (Metric)
  * Stores value internally as grams.
- * User can toggle between Imperial and Metric.
+ *
+ * Uses a fully controlled pattern where display values are derived from props.
  */
 export function WeightInput({
   label,
@@ -45,29 +86,53 @@ export function WeightInput({
   const { data: settings } = useSettings();
 
   // Local state for unit system - defaults to user's preference
-  const [isMetric, setIsMetric] = useState(false);
-  const hasInitializedMetric = useRef(false);
+  // Use lazy initialization to read from sessionStorage on mount
+  const [isMetric, setIsMetric] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const savedMetric = sessionStorage.getItem(METRIC_STATE_KEY);
+    if (savedMetric !== null) {
+      return savedMetric === 'true';
+    }
+    if (initialDisplayUnit) {
+      return initialDisplayUnit === 'g' || initialDisplayUnit === 'kg';
+    }
+    return false;
+  });
 
-  // Initialize unit system from settings or initial display unit when available (once only)
-  useEffect(() => {
-    if (!hasInitializedMetric.current) {
-      if (initialDisplayUnit) {
-        hasInitializedMetric.current = true;
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization
-        setIsMetric(initialDisplayUnit === 'g' || initialDisplayUnit === 'kg');
-      } else if (settings?.measurementSystem) {
-        hasInitializedMetric.current = true;
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from settings
-        setIsMetric(settings.measurementSystem === 'Metric');
+  // State for showing the large unit (lbs/kg) - remembers last choice
+  const [showLargeUnit, setShowLargeUnit] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const savedExpanded = sessionStorage.getItem(EXPANDED_STATE_KEY);
+    return savedExpanded === 'true';
+  });
+
+  // Compute effective metric setting: sessionStorage > initialDisplayUnit > settings > false
+  // This avoids needing to sync settings to state via effect
+  const effectiveIsMetric = useMemo(() => {
+    // Check sessionStorage first (user's explicit choice persists)
+    if (typeof window !== 'undefined') {
+      const savedMetric = sessionStorage.getItem(METRIC_STATE_KEY);
+      if (savedMetric !== null) {
+        return savedMetric === 'true';
       }
     }
-  }, [settings?.measurementSystem, initialDisplayUnit]);
+    // Then check initialDisplayUnit prop
+    if (initialDisplayUnit) {
+      return initialDisplayUnit === 'g' || initialDisplayUnit === 'kg';
+    }
+    // Then check user settings
+    if (settings?.measurementSystem) {
+      return settings.measurementSystem === 'Metric';
+    }
+    // Fallback to local state (which may have been set by toggle)
+    return isMetric;
+  }, [initialDisplayUnit, settings?.measurementSystem, isMetric]);
 
-  // Local state for the two input fields
-  const [primary, setPrimary] = useState('');
-  const [secondary, setSecondary] = useState('');
-  const lastSyncedGrams = useRef<number | null>(null);
-  const lastSyncedMetric = useRef<boolean>(false);
+  // Derive display values directly from props - no local state needed
+  const derivedDisplay = useMemo(
+    () => gramsToDisplay(valueGrams, effectiveIsMetric, showLargeUnit),
+    [valueGrams, effectiveIsMetric, showLargeUnit]
+  );
 
   // Calculate validation state
   const validation = useMemo(() => {
@@ -98,170 +163,161 @@ export function WeightInput({
     onValidationChange?.(validation.status !== 'error', validation.message);
   }, [validation, onValidationChange]);
 
-  // Sync from external valueGrams when it changes or unit system changes
-  // Only update if the external value or metric setting actually changed
-  useEffect(() => {
-    const gramsChanged = lastSyncedGrams.current !== valueGrams;
-    const metricChanged = lastSyncedMetric.current !== isMetric;
+  const calculateGrams = useCallback((large: string, small: string, metric: boolean, expanded: boolean): number | null => {
+    const largeNum = parseFloat(large) || 0;
+    const smallNum = parseFloat(small) || 0;
 
-    if (!gramsChanged && !metricChanged) {
-      return;
-    }
-
-    lastSyncedGrams.current = valueGrams;
-    lastSyncedMetric.current = isMetric;
-
-    if (valueGrams === null || valueGrams === undefined) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing from external value
-      setPrimary('');
-      setSecondary('');
-      return;
-    }
-
-    if (isMetric) {
-      // Metric: kg + g
-      const kg = Math.floor(valueGrams / KG_TO_GRAMS);
-      const g = Math.round(valueGrams % KG_TO_GRAMS);
-      setPrimary(kg > 0 ? String(kg) : '');
-      setSecondary(String(g));
-    } else {
-      // Imperial: lbs + oz
-      const totalOz = valueGrams / OZ_TO_GRAMS;
-      const lbs = Math.floor(totalOz / 16);
-      const oz = Math.round((totalOz % 16) * 10) / 10; // Round to 1 decimal
-      setPrimary(lbs > 0 ? String(lbs) : '');
-      setSecondary(String(oz));
-    }
-  }, [valueGrams, isMetric]);
-
-  const calculateGrams = (primaryVal: string, secondaryVal: string, metric: boolean): number | null => {
-    const primaryNum = parseFloat(primaryVal) || 0;
-    const secondaryNum = parseFloat(secondaryVal) || 0;
-
-    if (primaryNum === 0 && secondaryNum === 0 && !primaryVal && !secondaryVal) {
+    if (largeNum === 0 && smallNum === 0 && !large && !small) {
       return null;
     }
 
     if (metric) {
-      // Metric: primary = kg, secondary = g
-      return Math.round(primaryNum * KG_TO_GRAMS + secondaryNum);
+      if (expanded) {
+        // kg + g
+        return Math.round(largeNum * KG_TO_GRAMS + smallNum);
+      } else {
+        // just g
+        return Math.round(smallNum);
+      }
     } else {
-      // Imperial: primary = lbs, secondary = oz
-      return Math.round(primaryNum * LB_TO_GRAMS + secondaryNum * OZ_TO_GRAMS);
+      if (expanded) {
+        // lbs + oz
+        return Math.round(largeNum * LB_TO_GRAMS + smallNum * OZ_TO_GRAMS);
+      } else {
+        // just oz
+        return Math.round(smallNum * OZ_TO_GRAMS);
+      }
     }
-  };
+  }, []);
 
-  // Get display unit based on current system
   const getDisplayUnit = (metric: boolean): string => {
-    return metric ? 'g' : 'lb';
+    return metric ? 'g' : 'oz';
   };
 
-  const handlePrimaryChange = (value: string) => {
-    setPrimary(value);
-    onValueChange(calculateGrams(value, secondary, isMetric), getDisplayUnit(isMetric));
-  };
+  const handleLargeUnitChange = useCallback((value: string) => {
+    const newGrams = calculateGrams(value, derivedDisplay.small, effectiveIsMetric, showLargeUnit);
+    onValueChange(newGrams, getDisplayUnit(effectiveIsMetric));
+  }, [derivedDisplay.small, effectiveIsMetric, showLargeUnit, onValueChange, calculateGrams]);
 
-  const handleSecondaryChange = (value: string) => {
-    setSecondary(value);
-    onValueChange(calculateGrams(primary, value, isMetric), getDisplayUnit(isMetric));
-  };
+  const handleSmallUnitChange = useCallback((value: string) => {
+    const newGrams = calculateGrams(derivedDisplay.large, value, effectiveIsMetric, showLargeUnit);
+    onValueChange(newGrams, getDisplayUnit(effectiveIsMetric));
+  }, [derivedDisplay.large, effectiveIsMetric, showLargeUnit, onValueChange, calculateGrams]);
 
-  // When unit system changes, notify parent of the new display unit
-  const handleUnitChange = (newIsMetric: boolean) => {
-    setIsMetric(newIsMetric);
-    // Recalculate and notify with new display unit
-    const newGrams = calculateGrams(primary, secondary, newIsMetric);
-    onValueChange(newGrams, getDisplayUnit(newIsMetric));
-  };
+  // Toggle expanded state and save to session storage
+  const handleToggleExpanded = useCallback(() => {
+    const newExpanded = !showLargeUnit;
+    setShowLargeUnit(newExpanded);
+    sessionStorage.setItem(EXPANDED_STATE_KEY, String(newExpanded));
+  }, [showLargeUnit]);
 
-  // Calculate total display for the secondary unit field placeholder
+  // Toggle metric/imperial and save to session storage
+  const handleToggleMetric = useCallback(() => {
+    const newMetric = !effectiveIsMetric;
+    setIsMetric(newMetric);
+    sessionStorage.setItem(METRIC_STATE_KEY, String(newMetric));
+    // Notify parent of display unit change
+    if (valueGrams !== null) {
+      onValueChange(valueGrams, getDisplayUnit(newMetric));
+    }
+  }, [effectiveIsMetric, valueGrams, onValueChange]);
+
+  // Get total display text
   const getTotalDisplay = (): string => {
-    if (!valueGrams) return '';
-    if (isMetric) {
-      // Show total in grams
+    if (!valueGrams || !showLargeUnit) return '';
+    if (effectiveIsMetric) {
       return `(${valueGrams} g total)`;
     } else {
-      // Show total in oz
       const totalOz = Math.round((valueGrams / OZ_TO_GRAMS) * 10) / 10;
       return `(${totalOz} oz total)`;
     }
   };
 
   const inputClassName = cn(
-    'w-20',
+    'w-16 h-8 text-sm',
     validation.status === 'error' && 'border-destructive focus-visible:ring-destructive',
     validation.status === 'warning' && 'border-amber-500 focus-visible:ring-amber-500'
   );
 
+  const toggleButtonClassName = 'h-8 px-2 text-xs font-medium rounded border transition-colors bg-primary text-primary-foreground hover:bg-primary/90';
+
+  const largeUnitLabel = effectiveIsMetric ? 'kg' : 'lbs';
+  const smallUnitLabel = effectiveIsMetric ? 'g' : 'oz';
+
   return (
     <div className="space-y-2">
+      {/* Label */}
       <Label>{label}</Label>
-      <div className="flex items-center gap-2 flex-wrap">
-        {/* Primary unit: lbs or kg */}
-        <div className="flex items-center gap-1">
-          <Input
-            type="number"
-            min="0"
-            step="1"
-            placeholder={placeholder || '0'}
-            value={primary}
-            onChange={(e) => handlePrimaryChange(e.target.value)}
-            className={inputClassName}
-          />
-          <span className="text-sm text-muted-foreground w-6">
-            {isMetric ? 'kg' : 'lbs'}
-          </span>
-        </div>
-        {/* Secondary unit: oz or g */}
-        <div className="flex items-center gap-1">
-          <Input
-            type="number"
-            min="0"
-            max={isMetric ? 999 : 15.9}
-            step="1"
-            placeholder="0"
-            value={secondary}
-            onChange={(e) => handleSecondaryChange(e.target.value)}
-            className={inputClassName}
-          />
-          <span className="text-sm text-muted-foreground w-4">
-            {isMetric ? 'g' : 'oz'}
-          </span>
-        </div>
-        {/* Segmented toggle buttons */}
-        <div className="flex rounded-md border overflow-hidden">
+
+      {/* Single-line input row with all controls */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {/* Large unit input (lbs/kg) - only shown when expanded */}
+        {showLargeUnit && (
+          <>
+            <Input
+              type="number"
+              min="0"
+              step="1"
+              placeholder="0"
+              value={derivedDisplay.large}
+              onChange={(e) => handleLargeUnitChange(e.target.value)}
+              className={inputClassName}
+            />
+            <span className="text-xs text-muted-foreground w-5">
+              {largeUnitLabel}
+            </span>
+          </>
+        )}
+
+        {/* Small unit input (oz/g) - always shown */}
+        <Input
+          type="number"
+          min="0"
+          step={effectiveIsMetric ? '1' : '0.1'}
+          placeholder={placeholder || '0'}
+          value={derivedDisplay.small}
+          onChange={(e) => handleSmallUnitChange(e.target.value)}
+          className={inputClassName}
+        />
+        <span className="text-xs text-muted-foreground w-4">
+          {smallUnitLabel}
+        </span>
+
+        {/* Toggle buttons - always blue (primary) for consistency */}
+        <div className="flex items-center gap-1 ml-1">
+          {/* Large unit toggle (lbs/kg) */}
           <button
             type="button"
-            onClick={() => handleUnitChange(false)}
+            onClick={handleToggleExpanded}
             className={cn(
-              'px-2 py-1 text-xs font-medium transition-colors',
-              !isMetric
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-background hover:bg-muted'
+              toggleButtonClassName,
+              !showLargeUnit && 'bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground'
             )}
+            title={showLargeUnit ? `Hide ${largeUnitLabel}` : `Show ${largeUnitLabel}`}
           >
-            Imperial
+            {largeUnitLabel}
           </button>
+
+          {/* Metric/Imperial toggle with Scale icon */}
           <button
             type="button"
-            onClick={() => handleUnitChange(true)}
-            className={cn(
-              'px-2 py-1 text-xs font-medium transition-colors border-l',
-              isMetric
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-background hover:bg-muted'
-            )}
+            onClick={handleToggleMetric}
+            className={cn(toggleButtonClassName, 'flex items-center gap-1')}
+            title={`Switch to ${effectiveIsMetric ? 'Imperial (lbs/oz)' : 'Metric (kg/g)'}`}
           >
-            Metric
+            <Scale className="h-3 w-3" />
+            <span>{effectiveIsMetric ? 'g' : 'lb'}</span>
           </button>
         </div>
-        {/* Total display */}
-        {valueGrams && (
-          <span className="text-xs text-muted-foreground">
+
+        {/* Total display - only when expanded and has value */}
+        {showLargeUnit && valueGrams !== null && valueGrams > 0 && (
+          <span className="text-xs text-muted-foreground ml-1">
             {getTotalDisplay()}
           </span>
         )}
       </div>
+
       {/* Validation message */}
       {validation.status !== 'ok' && (
         <div className={cn(

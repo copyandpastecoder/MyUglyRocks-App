@@ -7,6 +7,7 @@ import { postApi } from '@/lib/api';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { formatSizeCategories } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
+import { useTimezone } from '@/hooks/use-user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -39,9 +40,10 @@ import type { CommentDto } from '@/types/post';
 
 export default function PostDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
+  const { formatDate } = useTimezone();
   const postId = params.id as string;
 
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
@@ -171,7 +173,7 @@ export default function PostDetailPage() {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>by {post.author.displayName || post.author.username}</span>
             <span>-</span>
-            <span>{new Date(post.publishedDate).toLocaleDateString()}</span>
+            <span>{formatDate(post.publishedDate, 'MMM d, yyyy')}</span>
           </div>
         </div>
       </div>
@@ -309,11 +311,11 @@ export default function PostDetailPage() {
               <CardContent className="grid gap-4 md:grid-cols-3 pt-0">
                 <div>
                   <p className="text-sm text-muted-foreground">Started</p>
-                  <p className="font-medium">{new Date(post.cycle.startDate).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatDate(post.cycle.startDate, 'MMM d, yyyy')}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Completed</p>
-                  <p className="font-medium">{post.cycle.endDate ? new Date(post.cycle.endDate).toLocaleDateString() : 'Ongoing'}</p>
+                  <p className="font-medium">{post.cycle.endDate ? formatDate(post.cycle.endDate, 'MMM d, yyyy') : 'Ongoing'}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Runtime</p>
@@ -419,7 +421,7 @@ export default function PostDetailPage() {
                 )}
                 <div>
                   <p className="text-sm text-muted-foreground">Acquired</p>
-                  <p className="font-medium">{new Date(post.inventory.acquiredDate).toLocaleDateString()}</p>
+                  <p className="font-medium">{formatDate(post.inventory.acquiredDate, 'MMM d, yyyy')}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Condition</p>
@@ -521,6 +523,7 @@ export default function PostDetailPage() {
                   comment={comment}
                   onReply={(id) => setReplyingTo(id)}
                   currentUserId={user?.userId}
+                  formatDate={formatDate}
                 />
               ))}
             </div>
@@ -536,11 +539,13 @@ function CommentItem({
   comment,
   onReply,
   currentUserId,
+  formatDate,
   depth = 0,
 }: {
   comment: CommentDto;
   onReply: (id: string) => void;
   currentUserId?: string;
+  formatDate: (utcDateString: string | null | undefined, formatStr?: string) => string;
   depth?: number;
 }) {
   const maxDepth = 3;
@@ -560,7 +565,7 @@ function CommentItem({
               {comment.author.displayName || comment.author.username}
             </span>
             <span className="text-xs text-muted-foreground">
-              {new Date(comment.dateCreated).toLocaleDateString()}
+              {formatDate(comment.dateCreated, 'MMM d, yyyy')}
             </span>
             {comment.isEdited && (
               <span className="text-xs text-muted-foreground">(edited)</span>
@@ -587,6 +592,7 @@ function CommentItem({
               comment={reply}
               onReply={onReply}
               currentUserId={currentUserId}
+              formatDate={formatDate}
               depth={depth + 1}
             />
           ))}

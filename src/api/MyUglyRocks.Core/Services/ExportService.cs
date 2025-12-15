@@ -99,8 +99,6 @@ public class ExportService : IExportService
             LoadWeightBeforeGrams: s.LoadWeightBeforeGrams,
             LoadWeightAfterGrams: s.LoadWeightAfterGrams,
             BarrelRpm: s.BarrelRpm,
-            FillLevelPercent: s.FillLevelPercent,
-            WaterLevel: s.WaterLevel?.ToString(),
             ResultRating: s.ResultRating,
             NextAction: s.NextAction?.ToString(),
             Notes: s.Notes
@@ -151,8 +149,6 @@ public class ExportService : IExportService
             LoadWeightBeforeGrams: s.LoadWeightBeforeGrams,
             LoadWeightAfterGrams: s.LoadWeightAfterGrams,
             BarrelRpm: s.BarrelRpm,
-            FillLevelPercent: s.FillLevelPercent,
-            WaterLevel: s.WaterLevel?.ToString(),
             ResultRating: s.ResultRating,
             NextAction: s.NextAction?.ToString(),
             Notes: s.Notes

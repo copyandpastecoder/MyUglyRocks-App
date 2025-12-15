@@ -132,8 +132,16 @@ try
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()
         .UseRecommendedSerializerSettings()
-        .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString)));
-    builder.Services.AddHangfireServer();
+        .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString), new PostgreSqlStorageOptions
+        {
+            QueuePollInterval = TimeSpan.FromSeconds(1), // Faster job pickup (default 15s)
+        }));
+    builder.Services.AddHangfireServer(options =>
+    {
+        options.SchedulePollingInterval = TimeSpan.FromSeconds(1);
+        options.Queues = new[] { "default" };
+        options.WorkerCount = 5;
+    });
 
     // Configure Redis caching
     var redisConnection = builder.Configuration.GetConnectionString("Redis") ?? "redis:6379";

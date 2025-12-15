@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cycleApi, postApi } from '@/lib/api';
+import { useTimezone } from '@/hooks/use-user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -48,6 +49,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function ShareCyclePage() {
   const params = useParams();
   const router = useRouter();
+  const { formatDate } = useTimezone();
   const cycleId = params.id as string;
 
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
@@ -88,15 +90,15 @@ export default function ShareCyclePage() {
   }, [cycle, form, router]);
 
   // Auto-select all completed photos and set first as cover when photos load (once only)
+  /* eslint-disable react-hooks/set-state-in-effect -- One-time initialization from async data */
   useEffect(() => {
     if (!hasInitializedPhotos.current && completedPhotos.length > 0) {
       hasInitializedPhotos.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
       setSelectedPhotoIds(completedPhotos.map(p => p.photoId));
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoverPhotoId(completedPhotos[0].photoId);
     }
   }, [completedPhotos]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const createPostMutation = useMutation({
     mutationFn: (data: FormValues) =>
@@ -257,7 +259,7 @@ export default function ShareCyclePage() {
         <CardContent className="grid gap-4 md:grid-cols-3 text-sm">
           <div>
             <p className="text-muted-foreground">Started</p>
-            <p className="font-medium">{new Date(cycle.startDate).toLocaleDateString()}</p>
+            <p className="font-medium">{formatDate(cycle.startDate, 'MMM d, yyyy')}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Difficulty</p>

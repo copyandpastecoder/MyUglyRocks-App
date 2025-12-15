@@ -36,16 +36,15 @@ export function PhotoLightbox({
   const [isImageLoaded, setIsImageLoaded] = useState(false);
 
   // Reset state when opening
+  /* eslint-disable react-hooks/set-state-in-effect -- Resetting state when modal opens */
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting state when modal opens
       setCurrentIndex(initialIndex);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsZoomed(false);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsImageLoaded(false);
     }
   }, [isOpen, initialIndex]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Notify parent of index changes
   useEffect(() => {

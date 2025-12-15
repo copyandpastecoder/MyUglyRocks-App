@@ -591,10 +591,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("acquired_date");
 
-                    b.Property<int>("Condition")
-                        .HasColumnType("integer")
-                        .HasColumnName("condition");
-
                     b.Property<decimal?>("Cost")
                         .HasPrecision(10, 2)
                         .HasColumnType("numeric(10,2)")
@@ -763,6 +759,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("inventory_id");
 
+                    b.Property<Guid?>("InventorySpecimenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_specimen_id");
+
                     b.Property<bool>("IsCover")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -841,6 +841,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasIndex("InventoryId")
                         .HasDatabaseName("ix_inventory_photos_inventory_id");
 
+                    b.HasIndex("InventorySpecimenId")
+                        .HasDatabaseName("ix_inventory_photos_inventory_specimen_id");
+
                     b.HasIndex("IsCover")
                         .HasDatabaseName("ix_inventory_photos_is_cover");
 
@@ -855,6 +858,15 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("inventory_specimen_id")
                         .HasDefaultValueSql("gen_random_uuid()");
 
+                    b.Property<int?>("Condition")
+                        .HasColumnType("integer")
+                        .HasColumnName("condition");
+
+                    b.Property<decimal?>("Cost")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("cost");
+
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -867,10 +879,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("date_updated")
                         .HasDefaultValueSql("now()");
 
-                    b.Property<int?>("EstimatedPercentage")
-                        .HasColumnType("integer")
-                        .HasColumnName("estimated_percentage");
-
                     b.Property<Guid>("InventoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("inventory_id");
@@ -879,6 +887,15 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("notes");
 
+                    b.Property<int?>("QualityRating")
+                        .HasColumnType("integer")
+                        .HasColumnName("quality_rating");
+
+                    b.Property<string>("SizeCategories")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("size_categories");
+
                     b.Property<Guid?>("SpecimenId")
                         .HasColumnType("uuid")
                         .HasColumnName("specimen_id");
@@ -886,6 +903,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<Guid?>("UserSpecimenId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_specimen_id");
+
+                    b.Property<decimal?>("WeightGrams")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("weight_grams");
 
                     b.HasKey("InventorySpecimenId");
 
@@ -1592,10 +1614,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("end_date_time");
 
-                    b.Property<int?>("FillLevelPercent")
-                        .HasColumnType("integer")
-                        .HasColumnName("fill_level_percent");
-
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
@@ -1698,10 +1716,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<int?>("WaterAmountMl")
                         .HasColumnType("integer")
                         .HasColumnName("water_amount_ml");
-
-                    b.Property<int?>("WaterLevel")
-                        .HasColumnType("integer")
-                        .HasColumnName("water_level");
 
                     b.HasKey("StageRunId");
 
@@ -2647,7 +2661,14 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MyUglyRocks.Core.Entities.InventorySpecimen", "InventorySpecimen")
+                        .WithMany()
+                        .HasForeignKey("InventorySpecimenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("Inventory");
+
+                    b.Navigation("InventorySpecimen");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySpecimen", b =>

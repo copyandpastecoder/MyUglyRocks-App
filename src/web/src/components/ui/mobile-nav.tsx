@@ -1,6 +1,5 @@
 'use client';
 
-import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -8,9 +7,8 @@ import {
   Home,
   RotateCcw,
   Cylinder,
-  BookOpen,
+  Package,
   Settings,
-  Plus,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -26,7 +24,7 @@ const defaultNavItems: NavItem[] = [
   { label: 'Home', href: '/dashboard', icon: Home },
   { label: 'Cycles', href: '/cycles', icon: RotateCcw },
   { label: 'Tumblers', href: '/tumblers', icon: Cylinder },
-  { label: 'Learn', href: '/learn', icon: BookOpen },
+  { label: 'Inventory', href: '/inventory', icon: Package },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

@@ -564,8 +564,6 @@ public class DemoUserSeedService
                     if (detailLevel != DetailLevel.Min)
                     {
                         stageRun.LoadWeightBeforeGrams = _random.Next(800, 2000);
-                        stageRun.FillLevelPercent = _random.Next(60, 85);
-                        stageRun.WaterLevel = (WaterLevel)_random.Next(0, 4);
                         stageRun.WaterAmountMl = _random.Next(200, 500);
 
                         if (isCompleted)

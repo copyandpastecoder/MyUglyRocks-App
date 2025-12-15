@@ -2,6 +2,8 @@ using Mapster;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Core.Entities;
 
+#pragma warning disable CS8603 // Possible null reference return - Mapster's fluent API returns nullable but never returns null in practice
+
 namespace MyUglyRocks.Core.Mappings;
 
 public static class MappingConfig
@@ -84,7 +86,6 @@ public static class MappingConfig
         // StageRun mappings
         TypeAdapterConfig<StageRun, StageRunDto>.NewConfig()
             .Map(dest => dest.Status, src => src.Status.ToString())
-            .Map(dest => dest.WaterLevel, src => src.WaterLevel != null ? src.WaterLevel.ToString() : null)
             .Map(dest => dest.NextAction, src => src.NextAction != null ? src.NextAction.ToString() : null)
             .Map(dest => dest.Materials, src => src.StageMaterials)
             .Map(dest => dest.Barrels, src => src.StageRunBarrels.Where(srb => srb.Barrel != null).Select(srb => srb.Barrel!));
@@ -93,9 +94,6 @@ public static class MappingConfig
             .Map(dest => dest.Status, src => src.Status.ToString());
 
         TypeAdapterConfig<CreateStageRunRequest, StageRun>.NewConfig()
-            .Map(dest => dest.WaterLevel, src => !string.IsNullOrEmpty(src.WaterLevel)
-                ? Enum.Parse<WaterLevel>(src.WaterLevel, true)
-                : (WaterLevel?)null)
             .Ignore(dest => dest.StageRunId)
             .Ignore(dest => dest.DateCreated)
             .Ignore(dest => dest.DateUpdated)

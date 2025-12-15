@@ -483,12 +483,21 @@ public class CycleService : ICycleService
             stageRun.DurationEstimateEndDate,
             stageRun.Status.ToString(),
             stageRun.ReminderEnabled,
+            stageRun.RemindAfterDays,
+            stageRun.RemindAtEndOfStage,
             stageRun.LoadWeightBeforeGrams,
             stageRun.LoadWeightAfterGrams,
-            stageRun.FillLevelPercent,
-            stageRun.WaterLevel?.ToString(),
             stageRun.WaterAmountMl,
             stageRun.ResultRating,
+            stageRun.ResultShapeRounding,
+            stageRun.ResultScratchLevel,
+            stageRun.ResultPitting,
+            stageRun.ResultShine,
+            stageRun.IssueScratches,
+            stageRun.IssueChips,
+            stageRun.IssueUnderRounded,
+            stageRun.IssueContamination,
+            stageRun.LessonsLearned,
             stageRun.NextAction?.ToString(),
             stageRun.Notes,
             stageRun.DateCreated,
@@ -648,6 +657,9 @@ public class CycleService : ICycleService
         var stageRun = await StageRuns
             .Include(s => s.Cycle)
             .Include(s => s.StageRunBarrels)
+            .Include(s => s.StageMaterials)
+            .Include(s => s.CleaningRun)
+                .ThenInclude(cr => cr!.CleaningMaterials)
             .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
 
         if (stageRun == null)
@@ -669,12 +681,28 @@ public class CycleService : ICycleService
         stageRun.RemindAtEndOfStage = request.RemindAtEndOfStage;
         stageRun.LoadWeightBeforeGrams = request.LoadWeightBeforeGrams;
         stageRun.LoadWeightAfterGrams = request.LoadWeightAfterGrams;
-        stageRun.FillLevelPercent = request.FillLevelPercent;
-        stageRun.WaterLevel = !string.IsNullOrEmpty(request.WaterLevel)
-            ? Enum.Parse<WaterLevel>(request.WaterLevel, true)
-            : null;
         stageRun.WaterAmountMl = request.WaterAmountMl;
         stageRun.Notes = request.Notes;
+
+        // Quality ratings
+        stageRun.ResultRating = request.ResultRating;
+        stageRun.ResultShapeRounding = request.ResultShapeRounding;
+        stageRun.ResultScratchLevel = request.ResultScratchLevel;
+        stageRun.ResultPitting = request.ResultPitting;
+        stageRun.ResultShine = request.ResultShine;
+
+        // Issues
+        stageRun.IssueScratches = request.IssueScratches;
+        stageRun.IssueChips = request.IssueChips;
+        stageRun.IssueUnderRounded = request.IssueUnderRounded;
+        stageRun.IssueContamination = request.IssueContamination;
+
+        // Lessons and next action
+        stageRun.LessonsLearned = request.LessonsLearned;
+        stageRun.NextAction = !string.IsNullOrEmpty(request.NextAction)
+            ? Enum.Parse<StageNextAction>(request.NextAction, true)
+            : null;
+
         stageRun.DateUpdated = DateTime.UtcNow;
 
         // Update barrels if provided
@@ -691,6 +719,106 @@ public class CycleService : ICycleService
                     StageRunId = stageRun.StageRunId,
                     BarrelId = barrelId
                 });
+            }
+        }
+
+        // Update materials if provided
+        if (request.Materials != null)
+        {
+            // Remove existing materials
+            stageRun.StageMaterials.Clear();
+
+            // Add new materials
+            int sortOrder = 0;
+            foreach (var materialRequest in request.Materials)
+            {
+                stageRun.StageMaterials.Add(new StageMaterial
+                {
+                    StageMaterialId = Guid.NewGuid(),
+                    StageRunId = stageRun.StageRunId,
+                    MaterialId = materialRequest.MaterialId,
+                    DisplayAmount = materialRequest.DisplayAmount,
+                    DisplayUnit = materialRequest.DisplayUnit,
+                    SortOrder = sortOrder++,
+                    DateCreated = DateTime.UtcNow,
+                    DateUpdated = DateTime.UtcNow
+                });
+            }
+        }
+
+        // Update cleaning run if provided
+        if (request.CleaningRun != null)
+        {
+            if (stageRun.CleaningRun != null)
+            {
+                // Update existing cleaning run
+                stageRun.CleaningRun.DurationMinutes = request.CleaningRun.DurationMinutes;
+                stageRun.CleaningRun.Purpose = !string.IsNullOrEmpty(request.CleaningRun.Purpose)
+                    ? Enum.Parse<CleaningPurpose>(request.CleaningRun.Purpose, true)
+                    : null;
+                stageRun.CleaningRun.ReminderEnabled = request.CleaningRun.ReminderEnabled;
+                stageRun.CleaningRun.Notes = request.CleaningRun.Notes;
+                stageRun.CleaningRun.DateUpdated = DateTime.UtcNow;
+
+                // Update cleaning materials
+                stageRun.CleaningRun.CleaningMaterials.Clear();
+                if (request.CleaningRun.Materials?.Any() == true)
+                {
+                    int cleaningSortOrder = 0;
+                    foreach (var materialRequest in request.CleaningRun.Materials)
+                    {
+                        stageRun.CleaningRun.CleaningMaterials.Add(new CleaningMaterial
+                        {
+                            CleaningMaterialId = Guid.NewGuid(),
+                            CleaningRunId = stageRun.CleaningRun.CleaningRunId,
+                            MaterialId = materialRequest.MaterialId,
+                            DisplayAmount = materialRequest.DisplayAmount,
+                            DisplayUnit = materialRequest.DisplayUnit,
+                            SortOrder = cleaningSortOrder++,
+                            DateCreated = DateTime.UtcNow,
+                            DateUpdated = DateTime.UtcNow
+                        });
+                    }
+                }
+            }
+            else
+            {
+                // Create new cleaning run
+                var cleaningRun = new CleaningRun
+                {
+                    CleaningRunId = Guid.NewGuid(),
+                    StageRunId = stageRun.StageRunId,
+                    DurationMinutes = request.CleaningRun.DurationMinutes,
+                    Purpose = !string.IsNullOrEmpty(request.CleaningRun.Purpose)
+                        ? Enum.Parse<CleaningPurpose>(request.CleaningRun.Purpose, true)
+                        : null,
+                    ReminderEnabled = request.CleaningRun.ReminderEnabled,
+                    Notes = request.CleaningRun.Notes,
+                    Status = CleaningRunStatus.Active,
+                    DateCreated = DateTime.UtcNow,
+                    DateUpdated = DateTime.UtcNow
+                };
+
+                if (request.CleaningRun.Materials?.Any() == true)
+                {
+                    int cleaningSortOrder = 0;
+                    foreach (var materialRequest in request.CleaningRun.Materials)
+                    {
+                        cleaningRun.CleaningMaterials.Add(new CleaningMaterial
+                        {
+                            CleaningMaterialId = Guid.NewGuid(),
+                            CleaningRunId = cleaningRun.CleaningRunId,
+                            MaterialId = materialRequest.MaterialId,
+                            DisplayAmount = materialRequest.DisplayAmount,
+                            DisplayUnit = materialRequest.DisplayUnit,
+                            SortOrder = cleaningSortOrder++,
+                            DateCreated = DateTime.UtcNow,
+                            DateUpdated = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                stageRun.CleaningRun = cleaningRun;
             }
         }
 
@@ -744,24 +872,41 @@ public class CycleService : ICycleService
         stageRun.LoadWeightAfterGrams = request.LoadWeightAfterGrams;
 
         // Set actual end date and clear estimate
-        stageRun.EndDateTime = request.ActualEndDateTime ?? DateTime.UtcNow;
+        var actualEndDateTime = request.ActualEndDateTime ?? DateTime.UtcNow;
+        stageRun.EndDateTime = actualEndDateTime;
         stageRun.DurationEstimateEndDate = null;  // Clear estimate on completion
 
         stageRun.DateUpdated = DateTime.UtcNow;
 
         // Auto-promote the next Planned stage to Active
-        // Find the next Planned stage with the earliest StartDateTime <= now
+        // First, find the next Planned stage (by start time or creation order)
         var now = DateTime.UtcNow;
-        var nextStageToPromote = stageRun.Cycle.StageRuns
-            .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned && s.StartDateTime <= now)
+        var nextPlannedStage = stageRun.Cycle.StageRuns
+            .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned)
             .OrderBy(s => s.StartDateTime)
             .ThenBy(s => s.DateCreated)
             .FirstOrDefault();
 
-        if (nextStageToPromote != null)
+        if (nextPlannedStage != null)
         {
-            nextStageToPromote.Status = StageRunStatus.Active;
-            nextStageToPromote.DateUpdated = DateTime.UtcNow;
+            // If completing early (actual end < next stage's planned start),
+            // update the next stage's start time to match actual completion
+            if (actualEndDateTime < nextPlannedStage.StartDateTime)
+            {
+                var originalDuration = nextPlannedStage.DurationEstimateEndDate.HasValue
+                    ? nextPlannedStage.DurationEstimateEndDate.Value - nextPlannedStage.StartDateTime
+                    : TimeSpan.FromDays(nextPlannedStage.DurationDays) + TimeSpan.FromHours(nextPlannedStage.DurationHours);
+
+                nextPlannedStage.StartDateTime = actualEndDateTime;
+                nextPlannedStage.DurationEstimateEndDate = actualEndDateTime + originalDuration;
+            }
+
+            // Now promote to Active if StartDateTime <= now
+            if (nextPlannedStage.StartDateTime <= now)
+            {
+                nextPlannedStage.Status = StageRunStatus.Active;
+            }
+            nextPlannedStage.DateUpdated = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync(cancellationToken);

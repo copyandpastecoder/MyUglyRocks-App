@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { materialApi } from '@/lib/api';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/table';
 import { Search, Sparkles, AlertCircle } from 'lucide-react';
 import { PageTransition } from '@/components/ui/page-transition';
-import type { MaterialListDto, MaterialDetailDto } from '@/types/reference';
+import type { MaterialListDto } from '@/types/reference';
 
 const CATEGORIES = ['Abrasive', 'Polish', 'Media', 'Additive'];
 const USAGE_TYPES = ['Coarse', 'Medium', 'Fine', 'PrePolish', 'Polish', 'Burnish'];

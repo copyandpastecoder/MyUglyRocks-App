@@ -75,7 +75,7 @@ export function CycleProgressChart({ data, title = 'Stage Progress', description
                 borderRadius: '8px',
                 color: 'hsl(var(--foreground))',
               }}
-              formatter={(value: number) => [`${value} hours`, 'Duration']}
+              formatter={(value) => [`${value ?? 0} hours`, 'Duration']}
             />
             <Bar
               dataKey="hours"
@@ -212,10 +212,13 @@ export function StageDistributionChart({ data, title = 'Stage Distribution', des
                 borderRadius: '8px',
                 color: 'hsl(var(--foreground))',
               }}
-              formatter={(value: number, name: string) => [
-                `${value} (${((value / total) * 100).toFixed(1)}%)`,
-                name,
-              ]}
+              formatter={(value, name) => {
+                const numValue = Number(value) || 0;
+                return [
+                  `${numValue} (${((numValue / total) * 100).toFixed(1)}%)`,
+                  name,
+                ];
+              }}
             />
           </PieChart>
         </ResponsiveContainer>

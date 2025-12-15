@@ -50,10 +50,19 @@ const specimenSchema = z.object({
 
 type SpecimenFormData = z.infer<typeof specimenSchema>;
 
+// Data passed to onSuccess callback
+export interface CustomSpecimenCreatedData {
+  userSpecimenId: string;
+  commonName: string;
+  scientificName: string | null;
+  tumblingDifficulty: string | null;
+  materialType: string;
+}
+
 interface AddCustomSpecimenDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess?: (specimenId: string) => void;
+  onSuccess?: (data: CustomSpecimenCreatedData) => void;
   initialName?: string;
 }
 
@@ -114,7 +123,13 @@ export function AddCustomSpecimenDialog({
       onOpenChange(false);
       form.reset();
       if (onSuccess && result.userSpecimenId) {
-        onSuccess(result.userSpecimenId);
+        onSuccess({
+          userSpecimenId: result.userSpecimenId,
+          commonName: result.commonName,
+          scientificName: result.scientificName,
+          tumblingDifficulty: result.tumblingDifficulty,
+          materialType: result.materialType,
+        });
       }
     } catch {
       // Error handled by mutation

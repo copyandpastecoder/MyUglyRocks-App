@@ -42,13 +42,13 @@ export function EnhancedImage({
   const isDataUri = blurHash?.startsWith('data:') ?? false;
   const validBlurhash = blurHash && isValidBlurhash(blurHash) ? blurHash : null;
 
+  /* eslint-disable react-hooks/set-state-in-effect -- Resetting state when prop changes */
   useEffect(() => {
     // Reset state when src changes
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting state when prop changes
     setIsLoaded(false);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasError(false);
   }, [src]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleLoad = () => {
     setIsLoaded(true);
