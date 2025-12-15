@@ -161,8 +161,8 @@ export default function CycleDetailPage() {
 
   // Cleaning Run Modal State
   const [isCleaningRunOpen, setIsCleaningRunOpen] = useState(false);
-  const [cleaningRunStageId, _setCleaningRunStageId] = useState<string | null>(null);
-  const [cleaningRunStageName, _setCleaningRunStageName] = useState('');
+  const [cleaningRunStageId] = useState<string | null>(null);
+  const [cleaningRunStageName] = useState('');
 
   // Complete Cycle Dialog State
   const [isCompleteCycleOpen, setIsCompleteCycleOpen] = useState(false);

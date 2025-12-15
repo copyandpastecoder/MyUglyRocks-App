@@ -2,6 +2,8 @@ using Mapster;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Core.Entities;
 
+#pragma warning disable CS8603 // Possible null reference return - Mapster's fluent API returns nullable but never returns null in practice
+
 namespace MyUglyRocks.Core.Mappings;
 
 public static class MappingConfig

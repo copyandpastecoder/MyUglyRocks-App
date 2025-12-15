@@ -132,7 +132,7 @@ try
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()
         .UseRecommendedSerializerSettings()
-        .UsePostgreSqlStorage(connectionString, new PostgreSqlStorageOptions
+        .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString), new PostgreSqlStorageOptions
         {
             QueuePollInterval = TimeSpan.FromSeconds(1), // Faster job pickup (default 15s)
         }));
