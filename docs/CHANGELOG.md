@@ -2,6 +2,42 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-15
+
+### Added
+
+#### Individual Specimen Weights in Inventory
+- **Feature**: Inventory items can now track individual weights per specimen instead of just batch weight
+- **Files**:
+  - [SpecimenWeightTable.tsx](../src/web/src/components/specimen-weight-table.tsx) - New component for managing specimen weights
+  - [inventory/new/page.tsx](../src/web/src/app/(protected)/inventory/new/page.tsx) - Toggle for individual weight tracking mode
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Edit page support for individual weights
+  - [inventory.ts](../src/web/src/types/inventory.ts) - Added `weightGrams` to `InventorySpecimenDto`
+- **UX**: Toggle switch "Track weight per specimen" enables table view with weight inputs
+- **Calculation**: Total weight auto-calculates from individual specimen weights
+- **Unit conversion**: Weights stored in grams, displayed in user's preferred unit (lbs/kg)
+
+### Fixed
+
+#### Mobile Bottom Navigation Missing Inventory
+- **Problem**: Inventory was not accessible from the mobile bottom navigation bar, only from the desktop sidebar
+- **Fix**: Added Inventory to the default navigation items in mobile-nav.tsx
+- **File**: [mobile-nav.tsx](../src/web/src/components/ui/mobile-nav.tsx) - Added `{ label: 'Inventory', href: '/inventory', icon: Package }`
+
+#### Cycle Creation Failing with Custom Specimens Only
+- **Problem**: Creating a new cycle with only custom/user specimens (no system specimens) failed with a 400 error
+- **Root Cause**: All specimen IDs were being sent to the `specimenIds` field, but user specimens must use the separate `userSpecimenIds` field
+- **Fix**: Separated specimen IDs by source type (`item.source === 'system'` vs `'user'`) before sending to API
+- **File**: [cycles/new/page.tsx](../src/web/src/app/(protected)/cycles/new/page.tsx)
+- **Related**: Updated to use `useSpecimenSearch` hook for cycle name generation to include user specimens
+
+#### recharts Formatter Type Compatibility
+- **Problem**: TypeScript build failed after npm dependency update - recharts `Formatter` type changed to expect `value: number | undefined`
+- **Fix**: Updated formatters in cycle-stats-chart.tsx to handle undefined values using `value ?? 0` or `Number(value) || 0`
+- **File**: [cycle-stats-chart.tsx](../src/web/src/components/ui/cycle-stats-chart.tsx)
+
+---
+
 ## [Unreleased] - 2025-12-14
 
 ### Added
