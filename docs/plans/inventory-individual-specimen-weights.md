@@ -1,5 +1,10 @@
 # Implementation Plan: Individual Specimen Weights in Inventory
 
+> **Status**: ✅ **IMPLEMENTED** (2025-12-15)
+>
+> Frontend UI completed. Backend schema already supported `WeightGrams` field.
+> See CHANGELOG.md for implementation details.
+
 ## Overview
 
 Allow users to add multiple specimens to inventory with individual weights for each specimen, rather than a single batch weight.
