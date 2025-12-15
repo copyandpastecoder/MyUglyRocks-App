@@ -83,6 +83,19 @@ import { PhotoUploadModal } from '@/components/photo-upload-modal';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
+import {
+  StageNameSelector,
+  BarrelSelector,
+  StageMaterialsSection,
+  CleaningRunSection,
+  StageAdvancedOptions,
+  ReminderSettings,
+  type BarrelOption,
+  type StageMaterial,
+  type CleaningRunData,
+  type StageAdvancedData,
+  type ReminderData,
+} from '@/components/stage';
 import { useSettings } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
 import { formatDateTimeLocal, combineDateWithCurrentTime, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
@@ -204,6 +217,39 @@ export default function CycleDetailPage() {
   const [editStageRunNumber, setEditStageRunNumber] = useState<number>(1);
   const [editStageTotalRuns, setEditStageTotalRuns] = useState<number>(1);
   const [editStageIsLoading, setEditStageIsLoading] = useState(false);
+  // Edit Stage - Barrel selection
+  const [editStageBarrelIds, setEditStageBarrelIds] = useState<string[]>([]);
+  // Edit Stage - Materials
+  const [editStageMaterials, setEditStageMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
+  // Edit Stage - Cleaning Run
+  const [editStageCleaningRun, setEditStageCleaningRun] = useState<{
+    enabled: boolean;
+    cleaningRunId?: string;
+    durationDays: string;
+    durationHours: string;
+    durationMinutes: string;
+    purpose: string;
+    notes: string;
+    materials: Array<{ materialId: string; displayAmount: string; displayUnit: string }>;
+  }>({
+    enabled: false,
+    durationDays: '0',
+    durationHours: '0',
+    durationMinutes: '0',
+    purpose: '',
+    notes: '',
+    materials: [],
+  });
+  // Edit Stage - Advanced Options
+  const [editStageLoadWeightBeforeGrams, setEditStageLoadWeightBeforeGrams] = useState<number | null>(null);
+  const [editStageWeightBeforeValidationError, setEditStageWeightBeforeValidationError] = useState(false);
+  const [editStageFillLevelPercent, setEditStageFillLevelPercent] = useState<string>('');
+  const [editStageWaterAmount, setEditStageWaterAmount] = useState<string>('');
+  const [editStageWaterUnit, setEditStageWaterUnit] = useState<string>('ml');
+  // Edit Stage - Reminder Settings
+  const [editStageReminderEnabled, setEditStageReminderEnabled] = useState(false);
+  const [editStageReminderType, setEditStageReminderType] = useState<'afterDays' | 'atEnd'>('atEnd');
+  const [editStageRemindAfterDays, setEditStageRemindAfterDays] = useState<string>('7');
 
   // Cleaning Run Modal State
   const [isCleaningRunOpen, setIsCleaningRunOpen] = useState(false);
@@ -889,7 +935,7 @@ export default function CycleDetailPage() {
     setEditStageDurationHours(String(hours));
     setEditStageRunNumber(stage.runNumber);
     setEditStageTotalRuns(stage.totalRuns);
-    // Reset quality fields before loading
+    // Reset all fields before loading
     setEditStageNotes('');
     setEditStageResultRating(0);
     setEditStageShowAdvancedQuality(false);
@@ -906,14 +952,85 @@ export default function CycleDetailPage() {
     setEditStageWeightAfterGrams(null);
     setEditStageWeightBefore(null);
     setEditStageBarrelCapacity(null);
+    // Reset new fields
+    setEditStageBarrelIds([]);
+    setEditStageMaterials([]);
+    setEditStageCleaningRun({
+      enabled: false,
+      durationDays: '0',
+      durationHours: '0',
+      durationMinutes: '0',
+      purpose: '',
+      notes: '',
+      materials: [],
+    });
+    setEditStageLoadWeightBeforeGrams(null);
+    setEditStageFillLevelPercent('');
+    setEditStageWaterAmount('');
+    setEditStageWaterUnit('ml');
+    setEditStageReminderEnabled(false);
+    setEditStageReminderType('atEnd');
+    setEditStageRemindAfterDays('7');
     setEditStageIsLoading(true);
     setIsEditStageOpen(true);
 
-    // Fetch full stage details to get quality fields, weight, and barrel capacity
+    // Fetch full stage details to get all fields
     try {
       const fullStage: StageRunDto = await cycleApi.getStageRun(stage.stageRunId);
-      // Populate quality fields from fetched data
+
+      // Populate basic fields
       setEditStageNotes(fullStage.notes || '');
+
+      // Populate barrel selection
+      if (fullStage.barrels && fullStage.barrels.length > 0) {
+        setEditStageBarrelIds(fullStage.barrels.map(b => b.barrelId));
+        const totalCapacity = fullStage.barrels.reduce((sum, b) => sum + (b.capacityLbs || 0), 0);
+        setEditStageBarrelCapacity(totalCapacity > 0 ? totalCapacity : null);
+      }
+
+      // Populate materials
+      if (fullStage.materials && fullStage.materials.length > 0) {
+        setEditStageMaterials(fullStage.materials.map(m => ({
+          materialId: m.materialId,
+          displayAmount: m.displayAmount?.toString() || '',
+          displayUnit: m.displayUnit || 'tbsp',
+        })));
+      }
+
+      // Populate cleaning run
+      if (fullStage.cleaningRun) {
+        const cr = fullStage.cleaningRun;
+        const totalMinutes = cr.durationMinutes;
+        const crDays = Math.floor(totalMinutes / 1440);
+        const remainingMinutes = totalMinutes % 1440;
+        const crHours = Math.floor(remainingMinutes / 60);
+        const crMins = remainingMinutes % 60;
+
+        setEditStageCleaningRun({
+          enabled: true,
+          cleaningRunId: cr.cleaningRunId,
+          durationDays: String(crDays),
+          durationHours: String(crHours),
+          durationMinutes: String(crMins),
+          purpose: cr.purpose || '',
+          notes: cr.notes || '',
+          materials: cr.materials?.map(m => ({
+            materialId: m.materialId,
+            displayAmount: m.displayAmount?.toString() || '',
+            displayUnit: m.displayUnit || 'tbsp',
+          })) || [],
+        });
+      }
+
+      // Populate advanced options
+      setEditStageLoadWeightBeforeGrams(fullStage.loadWeightBeforeGrams);
+      setEditStageFillLevelPercent(fullStage.fillLevelPercent?.toString() || '');
+      setEditStageWaterAmount(fullStage.waterAmountMl?.toString() || '');
+
+      // Populate reminder settings
+      setEditStageReminderEnabled(fullStage.reminderEnabled);
+
+      // Populate quality fields
       setEditStageResultRating(fullStage.resultRating || 0);
       setEditStageShapeRounding(fullStage.resultShapeRounding ?? 50);
       setEditStageScratchLevel(fullStage.resultScratchLevel ?? 50);
@@ -927,18 +1044,14 @@ export default function CycleDetailPage() {
       setEditStageNextAction(fullStage.nextAction || '');
       setEditStageWeightAfterGrams(fullStage.loadWeightAfterGrams);
       setEditStageWeightBefore(fullStage.loadWeightBeforeGrams);
+
       // Show advanced quality if any of the sliders have non-default values
       if (fullStage.resultShapeRounding !== null || fullStage.resultScratchLevel !== null ||
           fullStage.resultPitting !== null || fullStage.resultShine !== null) {
         setEditStageShowAdvancedQuality(true);
       }
-      // Calculate total barrel capacity
-      if (fullStage.barrels && fullStage.barrels.length > 0) {
-        const totalCapacity = fullStage.barrels.reduce((sum, b) => sum + (b.capacityLbs || 0), 0);
-        setEditStageBarrelCapacity(totalCapacity > 0 ? totalCapacity : null);
-      }
     } catch {
-      // Ignore error - quality fields are optional
+      // Ignore error - fields are optional
     } finally {
       setEditStageIsLoading(false);
     }
@@ -968,6 +1081,12 @@ export default function CycleDetailPage() {
       }
     }
 
+    // Validate weight before if entered
+    if (editStageWeightBeforeValidationError) {
+      toast.error('Load weight before exceeds 150% of barrel capacity. Please correct before saving.');
+      return;
+    }
+
     // Validate weight after if entered
     if (editStageWeightAfterValidationError) {
       toast.error('Weight exceeds 150% of barrel capacity. Please correct before saving.');
@@ -977,11 +1096,25 @@ export default function CycleDetailPage() {
     updateStageMutation.mutate({
       id: editStageId,
       data: {
+        // Basic fields
+        barrelIds: editStageBarrelIds.length > 0 ? editStageBarrelIds : undefined,
         stageName: editStageName,
         startDateTime: new Date(editStageStartDateTime).toISOString(),
         durationDays,
         durationHours,
         notes: editStageNotes || undefined,
+        // Reminder settings
+        reminderEnabled: editStageReminderEnabled,
+        remindAfterDays: editStageReminderEnabled && editStageReminderType === 'afterDays'
+          ? parseInt(editStageRemindAfterDays) || undefined
+          : undefined,
+        remindAtEndOfStage: editStageReminderEnabled && editStageReminderType === 'atEnd'
+          ? true
+          : undefined,
+        // Advanced options
+        loadWeightBeforeGrams: editStageLoadWeightBeforeGrams ?? undefined,
+        fillLevelPercent: editStageFillLevelPercent ? parseInt(editStageFillLevelPercent) : undefined,
+        waterAmountMl: editStageWaterAmount ? parseInt(editStageWaterAmount) : undefined,
         // Quality ratings
         resultRating: editStageResultRating > 0 ? editStageResultRating : undefined,
         resultShapeRounding: editStageShowAdvancedQuality ? editStageShapeRounding : undefined,
@@ -2294,46 +2427,28 @@ export default function CycleDetailPage() {
           ) : (
             <div className="space-y-4 py-4">
               {/* Stage Name */}
+              <StageNameSelector
+                stageName={editStageName}
+                customStageName={editCustomStageName}
+                onStageNameChange={setEditStageName}
+                onCustomStageNameChange={setEditCustomStageName}
+              />
+
+              {/* Barrel Selection */}
+              <BarrelSelector
+                barrels={allBarrels}
+                selectedBarrelIds={editStageBarrelIds}
+                onSelectionChange={setEditStageBarrelIds}
+              />
+
+              {/* Start Date/Time */}
               <div className="space-y-2">
-                <Label>Stage Name</Label>
-                <div className="flex flex-wrap gap-1">
-                  {STAGE_NAMES.map(name => (
-                    <Button
-                      key={name}
-                      type="button"
-                      variant={editStageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(editStageName)) ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => {
-                        if (name === 'Custom') {
-                          setEditStageName('Custom');
-                          setEditCustomStageName('');
-                        } else {
-                          setEditStageName(name);
-                          setEditCustomStageName('');
-                        }
-                      }}
-                    >
-                      {name}
-                    </Button>
-                  ))}
-                </div>
-                {/* Custom stage name input - show when Custom is selected or when stage name is not in standard list */}
-                {(editStageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(editStageName)) && (
-                  <Input
-                    placeholder="Enter custom stage name..."
-                    value={editStageName === 'Custom' ? editCustomStageName : editStageName}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setEditCustomStageName(value);
-                      if (value) {
-                        setEditStageName(value);
-                      } else {
-                        setEditStageName('Custom');
-                      }
-                    }}
-                    className="mt-2"
-                  />
-                )}
+                <Label>Start Date/Time</Label>
+                <Input
+                  type="datetime-local"
+                  value={editStageStartDateTime}
+                  onChange={(e) => setEditStageStartDateTime(e.target.value)}
+                />
               </div>
 
               {/* Duration - Collapsible */}
@@ -2368,6 +2483,80 @@ export default function CycleDetailPage() {
                   />
                 </CollapsibleContent>
               </Collapsible>
+
+              {/* Materials Section */}
+              <StageMaterialsSection
+                materials={editStageMaterials}
+                availableMaterials={materials || []}
+                onMaterialsChange={setEditStageMaterials}
+              />
+
+              {/* Material Notes */}
+              <div className="space-y-2">
+                <Label>Material Notes (optional)</Label>
+                <Textarea
+                  placeholder="Any notes about materials or this stage..."
+                  value={editStageNotes}
+                  onChange={(e) => setEditStageNotes(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              {/* Reminder Settings */}
+              <ReminderSettings
+                data={{
+                  enabled: editStageReminderEnabled,
+                  type: editStageReminderType,
+                  afterDays: editStageRemindAfterDays,
+                }}
+                onChange={(data) => {
+                  setEditStageReminderEnabled(data.enabled);
+                  setEditStageReminderType(data.type);
+                  setEditStageRemindAfterDays(data.afterDays);
+                }}
+              />
+
+              {/* Cleaning Run Section */}
+              <CleaningRunSection
+                data={{
+                  enabled: editStageCleaningRun.enabled,
+                  durationDays: editStageCleaningRun.durationDays,
+                  durationHours: editStageCleaningRun.durationHours,
+                  durationMinutes: editStageCleaningRun.durationMinutes,
+                  purpose: editStageCleaningRun.purpose,
+                  notes: editStageCleaningRun.notes,
+                  materials: editStageCleaningRun.materials,
+                }}
+                availableMaterials={materials || []}
+                onChange={(data) => setEditStageCleaningRun({
+                  ...editStageCleaningRun,
+                  enabled: data.enabled,
+                  durationDays: data.durationDays,
+                  durationHours: data.durationHours,
+                  durationMinutes: data.durationMinutes,
+                  purpose: data.purpose,
+                  notes: data.notes,
+                  materials: data.materials,
+                })}
+              />
+
+              {/* Advanced Options */}
+              <StageAdvancedOptions
+                data={{
+                  loadWeightBeforeGrams: editStageLoadWeightBeforeGrams,
+                  fillLevelPercent: editStageFillLevelPercent,
+                  waterAmount: editStageWaterAmount,
+                  waterUnit: editStageWaterUnit,
+                }}
+                onChange={(data) => {
+                  setEditStageLoadWeightBeforeGrams(data.loadWeightBeforeGrams);
+                  setEditStageFillLevelPercent(data.fillLevelPercent);
+                  setEditStageWaterAmount(data.waterAmount);
+                  setEditStageWaterUnit(data.waterUnit);
+                }}
+                barrelCapacityLbs={editStageBarrelCapacity || undefined}
+                onWeightValidationChange={(hasError) => setEditStageWeightBeforeValidationError(hasError)}
+              />
 
               {/* Result Rating */}
               <div className="space-y-2">
@@ -2528,17 +2717,6 @@ export default function CycleDetailPage() {
                     <Label htmlFor="edit-abort">Stop here (abort / re-cut stones)</Label>
                   </div>
                 </RadioGroup>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-2">
-                <Label>Notes (optional)</Label>
-                <Textarea
-                  value={editStageNotes}
-                  onChange={(e) => setEditStageNotes(e.target.value)}
-                  placeholder="Any notes about this stage..."
-                  rows={2}
-                />
               </div>
             </div>
           )}
