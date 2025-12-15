@@ -23,6 +23,23 @@ public record ProcessedImageResult(
 );
 
 /// <summary>
+/// Result of thumbnail-only processing (phase 1)
+/// </summary>
+public record ThumbnailResult(
+    ImageVariant Thumbnail,
+    int OriginalWidth,
+    int OriginalHeight,
+    string? BlurHash
+);
+
+/// <summary>
+/// Result of large variants processing (phase 2)
+/// </summary>
+public record LargeVariantsResult(
+    List<ImageVariant> Variants  // large + original
+);
+
+/// <summary>
 /// Service for processing and resizing images
 /// </summary>
 public interface IImageProcessingService
@@ -35,6 +52,22 @@ public interface IImageProcessingService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Processed variants in different sizes</returns>
     Task<ProcessedImageResult> ProcessImageAsync(
+        Stream inputStream,
+        string fileName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 1: Process thumbnail only (fast, for immediate display)
+    /// </summary>
+    Task<ThumbnailResult> ProcessThumbnailAsync(
+        Stream inputStream,
+        string fileName,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 2: Process large variants (background, user doesn't wait)
+    /// </summary>
+    Task<LargeVariantsResult> ProcessLargeVariantsAsync(
         Stream inputStream,
         string fileName,
         CancellationToken cancellationToken = default);

@@ -4,6 +4,7 @@ public class InventoryPhoto : BaseEntity
 {
     public Guid InventoryPhotoId { get; set; }
     public Guid InventoryId { get; set; }
+    public Guid? InventorySpecimenId { get; set; }  // Optional link to a specific specimen
     public required string StorageKey { get; set; }
     public required string Url { get; set; }
     public string? FileName { get; set; }
@@ -32,4 +33,5 @@ public class InventoryPhoto : BaseEntity
 
     // Navigation properties
     public virtual Inventory Inventory { get; set; } = null!;
+    public virtual InventorySpecimen? InventorySpecimen { get; set; }
 }

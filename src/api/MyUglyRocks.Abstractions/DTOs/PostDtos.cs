@@ -91,7 +91,6 @@ public record InventoryPreviewDto
     public string? SourceName { get; init; }
     public string? SourceLocation { get; init; }
     public DateOnly AcquiredDate { get; init; }
-    public string Condition { get; init; } = "Raw";
     public IEnumerable<string> SpecimenNames { get; init; } = [];
     public IEnumerable<string> SizeCategories { get; init; } = [];
     public int PhotoCount { get; init; }

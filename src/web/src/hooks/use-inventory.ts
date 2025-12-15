@@ -150,12 +150,13 @@ export function useUploadInventoryPhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ inventoryId, file, caption, isCover }: {
+    mutationFn: ({ inventoryId, file, caption, isCover, inventorySpecimenId }: {
       inventoryId: string;
       file: File;
       caption?: string;
       isCover?: boolean;
-    }) => inventoryApi.uploadPhoto(inventoryId, file, caption, isCover),
+      inventorySpecimenId?: string;
+    }) => inventoryApi.uploadPhoto(inventoryId, file, caption, isCover, inventorySpecimenId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(variables.inventoryId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.lists() });

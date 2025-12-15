@@ -46,10 +46,8 @@ export async function GET(request: NextRequest) {
   // Dev domain uses same-origin API URLs (K8s with ingress)
   if ((host && SAME_ORIGIN_HOSTS.includes(host)) ||
       (originHost && SAME_ORIGIN_HOSTS.includes(originHost))) {
-    const matchedHost = host && SAME_ORIGIN_HOSTS.includes(host) ? host : originHost;
-    if (!matchedHost) {
-      return NextResponse.json({ apiUrl: '' });
-    }
+    // If host is in the list, use it; otherwise originHost must be (per the condition above)
+    const matchedHost = host && SAME_ORIGIN_HOSTS.includes(host) ? host : originHost!;
     return NextResponse.json({
       apiUrl: `https://${matchedHost}`,
     });

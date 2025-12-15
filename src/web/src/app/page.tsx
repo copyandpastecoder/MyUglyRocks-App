@@ -15,6 +15,7 @@ import {
   Bell,
   Check,
   Loader2,
+  Package,
 } from 'lucide-react';
 import { waitlistApi } from '@/lib/api';
 
@@ -120,6 +121,13 @@ export default function LandingPage() {
                 </p>
               </CardContent>
             </Card>
+            <Card className="py-4 md:col-span-2">
+              <CardContent className="px-6">
+                <p className="text-muted-foreground italic">
+                  &quot;I have boxes of rough rocks but can&apos;t remember what any of them are or where they came from.&quot;
+                </p>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </section>
@@ -178,11 +186,11 @@ export default function LandingPage() {
             </div>
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 text-primary mb-4">
-                <RotateCcw className="h-6 w-6" />
+                <Package className="h-6 w-6" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Multiple Tumblers</h3>
+              <h3 className="text-lg font-semibold mb-2">Inventory Tracking</h3>
               <p className="text-muted-foreground">
-                Track as many tumblers and cycles as you want. Perfect for multi-barrel setups.
+                Catalog your rock collection with photos. Tag photos to specific specimens and track what goes into each batch.
               </p>
             </div>
           </div>

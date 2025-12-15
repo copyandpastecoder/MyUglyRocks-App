@@ -639,7 +639,6 @@ public class PostService : IPostService
                 SourceName = inventory.SourceName,
                 SourceLocation = inventory.SourceLocation,
                 AcquiredDate = inventory.AcquiredDate,
-                Condition = inventory.Condition.ToString(),
                 SpecimenNames = specimenNames,
                 SizeCategories = sizeCategories,
                 PhotoCount = inventory.InventoryPhotos.Count

@@ -1,10 +1,20 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '@/lib/api';
 import { queryKeys, cacheConfig } from '@/lib/query-keys';
 import { toast } from 'sonner';
 import type { UpdateProfileRequest, ChangePasswordRequest, UpdateSettingsRequest, DeactivateAccountRequest } from '@/types/user';
+import {
+  utcToUserTimezone,
+  userTimezoneToUtc,
+  getNowInTimezone,
+  formatInTimezone,
+  isDateTodayInTimezone,
+  formatUtcForDateTimeLocalInput,
+  parseDateTimeLocalToUtc,
+} from '@/lib/date-utils';
 
 /**
  * Hook to fetch user profile
@@ -125,4 +135,99 @@ export function useDeactivateAccount() {
       toast.error('Failed to deactivate account');
     },
   });
+}
+
+// Default timezone when settings not loaded
+const DEFAULT_TIMEZONE = 'UTC';
+
+/**
+ * Hook to get user's timezone and timezone-aware date utilities.
+ * This is the primary hook for handling dates throughout the app.
+ *
+ * Usage:
+ * ```tsx
+ * const { timezone, toUserTz, toUtc, formatDate, isToday, now, formatForInput, parseFromInput } = useTimezone();
+ *
+ * // Display a UTC date from API in user's timezone
+ * const displayDate = formatDate(stage.startDateTime, 'MMM d, yyyy h:mm a');
+ *
+ * // Get current time in user's timezone
+ * const currentTime = now();
+ *
+ * // Check if a date is today
+ * const isTodayInUserTz = isToday(stage.endDateTime);
+ *
+ * // Prepare datetime-local input value from API data
+ * const inputValue = formatForInput(stage.startDateTime);
+ *
+ * // Convert input value to UTC for API submission
+ * const utcValue = parseFromInput(inputValue);
+ * ```
+ */
+export function useTimezone() {
+  const { data: settings, isLoading } = useSettings();
+  const timezone = settings?.timezone ?? DEFAULT_TIMEZONE;
+
+  return useMemo(() => ({
+    /** User's timezone string (e.g., "America/New_York") */
+    timezone,
+
+    /** Whether settings are still loading */
+    isLoading,
+
+    /**
+     * Convert UTC date string from API to Date in user's timezone
+     * @param utcDateString - ISO date string from API
+     * @returns Date object in user's timezone, or null if input is null/undefined
+     */
+    toUserTz: (utcDateString: string | null | undefined) =>
+      utcToUserTimezone(utcDateString, timezone),
+
+    /**
+     * Convert local Date to UTC ISO string for API submission
+     * @param localDate - Date object in user's timezone
+     * @returns UTC ISO string
+     */
+    toUtc: (localDate: Date) =>
+      userTimezoneToUtc(localDate, timezone),
+
+    /**
+     * Get current time in user's timezone
+     * @returns Date object representing now in user's timezone
+     */
+    now: () => getNowInTimezone(timezone),
+
+    /**
+     * Format a UTC date string for display in user's timezone
+     * @param utcDateString - ISO date string from API
+     * @param formatStr - date-fns format string (default: "MMM d, yyyy h:mm a")
+     * @returns Formatted string
+     */
+    formatDate: (utcDateString: string | null | undefined, formatStr?: string) =>
+      formatInTimezone(utcDateString, timezone, formatStr),
+
+    /**
+     * Check if a UTC date is "today" in user's timezone
+     * @param utcDateString - ISO date string from API
+     * @returns true if date is today in user's timezone
+     */
+    isToday: (utcDateString: string | null | undefined) =>
+      isDateTodayInTimezone(utcDateString, timezone),
+
+    /**
+     * Format UTC date string for datetime-local input
+     * @param utcDateString - ISO date string from API
+     * @returns String formatted for input (YYYY-MM-DDTHH:MM)
+     */
+    formatForInput: (utcDateString: string | null | undefined) =>
+      formatUtcForDateTimeLocalInput(utcDateString, timezone),
+
+    /**
+     * Parse datetime-local input value to UTC ISO string
+     * @param inputValue - Value from datetime-local input
+     * @returns UTC ISO string for API
+     */
+    parseFromInput: (inputValue: string) =>
+      parseDateTimeLocalToUtc(inputValue, timezone),
+  }), [timezone, isLoading]);
 }

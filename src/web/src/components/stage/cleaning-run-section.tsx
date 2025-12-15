@@ -77,27 +77,25 @@ export function CleaningRunSection({
     : '';
 
   return (
-    <div className="border rounded-lg p-3 space-y-3">
-      <Collapsible open={data.enabled} onOpenChange={(open) => updateField('enabled', open)}>
-        <CollapsibleTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            className="w-full justify-between h-auto p-0 hover:bg-transparent"
-          >
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              <span className="font-medium">Cleaning Run</span>
-              {data.enabled && durationSummary && (
-                <span className="text-muted-foreground text-sm">{durationSummary}</span>
-              )}
-              {!data.enabled && (
-                <span className="text-muted-foreground text-sm">(optional)</span>
-              )}
-            </div>
-            <ChevronDown className={`h-4 w-4 transition-transform ${data.enabled ? 'rotate-180' : ''}`} />
-          </Button>
-        </CollapsibleTrigger>
+    <Collapsible open={data.enabled} onOpenChange={(open) => updateField('enabled', open)}>
+      <CollapsibleTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full justify-between"
+        >
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" />
+            <span>Cleaning Run</span>
+            {durationSummary ? (
+              <span className="text-muted-foreground text-sm">{durationSummary}</span>
+            ) : (
+              <span className="text-muted-foreground text-sm">(optional)</span>
+            )}
+          </div>
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+      </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-4">
           {/* Cleaning Duration */}
           <div className="space-y-2">
@@ -185,7 +183,6 @@ export function CleaningRunSection({
             />
           </div>
         </CollapsibleContent>
-      </Collapsible>
-    </div>
+    </Collapsible>
   );
 }

@@ -100,10 +100,10 @@ export interface StageRunDto {
   durationEstimateEndDate: string | null; // Calculated estimate based on duration
   status: string;
   reminderEnabled: boolean;
+  remindAfterDays: number | null;
+  remindAtEndOfStage: boolean | null;
   loadWeightBeforeGrams: number | null;
   loadWeightAfterGrams: number | null;
-  fillLevelPercent: number | null;
-  waterLevel: string | null;
   waterAmountMl: number | null;
   resultRating: number | null;
   resultShapeRounding: number | null;
@@ -134,8 +134,6 @@ export interface CreateStageRunRequest {
   remindAfterDays?: number;
   remindAtEndOfStage?: boolean;
   loadWeightBeforeGrams?: number;
-  fillLevelPercent?: number;
-  waterLevel?: string;
   waterAmountMl?: number;
   notes?: string;
   materials?: CreateStageMaterialRequest[];
@@ -192,8 +190,6 @@ export interface UpdateStageRunRequest {
   remindAtEndOfStage?: boolean;
   loadWeightBeforeGrams?: number;
   loadWeightAfterGrams?: number;
-  fillLevelPercent?: number;
-  waterLevel?: string;
   waterAmountMl?: number;
   notes?: string;
   // Quality ratings
@@ -210,6 +206,9 @@ export interface UpdateStageRunRequest {
   // Lessons and next action
   lessonsLearned?: string;
   nextAction?: string;
+  // Materials and cleaning
+  materials?: CreateStageMaterialRequest[];
+  cleaningRun?: CreateCleaningRunRequest;
 }
 
 export interface CompleteStageRunRequest {

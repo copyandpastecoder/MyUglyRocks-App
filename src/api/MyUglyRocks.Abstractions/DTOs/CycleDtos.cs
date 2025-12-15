@@ -129,10 +129,10 @@ public record StageRunDto(
     DateTime? DurationEstimateEndDate,  // Calculated estimate based on duration
     string Status,
     bool ReminderEnabled,
+    int? RemindAfterDays,
+    bool? RemindAtEndOfStage,
     decimal? LoadWeightBeforeGrams,
     decimal? LoadWeightAfterGrams,
-    int? FillLevelPercent,
-    string? WaterLevel,
     int? WaterAmountMl,
     int? ResultRating,
     int? ResultShapeRounding,
@@ -181,12 +181,6 @@ public record CreateStageRunRequest(
     [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightBeforeGrams,
 
-    [Range(0, 100, ErrorMessage = "Fill level must be between 0 and 100 percent")]
-    int? FillLevelPercent,
-
-    [StringLength(50, ErrorMessage = "Water level must be at most 50 characters")]
-    string? WaterLevel,
-
     [Range(0, 10000, ErrorMessage = "Water amount must be between 0 and 10000 ml")]
     int? WaterAmountMl,
 
@@ -226,12 +220,6 @@ public record UpdateStageRunRequest(
     [Range(0, 100000, ErrorMessage = "Load weight must be between 0 and 100000 grams")]
     decimal? LoadWeightAfterGrams,
 
-    [Range(0, 100, ErrorMessage = "Fill level must be between 0 and 100 percent")]
-    int? FillLevelPercent,
-
-    [StringLength(50, ErrorMessage = "Water level must be at most 50 characters")]
-    string? WaterLevel,
-
     [Range(0, 10000, ErrorMessage = "Water amount must be between 0 and 10000 ml")]
     int? WaterAmountMl,
 
@@ -265,23 +253,26 @@ public record UpdateStageRunRequest(
     string? LessonsLearned,
 
     [StringLength(500, ErrorMessage = "Next action must be at most 500 characters")]
-    string? NextAction
+    string? NextAction,
+
+    IEnumerable<CreateStageMaterialRequest>? Materials,
+    CreateCleaningRunRequest? CleaningRun
 );
 
 public record CompleteStageRunRequest(
     [Range(1, 5, ErrorMessage = "Result rating must be between 1 and 5")]
     int? ResultRating,
 
-    [Range(1, 5, ErrorMessage = "Shape rounding must be between 1 and 5")]
+    [Range(0, 100, ErrorMessage = "Shape rounding must be between 0 and 100")]
     int? ResultShapeRounding,
 
-    [Range(1, 5, ErrorMessage = "Scratch level must be between 1 and 5")]
+    [Range(0, 100, ErrorMessage = "Scratch level must be between 0 and 100")]
     int? ResultScratchLevel,
 
-    [Range(1, 5, ErrorMessage = "Pitting must be between 1 and 5")]
+    [Range(0, 100, ErrorMessage = "Pitting must be between 0 and 100")]
     int? ResultPitting,
 
-    [Range(1, 5, ErrorMessage = "Shine must be between 1 and 5")]
+    [Range(0, 100, ErrorMessage = "Shine must be between 0 and 100")]
     int? ResultShine,
 
     bool? IssueScratches,

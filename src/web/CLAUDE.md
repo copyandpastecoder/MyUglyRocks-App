@@ -75,6 +75,70 @@ Always prefer shadcn/ui components over custom implementations:
 
 Use `react-hook-form` with `zod` for validation.
 
+### Required Field Validation Styling
+
+**All required form inputs must show red highlighting when validation fails.**
+
+When a required field is left blank and the form is submitted, the input should:
+1. Display a red border/highlight on the invalid input
+2. Show an error message below the field
+
+**Implementation:**
+
+Use shadcn/ui Form components with react-hook-form and Zod:
+
+```tsx
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+// Define schema with required fields
+const formSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  sourceType: z.string().min(1, 'Source type is required'),
+});
+
+// Use in component
+const form = useForm<z.infer<typeof formSchema>>({
+  resolver: zodResolver(formSchema),
+  defaultValues: { name: '', sourceType: '' },
+});
+
+// Form fields automatically show validation errors
+<FormField
+  control={form.control}
+  name="sourceType"
+  render={({ field }) => (
+    <FormItem>
+      <FormLabel>Source Type *</FormLabel>
+      <Select value={field.value} onValueChange={field.onChange}>
+        <FormControl>
+          <SelectTrigger>
+            <SelectValue placeholder="Select source type..." />
+          </SelectTrigger>
+        </FormControl>
+        <SelectContent>
+          <SelectItem value="Store">Store</SelectItem>
+          <SelectItem value="Online">Online</SelectItem>
+        </SelectContent>
+      </Select>
+      <FormMessage /> {/* Automatically shows Zod validation error */}
+    </FormItem>
+  )}
+/>
+```
+
+**Key points:**
+- Use `z.string().min(1, 'Error message')` for required string fields
+- Wrap Select/Input in `<FormControl>` for automatic error styling
+- Always include `<FormMessage />` to display the validation error text
+- The shadcn/ui form components automatically apply red border styling when `form.formState.errors` contains an error for that field
+- Validation triggers on form submit via `form.handleSubmit(onSubmit)`
+- Mark required fields with `*` in the label
+
 ### Data Fetching
 
 Use `@tanstack/react-query` hooks in `src/hooks/`.
@@ -224,3 +288,60 @@ const form = useForm<FormValues>({
   defaultValues: { /* ... */ },
 });
 ```
+
+## Date and Timezone Handling
+
+### IMPORTANT: Always Use Timezone-Aware Utilities
+
+**NEVER** use `new Date()` or `toLocaleDateString()` for displaying dates from the API. These use browser local time, not the user's timezone preference.
+
+**ALWAYS** use the `useTimezone()` hook from `@/hooks/use-user`:
+
+```tsx
+import { useTimezone } from '@/hooks/use-user';
+
+function MyComponent() {
+  const { formatDate, toUserTz, toUtc, now, isToday, formatForInput, parseFromInput } = useTimezone();
+
+  // Display a UTC date from API in user's timezone
+  const displayDate = formatDate(stage.startDateTime, 'MMM d, yyyy h:mm a');
+
+  // Check if a date is "today" in user's timezone
+  if (isToday(stage.endDateTime)) { /* ... */ }
+
+  // Get current time in user's timezone
+  const currentTime = now();
+
+  // For datetime-local input pre-population
+  const inputValue = formatForInput(stage.startDateTime);
+
+  // Convert input value back to UTC for API submission
+  const utcValue = parseFromInput(inputValue);
+
+  // Convert UTC to Date object in user's timezone
+  const dateObj = toUserTz(stage.startDateTime);
+
+  // Convert local Date to UTC string for API
+  const utcString = toUtc(new Date());
+}
+```
+
+### Available Format Strings
+
+Uses `date-fns` format strings:
+- `'MMM d, yyyy'` → "Dec 15, 2025"
+- `'MMM d, yyyy h:mm a'` → "Dec 15, 2025 3:45 PM" (default)
+- `'yyyy-MM-dd'` → "2025-12-15"
+- `'h:mm a'` → "3:45 PM"
+
+### Architecture
+
+- **Database**: All DateTimes stored in UTC
+- **API**: Returns/accepts UTC ISO strings
+- **Frontend**: Converts to user's timezone for display, back to UTC for submission
+- **User Preference**: Stored in `UserSettings.Timezone` (IANA format, e.g., "America/New_York")
+
+### Key Files
+
+- `src/lib/date-utils.ts` - Core timezone conversion utilities
+- `src/hooks/use-user.ts` - `useTimezone()` hook that binds utilities to user's settings

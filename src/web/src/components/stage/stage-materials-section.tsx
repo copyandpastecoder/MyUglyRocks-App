@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { AmountInput } from '@/components/amount-input';
@@ -10,7 +11,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X } from 'lucide-react';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Check, ChevronsUpDown, Plus, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { MaterialListDto } from '@/types/reference';
 
 export interface StageMaterial {
@@ -42,9 +57,15 @@ export function StageMaterialsSection({
   onMaterialsChange,
   excludeAbrasives = false,
 }: StageMaterialsSectionProps) {
-  const filteredMaterials = excludeAbrasives
-    ? availableMaterials.filter(m => m.category !== 'Abrasive')
-    : availableMaterials;
+  // Filter and sort materials alphabetically by name
+  const sortedMaterials = useMemo(() => {
+    const filtered = excludeAbrasives
+      ? availableMaterials.filter(m => m.category !== 'Abrasive')
+      : availableMaterials;
+    return [...filtered].sort((a, b) =>
+      a.commonName.localeCompare(b.commonName)
+    );
+  }, [availableMaterials, excludeAbrasives]);
 
   const addMaterial = () => {
     onMaterialsChange([...materials, { materialId: '', displayAmount: '', displayUnit: 'tbsp' }]);
@@ -76,57 +97,119 @@ export function StageMaterialsSection({
       ) : (
         <div className="space-y-2">
           {materials.map((mat, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <Select
-                value={mat.materialId}
-                onValueChange={(value) => updateMaterial(index, 'materialId', value)}
-              >
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select material..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredMaterials.map(m => (
-                    <SelectItem key={m.materialId} value={m.materialId}>
-                      {m.commonName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <AmountInput
-                min={0}
-                placeholder="Amt"
-                className="w-20"
-                value={mat.displayAmount}
-                onChange={(e) => updateMaterial(index, 'displayAmount', e.target.value)}
-              />
-              <Select
-                value={mat.displayUnit}
-                onValueChange={(value) => updateMaterial(index, 'displayUnit', value)}
-              >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIT_OPTIONS.map(unit => (
-                    <SelectItem key={unit.value} value={unit.value}>
-                      {unit.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => removeMaterial(index)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+            <MaterialRow
+              key={index}
+              material={mat}
+              sortedMaterials={sortedMaterials}
+              onMaterialChange={(field, value) => updateMaterial(index, field, value)}
+              onRemove={() => removeMaterial(index)}
+            />
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+interface MaterialRowProps {
+  material: StageMaterial;
+  sortedMaterials: MaterialListDto[];
+  onMaterialChange: (field: keyof StageMaterial, value: string) => void;
+  onRemove: () => void;
+}
+
+function MaterialRow({ material, sortedMaterials, onMaterialChange, onRemove }: MaterialRowProps) {
+  const [open, setOpen] = useState(false);
+
+  const selectedMaterial = sortedMaterials.find(m => m.materialId === material.materialId);
+
+  return (
+    <div className="flex items-center gap-2">
+      {/* Searchable Material Combobox */}
+      <Popover open={open} onOpenChange={setOpen} modal={false}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className="flex-1 justify-between font-normal"
+          >
+            <span className={cn(!selectedMaterial && "text-muted-foreground")}>
+              {selectedMaterial?.commonName || "Select material..."}
+            </span>
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          className="w-[400px] p-0"
+          align="start"
+          onWheelCapture={(e) => e.stopPropagation()}
+        >
+          <Command>
+            <CommandInput placeholder="Search materials..." />
+            <CommandList>
+              <CommandEmpty>No material found.</CommandEmpty>
+              <CommandGroup>
+                {sortedMaterials.map((m) => (
+                  <CommandItem
+                    key={m.materialId}
+                    value={m.commonName}
+                    onSelect={() => {
+                      onMaterialChange('materialId', m.materialId);
+                      setOpen(false);
+                    }}
+                  >
+                    <Check
+                      className={cn(
+                        "mr-2 h-4 w-4",
+                        material.materialId === m.materialId ? "opacity-100" : "opacity-0"
+                      )}
+                    />
+                    {m.commonName}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+
+      {/* Amount Input */}
+      <AmountInput
+        min={0}
+        placeholder="Amt"
+        className="w-20"
+        value={material.displayAmount}
+        onChange={(e) => onMaterialChange('displayAmount', e.target.value)}
+      />
+
+      {/* Unit Selector */}
+      <Select
+        value={material.displayUnit}
+        onValueChange={(value) => onMaterialChange('displayUnit', value)}
+      >
+        <SelectTrigger className="w-24">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {UNIT_OPTIONS.map(unit => (
+            <SelectItem key={unit.value} value={unit.value}>
+              {unit.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {/* Remove Button */}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="h-8 w-8"
+        onClick={onRemove}
+      >
+        <X className="h-4 w-4" />
+      </Button>
     </div>
   );
 }

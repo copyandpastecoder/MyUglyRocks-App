@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Star, Camera } from 'lucide-react';
 import { photosApi } from '@/lib/api';
-import { useUploadInventoryPhoto, useDeleteInventoryPhoto, useSetInventoryCoverPhoto } from '@/hooks/use-inventory';
-import type { InventoryPhotoDto } from '@/types/inventory';
+import { useDeleteInventoryPhoto, useSetInventoryCoverPhoto } from '@/hooks/use-inventory';
+import type { InventoryPhotoDto, InventorySpecimenDto } from '@/types/inventory';
 import { PhotoLightbox, useLightbox } from './photo-lightbox';
+import { InventoryPhotoUploadModal } from './inventory-photo-upload-modal';
 import {
   Tooltip,
   TooltipContent,
@@ -18,17 +19,16 @@ import {
 interface InventoryPhotosProps {
   inventoryId: string;
   photos: InventoryPhotoDto[];
+  specimens: InventorySpecimenDto[];
   onPhotosChange?: () => void;
 }
 
-export function InventoryPhotos({ inventoryId, photos, onPhotosChange }: InventoryPhotosProps) {
+export function InventoryPhotos({ inventoryId, photos, specimens, onPhotosChange }: InventoryPhotosProps) {
   const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const lightbox = useLightbox();
 
-  const uploadMutation = useUploadInventoryPhoto();
   const deleteMutation = useDeleteInventoryPhoto();
   const setCoverMutation = useSetInventoryCoverPhoto();
 
@@ -57,26 +57,8 @@ export function InventoryPhotos({ inventoryId, photos, onPhotosChange }: Invento
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    setIsUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        await uploadMutation.mutateAsync({
-          inventoryId,
-          file,
-        });
-      }
-      onPhotosChange?.();
-    } finally {
-      setIsUploading(false);
-      // Reset the input so the same file can be selected again
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+  const handleUploadComplete = () => {
+    onPhotosChange?.();
   };
 
   const handleDelete = async (photoId: string) => {
@@ -147,32 +129,18 @@ export function InventoryPhotos({ inventoryId, photos, onPhotosChange }: Invento
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
+            onClick={() => setUploadModalOpen(true)}
           >
-            {isUploading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Camera className="mr-2 h-4 w-4" />
-            )}
-            {isUploading ? 'Uploading...' : 'Add Photo'}
+            <Camera className="mr-2 h-4 w-4" />
+            Add Photo
           </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={handleFileSelect}
-          className="hidden"
-        />
-
         {photos.length === 0 ? (
           <div
             className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-muted transition-colors"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => setUploadModalOpen(true)}
           >
             <ImagePlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-2">
@@ -214,13 +182,20 @@ export function InventoryPhotos({ inventoryId, photos, onPhotosChange }: Invento
                           />
                         )}
 
-                        {/* Cover badge */}
-                        {photo.isCover && (
-                          <div className="absolute top-2 left-2 px-2 py-1 bg-yellow-500 rounded text-white text-xs flex items-center gap-1">
-                            <Star className="h-3 w-3 fill-current" />
-                            Cover
-                          </div>
-                        )}
+                        {/* Badges (Cover + Specimen) */}
+                        <div className="absolute bottom-2 left-2 flex gap-1">
+                          {photo.isCover && (
+                            <span className="px-2 py-1 bg-yellow-500 rounded text-white text-xs flex items-center gap-1">
+                              <Star className="h-3 w-3 fill-current" />
+                              Cover
+                            </span>
+                          )}
+                          {photo.specimenName && (
+                            <span className="px-2 py-1 bg-black/50 rounded text-white text-xs">
+                              {photo.specimenName}
+                            </span>
+                          )}
+                        </div>
 
                         {/* Action buttons on hover */}
                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -265,7 +240,7 @@ export function InventoryPhotos({ inventoryId, photos, onPhotosChange }: Invento
               {/* Add more button */}
               <div
                 className="aspect-square border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted transition-colors"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => setUploadModalOpen(true)}
               >
                 <ImagePlus className="h-8 w-8 text-muted-foreground mb-2" />
                 <span className="text-sm text-muted-foreground">Add more</span>
@@ -293,6 +268,15 @@ export function InventoryPhotos({ inventoryId, photos, onPhotosChange }: Invento
         initialIndex={lightbox.initialIndex}
         isOpen={lightbox.isOpen}
         onClose={lightbox.close}
+      />
+
+      {/* Upload Modal */}
+      <InventoryPhotoUploadModal
+        open={uploadModalOpen}
+        onOpenChange={setUploadModalOpen}
+        inventoryId={inventoryId}
+        specimens={specimens}
+        onUploadComplete={handleUploadComplete}
       />
     </Card>
   );

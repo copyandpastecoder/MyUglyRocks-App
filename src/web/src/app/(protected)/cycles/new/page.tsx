@@ -24,7 +24,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
-import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
+import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -46,8 +46,8 @@ export default function NewCyclePage() {
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
 
   // Handle when a custom specimen is created - add it to the selection
-  const handleCustomSpecimenCreated = (specimenId: string) => {
-    setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
+  const handleCustomSpecimenCreated = (data: CustomSpecimenCreatedData) => {
+    setSelectedSpecimenItems(prev => [...prev, { id: data.userSpecimenId, source: 'user' }]);
     setSpecimenError(null);
   };
 

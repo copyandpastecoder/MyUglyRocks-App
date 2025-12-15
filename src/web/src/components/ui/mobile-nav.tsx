@@ -1,6 +1,5 @@
 'use client';
 
-import { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -9,7 +8,6 @@ import {
   RotateCcw,
   Cylinder,
   Package,
-  BookOpen,
   Settings,
   Plus,
   type LucideIcon,

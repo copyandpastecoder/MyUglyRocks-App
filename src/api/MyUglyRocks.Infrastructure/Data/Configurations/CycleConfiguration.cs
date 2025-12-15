@@ -158,12 +158,6 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
         builder.Property(s => s.IsRpmEstimated)
             .HasColumnName("is_rpm_estimated");
 
-        builder.Property(s => s.FillLevelPercent)
-            .HasColumnName("fill_level_percent");
-
-        builder.Property(s => s.WaterLevel)
-            .HasColumnName("water_level");
-
         builder.Property(s => s.WaterAmountMl)
             .HasColumnName("water_amount_ml");
 

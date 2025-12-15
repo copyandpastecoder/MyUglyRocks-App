@@ -7,6 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useInventoryItem } from '@/hooks/use-inventory';
+import { useTimezone } from '@/hooks/use-user';
 import { postApi } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,7 @@ type FormValues = z.infer<typeof formSchema>;
 export default function ShareInventoryPage() {
   const params = useParams();
   const router = useRouter();
+  const { formatDate } = useTimezone();
   const inventoryId = params.id as string;
 
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
@@ -229,13 +231,13 @@ export default function ShareInventoryPage() {
             <Badge variant="secondary">{inventory.sourceType}</Badge>
           </div>
           <CardDescription>
-            Acquired {new Date(inventory.acquiredDate).toLocaleDateString()}
+            Acquired {formatDate(inventory.acquiredDate, 'MMM d, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3 text-sm">
           <div>
-            <p className="text-muted-foreground">Condition</p>
-            <p className="font-medium">{inventory.condition}</p>
+            <p className="text-muted-foreground">Source</p>
+            <p className="font-medium">{inventory.sourceName || 'Not specified'}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Specimens</p>

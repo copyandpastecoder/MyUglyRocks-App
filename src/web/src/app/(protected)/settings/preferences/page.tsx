@@ -214,6 +214,51 @@ export default function PreferencesPage() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
+              <Label>Timezone</Label>
+              <p className="text-sm text-muted-foreground">
+                Your local timezone for dates and reminders
+              </p>
+            </div>
+            <Select
+              value={settings.timezone}
+              onValueChange={(value) => handleUpdate({ timezone: value })}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pacific/Honolulu">Hawaii (UTC-10)</SelectItem>
+                <SelectItem value="America/Anchorage">Alaska (UTC-9)</SelectItem>
+                <SelectItem value="America/Los_Angeles">Pacific Time (UTC-8)</SelectItem>
+                <SelectItem value="America/Denver">Mountain Time (UTC-7)</SelectItem>
+                <SelectItem value="America/Chicago">Central Time (UTC-6)</SelectItem>
+                <SelectItem value="America/New_York">Eastern Time (UTC-5)</SelectItem>
+                <SelectItem value="America/Halifax">Atlantic (UTC-4)</SelectItem>
+                <SelectItem value="America/Sao_Paulo">São Paulo (UTC-3)</SelectItem>
+                <SelectItem value="Atlantic/South_Georgia">South Georgia (UTC-2)</SelectItem>
+                <SelectItem value="Atlantic/Azores">Azores (UTC-1)</SelectItem>
+                <SelectItem value="UTC">UTC (UTC+0)</SelectItem>
+                <SelectItem value="Europe/London">London (UTC+0)</SelectItem>
+                <SelectItem value="Europe/Paris">Central Europe (UTC+1)</SelectItem>
+                <SelectItem value="Europe/Helsinki">Eastern Europe (UTC+2)</SelectItem>
+                <SelectItem value="Europe/Moscow">Moscow (UTC+3)</SelectItem>
+                <SelectItem value="Asia/Dubai">Dubai (UTC+4)</SelectItem>
+                <SelectItem value="Asia/Karachi">Pakistan (UTC+5)</SelectItem>
+                <SelectItem value="Asia/Kolkata">India (UTC+5:30)</SelectItem>
+                <SelectItem value="Asia/Dhaka">Bangladesh (UTC+6)</SelectItem>
+                <SelectItem value="Asia/Bangkok">Thailand (UTC+7)</SelectItem>
+                <SelectItem value="Asia/Shanghai">China (UTC+8)</SelectItem>
+                <SelectItem value="Asia/Tokyo">Japan (UTC+9)</SelectItem>
+                <SelectItem value="Australia/Sydney">Sydney (UTC+10)</SelectItem>
+                <SelectItem value="Pacific/Auckland">New Zealand (UTC+12)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
               <Label>First Day of Week</Label>
               <p className="text-sm text-muted-foreground">
                 For calendar displays

@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useInventoryItem, useUpdateInventory, useDeleteInventory, useUpdateInventorySpecimens } from '@/hooks/use-inventory';
+import { useInventoryItem, useUpdateInventory, useDeleteInventory } from '@/hooks/use-inventory';
+import { useTimezone } from '@/hooks/use-user';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +31,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,56 +41,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
-import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
-import { WeightInput } from '@/components/weight-input';
+import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import { InventoryPhotos } from '@/components/inventory-photos';
-import { StarRating } from '@/components/star-rating';
-import { SpecimenWeightTable, type SpecimenWithWeight } from '@/components/specimen-weight-table';
+import { SpecimenRowList, type SpecimenRowItem } from '@/components/specimen-row-list';
 import { ArrowLeft, Loader2, Trash2, Package, Star, Share2 } from 'lucide-react';
 import Link from 'next/link';
-import type { SourceType, InventoryCondition, SizeCategory, InventoryStatus } from '@/types/inventory';
-
-const SOURCE_TYPES: { value: SourceType; label: string }[] = [
-  { value: 'Store', label: 'Store (physical)' },
-  { value: 'Online', label: 'Online' },
-  { value: 'Found', label: 'Found / Collected' },
-  { value: 'Gift', label: 'Gift' },
-  { value: 'Trade', label: 'Trade' },
-  { value: 'Other', label: 'Other' },
-];
-
-const CONDITIONS: { value: InventoryCondition; label: string }[] = [
-  { value: 'Raw', label: 'Raw (unprocessed)' },
-  { value: 'PreShaped', label: 'Pre-shaped' },
-  { value: 'Tumbled', label: 'Tumbled' },
-  { value: 'Polished', label: 'Polished' },
-  { value: 'Mixed', label: 'Mixed conditions' },
-];
-
-const SIZE_CATEGORIES: { value: SizeCategory; label: string }[] = [
-  { value: 'ZeroToOne', label: '0 - 1"' },
-  { value: 'OneToTwo', label: '1" - 2"' },
-  { value: 'TwoToThree', label: '2" - 3"' },
-  { value: 'ThreeToFour', label: '3" - 4"' },
-  { value: 'FourToFive', label: '4" - 5"' },
-  { value: 'GreaterThanFive', label: 'Greater than 5"' },
-  { value: 'Assorted', label: 'Assorted' },
-];
-
-const STATUS_OPTIONS: { value: InventoryStatus; label: string }[] = [
-  { value: 'Available', label: 'Available' },
-  { value: 'InUse', label: 'In Use' },
-  { value: 'Partial', label: 'Partial' },
-  { value: 'Depleted', label: 'Depleted' },
-];
-
-const STATUS_COLORS: Record<InventoryStatus, string> = {
-  Available: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  InUse: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  Depleted: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  Partial: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-};
+import type { InventoryStatus, SourceType } from '@/types/inventory';
+import {
+  INVENTORY_STATUS_COLORS,
+  INVENTORY_STATUS_OPTIONS,
+  SOURCE_TYPE_OPTIONS,
+} from '@/lib/inventory-constants';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -99,12 +60,6 @@ const formSchema = z.object({
   sourceName: z.string().max(255).optional(),
   sourceLocation: z.string().max(255).optional(),
   sourceUrl: z.string().url().max(500).optional().or(z.literal('')),
-  totalWeightGrams: z.number().min(0).nullable().optional(),
-  remainingWeightGrams: z.number().min(0).nullable().optional(),
-  cost: z.coerce.number().min(0).optional(),
-  condition: z.string().min(1, 'Condition is required'),
-  sizeCategories: z.array(z.string()).optional(),
-  qualityRating: z.coerce.number().min(1).max(5).optional(),
   status: z.string().min(1, 'Status is required'),
   storageLocation: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
@@ -116,23 +71,19 @@ type FormValues = z.infer<typeof formSchema>;
 export default function InventoryDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { formatDate } = useTimezone();
   const id = params.id as string;
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
+  const [specimenRows, setSpecimenRows] = useState<SpecimenRowItem[]>([]);
+  const [specimenError, setSpecimenError] = useState<string | null>(null);
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
-  const [displayUnit, setDisplayUnit] = useState<string>('lb');
-  const [trackIndividualWeights, setTrackIndividualWeights] = useState(false);
-  const [specimensWithWeights, setSpecimensWithWeights] = useState<SpecimenWithWeight[]>([]);
   const hasInitializedForm = useRef(false);
   const hasInitializedSpecimens = useRef(false);
-  const hasInitializedDisplayUnit = useRef(false);
-  const hasInitializedWeightMode = useRef(false);
 
   const { data: inventory, isLoading, refetch: refetchInventory } = useInventoryItem(id);
   const updateMutation = useUpdateInventory();
   const deleteMutation = useDeleteInventory();
-  const updateSpecimensMutation = useUpdateInventorySpecimens();
 
   const form = useForm<FormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
@@ -144,12 +95,6 @@ export default function InventoryDetailPage() {
       sourceName: '',
       sourceLocation: '',
       sourceUrl: '',
-      totalWeightGrams: null,
-      remainingWeightGrams: null,
-      cost: undefined,
-      condition: '',
-      sizeCategories: [],
-      qualityRating: undefined,
       status: '',
       storageLocation: '',
       notes: '',
@@ -168,12 +113,6 @@ export default function InventoryDetailPage() {
         sourceName: inventory.sourceName || '',
         sourceLocation: inventory.sourceLocation || '',
         sourceUrl: inventory.sourceUrl || '',
-        totalWeightGrams: inventory.totalWeightGrams ?? null,
-        remainingWeightGrams: inventory.remainingWeightGrams ?? null,
-        cost: inventory.cost || undefined,
-        condition: inventory.condition,
-        sizeCategories: inventory.sizeCategories || [],
-        qualityRating: inventory.qualityRating || undefined,
         status: inventory.status,
         storageLocation: inventory.storageLocation || '',
         notes: inventory.notes || '',
@@ -183,93 +122,72 @@ export default function InventoryDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time initialization, form.reset is stable
   }, [inventory]);
 
-  // Initialize selected specimens when inventory loads (once only)
+  // Initialize specimen rows when inventory loads (once only)
   useEffect(() => {
     if (!hasInitializedSpecimens.current && inventory?.specimens) {
       hasInitializedSpecimens.current = true;
-      const items: SpecimenSelection[] = inventory.specimens
+      const rows: SpecimenRowItem[] = inventory.specimens
         .filter(s => s.specimenId || s.userSpecimenId)
         .map(s => ({
-          id: (s.specimenId || s.userSpecimenId) as string,
+          id: crypto.randomUUID(),
+          specimenId: s.specimenId ?? undefined,
+          userSpecimenId: s.userSpecimenId ?? undefined,
+          selectedId: (s.specimenId || s.userSpecimenId) as string,
           source: s.source,
+          commonName: s.commonName,
+          weightGrams: s.weightGrams,
+          cost: s.cost,
+          condition: s.condition || 'Raw',
+          qualityRating: s.qualityRating,
+          sizeCategories: s.sizeCategories || [],
         }));
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
-      setSelectedSpecimenItems(items);
+      setSpecimenRows(rows);
     }
   }, [inventory]);
 
-  // Initialize weight tracking mode and specimens with weights (once only)
-  useEffect(() => {
-    if (!hasInitializedWeightMode.current && inventory?.specimens) {
-      hasInitializedWeightMode.current = true;
-      // Check if any specimen has individual weight set
-      const hasIndividualWeights = inventory.specimens.some(s => s.weightGrams != null);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
-      setTrackIndividualWeights(hasIndividualWeights);
-
-      if (hasIndividualWeights) {
-        // Convert to SpecimenWithWeight format
-        const specimensWithWeightData: SpecimenWithWeight[] = inventory.specimens
-          .filter(s => s.specimenId || s.userSpecimenId)
-          .map(s => ({
-            id: (s.specimenId || s.userSpecimenId) as string,
-            specimenId: s.specimenId ?? undefined,
-            userSpecimenId: s.userSpecimenId ?? undefined,
-            commonName: s.commonName,
-            scientificName: s.scientificName ?? undefined,
-            materialType: s.materialType,
-            source: s.source,
-            weightGrams: s.weightGrams,
-          }));
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
-        setSpecimensWithWeights(specimensWithWeightData);
-      }
-    }
-  }, [inventory]);
-
-  // Initialize display unit from inventory (once only)
-  useEffect(() => {
-    if (!hasInitializedDisplayUnit.current && inventory?.displayUnit) {
-      hasInitializedDisplayUnit.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
-      setDisplayUnit(inventory.displayUnit);
-    }
-  }, [inventory]);
-
-  // Handle when a custom specimen is created - add it to the selection
-  const handleCustomSpecimenCreated = (specimenId: string) => {
-    setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
+  // Handle when a custom specimen is created - add a new row with that specimen pre-selected
+  const handleCustomSpecimenCreated = (data: CustomSpecimenCreatedData) => {
+    // Create a new row with the custom specimen already selected
+    const newRow: SpecimenRowItem = {
+      id: crypto.randomUUID(),
+      selectedId: data.userSpecimenId,
+      userSpecimenId: data.userSpecimenId,
+      source: 'user',
+      commonName: data.commonName,
+      scientificName: data.scientificName ?? undefined,
+      tumblingDifficulty: data.tumblingDifficulty ?? undefined,
+      weightGrams: null,
+      cost: null,
+      condition: 'Raw',
+      qualityRating: null,
+      sizeCategories: [],
+    };
+    setSpecimenRows(prev => [...prev, newRow]);
+    setSpecimenError(null);
   };
 
   const onSubmit = async (data: FormValues) => {
-    // Calculate weights and specimens based on mode
-    let totalWeightGrams: number | undefined;
-    let remainingWeightGrams: number | undefined;
-    let specimensPayload;
-
-    if (trackIndividualWeights) {
-      // Use individual specimen weights - total is calculated server-side
-      specimensPayload = specimensWithWeights.map(s => ({
-        specimenId: s.specimenId,
-        userSpecimenId: s.userSpecimenId,
-        weightGrams: s.weightGrams ?? undefined,
-      }));
-      // Calculate total from specimen weights for display purposes
-      totalWeightGrams = specimensWithWeights
-        .filter(s => s.weightGrams != null)
-        .reduce((sum, s) => sum + (s.weightGrams || 0), 0) || undefined;
-      remainingWeightGrams = data.remainingWeightGrams ?? totalWeightGrams;
-    } else {
-      // Use single total weight
-      totalWeightGrams = data.totalWeightGrams ?? undefined;
-      remainingWeightGrams = data.remainingWeightGrams ?? undefined;
-      specimensPayload = selectedSpecimenItems.map(item => ({
-        specimenId: item.source === 'system' ? item.id : undefined,
-        userSpecimenId: item.source === 'user' ? item.id : undefined,
-      }));
+    // Validate specimens
+    const validSpecimens = specimenRows.filter(r => r.selectedId);
+    if (validSpecimens.length === 0) {
+      setSpecimenError('At least one specimen is required');
+      return;
     }
+    setSpecimenError(null);
 
-    // Update inventory
+    // Build specimens payload with all per-specimen fields
+    const specimensPayload = validSpecimens.map(row => ({
+      specimenId: row.specimenId,
+      userSpecimenId: row.userSpecimenId,
+      weightGrams: row.weightGrams ?? undefined,
+      cost: row.cost ?? undefined,
+      condition: row.condition,
+      qualityRating: row.qualityRating ?? undefined,
+      sizeCategories: row.sizeCategories.length > 0 ? row.sizeCategories : undefined,
+    }));
+
+    // Update inventory (aggregates are calculated on backend from specimens)
     updateMutation.mutate({
       id,
       data: {
@@ -279,26 +197,13 @@ export default function InventoryDetailPage() {
         sourceName: data.sourceName || undefined,
         sourceLocation: data.sourceLocation || undefined,
         sourceUrl: data.sourceUrl || undefined,
-        totalWeightGrams,
-        remainingWeightGrams,
-        displayUnit: totalWeightGrams || remainingWeightGrams ? displayUnit : undefined,
-        cost: data.cost,
-        condition: data.condition as InventoryCondition,
-        sizeCategories: data.sizeCategories && data.sizeCategories.length > 0
-          ? data.sizeCategories as SizeCategory[]
-          : undefined,
-        qualityRating: data.qualityRating,
+        displayUnit: 'lb',
         status: data.status as InventoryStatus,
         storageLocation: data.storageLocation || undefined,
         notes: data.notes || undefined,
         isFavorite: data.isFavorite,
+        specimens: specimensPayload,
       },
-    });
-
-    // Update specimens
-    updateSpecimensMutation.mutate({
-      id,
-      data: { specimens: specimensPayload },
     });
   };
 
@@ -343,10 +248,10 @@ export default function InventoryDetailPage() {
             {inventory.isFavorite && <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />}
           </div>
           <p className="text-muted-foreground">
-            Acquired {new Date(inventory.acquiredDate).toLocaleDateString()}
+            Acquired {formatDate(inventory.acquiredDate, 'MMM d, yyyy')}
           </p>
         </div>
-        <Badge variant="secondary" className={STATUS_COLORS[inventory.status]}>
+        <Badge variant="secondary" className={INVENTORY_STATUS_COLORS[inventory.status]}>
           {inventory.status}
         </Badge>
       </div>
@@ -386,7 +291,7 @@ export default function InventoryDetailPage() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {SOURCE_TYPES.map(({ value, label }) => (
+                          {SOURCE_TYPE_OPTIONS.map(({ value, label }) => (
                             <SelectItem key={value} value={value}>{label}</SelectItem>
                           ))}
                         </SelectContent>
@@ -453,224 +358,41 @@ export default function InventoryDetailPage() {
                 />
               </div>
 
-              {/* Toggle for individual weight tracking */}
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <label className="text-sm font-medium">Track Weight Per Specimen</label>
-                  <p className="text-sm text-muted-foreground">
-                    Enter individual weights for each specimen type instead of a total weight
-                  </p>
-                </div>
-                <Switch
-                  checked={trackIndividualWeights}
-                  onCheckedChange={(checked) => {
-                    setTrackIndividualWeights(checked);
-                    // Clear both forms when switching modes
-                    if (checked) {
-                      setSelectedSpecimenItems([]);
-                      form.setValue('totalWeightGrams', null);
-                    } else {
-                      setSpecimensWithWeights([]);
-                    }
-                  }}
-                />
-              </div>
-
-              {trackIndividualWeights ? (
-                <SpecimenWeightTable
-                  specimens={specimensWithWeights}
-                  onSpecimensChange={setSpecimensWithWeights}
-                  onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
-                />
-              ) : (
-                <>
-                  <FormItem>
-                    <FormLabel>Specimens</FormLabel>
-                    <SpecimenMultiSelect
-                      selectedItems={selectedSpecimenItems}
-                      onSelectionChange={setSelectedSpecimenItems}
-                      placeholder="Select rock/mineral types..."
-                      onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
-                    />
-                    <FormDescription>
-                      What types of rocks are in this batch?
-                    </FormDescription>
-                  </FormItem>
-
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="totalWeightGrams"
-                      render={({ field }) => (
-                        <FormItem>
-                          <WeightInput
-                            label="Total Weight"
-                            valueGrams={field.value ?? null}
-                            onValueChange={(grams, unit) => {
-                              field.onChange(grams);
-                              if (unit) setDisplayUnit(unit);
-                            }}
-                            initialDisplayUnit={inventory?.displayUnit}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="cost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cost ($)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Cost field when in individual weight mode */}
-              {trackIndividualWeights && (
-                <FormField
-                  control={form.control}
-                  name="cost"
-                  render={({ field }) => (
-                    <FormItem className="max-w-xs">
-                      <FormLabel>Cost ($)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="condition"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Condition *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} key={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {CONDITIONS.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="qualityRating"
-                  render={({ field }) => (
-                    <FormItem>
-                      <StarRating
-                        label="Quality"
-                        value={field.value ?? null}
-                        onChange={(val) => field.onChange(val ?? undefined)}
-                        size="md"
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {/* Specimens - expandable cards with all fields */}
+              <SpecimenRowList
+                specimens={specimenRows}
+                onSpecimensChange={(rows) => {
+                  setSpecimenRows(rows);
+                  if (rows.filter(r => r.selectedId).length > 0) {
+                    setSpecimenError(null);
+                  }
+                }}
+                onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
+                error={specimenError}
+              />
 
               <FormField
                 control={form.control}
-                name="sizeCategories"
+                name="status"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Size Categories</FormLabel>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3 border rounded-md">
-                      {SIZE_CATEGORIES.map(({ value, label }) => (
-                        <div key={value} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`size-${value}`}
-                            checked={field.value?.includes(value) ?? false}
-                            onCheckedChange={(checked) => {
-                              const currentValues = field.value ?? [];
-                              if (checked) {
-                                field.onChange([...currentValues, value]);
-                              } else {
-                                field.onChange(currentValues.filter((v: string) => v !== value));
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor={`size-${value}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    <FormDescription>Select all sizes that apply to this batch</FormDescription>
+                  <FormItem className="max-w-xs">
+                    <FormLabel>Status *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value} key={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {INVENTORY_STATUS_OPTIONS.map(({ value, label }) => (
+                          <SelectItem key={value} value={value}>{label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="remainingWeightGrams"
-                  render={({ field }) => (
-                    <FormItem>
-                      <WeightInput
-                        label="Remaining Weight"
-                        valueGrams={field.value ?? null}
-                        onValueChange={(grams, unit) => {
-                          field.onChange(grams);
-                          if (unit) setDisplayUnit(unit);
-                        }}
-                        initialDisplayUnit={inventory?.displayUnit}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} key={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
               <FormField
                 control={form.control}
@@ -752,6 +474,7 @@ export default function InventoryDetailPage() {
       <InventoryPhotos
         inventoryId={id}
         photos={inventory.photos}
+        specimens={inventory.specimens}
         onPhotosChange={() => refetchInventory()}
       />
 
@@ -759,9 +482,9 @@ export default function InventoryDetailPage() {
         <Button
           type="button"
           onClick={form.handleSubmit(onSubmit)}
-          disabled={updateMutation.isPending || updateSpecimensMutation.isPending}
+          disabled={updateMutation.isPending}
         >
-          {(updateMutation.isPending || updateSpecimensMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Changes
         </Button>
         {inventory.photos.length > 0 && (
