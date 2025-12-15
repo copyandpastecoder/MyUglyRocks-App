@@ -900,7 +900,6 @@ export default function CycleDetailPage() {
                     onEdit={() => openEditStageModal(stage)}
                     onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
                     isPlanned
-                    canStartEarly={activeStages.length === 0}
                   />
                 ))}
               </div>

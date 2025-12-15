@@ -148,7 +148,6 @@ export function StageFormModal({
     setCleaningPurpose('');
     setCleaningNotes('');
     setCleaningMaterials([]);
-    setCleaningRunId(undefined);
     setIsLoading(false);
   }, [settings?.measurementSystem]);
 
@@ -218,7 +217,6 @@ export function StageFormModal({
       // Cleaning run
       if (fullStage.cleaningRun) {
         setAddCleaningRun(true);
-        setCleaningRunId(fullStage.cleaningRun.cleaningRunId);
         const { days, hours, mins } = convertMinutesToDaysHoursMinutes(fullStage.cleaningRun.durationMinutes);
         setCleaningDurationDays(String(days));
         setCleaningDurationHours(String(hours));
