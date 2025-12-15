@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+#### Full Edit Stage Modal
+- **Feature**: Edit Stage modal now has all the same fields as Create Stage modal
+- **New Shared Components** in `src/web/src/components/stage/`:
+  - `StageNameSelector` - Stage name buttons with custom name input
+  - `BarrelSelector` - Barrel selection checkboxes
+  - `StageMaterialsSection` - Materials management with add/remove
+  - `CleaningRunSection` - Cleaning run config with duration, purpose, materials
+  - `StageAdvancedOptions` - Weight before, fill level, water amount
+  - `ReminderSettings` - Reminder checkbox with afterDays/atEnd options
+- **Edit Stage Modal now includes**:
+  - Barrel selection (change which barrels the stage uses)
+  - Start date/time editing
+  - Materials section (add/remove/edit materials)
+  - Reminder settings
+  - Cleaning run configuration
+  - Advanced options (weight before, fill level, water)
+  - Plus existing quality/results fields (rating, issues, weight after, etc.)
+
+#### Cleaning Run in Complete Stage Modal
+- **Feature**: Complete Stage modal now includes an editable Cleaning Run section
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Details**:
+  - Added collapsible CleaningRunSection component under Duration
+  - If stage has existing cleaning run, pre-populates form with that data
+  - If no cleaning run exists, allows user to add one before completing
+  - New cleaning runs are created automatically when stage is completed
+  - Uses the shared `CleaningRunSection` component for consistent UI
+
 #### Individual Specimen Weights in Inventory
 - **Feature**: Inventory items can now track individual weights per specimen instead of just batch weight
 - **Files**:
@@ -16,6 +44,19 @@ All notable changes to this project will be documented in this file.
 - **UX**: Toggle switch "Track weight per specimen" enables table view with weight inputs
 - **Calculation**: Total weight auto-calculates from individual specimen weights
 - **Unit conversion**: Weights stored in grams, displayed in user's preferred unit (lbs/kg)
+
+### Improved
+
+#### Complete Stage Validation with Visual Feedback
+- **Improvement**: Enhanced validation for "What's Next?" field in Complete Stage modal
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Details**:
+  - Red border with pulse animation when validation fails
+  - Label turns red to highlight the required field
+  - Error message appears below the field
+  - Toast duration increased from 1 second to 5 seconds
+  - Error state auto-clears when user selects an option
+  - Form state properly resets when opening modal
 
 ### Fixed
 
