@@ -178,8 +178,27 @@ export default function CycleDetailPage() {
   const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
   // Barrel capacity for the stage being completed (for validation)
   const [completeStageBarrelCapacity, setCompleteStageBarrelCapacity] = useState<number | null>(null);
-  // Cleaning run info for Complete Stage modal (read-only display)
+  // Cleaning run info for Complete Stage modal (read-only display of existing)
   const [completeStageCleaningRun, setCompleteStageCleaningRun] = useState<CleaningRunDto | null>(null);
+  // Editable cleaning run state for Complete Stage modal
+  const [completeStageEditableCleaningRun, setCompleteStageEditableCleaningRun] = useState<{
+    enabled: boolean;
+    cleaningRunId?: string;
+    durationDays: string;
+    durationHours: string;
+    durationMinutes: string;
+    purpose: string;
+    notes: string;
+    materials: Array<{ materialId: string; displayAmount: string; displayUnit: string }>;
+  }>({
+    enabled: false,
+    durationDays: '0',
+    durationHours: '0',
+    durationMinutes: '0',
+    purpose: '',
+    notes: '',
+    materials: [],
+  });
   // Weight before (from when stage was started)
   const [completeStageWeightBefore, setCompleteStageWeightBefore] = useState<number | null>(null);
 
@@ -831,6 +850,34 @@ export default function CycleDetailPage() {
     setCompleteStageDurationHours(String(hours));
     // Store cleaning run info for display
     setCompleteStageCleaningRun(stage.cleaningRun);
+    // Initialize editable cleaning run from existing data or reset
+    if (stage.cleaningRun) {
+      const { days, hours, mins } = convertMinutesToDaysHoursMinutes(stage.cleaningRun.durationMinutes);
+      setCompleteStageEditableCleaningRun({
+        enabled: true,
+        cleaningRunId: stage.cleaningRun.cleaningRunId,
+        durationDays: String(days),
+        durationHours: String(hours),
+        durationMinutes: String(mins),
+        purpose: stage.cleaningRun.purpose || '',
+        notes: stage.cleaningRun.notes || '',
+        materials: stage.cleaningRun.materials?.map(m => ({
+          materialId: m.materialId,
+          displayAmount: m.displayAmount?.toString() || '',
+          displayUnit: m.displayUnit || 'tbsp',
+        })) || [],
+      });
+    } else {
+      setCompleteStageEditableCleaningRun({
+        enabled: false,
+        durationDays: '0',
+        durationHours: '0',
+        durationMinutes: '0',
+        purpose: '',
+        notes: '',
+        materials: [],
+      });
+    }
     // Reset form state
     setNextAction('');
     setNextActionError(false);
@@ -853,7 +900,7 @@ export default function CycleDetailPage() {
     }
   };
 
-  const handleCompleteStage = () => {
+  const handleCompleteStage = async () => {
     if (!completeStageId) return;
 
     // Result rating is only required for Polish stage
@@ -874,6 +921,36 @@ export default function CycleDetailPage() {
     if (weightAfterValidationError) {
       toast.error('Weight exceeds 150% of barrel capacity. Please correct before saving.');
       return;
+    }
+
+    // Handle cleaning run - add if enabled and new (no existing cleaningRunId)
+    if (completeStageEditableCleaningRun.enabled && !completeStageEditableCleaningRun.cleaningRunId) {
+      const totalMinutes =
+        (parseInt(completeStageEditableCleaningRun.durationDays) || 0) * 1440 +
+        (parseInt(completeStageEditableCleaningRun.durationHours) || 0) * 60 +
+        (parseInt(completeStageEditableCleaningRun.durationMinutes) || 0);
+
+      if (totalMinutes > 0) {
+        try {
+          const cleaningMaterials = completeStageEditableCleaningRun.materials
+            .filter(m => m.materialId)
+            .map(m => ({
+              materialId: m.materialId,
+              displayAmount: m.displayAmount ? parseFloat(m.displayAmount) : undefined,
+              displayUnit: m.displayUnit || undefined,
+            }));
+
+          await cycleApi.addCleaningRun(completeStageId, {
+            durationMinutes: totalMinutes,
+            purpose: completeStageEditableCleaningRun.purpose || undefined,
+            notes: completeStageEditableCleaningRun.notes || undefined,
+            materials: cleaningMaterials.length > 0 ? cleaningMaterials : undefined,
+          });
+        } catch {
+          toast.error('Failed to add cleaning run');
+          return;
+        }
+      }
     }
 
     // Calculate the actual end date from start date + duration
@@ -2143,6 +2220,30 @@ export default function CycleDetailPage() {
                 />
               </CollapsibleContent>
             </Collapsible>
+
+            {/* Cleaning Run Section */}
+            <CleaningRunSection
+              data={{
+                enabled: completeStageEditableCleaningRun.enabled,
+                durationDays: completeStageEditableCleaningRun.durationDays,
+                durationHours: completeStageEditableCleaningRun.durationHours,
+                durationMinutes: completeStageEditableCleaningRun.durationMinutes,
+                purpose: completeStageEditableCleaningRun.purpose,
+                notes: completeStageEditableCleaningRun.notes,
+                materials: completeStageEditableCleaningRun.materials,
+              }}
+              availableMaterials={materials || []}
+              onChange={(data) => setCompleteStageEditableCleaningRun({
+                ...completeStageEditableCleaningRun,
+                enabled: data.enabled,
+                durationDays: data.durationDays,
+                durationHours: data.durationHours,
+                durationMinutes: data.durationMinutes,
+                purpose: data.purpose,
+                notes: data.notes,
+                materials: data.materials,
+              })}
+            />
 
             {/* Result Rating */}
             <div className="space-y-2">
