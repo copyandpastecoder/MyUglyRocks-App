@@ -475,12 +475,12 @@ export function LegacySpecimenMultiSelect({
   isLoading = false,
 }: LegacySpecimenMultiSelectProps) {
   // Convert legacy format to new format
-  const selectedItems: SpecimenSelection[] = selectedIds.map((id) => ({
+  const _selectedItems: SpecimenSelection[] = selectedIds.map((id) => ({
     id,
     source: 'system' as const,
   }));
 
-  const handleSelectionChange = (items: SpecimenSelection[]) => {
+  const _handleSelectionChange = (items: SpecimenSelection[]) => {
     // Convert back to legacy format (just IDs for system specimens)
     onSelectionChange(items.filter((i) => i.source === 'system').map((i) => i.id));
   };

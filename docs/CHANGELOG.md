@@ -256,6 +256,26 @@ Several issues identified by GitHub Copilot code review have been addressed:
 - **Custom stage name input accessibility**: Added `aria-label` attribute for screen reader support
   - File: [stage-form-modal.tsx](../src/web/src/components/stage/stage-form-modal.tsx)
 
+#### ESLint Error Fixes
+Fixed all 3 lint errors (reduced warnings from 74 to 41):
+
+- **`openAddStageModal` accessed before declaration** (cycles/[id]/page.tsx:215)
+  - Changed `hasHandledAddStage` from `useState` to `useRef` since it doesn't trigger re-renders
+  - Inlined the modal open logic directly in the useEffect
+  - File: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+
+- **setState in effect errors** (weight-input.tsx)
+  - Refactored to use `useMemo` for deriving display values from props
+  - Added `effectiveIsMetric` computed value that chains: sessionStorage > initialDisplayUnit > settings > fallback
+  - Removed useEffect that synced props to local state (caused cascading renders)
+  - File: [weight-input.tsx](../src/web/src/components/weight-input.tsx)
+
+- **Unused imports/variables** (33+ fixes across 12+ files)
+  - Removed unused Select components, types, functions from imports
+  - Prefixed intentionally unused variables with `_` (e.g., `_router`, `_currentDay`, `_cleaningRunId`)
+  - Removed unused `ModalConfig` type definition
+  - Files affected: cycles/[id]/page.tsx, gallery/[id]/page.tsx, inventory/[id]/share/page.tsx, learn/faq/[topic]/page.tsx, learn/materials/page.tsx, settings/preferences/page.tsx, tumblers/[id]/page.tsx, stage-form-modal.tsx, command-palette.tsx, floating-action-button.tsx, mobile-nav.tsx, skeletons/index.tsx, specimen-multi-select.tsx, confetti.tsx, photo-upload-placeholder.tsx, use-crud-mutation.ts, use-inventory.ts, use-modal-state.ts
+
 ---
 
 ## [Unreleased] - 2025-12-14

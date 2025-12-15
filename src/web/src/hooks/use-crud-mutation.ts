@@ -134,7 +134,7 @@ export function useCrudMutationWithId<TData, TUpdateData>({
       // Call custom success handler
       onSuccess?.(data, variables);
     },
-    onError: (error: Error) => {
+    onError: () => {
       toast.error(typeof errorMessage === 'string' ? errorMessage : 'An error occurred');
     },
   });

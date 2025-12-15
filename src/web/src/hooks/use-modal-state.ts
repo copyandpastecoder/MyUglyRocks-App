@@ -63,13 +63,6 @@ export function useModalState<T = undefined>(): ModalState<T> {
 }
 
 /**
- * Type-safe modal keys configuration
- */
-type ModalConfig<TModals extends Record<string, unknown>> = {
-  [K in keyof TModals]: TModals[K];
-};
-
-/**
  * Hook for managing multiple modals with type-safe data.
  * Reduces state explosion when a component needs multiple dialogs.
  *

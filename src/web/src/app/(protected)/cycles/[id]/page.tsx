@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { cycleApi, tumblerApi } from '@/lib/api';
@@ -21,13 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -88,12 +81,11 @@ import {
 } from '@/components/stage';
 import { useSettings, useTimezone } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
-import { formatDateTimeLocal, combineDateWithCurrentTime, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
+import { calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes, formatDurationMinutes } from '@/lib/duration-utils';
 import { formatCleaningPurpose } from '@/lib/cleaning-constants';
 import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
-import type { StageRunSummaryDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest, CompleteStageRunRequest, UpdateCycleRequest, UpdateStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
-import type { BarrelDto } from '@/types/tumbler';
+import type { StageRunSummaryDto, StageRunDto, CompleteStageRunRequest, UpdateCycleRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import { PageTransition } from '@/components/ui/page-transition';
 
 export default function CycleDetailPage() {
@@ -103,8 +95,8 @@ export default function CycleDetailPage() {
   const queryClient = useQueryClient();
   const cycleId = params.id as string;
 
-  // Track if we've already handled the addStage query param
-  const [hasHandledAddStage, setHasHandledAddStage] = useState(false);
+  // Track if we've already handled the addStage query param (ref since no re-render needed)
+  const hasHandledAddStageRef = useRef(false);
 
   // Stage Form Modal State (shared for New and Edit)
   const [isStageFormOpen, setIsStageFormOpen] = useState(false);
@@ -169,8 +161,8 @@ export default function CycleDetailPage() {
 
   // Cleaning Run Modal State
   const [isCleaningRunOpen, setIsCleaningRunOpen] = useState(false);
-  const [cleaningRunStageId, setCleaningRunStageId] = useState<string | null>(null);
-  const [cleaningRunStageName, setCleaningRunStageName] = useState('');
+  const [cleaningRunStageId, _setCleaningRunStageId] = useState<string | null>(null);
+  const [cleaningRunStageName, _setCleaningRunStageName] = useState('');
 
   // Complete Cycle Dialog State
   const [isCompleteCycleOpen, setIsCompleteCycleOpen] = useState(false);
@@ -208,16 +200,18 @@ export default function CycleDetailPage() {
   // Auto-open Add Stage dialog when ?addStage=true query param is present
   useEffect(() => {
     const shouldOpenAddStage = searchParams.get('addStage') === 'true';
-    if (shouldOpenAddStage && cycle && cycle.status === 'Active' && !hasHandledAddStage) {
-      setHasHandledAddStage(true);
+    if (shouldOpenAddStage && cycle && cycle.status === 'Active' && !hasHandledAddStageRef.current) {
+      hasHandledAddStageRef.current = true;
       // Use setTimeout to ensure all data is ready
       setTimeout(() => {
-        openAddStageModal();
+        // Open add stage modal (inline to avoid TDZ)
+        setEditStageId(undefined);
+        setIsStageFormOpen(true);
         // Remove the query param from URL to prevent re-opening on page refresh
         router.replace(`/cycles/${cycleId}`, { scroll: false });
       }, 100);
     }
-  }, [searchParams, cycle, hasHandledAddStage, cycleId, router]);
+  }, [searchParams, cycle, cycleId, router]);
 
   const deleteStageRunMutation = useMutation({
     mutationFn: cycleApi.deleteStageRun,
@@ -1720,9 +1714,9 @@ function StageCard({
   const progressPercent = isActive && totalDuration > 0 ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100)) : (stage.status === 'Completed' ? 100 : 0);
 
   const totalDays = totalDuration > 0 ? Math.ceil(totalDuration / (1000 * 60 * 60 * 24)) : 0;
-  const currentDay = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
+  const _currentDay = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
 
-  const timeRemaining = isActive && effectiveEndDate ? getTimeRemaining(effectiveEndDate) : null;
+  const _timeRemaining = isActive && effectiveEndDate ? getTimeRemaining(effectiveEndDate) : null;
 
   // Load stage details when collapsible is opened
   const loadStageDetails = async () => {

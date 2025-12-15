@@ -175,7 +175,7 @@ export function useDeleteInventoryPhoto() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ inventoryId, photoId }: { inventoryId: string; photoId: string }) =>
+    mutationFn: ({ photoId }: { inventoryId: string; photoId: string }) =>
       inventoryApi.deletePhoto(photoId),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(variables.inventoryId) });

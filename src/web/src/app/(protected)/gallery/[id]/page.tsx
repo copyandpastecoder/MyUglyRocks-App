@@ -40,7 +40,7 @@ import type { CommentDto } from '@/types/post';
 
 export default function PostDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
   const { formatDate } = useTimezone();

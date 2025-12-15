@@ -141,7 +141,6 @@ export default function InventoryDetailPage() {
           qualityRating: s.qualityRating,
           sizeCategories: s.sizeCategories || [],
         }));
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
       setSpecimenRows(rows);
     }
   }, [inventory]);

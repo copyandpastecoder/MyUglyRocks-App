@@ -38,7 +38,6 @@ import {
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { LazyImage } from '@/components/lazy-image';
-import type { InventoryPhotoDto } from '@/types/inventory';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -78,15 +77,15 @@ export default function ShareInventoryPage() {
   }, [inventory, form]);
 
   // Auto-select all completed photos and set first as cover when photos load (once only)
+  /* eslint-disable react-hooks/set-state-in-effect -- One-time initialization from async data */
   useEffect(() => {
     if (!hasInitializedPhotos.current && completedPhotos.length > 0) {
       hasInitializedPhotos.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
       setSelectedPhotoIds(completedPhotos.map(p => p.inventoryPhotoId));
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoverPhotoId(completedPhotos[0].inventoryPhotoId);
     }
   }, [completedPhotos]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const createPostMutation = useMutation({
     mutationFn: (data: FormValues) =>

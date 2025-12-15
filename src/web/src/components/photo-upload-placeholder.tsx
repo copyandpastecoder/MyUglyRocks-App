@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { ImagePlus, Upload, X, Image as ImageIcon, Loader2, CloudOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { photosApi } from '@/lib/api';

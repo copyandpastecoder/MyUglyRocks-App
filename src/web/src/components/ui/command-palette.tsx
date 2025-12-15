@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Command,
   CommandDialog,
   CommandEmpty,
   CommandGroup,
@@ -65,7 +64,7 @@ interface CommandPaletteProps {
 export function CommandPalette({ customCommands = [] }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const { setTheme, theme } = useTheme();
+  const { setTheme, theme: _theme } = useTheme();
 
   // Handle keyboard shortcut
   useEffect(() => {

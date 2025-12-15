@@ -29,8 +29,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { StageMaterialsSection, type StageMaterial } from '@/components/stage/stage-materials-section';
-import { CleaningRunSection, type CleaningRunData } from '@/components/stage/cleaning-run-section';
+import { StageMaterialsSection } from '@/components/stage/stage-materials-section';
+import { CleaningRunSection } from '@/components/stage/cleaning-run-section';
 import { toast } from 'sonner';
 import {
   Clock,
@@ -118,7 +118,7 @@ export function StageFormModal({
   const [cleaningPurpose, setCleaningPurpose] = useState<string>('');
   const [cleaningNotes, setCleaningNotes] = useState<string>('');
   const [cleaningMaterials, setCleaningMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
-  const [cleaningRunId, setCleaningRunId] = useState<string | undefined>();
+  const [_cleaningRunId, setCleaningRunId] = useState<string | undefined>();
 
   // Calculate total barrel capacity from selected barrels (for weight validation)
   const selectedBarrelCapacityLbs = selectedBarrelIds.reduce((total, id) => {

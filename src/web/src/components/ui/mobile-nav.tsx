@@ -9,7 +9,6 @@ import {
   Cylinder,
   Package,
   Settings,
-  Plus,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

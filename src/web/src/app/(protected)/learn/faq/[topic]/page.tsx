@@ -3,7 +3,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { helpTopics, getMainHelpTopics } from '@/data/help-content';
+import { helpTopics } from '@/data/help-content';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +20,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { ChevronLeft, ChevronRight, Lightbulb, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Lightbulb, CheckCircle2 } from 'lucide-react';
 import { PageTransition } from '@/components/ui/page-transition';
 import { ScrollAnimate } from '@/components/ui/scroll-animate';
 

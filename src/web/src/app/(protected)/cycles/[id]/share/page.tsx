@@ -90,15 +90,15 @@ export default function ShareCyclePage() {
   }, [cycle, form, router]);
 
   // Auto-select all completed photos and set first as cover when photos load (once only)
+  /* eslint-disable react-hooks/set-state-in-effect -- One-time initialization from async data */
   useEffect(() => {
     if (!hasInitializedPhotos.current && completedPhotos.length > 0) {
       hasInitializedPhotos.current = true;
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
       setSelectedPhotoIds(completedPhotos.map(p => p.photoId));
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCoverPhotoId(completedPhotos[0].photoId);
     }
   }, [completedPhotos]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const createPostMutation = useMutation({
     mutationFn: (data: FormValues) =>
