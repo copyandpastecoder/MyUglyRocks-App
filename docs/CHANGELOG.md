@@ -24,6 +24,16 @@ All notable changes to this project will be documented in this file.
   - Advanced options (weight before, fill level, water)
   - Plus existing quality/results fields (rating, issues, weight after, etc.)
 
+#### Cleaning Run in Complete Stage Modal
+- **Feature**: Complete Stage modal now includes an editable Cleaning Run section
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Details**:
+  - Added collapsible CleaningRunSection component under Duration
+  - If stage has existing cleaning run, pre-populates form with that data
+  - If no cleaning run exists, allows user to add one before completing
+  - New cleaning runs are created automatically when stage is completed
+  - Uses the shared `CleaningRunSection` component for consistent UI
+
 #### Individual Specimen Weights in Inventory
 - **Feature**: Inventory items can now track individual weights per specimen instead of just batch weight
 - **Files**:
@@ -34,6 +44,19 @@ All notable changes to this project will be documented in this file.
 - **UX**: Toggle switch "Track weight per specimen" enables table view with weight inputs
 - **Calculation**: Total weight auto-calculates from individual specimen weights
 - **Unit conversion**: Weights stored in grams, displayed in user's preferred unit (lbs/kg)
+
+### Improved
+
+#### Complete Stage Validation with Visual Feedback
+- **Improvement**: Enhanced validation for "What's Next?" field in Complete Stage modal
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Details**:
+  - Red border with pulse animation when validation fails
+  - Label turns red to highlight the required field
+  - Error message appears below the field
+  - Toast duration increased from 1 second to 5 seconds
+  - Error state auto-clears when user selects an option
+  - Form state properly resets when opening modal
 
 ### Fixed
 
