@@ -489,6 +489,15 @@ public class CycleService : ICycleService
             stageRun.WaterLevel?.ToString(),
             stageRun.WaterAmountMl,
             stageRun.ResultRating,
+            stageRun.ResultShapeRounding,
+            stageRun.ResultScratchLevel,
+            stageRun.ResultPitting,
+            stageRun.ResultShine,
+            stageRun.IssueScratches,
+            stageRun.IssueChips,
+            stageRun.IssueUnderRounded,
+            stageRun.IssueContamination,
+            stageRun.LessonsLearned,
             stageRun.NextAction?.ToString(),
             stageRun.Notes,
             stageRun.DateCreated,
@@ -675,6 +684,26 @@ public class CycleService : ICycleService
             : null;
         stageRun.WaterAmountMl = request.WaterAmountMl;
         stageRun.Notes = request.Notes;
+
+        // Quality ratings
+        stageRun.ResultRating = request.ResultRating;
+        stageRun.ResultShapeRounding = request.ResultShapeRounding;
+        stageRun.ResultScratchLevel = request.ResultScratchLevel;
+        stageRun.ResultPitting = request.ResultPitting;
+        stageRun.ResultShine = request.ResultShine;
+
+        // Issues
+        stageRun.IssueScratches = request.IssueScratches;
+        stageRun.IssueChips = request.IssueChips;
+        stageRun.IssueUnderRounded = request.IssueUnderRounded;
+        stageRun.IssueContamination = request.IssueContamination;
+
+        // Lessons and next action
+        stageRun.LessonsLearned = request.LessonsLearned;
+        stageRun.NextAction = !string.IsNullOrEmpty(request.NextAction)
+            ? Enum.Parse<StageNextAction>(request.NextAction, true)
+            : null;
+
         stageRun.DateUpdated = DateTime.UtcNow;
 
         // Update barrels if provided
@@ -744,24 +773,41 @@ public class CycleService : ICycleService
         stageRun.LoadWeightAfterGrams = request.LoadWeightAfterGrams;
 
         // Set actual end date and clear estimate
-        stageRun.EndDateTime = request.ActualEndDateTime ?? DateTime.UtcNow;
+        var actualEndDateTime = request.ActualEndDateTime ?? DateTime.UtcNow;
+        stageRun.EndDateTime = actualEndDateTime;
         stageRun.DurationEstimateEndDate = null;  // Clear estimate on completion
 
         stageRun.DateUpdated = DateTime.UtcNow;
 
         // Auto-promote the next Planned stage to Active
-        // Find the next Planned stage with the earliest StartDateTime <= now
+        // First, find the next Planned stage (by start time or creation order)
         var now = DateTime.UtcNow;
-        var nextStageToPromote = stageRun.Cycle.StageRuns
-            .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned && s.StartDateTime <= now)
+        var nextPlannedStage = stageRun.Cycle.StageRuns
+            .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned)
             .OrderBy(s => s.StartDateTime)
             .ThenBy(s => s.DateCreated)
             .FirstOrDefault();
 
-        if (nextStageToPromote != null)
+        if (nextPlannedStage != null)
         {
-            nextStageToPromote.Status = StageRunStatus.Active;
-            nextStageToPromote.DateUpdated = DateTime.UtcNow;
+            // If completing early (actual end < next stage's planned start),
+            // update the next stage's start time to match actual completion
+            if (actualEndDateTime < nextPlannedStage.StartDateTime)
+            {
+                var originalDuration = nextPlannedStage.DurationEstimateEndDate.HasValue
+                    ? nextPlannedStage.DurationEstimateEndDate.Value - nextPlannedStage.StartDateTime
+                    : TimeSpan.FromDays(nextPlannedStage.DurationDays) + TimeSpan.FromHours(nextPlannedStage.DurationHours);
+
+                nextPlannedStage.StartDateTime = actualEndDateTime;
+                nextPlannedStage.DurationEstimateEndDate = actualEndDateTime + originalDuration;
+            }
+
+            // Now promote to Active if StartDateTime <= now
+            if (nextPlannedStage.StartDateTime <= now)
+            {
+                nextPlannedStage.Status = StageRunStatus.Active;
+            }
+            nextPlannedStage.DateUpdated = DateTime.UtcNow;
         }
 
         await _context.SaveChangesAsync(cancellationToken);

@@ -8,6 +8,7 @@ import {
   Home,
   RotateCcw,
   Cylinder,
+  Package,
   BookOpen,
   Settings,
   Plus,
@@ -26,7 +27,7 @@ const defaultNavItems: NavItem[] = [
   { label: 'Home', href: '/dashboard', icon: Home },
   { label: 'Cycles', href: '/cycles', icon: RotateCcw },
   { label: 'Tumblers', href: '/tumblers', icon: Cylinder },
-  { label: 'Learn', href: '/learn', icon: BookOpen },
+  { label: 'Inventory', href: '/inventory', icon: Package },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

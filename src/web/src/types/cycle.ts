@@ -106,6 +106,15 @@ export interface StageRunDto {
   waterLevel: string | null;
   waterAmountMl: number | null;
   resultRating: number | null;
+  resultShapeRounding: number | null;
+  resultScratchLevel: number | null;
+  resultPitting: number | null;
+  resultShine: number | null;
+  issueScratches: boolean | null;
+  issueChips: boolean | null;
+  issueUnderRounded: boolean | null;
+  issueContamination: boolean | null;
+  lessonsLearned: string | null;
   nextAction: string | null;
   notes: string | null;
   dateCreated: string;
@@ -187,6 +196,20 @@ export interface UpdateStageRunRequest {
   waterLevel?: string;
   waterAmountMl?: number;
   notes?: string;
+  // Quality ratings
+  resultRating?: number;
+  resultShapeRounding?: number;
+  resultScratchLevel?: number;
+  resultPitting?: number;
+  resultShine?: number;
+  // Issues
+  issueScratches?: boolean;
+  issueChips?: boolean;
+  issueUnderRounded?: boolean;
+  issueContamination?: boolean;
+  // Lessons and next action
+  lessonsLearned?: string;
+  nextAction?: string;
 }
 
 export interface CompleteStageRunRequest {

@@ -34,6 +34,7 @@ import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog
 import { WeightInput } from '@/components/weight-input';
 import { StarRating } from '@/components/star-rating';
 import { StagedPhotoUpload, type StagedPhoto } from '@/components/staged-photo-upload';
+import { SpecimenWeightTable, type SpecimenWithWeight } from '@/components/specimen-weight-table';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -93,6 +94,8 @@ export default function NewInventoryPage() {
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [displayUnit, setDisplayUnit] = useState<string>('lb');
+  const [trackIndividualWeights, setTrackIndividualWeights] = useState(false);
+  const [specimensWithWeights, setSpecimensWithWeights] = useState<SpecimenWithWeight[]>([]);
 
   // Use specimen search to get specimen names for auto-populating the name field
   const { data: allSpecimens = [] } = useSpecimenSearch();
@@ -137,20 +140,23 @@ export default function NewInventoryPage() {
       parts.push(sourceName.trim());
     }
 
-    if (selectedSpecimenItems.length > 0 && allSpecimens.length > 0) {
-      // Look up specimen names from the allSpecimens data
-      const allNames = selectedSpecimenItems
+    // Get specimen names from either mode
+    let specimenNames: string[] = [];
+    if (trackIndividualWeights) {
+      specimenNames = specimensWithWeights.map(s => s.commonName);
+    } else if (selectedSpecimenItems.length > 0 && allSpecimens.length > 0) {
+      specimenNames = selectedSpecimenItems
         .map(sel => allSpecimens.find(s => s.id === sel.id)?.commonName)
         .filter(Boolean) as string[];
+    }
 
-      if (allNames.length > 0) {
-        // Show first 3, then "& more" if there are more than 3
-        const displayNames = allNames.slice(0, 3).join(', ');
-        const specimenNames = allNames.length > 3
-          ? `${displayNames} & more`
-          : displayNames;
-        parts.push(specimenNames);
-      }
+    if (specimenNames.length > 0) {
+      // Show first 3, then "& more" if there are more than 3
+      const displayNames = specimenNames.slice(0, 3).join(', ');
+      const specimenNamesStr = specimenNames.length > 3
+        ? `${displayNames} & more`
+        : displayNames;
+      parts.push(specimenNamesStr);
     }
 
     if (acquiredDate) {
@@ -162,18 +168,47 @@ export default function NewInventoryPage() {
     if (parts.length > 0) {
       form.setValue('name', parts.join(' - '));
     }
-  }, [sourceName, selectedSpecimenItems, acquiredDate, allSpecimens, form]);
+  }, [sourceName, selectedSpecimenItems, specimensWithWeights, trackIndividualWeights, acquiredDate, allSpecimens, form]);
 
   const onSubmit = async (data: FormValues) => {
-    // Validate specimens (managed outside form)
-    if (selectedSpecimenItems.length === 0) {
-      setSpecimenError('At least one specimen is required');
-      return;
+    // Validate specimens based on mode
+    if (trackIndividualWeights) {
+      if (specimensWithWeights.length === 0) {
+        setSpecimenError('At least one specimen is required');
+        return;
+      }
+    } else {
+      if (selectedSpecimenItems.length === 0) {
+        setSpecimenError('At least one specimen is required');
+        return;
+      }
     }
     setSpecimenError(null);
     setIsSubmitting(true);
 
-    const totalWeightGrams = data.totalWeightGrams ?? undefined;
+    // Calculate total weight based on mode
+    let totalWeightGrams: number | undefined;
+    let specimensPayload;
+
+    if (trackIndividualWeights) {
+      // Use individual specimen weights
+      specimensPayload = specimensWithWeights.map(s => ({
+        specimenId: s.specimenId,
+        userSpecimenId: s.userSpecimenId,
+        weightGrams: s.weightGrams ?? undefined,
+      }));
+      // Total will be calculated server-side from specimen weights
+      totalWeightGrams = specimensWithWeights
+        .filter(s => s.weightGrams != null)
+        .reduce((sum, s) => sum + (s.weightGrams || 0), 0) || undefined;
+    } else {
+      // Use single total weight
+      totalWeightGrams = data.totalWeightGrams ?? undefined;
+      specimensPayload = selectedSpecimenItems.map(item => ({
+        specimenId: item.source === 'system' ? item.id : undefined,
+        userSpecimenId: item.source === 'user' ? item.id : undefined,
+      }));
+    }
 
     try {
       const inventory = await createMutation.mutateAsync({
@@ -195,7 +230,7 @@ export default function NewInventoryPage() {
         storageLocation: data.storageLocation || undefined,
         notes: data.notes || undefined,
         isFavorite: data.isFavorite,
-        specimens: selectedSpecimenItems.map(item => ({ specimenId: item.id })),
+        specimens: specimensPayload,
       });
 
       // Upload photos if any
@@ -340,51 +375,112 @@ export default function NewInventoryPage() {
                 />
               </div>
 
-              <FormItem>
-                <FormLabel>Specimens *</FormLabel>
-                <SpecimenMultiSelect
-                  selectedItems={selectedSpecimenItems}
-                  onSelectionChange={(items) => {
-                    setSelectedSpecimenItems(items);
-                    if (items.length > 0) {
-                      setSpecimenError(null);
+              {/* Toggle for individual weight tracking */}
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium">Track Weight Per Specimen</label>
+                  <p className="text-sm text-muted-foreground">
+                    Enter individual weights for each specimen type instead of a total weight
+                  </p>
+                </div>
+                <Switch
+                  checked={trackIndividualWeights}
+                  onCheckedChange={(checked) => {
+                    setTrackIndividualWeights(checked);
+                    // Clear both forms when switching modes
+                    if (checked) {
+                      setSelectedSpecimenItems([]);
+                      form.setValue('totalWeightGrams', null);
+                    } else {
+                      setSpecimensWithWeights([]);
                     }
+                    setSpecimenError(null);
                   }}
-                  placeholder="Select rock/mineral types..."
-                  onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
                 />
-                <FormDescription>
-                  What types of rocks are in this batch?
-                </FormDescription>
-                {specimenError && (
-                  <p className="text-sm font-medium text-destructive">{specimenError}</p>
-                )}
-              </FormItem>
+              </div>
 
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="totalWeightGrams"
-                  render={({ field }) => (
-                    <FormItem>
-                      <WeightInput
-                        label="Total Weight"
-                        valueGrams={field.value ?? null}
-                        onValueChange={(grams, unit) => {
-                          field.onChange(grams);
-                          if (unit) setDisplayUnit(unit);
-                        }}
-                      />
-                      <FormMessage />
-                    </FormItem>
+              {trackIndividualWeights ? (
+                <>
+                  <SpecimenWeightTable
+                    specimens={specimensWithWeights}
+                    onSpecimensChange={(specimens) => {
+                      setSpecimensWithWeights(specimens);
+                      if (specimens.length > 0) {
+                        setSpecimenError(null);
+                      }
+                    }}
+                    onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
+                  />
+                  {specimenError && (
+                    <p className="text-sm font-medium text-destructive">{specimenError}</p>
                   )}
-                />
+                </>
+              ) : (
+                <>
+                  <FormItem>
+                    <FormLabel>Specimens *</FormLabel>
+                    <SpecimenMultiSelect
+                      selectedItems={selectedSpecimenItems}
+                      onSelectionChange={(items) => {
+                        setSelectedSpecimenItems(items);
+                        if (items.length > 0) {
+                          setSpecimenError(null);
+                        }
+                      }}
+                      placeholder="Select rock/mineral types..."
+                      onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
+                    />
+                    <FormDescription>
+                      What types of rocks are in this batch?
+                    </FormDescription>
+                    {specimenError && (
+                      <p className="text-sm font-medium text-destructive">{specimenError}</p>
+                    )}
+                  </FormItem>
 
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="totalWeightGrams"
+                      render={({ field }) => (
+                        <FormItem>
+                          <WeightInput
+                            label="Total Weight"
+                            valueGrams={field.value ?? null}
+                            onValueChange={(grams, unit) => {
+                              field.onChange(grams);
+                              if (unit) setDisplayUnit(unit);
+                            }}
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="cost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cost ($)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Cost field when in individual weight mode */}
+              {trackIndividualWeights && (
                 <FormField
                   control={form.control}
                   name="cost"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="max-w-xs">
                       <FormLabel>Cost ($)</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" placeholder="0.00" {...field} />
@@ -393,7 +489,7 @@ export default function NewInventoryPage() {
                     </FormItem>
                   )}
                 />
-              </div>
+              )}
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField

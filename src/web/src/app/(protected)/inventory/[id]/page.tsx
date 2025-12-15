@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useInventoryItem, useUpdateInventory, useDeleteInventory } from '@/hooks/use-inventory';
+import { useInventoryItem, useUpdateInventory, useDeleteInventory, useUpdateInventorySpecimens } from '@/hooks/use-inventory';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +46,7 @@ import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog
 import { WeightInput } from '@/components/weight-input';
 import { InventoryPhotos } from '@/components/inventory-photos';
 import { StarRating } from '@/components/star-rating';
+import { SpecimenWeightTable, type SpecimenWithWeight } from '@/components/specimen-weight-table';
 import { ArrowLeft, Loader2, Trash2, Package, Star, Share2 } from 'lucide-react';
 import Link from 'next/link';
 import type { SourceType, InventoryCondition, SizeCategory, InventoryStatus } from '@/types/inventory';
@@ -121,13 +122,17 @@ export default function InventoryDetailPage() {
   const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
   const [displayUnit, setDisplayUnit] = useState<string>('lb');
+  const [trackIndividualWeights, setTrackIndividualWeights] = useState(false);
+  const [specimensWithWeights, setSpecimensWithWeights] = useState<SpecimenWithWeight[]>([]);
   const hasInitializedForm = useRef(false);
   const hasInitializedSpecimens = useRef(false);
   const hasInitializedDisplayUnit = useRef(false);
+  const hasInitializedWeightMode = useRef(false);
 
   const { data: inventory, isLoading, refetch: refetchInventory } = useInventoryItem(id);
   const updateMutation = useUpdateInventory();
   const deleteMutation = useDeleteInventory();
+  const updateSpecimensMutation = useUpdateInventorySpecimens();
 
   const form = useForm<FormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
@@ -193,6 +198,35 @@ export default function InventoryDetailPage() {
     }
   }, [inventory]);
 
+  // Initialize weight tracking mode and specimens with weights (once only)
+  useEffect(() => {
+    if (!hasInitializedWeightMode.current && inventory?.specimens) {
+      hasInitializedWeightMode.current = true;
+      // Check if any specimen has individual weight set
+      const hasIndividualWeights = inventory.specimens.some(s => s.weightGrams != null);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
+      setTrackIndividualWeights(hasIndividualWeights);
+
+      if (hasIndividualWeights) {
+        // Convert to SpecimenWithWeight format
+        const specimensWithWeightData: SpecimenWithWeight[] = inventory.specimens
+          .filter(s => s.specimenId || s.userSpecimenId)
+          .map(s => ({
+            id: (s.specimenId || s.userSpecimenId) as string,
+            specimenId: s.specimenId ?? undefined,
+            userSpecimenId: s.userSpecimenId ?? undefined,
+            commonName: s.commonName,
+            scientificName: s.scientificName ?? undefined,
+            materialType: s.materialType,
+            source: s.source,
+            weightGrams: s.weightGrams,
+          }));
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization from async data
+        setSpecimensWithWeights(specimensWithWeightData);
+      }
+    }
+  }, [inventory]);
+
   // Initialize display unit from inventory (once only)
   useEffect(() => {
     if (!hasInitializedDisplayUnit.current && inventory?.displayUnit) {
@@ -207,7 +241,35 @@ export default function InventoryDetailPage() {
     setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
   };
 
-  const onSubmit = (data: FormValues) => {
+  const onSubmit = async (data: FormValues) => {
+    // Calculate weights and specimens based on mode
+    let totalWeightGrams: number | undefined;
+    let remainingWeightGrams: number | undefined;
+    let specimensPayload;
+
+    if (trackIndividualWeights) {
+      // Use individual specimen weights - total is calculated server-side
+      specimensPayload = specimensWithWeights.map(s => ({
+        specimenId: s.specimenId,
+        userSpecimenId: s.userSpecimenId,
+        weightGrams: s.weightGrams ?? undefined,
+      }));
+      // Calculate total from specimen weights for display purposes
+      totalWeightGrams = specimensWithWeights
+        .filter(s => s.weightGrams != null)
+        .reduce((sum, s) => sum + (s.weightGrams || 0), 0) || undefined;
+      remainingWeightGrams = data.remainingWeightGrams ?? totalWeightGrams;
+    } else {
+      // Use single total weight
+      totalWeightGrams = data.totalWeightGrams ?? undefined;
+      remainingWeightGrams = data.remainingWeightGrams ?? undefined;
+      specimensPayload = selectedSpecimenItems.map(item => ({
+        specimenId: item.source === 'system' ? item.id : undefined,
+        userSpecimenId: item.source === 'user' ? item.id : undefined,
+      }));
+    }
+
+    // Update inventory
     updateMutation.mutate({
       id,
       data: {
@@ -217,9 +279,9 @@ export default function InventoryDetailPage() {
         sourceName: data.sourceName || undefined,
         sourceLocation: data.sourceLocation || undefined,
         sourceUrl: data.sourceUrl || undefined,
-        totalWeightGrams: data.totalWeightGrams ?? undefined,
-        remainingWeightGrams: data.remainingWeightGrams ?? undefined,
-        displayUnit: data.totalWeightGrams || data.remainingWeightGrams ? displayUnit : undefined,
+        totalWeightGrams,
+        remainingWeightGrams,
+        displayUnit: totalWeightGrams || remainingWeightGrams ? displayUnit : undefined,
         cost: data.cost,
         condition: data.condition as InventoryCondition,
         sizeCategories: data.sizeCategories && data.sizeCategories.length > 0
@@ -231,6 +293,12 @@ export default function InventoryDetailPage() {
         notes: data.notes || undefined,
         isFavorite: data.isFavorite,
       },
+    });
+
+    // Update specimens
+    updateSpecimensMutation.mutate({
+      id,
+      data: { specimens: specimensPayload },
     });
   };
 
@@ -385,44 +453,94 @@ export default function InventoryDetailPage() {
                 />
               </div>
 
-              <FormItem>
-                <FormLabel>Specimens</FormLabel>
-                <SpecimenMultiSelect
-                  selectedItems={selectedSpecimenItems}
-                  onSelectionChange={setSelectedSpecimenItems}
-                  placeholder="Select rock/mineral types..."
+              {/* Toggle for individual weight tracking */}
+              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <label className="text-sm font-medium">Track Weight Per Specimen</label>
+                  <p className="text-sm text-muted-foreground">
+                    Enter individual weights for each specimen type instead of a total weight
+                  </p>
+                </div>
+                <Switch
+                  checked={trackIndividualWeights}
+                  onCheckedChange={(checked) => {
+                    setTrackIndividualWeights(checked);
+                    // Clear both forms when switching modes
+                    if (checked) {
+                      setSelectedSpecimenItems([]);
+                      form.setValue('totalWeightGrams', null);
+                    } else {
+                      setSpecimensWithWeights([]);
+                    }
+                  }}
+                />
+              </div>
+
+              {trackIndividualWeights ? (
+                <SpecimenWeightTable
+                  specimens={specimensWithWeights}
+                  onSpecimensChange={setSpecimensWithWeights}
                   onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
                 />
-                <FormDescription>
-                  What types of rocks are in this batch?
-                </FormDescription>
-              </FormItem>
+              ) : (
+                <>
+                  <FormItem>
+                    <FormLabel>Specimens</FormLabel>
+                    <SpecimenMultiSelect
+                      selectedItems={selectedSpecimenItems}
+                      onSelectionChange={setSelectedSpecimenItems}
+                      placeholder="Select rock/mineral types..."
+                      onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
+                    />
+                    <FormDescription>
+                      What types of rocks are in this batch?
+                    </FormDescription>
+                  </FormItem>
 
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="totalWeightGrams"
-                  render={({ field }) => (
-                    <FormItem>
-                      <WeightInput
-                        label="Total Weight"
-                        valueGrams={field.value ?? null}
-                        onValueChange={(grams, unit) => {
-                          field.onChange(grams);
-                          if (unit) setDisplayUnit(unit);
-                        }}
-                        initialDisplayUnit={inventory?.displayUnit}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <div className="grid gap-6 sm:grid-cols-2">
+                    <FormField
+                      control={form.control}
+                      name="totalWeightGrams"
+                      render={({ field }) => (
+                        <FormItem>
+                          <WeightInput
+                            label="Total Weight"
+                            valueGrams={field.value ?? null}
+                            onValueChange={(grams, unit) => {
+                              field.onChange(grams);
+                              if (unit) setDisplayUnit(unit);
+                            }}
+                            initialDisplayUnit={inventory?.displayUnit}
+                          />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
+                    <FormField
+                      control={form.control}
+                      name="cost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cost ($)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* Cost field when in individual weight mode */}
+              {trackIndividualWeights && (
                 <FormField
                   control={form.control}
                   name="cost"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="max-w-xs">
                       <FormLabel>Cost ($)</FormLabel>
                       <FormControl>
                         <Input type="number" step="0.01" placeholder="0.00" {...field} />
@@ -431,7 +549,7 @@ export default function InventoryDetailPage() {
                     </FormItem>
                   )}
                 />
-              </div>
+              )}
 
               <div className="grid gap-6 sm:grid-cols-2">
                 <FormField
@@ -641,9 +759,9 @@ export default function InventoryDetailPage() {
         <Button
           type="button"
           onClick={form.handleSubmit(onSubmit)}
-          disabled={updateMutation.isPending}
+          disabled={updateMutation.isPending || updateSpecimensMutation.isPending}
         >
-          {updateMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          {(updateMutation.isPending || updateSpecimensMutation.isPending) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Save Changes
         </Button>
         {inventory.photos.length > 0 && (

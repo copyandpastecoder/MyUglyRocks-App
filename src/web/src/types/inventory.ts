@@ -110,6 +110,7 @@ export interface InventorySpecimenDto {
   materialType: string;
   tumblingDifficulty: string | null;
   estimatedPercentage: number | null;
+  weightGrams: number | null;
   notes: string | null;
   source: 'system' | 'user';
 }
@@ -118,6 +119,7 @@ export interface CreateInventorySpecimenRequest {
   specimenId?: string;
   userSpecimenId?: string;
   estimatedPercentage?: number;
+  weightGrams?: number;
   notes?: string;
 }
 

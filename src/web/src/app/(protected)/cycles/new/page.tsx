@@ -7,7 +7,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { cycleApi, tumblerApi, userApi } from '@/lib/api';
-import { useSpecimens } from '@/hooks/use-specimens';
+import { useSpecimenSearch } from '@/hooks/use-user-specimens';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -56,7 +56,8 @@ export default function NewCyclePage() {
     queryFn: tumblerApi.getAll,
   });
 
-  const { data: specimens = [], isLoading: specimensLoading } = useSpecimens();
+  // Use specimen search to get both system and user specimens for name generation
+  const { data: allSpecimens = [] } = useSpecimenSearch();
 
   const { data: userSettings } = useQuery({
     queryKey: ['user-settings'],
@@ -74,15 +75,11 @@ export default function NewCyclePage() {
     },
   });
 
-  // Extract IDs from selections for API calls
-  const selectedSpecimenIds = useMemo(() => {
-    return selectedSpecimenItems.map(s => s.id);
-  }, [selectedSpecimenItems]);
-
   // Get selected specimens for cycle name generation
   const selectedSpecimens = useMemo(() => {
-    return specimens.filter((s) => selectedSpecimenIds.includes(s.specimenId));
-  }, [specimens, selectedSpecimenIds]);
+    const selectedIds = new Set(selectedSpecimenItems.map(s => s.id));
+    return allSpecimens.filter((s) => selectedIds.has(s.id));
+  }, [allSpecimens, selectedSpecimenItems]);
 
   // Watch start date for cycle name auto-population
   const watchedStartDate = form.watch('startDate');
@@ -139,7 +136,7 @@ export default function NewCyclePage() {
 
   const onSubmit = (data: FormValues) => {
     // Validate that at least one specimen source is provided
-    const hasSelectedSpecimens = selectedSpecimenIds.length > 0;
+    const hasSelectedSpecimens = selectedSpecimenItems.length > 0;
     const hasAdditionalSpecimens = data.additionalSpecimens && data.additionalSpecimens.trim().length > 0;
 
     if (!hasSelectedSpecimens && !hasAdditionalSpecimens) {
@@ -147,13 +144,22 @@ export default function NewCyclePage() {
       return;
     }
 
+    // Separate system and user specimen IDs
+    const systemSpecimenIds = selectedSpecimenItems
+      .filter(s => s.source === 'system')
+      .map(s => s.id);
+    const userSpecimenIds = selectedSpecimenItems
+      .filter(s => s.source === 'user')
+      .map(s => s.id);
+
     setSpecimenError(null);
     createMutation.mutate({
       name: data.name,
       startDate: data.startDate,
       additionalSpecimens: data.additionalSpecimens || undefined,
       notes: data.notes || undefined,
-      specimenIds: selectedSpecimenIds.length > 0 ? selectedSpecimenIds : undefined,
+      specimenIds: systemSpecimenIds.length > 0 ? systemSpecimenIds : undefined,
+      userSpecimenIds: userSpecimenIds.length > 0 ? userSpecimenIds : undefined,
     });
   };
 

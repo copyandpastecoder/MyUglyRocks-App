@@ -159,7 +159,7 @@ export default function CycleDetailPage() {
   const [issueUnderRounded, setIssueUnderRounded] = useState(false);
   const [issueContamination, setIssueContamination] = useState(false);
   const [lessonsLearned, setLessonsLearned] = useState('');
-  const [nextAction, setNextAction] = useState<string>('Advance');
+  const [nextAction, setNextAction] = useState<string>('');
   const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
   const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
   // Barrel capacity for the stage being completed (for validation)
@@ -184,6 +184,26 @@ export default function CycleDetailPage() {
   const [editStageDurationDays, setEditStageDurationDays] = useState('');
   const [editStageDurationHours, setEditStageDurationHours] = useState('');
   const [editStageNotes, setEditStageNotes] = useState('');
+  // Edit Stage Quality fields (like Complete Stage)
+  const [editStageResultRating, setEditStageResultRating] = useState<number>(0);
+  const [editStageShowAdvancedQuality, setEditStageShowAdvancedQuality] = useState(false);
+  const [editStageShapeRounding, setEditStageShapeRounding] = useState<number>(50);
+  const [editStageScratchLevel, setEditStageScratchLevel] = useState<number>(50);
+  const [editStagePitting, setEditStagePitting] = useState<number>(50);
+  const [editStageShine, setEditStageShine] = useState<number>(50);
+  const [editStageIssueScratches, setEditStageIssueScratches] = useState(false);
+  const [editStageIssueChips, setEditStageIssueChips] = useState(false);
+  const [editStageIssueUnderRounded, setEditStageIssueUnderRounded] = useState(false);
+  const [editStageIssueContamination, setEditStageIssueContamination] = useState(false);
+  const [editStageLessonsLearned, setEditStageLessonsLearned] = useState('');
+  const [editStageNextAction, setEditStageNextAction] = useState<string>('');
+  const [editStageWeightAfterGrams, setEditStageWeightAfterGrams] = useState<number | null>(null);
+  const [editStageWeightAfterValidationError, setEditStageWeightAfterValidationError] = useState(false);
+  const [editStageBarrelCapacity, setEditStageBarrelCapacity] = useState<number | null>(null);
+  const [editStageWeightBefore, setEditStageWeightBefore] = useState<number | null>(null);
+  const [editStageRunNumber, setEditStageRunNumber] = useState<number>(1);
+  const [editStageTotalRuns, setEditStageTotalRuns] = useState<number>(1);
+  const [editStageIsLoading, setEditStageIsLoading] = useState(false);
 
   // Cleaning Run Modal State
   const [isCleaningRunOpen, setIsCleaningRunOpen] = useState(false);
@@ -497,7 +517,7 @@ export default function CycleDetailPage() {
     setIssueUnderRounded(false);
     setIssueContamination(false);
     setLessonsLearned('');
-    setNextAction('Advance');
+    setNextAction('');
     setLoadWeightAfterGrams(null);
     setWeightAfterValidationError(false);
     setCompleteStageBarrelCapacity(null);
@@ -782,8 +802,17 @@ export default function CycleDetailPage() {
 
   const handleCompleteStage = () => {
     if (!completeStageId) return;
-    if (resultRating === 0) {
+
+    // Result rating is only required for Polish stage
+    const isPolishStage = completeStageName.toLowerCase() === 'polish';
+    if (isPolishStage && resultRating === 0) {
       toast.error('Please rate the stage result (1-5 stars)');
+      return;
+    }
+
+    // What's next is always required
+    if (!nextAction) {
+      toast.error('Please select what\'s next for this cycle');
       return;
     }
 
@@ -843,7 +872,7 @@ export default function CycleDetailPage() {
     });
   };
 
-  const openEditStageModal = (stage: StageRunSummaryDto) => {
+  const openEditStageModal = async (stage: StageRunSummaryDto) => {
     const startDate = new Date(stage.startDateTime);
     // Use durationEstimateEndDate for active/planned stages (endDateTime is null until completed)
     const endDateString = stage.endDateTime ?? stage.durationEstimateEndDate;
@@ -858,8 +887,61 @@ export default function CycleDetailPage() {
     setEditStageStartDateTime(stage.startDateTime.slice(0, 16)); // Format for datetime-local input
     setEditStageDurationDays(String(days));
     setEditStageDurationHours(String(hours));
+    setEditStageRunNumber(stage.runNumber);
+    setEditStageTotalRuns(stage.totalRuns);
+    // Reset quality fields before loading
     setEditStageNotes('');
+    setEditStageResultRating(0);
+    setEditStageShowAdvancedQuality(false);
+    setEditStageShapeRounding(50);
+    setEditStageScratchLevel(50);
+    setEditStagePitting(50);
+    setEditStageShine(50);
+    setEditStageIssueScratches(false);
+    setEditStageIssueChips(false);
+    setEditStageIssueUnderRounded(false);
+    setEditStageIssueContamination(false);
+    setEditStageLessonsLearned('');
+    setEditStageNextAction('');
+    setEditStageWeightAfterGrams(null);
+    setEditStageWeightBefore(null);
+    setEditStageBarrelCapacity(null);
+    setEditStageIsLoading(true);
     setIsEditStageOpen(true);
+
+    // Fetch full stage details to get quality fields, weight, and barrel capacity
+    try {
+      const fullStage: StageRunDto = await cycleApi.getStageRun(stage.stageRunId);
+      // Populate quality fields from fetched data
+      setEditStageNotes(fullStage.notes || '');
+      setEditStageResultRating(fullStage.resultRating || 0);
+      setEditStageShapeRounding(fullStage.resultShapeRounding ?? 50);
+      setEditStageScratchLevel(fullStage.resultScratchLevel ?? 50);
+      setEditStagePitting(fullStage.resultPitting ?? 50);
+      setEditStageShine(fullStage.resultShine ?? 50);
+      setEditStageIssueScratches(fullStage.issueScratches ?? false);
+      setEditStageIssueChips(fullStage.issueChips ?? false);
+      setEditStageIssueUnderRounded(fullStage.issueUnderRounded ?? false);
+      setEditStageIssueContamination(fullStage.issueContamination ?? false);
+      setEditStageLessonsLearned(fullStage.lessonsLearned || '');
+      setEditStageNextAction(fullStage.nextAction || '');
+      setEditStageWeightAfterGrams(fullStage.loadWeightAfterGrams);
+      setEditStageWeightBefore(fullStage.loadWeightBeforeGrams);
+      // Show advanced quality if any of the sliders have non-default values
+      if (fullStage.resultShapeRounding !== null || fullStage.resultScratchLevel !== null ||
+          fullStage.resultPitting !== null || fullStage.resultShine !== null) {
+        setEditStageShowAdvancedQuality(true);
+      }
+      // Calculate total barrel capacity
+      if (fullStage.barrels && fullStage.barrels.length > 0) {
+        const totalCapacity = fullStage.barrels.reduce((sum, b) => sum + (b.capacityLbs || 0), 0);
+        setEditStageBarrelCapacity(totalCapacity > 0 ? totalCapacity : null);
+      }
+    } catch {
+      // Ignore error - quality fields are optional
+    } finally {
+      setEditStageIsLoading(false);
+    }
   };
 
   const handleEditStage = () => {
@@ -886,6 +968,12 @@ export default function CycleDetailPage() {
       }
     }
 
+    // Validate weight after if entered
+    if (editStageWeightAfterValidationError) {
+      toast.error('Weight exceeds 150% of barrel capacity. Please correct before saving.');
+      return;
+    }
+
     updateStageMutation.mutate({
       id: editStageId,
       data: {
@@ -894,6 +982,22 @@ export default function CycleDetailPage() {
         durationDays,
         durationHours,
         notes: editStageNotes || undefined,
+        // Quality ratings
+        resultRating: editStageResultRating > 0 ? editStageResultRating : undefined,
+        resultShapeRounding: editStageShowAdvancedQuality ? editStageShapeRounding : undefined,
+        resultScratchLevel: editStageShowAdvancedQuality ? editStageScratchLevel : undefined,
+        resultPitting: editStageShowAdvancedQuality ? editStagePitting : undefined,
+        resultShine: editStageShowAdvancedQuality ? editStageShine : undefined,
+        // Issues
+        issueScratches: editStageIssueScratches || undefined,
+        issueChips: editStageIssueChips || undefined,
+        issueUnderRounded: editStageIssueUnderRounded || undefined,
+        issueContamination: editStageIssueContamination || undefined,
+        // Lessons and next action
+        lessonsLearned: editStageLessonsLearned || undefined,
+        nextAction: editStageNextAction || undefined,
+        // Weight after
+        loadWeightAfterGrams: editStageWeightAfterGrams ?? undefined,
       },
     });
   };
@@ -1302,7 +1406,11 @@ export default function CycleDetailPage() {
                           No active barrels available
                         </p>
                       ) : (
-                        [...allBarrels].sort((a, b) => a.barrelNumber - b.barrelNumber).map(barrel => (
+                        [...allBarrels].sort((a, b) => {
+                          const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
+                          if (tumblerCompare !== 0) return tumblerCompare;
+                          return a.barrelNumber - b.barrelNumber;
+                        }).map(barrel => (
                           <div key={barrel.barrelId} className="flex items-center space-x-2">
                             <Checkbox
                               id={`barrel-top-${barrel.barrelId}`}
@@ -1897,7 +2005,7 @@ export default function CycleDetailPage() {
 
             {/* Result Rating */}
             <div className="space-y-2">
-              <Label>How did this stage turn out? *</Label>
+              <Label>How did this stage turn out?{completeStageName.toLowerCase() === 'polish' ? ' *' : ' (optional)'}</Label>
               <div className="flex gap-1">
                 {[1, 2, 3, 4, 5].map(star => (
                   <button
@@ -2035,7 +2143,7 @@ export default function CycleDetailPage() {
 
             {/* What's Next */}
             <div className="space-y-2">
-              <Label>What&apos;s next?</Label>
+              <Label>What&apos;s next? *</Label>
               <RadioGroup value={nextAction} onValueChange={setNextAction}>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="Advance" id="advance" />
@@ -2159,13 +2267,13 @@ export default function CycleDetailPage() {
 
       {/* Edit Stage Modal */}
       <Dialog open={isEditStageOpen} onOpenChange={setIsEditStageOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-start justify-between pr-8">
               <div>
                 <DialogTitle>Edit Stage</DialogTitle>
                 <DialogDescription>
-                  Adjust the stage duration. Use this if the stage finished earlier or later than planned.
+                  Edit &quot;{formatStageDisplayName(editStageName, editStageRunNumber, editStageTotalRuns)}&quot;
                 </DialogDescription>
               </div>
               <Link
@@ -2178,71 +2286,268 @@ export default function CycleDetailPage() {
               </Link>
             </div>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Stage Name</Label>
-              <div className="flex flex-wrap gap-1">
-                {STAGE_NAMES.map(name => (
-                  <Button
-                    key={name}
-                    type="button"
-                    variant={editStageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(editStageName)) ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => {
-                      if (name === 'Custom') {
-                        setEditStageName('Custom');
-                        setEditCustomStageName('');
+
+          {editStageIsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              {/* Stage Name */}
+              <div className="space-y-2">
+                <Label>Stage Name</Label>
+                <div className="flex flex-wrap gap-1">
+                  {STAGE_NAMES.map(name => (
+                    <Button
+                      key={name}
+                      type="button"
+                      variant={editStageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(editStageName)) ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => {
+                        if (name === 'Custom') {
+                          setEditStageName('Custom');
+                          setEditCustomStageName('');
+                        } else {
+                          setEditStageName(name);
+                          setEditCustomStageName('');
+                        }
+                      }}
+                    >
+                      {name}
+                    </Button>
+                  ))}
+                </div>
+                {/* Custom stage name input - show when Custom is selected or when stage name is not in standard list */}
+                {(editStageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(editStageName)) && (
+                  <Input
+                    placeholder="Enter custom stage name..."
+                    value={editStageName === 'Custom' ? editCustomStageName : editStageName}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setEditCustomStageName(value);
+                      if (value) {
+                        setEditStageName(value);
                       } else {
-                        setEditStageName(name);
-                        setEditCustomStageName('');
+                        setEditStageName('Custom');
                       }
                     }}
-                  >
-                    {name}
-                  </Button>
-                ))}
+                    className="mt-2"
+                  />
+                )}
               </div>
-              {/* Custom stage name input - show when Custom is selected or when stage name is not in standard list */}
-              {(editStageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(editStageName)) && (
-                <Input
-                  placeholder="Enter custom stage name..."
-                  value={editStageName === 'Custom' ? editCustomStageName : editStageName}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setEditCustomStageName(value);
-                    if (value) {
-                      setEditStageName(value);
-                    } else {
-                      setEditStageName('Custom');
-                    }
-                  }}
-                  className="mt-2"
-                />
-              )}
-            </div>
-            <DurationPicker
-              durationDays={editStageDurationDays}
-              durationHours={editStageDurationHours}
-              onDaysChange={setEditStageDurationDays}
-              onHoursChange={setEditStageDurationHours}
-              startDateTime={editStageStartDateTime}
-              helperText="Tip: If the stage finished early (e.g., 3 days instead of 7), reduce the duration here before marking complete."
-            />
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea
-                value={editStageNotes}
-                onChange={(e) => setEditStageNotes(e.target.value)}
-                placeholder="Any notes about this change..."
-                rows={2}
+
+              {/* Duration - Collapsible */}
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>Duration</span>
+                      {(parseInt(editStageDurationDays) > 0 || parseInt(editStageDurationHours) > 0) && (
+                        <span className="text-muted-foreground text-sm">
+                          ({editStageDurationDays}d {editStageDurationHours}h)
+                        </span>
+                      )}
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <DurationPicker
+                    durationDays={editStageDurationDays}
+                    durationHours={editStageDurationHours}
+                    onDaysChange={setEditStageDurationDays}
+                    onHoursChange={setEditStageDurationHours}
+                    startDateTime={editStageStartDateTime}
+                    hideLabel
+                    helperText="Adjust if the stage finished earlier or later than originally planned."
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Result Rating */}
+              <div className="space-y-2">
+                <Label>How did this stage turn out? (optional)</Label>
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setEditStageResultRating(editStageResultRating === star ? 0 : star)}
+                      className="p-1 hover:scale-110 transition-transform"
+                    >
+                      <Star
+                        className={`h-8 w-8 ${star <= editStageResultRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                      />
+                    </button>
+                  ))}
+                  <span className="ml-2 self-center text-sm text-muted-foreground">
+                    {editStageResultRating > 0 ? `${editStageResultRating}/5` : 'Click to rate'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Advanced Quality Ratings - Collapsible */}
+              <Collapsible open={editStageShowAdvancedQuality} onOpenChange={setEditStageShowAdvancedQuality}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    {editStageShowAdvancedQuality ? <ChevronUp className="h-4 w-4 mr-1" /> : <ChevronDown className="h-4 w-4 mr-1" />}
+                    {editStageShowAdvancedQuality ? 'Hide' : 'Show'} advanced quality ratings
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="space-y-4 border rounded-lg p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-sm">Shape/Rounding</Label>
+                        <span className="text-sm text-muted-foreground">{editStageShapeRounding}%</span>
+                      </div>
+                      <Slider
+                        value={[editStageShapeRounding]}
+                        onValueChange={([v]) => setEditStageShapeRounding(v)}
+                        max={100}
+                        step={5}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-sm">Scratch Level</Label>
+                        <span className="text-sm text-muted-foreground">{editStageScratchLevel}%</span>
+                      </div>
+                      <Slider
+                        value={[editStageScratchLevel]}
+                        onValueChange={([v]) => setEditStageScratchLevel(v)}
+                        max={100}
+                        step={5}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-sm">Pitting/Chips</Label>
+                        <span className="text-sm text-muted-foreground">{editStagePitting}%</span>
+                      </div>
+                      <Slider
+                        value={[editStagePitting]}
+                        onValueChange={([v]) => setEditStagePitting(v)}
+                        max={100}
+                        step={5}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between">
+                        <Label className="text-sm">Shine</Label>
+                        <span className="text-sm text-muted-foreground">{editStageShine}%</span>
+                      </div>
+                      <Slider
+                        value={[editStageShine]}
+                        onValueChange={([v]) => setEditStageShine(v)}
+                        max={100}
+                        step={5}
+                      />
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Issues */}
+              <div className="space-y-2">
+                <Label>Any issues? (check all that apply)</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="editIssueScratches" checked={editStageIssueScratches} onCheckedChange={(c) => setEditStageIssueScratches(c as boolean)} />
+                    <Label htmlFor="editIssueScratches" className="text-sm">Scratches</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="editIssueChips" checked={editStageIssueChips} onCheckedChange={(c) => setEditStageIssueChips(c as boolean)} />
+                    <Label htmlFor="editIssueChips" className="text-sm">Chips/Bruises</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="editIssueUnderRounded" checked={editStageIssueUnderRounded} onCheckedChange={(c) => setEditStageIssueUnderRounded(c as boolean)} />
+                    <Label htmlFor="editIssueUnderRounded" className="text-sm">Under-rounded</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox id="editIssueContamination" checked={editStageIssueContamination} onCheckedChange={(c) => setEditStageIssueContamination(c as boolean)} />
+                    <Label htmlFor="editIssueContamination" className="text-sm">Grit contamination</Label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Weight After */}
+              <WeightInput
+                label={
+                  editStageWeightBefore
+                    ? `Weight After (Before: ${settings?.measurementSystem === 'Metric'
+                        ? `${(editStageWeightBefore / 1000).toFixed(2)} kg`
+                        : `${(editStageWeightBefore / 453.592).toFixed(1)} lbs`})`
+                    : "Weight After (optional)"
+                }
+                valueGrams={editStageWeightAfterGrams}
+                onValueChange={setEditStageWeightAfterGrams}
+                barrelCapacityLbs={editStageBarrelCapacity || undefined}
+                onValidationChange={(isValid) => setEditStageWeightAfterValidationError(!isValid)}
               />
+
+              {/* Lessons Learned */}
+              <div className="space-y-2">
+                <Label>Lessons learned (optional)</Label>
+                <Textarea
+                  placeholder="What would you do differently next time?"
+                  value={editStageLessonsLearned}
+                  onChange={(e) => setEditStageLessonsLearned(e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              {/* What's Next */}
+              <div className="space-y-2">
+                <Label>What&apos;s next? (optional)</Label>
+                <RadioGroup value={editStageNextAction} onValueChange={setEditStageNextAction}>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="" id="edit-none" />
+                    <Label htmlFor="edit-none">Not set</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Advance" id="edit-advance" />
+                    <Label htmlFor="edit-advance">Advance to next stage</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Repeat" id="edit-repeat" />
+                    <Label htmlFor="edit-repeat">Repeat this stage</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Abort" id="edit-abort" />
+                    <Label htmlFor="edit-abort">Stop here (abort / re-cut stones)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Notes */}
+              <div className="space-y-2">
+                <Label>Notes (optional)</Label>
+                <Textarea
+                  value={editStageNotes}
+                  onChange={(e) => setEditStageNotes(e.target.value)}
+                  placeholder="Any notes about this stage..."
+                  rows={2}
+                />
+              </div>
             </div>
-          </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditStageOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleEditStage} disabled={updateStageMutation.isPending}>
+            <Button onClick={handleEditStage} disabled={updateStageMutation.isPending || editStageIsLoading}>
               {updateStageMutation.isPending && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
