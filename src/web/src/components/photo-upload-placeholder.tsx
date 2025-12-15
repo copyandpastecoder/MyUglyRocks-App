@@ -45,7 +45,6 @@ export function PhotoUpload({
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync state from prop change
     setPhotos(initialPhotos);
   }, [initialPhotos]);
 

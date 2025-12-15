@@ -1668,24 +1668,18 @@ function StageCard({
   onEdit,
   onDelete,
   onView,
-  onStartEarly: _onStartEarly,
   isCompleting,
-  isStartingEarly: _isStartingEarly,
   cycleId,
   isPlanned,
-  canStartEarly: _canStartEarly,
 }: {
   stage: StageRunSummaryDto;
   onComplete?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onView?: () => void;
-  onStartEarly?: () => void;
   isCompleting?: boolean;
-  isStartingEarly?: boolean;
   cycleId: string;
   isPlanned?: boolean;
-  canStartEarly?: boolean;
 }) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -1714,9 +1708,6 @@ function StageCard({
   const progressPercent = isActive && totalDuration > 0 ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100)) : (stage.status === 'Completed' ? 100 : 0);
 
   const totalDays = totalDuration > 0 ? Math.ceil(totalDuration / (1000 * 60 * 60 * 24)) : 0;
-  const _currentDay = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
-
-  const _timeRemaining = isActive && effectiveEndDate ? getTimeRemaining(effectiveEndDate) : null;
 
   // Load stage details when collapsible is opened
   const loadStageDetails = async () => {
@@ -2088,19 +2079,4 @@ function StageCard({
       />
     </>
   );
-}
-
-function getTimeRemaining(endDate: Date): string {
-  const now = new Date();
-  const diff = endDate.getTime() - now.getTime();
-
-  if (diff <= 0) return 'Overdue';
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-  if (days > 0) {
-    return `${days}d ${hours}h`;
-  }
-  return `${hours}h`;
 }

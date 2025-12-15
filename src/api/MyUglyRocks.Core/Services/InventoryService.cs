@@ -184,27 +184,24 @@ public class InventoryService : IInventoryService
             // Remove existing specimens
             InventorySpecimens.RemoveRange(inventory.InventorySpecimens);
 
-            // Add new specimens
-            foreach (var specimenRequest in request.Specimens)
+            // Add new specimens using Select for cleaner mapping
+            var newSpecimens = request.Specimens.Select(specimenRequest => new InventorySpecimen
             {
-                var inventorySpecimen = new InventorySpecimen
-                {
-                    InventoryId = inventoryId,
-                    SpecimenId = specimenRequest.SpecimenId,
-                    UserSpecimenId = specimenRequest.UserSpecimenId,
-                    WeightGrams = specimenRequest.WeightGrams,
-                    Cost = specimenRequest.Cost,
-                    Condition = string.IsNullOrEmpty(specimenRequest.Condition)
-                        ? InventoryCondition.Raw
-                        : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
-                    QualityRating = specimenRequest.QualityRating,
-                    SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
-                        ? string.Join(",", specimenRequest.SizeCategories)
-                        : null,
-                    Notes = specimenRequest.Notes
-                };
-                InventorySpecimens.Add(inventorySpecimen);
-            }
+                InventoryId = inventoryId,
+                SpecimenId = specimenRequest.SpecimenId,
+                UserSpecimenId = specimenRequest.UserSpecimenId,
+                WeightGrams = specimenRequest.WeightGrams,
+                Cost = specimenRequest.Cost,
+                Condition = string.IsNullOrEmpty(specimenRequest.Condition)
+                    ? InventoryCondition.Raw
+                    : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
+                QualityRating = specimenRequest.QualityRating,
+                SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
+                    ? string.Join(",", specimenRequest.SizeCategories)
+                    : null,
+                Notes = specimenRequest.Notes
+            });
+            InventorySpecimens.AddRange(newSpecimens);
         }
 
         await _context.SaveChangesAsync(cancellationToken);

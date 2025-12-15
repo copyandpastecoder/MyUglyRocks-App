@@ -45,7 +45,7 @@ import { WeightInput } from '@/components/weight-input';
 import { useSettings, useTimezone } from '@/hooks/use-user';
 import { formatDateTimeLocal, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes } from '@/lib/duration-utils';
-import type { CycleDto, StageRunDto, StageRunSummaryDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest } from '@/types/cycle';
+import type { CycleDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest } from '@/types/cycle';
 import type { BarrelDto } from '@/types/tumbler';
 import type { MaterialListDto } from '@/types/reference';
 
@@ -118,7 +118,6 @@ export function StageFormModal({
   const [cleaningPurpose, setCleaningPurpose] = useState<string>('');
   const [cleaningNotes, setCleaningNotes] = useState<string>('');
   const [cleaningMaterials, setCleaningMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
-  const [_cleaningRunId, setCleaningRunId] = useState<string | undefined>();
 
   // Calculate total barrel capacity from selected barrels (for weight validation)
   const selectedBarrelCapacityLbs = selectedBarrelIds.reduce((total, id) => {
