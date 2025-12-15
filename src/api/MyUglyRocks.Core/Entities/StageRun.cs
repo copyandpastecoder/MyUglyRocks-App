@@ -7,19 +7,12 @@ public enum StageRunStatus
     Completed = 2  // Stage finished
 }
 
-public enum WaterLevel
-{
-    JustCovering = 0,
-    Halfway = 1,
-    ThreeQuarters = 2,
-    Full = 3
-}
-
 public enum StageNextAction
 {
     Advance = 0,
     Repeat = 1,
-    Abort = 2
+    Abort = 2,
+    Complete = 3
 }
 
 public class StageRun : SoftDeletableEntity
@@ -52,8 +45,6 @@ public class StageRun : SoftDeletableEntity
     public decimal? LoadWeightAfterGrams { get; set; }
     public decimal? BarrelRpm { get; set; }
     public bool? IsRpmEstimated { get; set; }
-    public int? FillLevelPercent { get; set; } // 0-100, how full barrel is with rocks
-    public WaterLevel? WaterLevel { get; set; } // Quick qualitative selection
     public int? WaterAmountMl { get; set; } // Precise measurement in milliliters
 
     // Results

@@ -147,11 +147,17 @@ public class PhotosController : ControllerBase
             await Photos.AddAsync(photo, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Enqueue background job for image processing (variants + upload)
-            _backgroundJobClient.Enqueue<PhotoProcessingJob>(
-                job => job.ProcessPhotoAsync(photoId, imageData, file.FileName));
+            // Two-phase processing: thumbnail first (fast), then large variants (background)
+            // Phase 1: Thumbnail - user sees this quickly, status becomes Completed
+            var thumbnailJobId = _backgroundJobClient.Enqueue<PhotoProcessingJob>(
+                job => job.ProcessThumbnailAsync(photoId, imageData, file.FileName));
 
-            _logger.LogInformation("Photo {PhotoId} queued for background processing", photoId);
+            // Phase 2: Large variants - runs after thumbnail, user doesn't wait
+            _backgroundJobClient.ContinueJobWith<PhotoProcessingJob>(
+                thumbnailJobId,
+                job => job.ProcessLargeVariantsAsync(photoId, imageData, file.FileName));
+
+            _logger.LogInformation("Photo {PhotoId} queued for two-phase processing", photoId);
 
             var dto = new PhotoDto(
                 photo.PhotoId,
@@ -194,6 +200,7 @@ public class PhotosController : ControllerBase
         [FromForm] IFormFile file,
         [FromForm] string? caption = null,
         [FromForm] bool isCover = false,
+        [FromForm] Guid? inventorySpecimenId = null,
         CancellationToken cancellationToken = default)
     {
         var userId = GetUserId();
@@ -219,6 +226,7 @@ public class PhotosController : ControllerBase
         // Verify inventory exists and belongs to user
         var inventory = await Inventory
             .Include(i => i.InventoryPhotos)
+            .Include(i => i.InventorySpecimens)
             .FirstOrDefaultAsync(i => i.InventoryId == inventoryId && !i.IsDeleted, cancellationToken);
 
         if (inventory == null)
@@ -229,6 +237,17 @@ public class PhotosController : ControllerBase
         if (inventory.UserId != userId)
         {
             return Forbid();
+        }
+
+        // Validate specimen belongs to this inventory
+        if (inventorySpecimenId.HasValue)
+        {
+            var specimenExists = inventory.InventorySpecimens
+                .Any(s => s.InventorySpecimenId == inventorySpecimenId.Value);
+            if (!specimenExists)
+            {
+                return BadRequest(new UploadPhotoResponse(false, Error: "Specimen not found in this inventory"));
+            }
         }
 
         // Check storage is configured
@@ -270,6 +289,7 @@ public class PhotosController : ControllerBase
             {
                 InventoryPhotoId = photoId,
                 InventoryId = inventoryId,
+                InventorySpecimenId = inventorySpecimenId,
                 StorageKey = $"{folder}/{baseKey}-original.webp",  // Placeholder, updated by job
                 Url = "",  // Will be set by background job
                 FileName = $"{photoId:N}{extension}",
@@ -286,11 +306,17 @@ public class PhotosController : ControllerBase
             await InventoryPhotos.AddAsync(photo, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Enqueue background job for image processing (variants + upload)
-            _backgroundJobClient.Enqueue<InventoryPhotoProcessingJob>(
-                job => job.ProcessPhotoAsync(photoId, imageData, file.FileName));
+            // Two-phase processing: thumbnail first (fast), then large variants (background)
+            // Phase 1: Thumbnail - user sees this quickly, status becomes Completed
+            var thumbnailJobId = _backgroundJobClient.Enqueue<InventoryPhotoProcessingJob>(
+                job => job.ProcessThumbnailAsync(photoId, imageData, file.FileName));
 
-            _logger.LogInformation("Inventory photo {PhotoId} queued for background processing", photoId);
+            // Phase 2: Large variants - runs after thumbnail, user doesn't wait
+            _backgroundJobClient.ContinueJobWith<InventoryPhotoProcessingJob>(
+                thumbnailJobId,
+                job => job.ProcessLargeVariantsAsync(photoId, imageData, file.FileName));
+
+            _logger.LogInformation("Inventory photo {PhotoId} queued for two-phase processing", photoId);
 
             var dto = new InventoryPhotoDto(
                 photo.InventoryPhotoId,
@@ -307,7 +333,9 @@ public class PhotosController : ControllerBase
                 photo.Width,
                 photo.Height,
                 photo.ProcessingStatus.ToString(),
-                photo.ProcessingError
+                photo.ProcessingError,
+                photo.InventorySpecimenId,
+                null // Specimen name will be populated on next fetch
             );
 
             return Ok(new UploadInventoryPhotoResponse(true, dto));
@@ -383,6 +411,10 @@ public class PhotosController : ControllerBase
 
         var inventory = await Inventory
             .Include(i => i.InventoryPhotos)
+            .Include(i => i.InventorySpecimens)
+                .ThenInclude(s => s.Specimen)
+            .Include(i => i.InventorySpecimens)
+                .ThenInclude(s => s.UserSpecimen)
             .FirstOrDefaultAsync(i => i.InventoryId == inventoryId && !i.IsDeleted, cancellationToken);
 
         if (inventory == null)
@@ -397,23 +429,38 @@ public class PhotosController : ControllerBase
 
         var photos = inventory.InventoryPhotos
             .OrderBy(p => p.SortOrder)
-            .Select(p => new InventoryPhotoDto(
-                p.InventoryPhotoId,
-                p.Url,
-                p.FileName,
-                p.Caption,
-                p.IsCover,
-                p.SortOrder,
-                p.DateCreated,
-                p.ThumbnailUrl,
-                p.MediumUrl,
-                p.LargeUrl,
-                p.BlurHash,
-                p.Width,
-                p.Height,
-                p.ProcessingStatus.ToString(),
-                p.ProcessingError
-            ))
+            .Select(p => {
+                string? specimenName = null;
+                if (p.InventorySpecimenId.HasValue)
+                {
+                    var linkedSpecimen = inventory.InventorySpecimens
+                        .FirstOrDefault(s => s.InventorySpecimenId == p.InventorySpecimenId);
+                    if (linkedSpecimen != null)
+                    {
+                        specimenName = linkedSpecimen.Specimen?.CommonName
+                            ?? linkedSpecimen.UserSpecimen?.CommonName;
+                    }
+                }
+                return new InventoryPhotoDto(
+                    p.InventoryPhotoId,
+                    p.Url,
+                    p.FileName,
+                    p.Caption,
+                    p.IsCover,
+                    p.SortOrder,
+                    p.DateCreated,
+                    p.ThumbnailUrl,
+                    p.MediumUrl,
+                    p.LargeUrl,
+                    p.BlurHash,
+                    p.Width,
+                    p.Height,
+                    p.ProcessingStatus.ToString(),
+                    p.ProcessingError,
+                    p.InventorySpecimenId,
+                    specimenName
+                );
+            })
             .ToList();
 
         return Ok(photos);

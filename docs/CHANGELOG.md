@@ -4,7 +4,153 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2025-12-15
 
+### Improved
+
+#### Photo Upload Performance Optimization
+- **Improvement**: Photo uploads now show thumbnails in ~4 seconds instead of ~15 seconds
+- **Approach**: Two-phase background processing
+  - Phase 1: Thumbnail generated and uploaded immediately, status marked "Completed"
+  - Phase 2: Large variants (1600px + original) processed silently in background
+- **Files**:
+  - [IImageProcessingService.cs](../src/api/MyUglyRocks.Abstractions/Interfaces/IImageProcessingService.cs) - Added `ProcessThumbnailAsync` and `ProcessLargeVariantsAsync` methods
+  - [ImageProcessingService.cs](../src/api/MyUglyRocks.Infrastructure/Services/ImageProcessingService.cs) - Two-phase processing implementation
+  - [InventoryPhotoProcessingJob.cs](../src/api/MyUglyRocks.Infrastructure/Jobs/InventoryPhotoProcessingJob.cs) - Split into thumbnail + large variant jobs
+  - [PhotoProcessingJob.cs](../src/api/MyUglyRocks.Infrastructure/Jobs/PhotoProcessingJob.cs) - Split into thumbnail + large variant jobs
+  - [PhotosController.cs](../src/api/MyUglyRocks.Api/Controllers/PhotosController.cs) - Uses Hangfire `ContinueJobWith` for chained processing
+- **Additional optimizations**:
+  - Hangfire queue poll interval reduced from 15s to 1s
+  - Removed medium (800px) variant - only thumbnail, large, and original
+  - WebP quality reduced to 70 (thumbnail) and 80 (others) for faster encoding
+  - Parallel variant processing within each phase
+
+#### Landing Page Updates
+- **Change**: Updated public landing page to highlight inventory tracking feature
+- **File**: [page.tsx](../src/web/src/app/page.tsx)
+- **Details**:
+  - Added new problem card: "I have boxes of rough rocks but can't remember what any of them are or where they came from"
+  - Added "Inventory Tracking" feature card with Package icon
+  - Removed "Multiple Tumblers" feature card (redundant with existing features)
+
 ### Added
+
+#### Inventory Photo Specimen Tagging
+- **Feature**: Inventory photos can now be tagged/linked to a specific specimen when uploading
+- **Files**:
+  - [InventoryPhoto.cs](../src/api/MyUglyRocks.Core/Entities/InventoryPhoto.cs) - Added `InventorySpecimenId` nullable FK
+  - [InventoryConfiguration.cs](../src/api/MyUglyRocks.Infrastructure/Data/Configurations/InventoryConfiguration.cs) - EF config with SetNull on delete
+  - [InventoryDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/InventoryDtos.cs) - Added `InventorySpecimenId` and `SpecimenName` to DTO
+  - [PhotosController.cs](../src/api/MyUglyRocks.Api/Controllers/PhotosController.cs) - Added `inventorySpecimenId` param to upload endpoint
+  - [inventory-photo-upload-modal.tsx](../src/web/src/components/inventory-photo-upload-modal.tsx) - **New** modal with specimen picker
+  - [inventory-photos.tsx](../src/web/src/components/inventory-photos.tsx) - Uses modal, shows specimen badge on photos
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Passes specimens to photos component
+- **UX**: Click "Add Photo" opens modal with file picker, optional specimen dropdown, and optional caption
+- **Display**: Photos show a small badge in the corner with the linked specimen name
+- **Migration**: `AddInventoryPhotoSpecimenLink` adds column and index
+
+#### Specimen Dropdown Column Visibility Toggle
+- **Feature**: Specimen dropdowns in Inventory pages now have show/hide columns like in Cycles
+- **File**: [specimen-row-list.tsx](../src/web/src/components/specimen-row-list.tsx)
+- **Details**:
+  - Added Settings2 (gear) icon button in search bar
+  - Toggle visibility of: Scientific Name, Alias, Hardness, Tumbling Difficulty, Material Type
+  - Column preferences saved to localStorage (shared key `specimen-dropdown-columns`)
+  - Same UI pattern as existing `SpecimenMultiSelect` component
+
+#### Celebratory Completed Cycle Styling
+- **Feature**: Completed cycles now have a distinct celebratory appearance to clearly differentiate from active cycles
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Visual Changes**:
+  - Green border and subtle green gradient background on the cycle card
+  - Green "Completed" badge with trophy icon (replaces plain gray badge)
+  - Party popper icon next to the cycle name
+  - Golden star rating display for final quality score
+- **Icons Added**: `Trophy`, `PartyPopper` from lucide-react
+
+#### StageNextAction "Complete" Option
+- **Feature**: Added "Cycle Complete" option to the "What's Next?" selection in Complete Stage modal
+- **File**: [StageRun.cs](../src/api/MyUglyRocks.Core/Entities/StageRun.cs)
+- **Change**: Added `Complete = 3` to `StageNextAction` enum
+- **Use Case**: When finishing the final stage, users can select "Cycle Complete (No more ugly rocks!)" to mark the entire cycle as finished
+
+### Fixed
+
+#### Custom Specimen Creation Not Auto-Selecting
+- **Problem**: When creating a custom specimen via "Add Custom Specimen" dialog in `/inventory/new` or `/inventory/[id]`, the dialog closed but the specimen dropdown remained blank. Saving did nothing.
+- **Root Cause**: The `handleCustomSpecimenCreated` callback was empty - it didn't add the new specimen to the form state
+- **Fix**:
+  - Updated `AddCustomSpecimenDialog` to pass full specimen data (id, commonName, scientificName, tumblingDifficulty, materialType) to `onSuccess` callback
+  - Updated all three consuming pages to create a pre-populated specimen row when custom specimen is created
+- **Files**:
+  - [add-custom-specimen-dialog.tsx](../src/web/src/components/add-custom-specimen-dialog.tsx) - Export `CustomSpecimenCreatedData` interface, pass full data
+  - [inventory/new/page.tsx](../src/web/src/app/(protected)/inventory/new/page.tsx) - Create row with specimen pre-selected
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Create row with specimen pre-selected
+  - [cycles/new/page.tsx](../src/web/src/app/(protected)/cycles/new/page.tsx) - Add specimen to selection list
+
+#### Select Component Empty Value Error
+- **Problem**: Radix UI Select threw error "A <Select.Item /> must have a value prop that is not an empty string"
+- **Location**: `inventory-photo-upload-modal.tsx` used `<SelectItem value="">` for "None" option
+- **Fix**: Changed to use `value="__none__"` sentinel value and handle conversion in upload logic
+- **File**: [inventory-photo-upload-modal.tsx](../src/web/src/components/inventory-photo-upload-modal.tsx)
+
+#### Complete Stage Modal Errors
+- **Problem 1**: "Uncaught RangeError: invalid date" in browser console when opening Complete Stage modal
+- **Root Cause**: `toISOString()` called on Date object created from empty/invalid `completeStageStartDateTime`
+- **Fix**: Added guard `if (isNaN(startDate.getTime())) return null;` before calling `toISOString()`
+
+- **Problem 2**: HTTP 400 error when submitting Complete Stage form with "Advance to next stage" selected
+- **Root Causes**:
+  1. `resultRating` defaulted to 0, which violated `[Range(1, 5)]` validation
+  2. Advanced quality ratings (ResultShapeRounding, ResultScratchLevel, ResultPitting, ResultShine) use 0-100 percentages in UI but backend DTO had `[Range(1, 5)]` validation
+- **Fixes**:
+  - Frontend: Send `undefined` instead of `0` for unrated `resultRating`
+  - Backend: Changed validation from `[Range(1, 5)]` to `[Range(0, 100)]` for percentage-based quality metrics
+- **Files**:
+  - [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx) - Invalid date guards + resultRating fix
+  - [CycleDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs) - Fixed `CompleteStageRunRequest` validation ranges
+
+### Changed
+
+#### Inventory Specimen Data Model Refactor
+- **Change**: Moved Cost, Condition, Quality Rating, Size Categories from inventory table to inventory_specimens table
+- **Rationale**: Each specimen in an inventory can have different cost, condition, quality, and sizes
+- **Files**:
+  - [Inventory.cs](../src/api/MyUglyRocks.Core/Entities/Inventory.cs) - Removed fields
+  - [InventorySpecimen.cs](../src/api/MyUglyRocks.Core/Entities/InventorySpecimen.cs) - Added fields
+  - [InventoryDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/InventoryDtos.cs) - Moved fields to specimen DTOs
+  - [InventoryService.cs](../src/api/MyUglyRocks.Core/Services/InventoryService.cs) - Updated create/update logic
+  - [specimen-row-list.tsx](../src/web/src/components/specimen-row-list.tsx) - Full row editing with all fields
+  - [inventory/new/page.tsx](../src/web/src/app/(protected)/inventory/new/page.tsx) - Updated form
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Updated form
+- **Migrations**:
+  - `AddWeightGramsToInventorySpecimen`
+  - `RemoveEstimatedPercentageFromInventorySpecimen`
+  - `MoveFieldsToInventorySpecimen`
+  - `RemoveWaterLevelAndFillLevelPercent`
+
+#### Timezone-Aware Date Handling
+- **Feature**: All date displays throughout the app now use the user's timezone preference from Settings > Preferences
+- **New Utilities** in `src/web/src/lib/date-utils.ts`:
+  - `utcToUserTimezone()` - Convert UTC API dates to user's timezone
+  - `userTimezoneToUtc()` - Convert local dates to UTC for API submission
+  - `getNowInTimezone()` - Get current time in user's timezone
+  - `formatInTimezone()` - Format UTC dates for display in user's timezone
+  - `isDateTodayInTimezone()` - Check if UTC date is "today" in user's timezone
+  - `formatUtcForDateTimeLocalInput()` - Format UTC for datetime-local inputs
+  - `parseDateTimeLocalToUtc()` - Parse datetime-local input to UTC
+- **New Hook** `useTimezone()` in `src/web/src/hooks/use-user.ts`:
+  - Provides timezone-aware utilities bound to user's settings
+  - Returns `formatDate`, `toUserTz`, `toUtc`, `now`, `isToday`, `formatForInput`, `parseFromInput`
+  - Falls back to UTC when settings not loaded
+- **Dependency**: Added `date-fns-tz` package for timezone conversions
+- **Pages Updated**:
+  - [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx) - Cycle info, stage cards, Complete Stage modal
+  - [gallery/[id]/page.tsx](../src/web/src/app/(protected)/gallery/[id]/page.tsx) - Post dates, cycle/inventory dates, comments
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Acquired date
+  - [inventory/[id]/share/page.tsx](../src/web/src/app/(protected)/inventory/[id]/share/page.tsx) - Acquired date
+  - [cycles/[id]/share/page.tsx](../src/web/src/app/(protected)/cycles/[id]/share/page.tsx) - Cycle start date
+  - [settings/profile/page.tsx](../src/web/src/app/(protected)/settings/profile/page.tsx) - Member since date
+  - [stage-form-modal.tsx](../src/web/src/components/stage/stage-form-modal.tsx) - Start datetime handling
+- **Complete Stage Modal Fix**: "End date is today" check now uses user's timezone instead of browser local time
 
 #### Full Edit Stage Modal
 - **Feature**: Edit Stage modal now has all the same fields as Create Stage modal
@@ -33,6 +179,15 @@ All notable changes to this project will be documented in this file.
   - If no cleaning run exists, allows user to add one before completing
   - New cleaning runs are created automatically when stage is completed
   - Uses the shared `CleaningRunSection` component for consistent UI
+
+#### Timezone Setting in Preferences
+- **Feature**: Added timezone dropdown to Settings > Preferences > Regional section
+- **File**: [preferences/page.tsx](../src/web/src/app/(protected)/settings/preferences/page.tsx)
+- **Details**:
+  - 24 common IANA timezones covering major regions worldwide
+  - Displayed with friendly names and UTC offsets (e.g., "Pacific Time (UTC-8)")
+  - Saves automatically when changed (consistent with other settings)
+  - Used for stage reminders and date/time display
 
 #### Individual Specimen Weights in Inventory
 - **Feature**: Inventory items can now track individual weights per specimen instead of just batch weight
@@ -76,6 +231,50 @@ All notable changes to this project will be documented in this file.
 - **Problem**: TypeScript build failed after npm dependency update - recharts `Formatter` type changed to expect `value: number | undefined`
 - **Fix**: Updated formatters in cycle-stats-chart.tsx to handle undefined values using `value ?? 0` or `Number(value) || 0`
 - **File**: [cycle-stats-chart.tsx](../src/web/src/components/ui/cycle-stats-chart.tsx)
+
+#### Copilot Code Review Fixes
+Several issues identified by GitHub Copilot code review have been addressed:
+
+- **Unreachable null check in route.ts**: Removed defensive null check that was logically unreachable due to preceding conditional logic
+  - File: [route.ts](../src/web/src/app/config/route.ts)
+
+- **InventoryService weight comparison bug**: Fixed logic that compared `RemainingWeightGrams` against the new total instead of the old total when recalculating aggregate weights
+  - File: [InventoryService.cs](../src/api/MyUglyRocks.Core/Services/InventoryService.cs)
+  - Fix: Capture `oldTotalWeight` before updating `TotalWeightGrams`
+
+- **Unused imports in mobile-nav.tsx**: Removed unused `ReactNode` and `BookOpen` imports
+  - File: [mobile-nav.tsx](../src/web/src/components/ui/mobile-nav.tsx)
+
+- **UpdateStageRun not saving materials/cleaning run**: Backend API accepted `Materials` and `CleaningRun` in update request but didn't process them
+  - File: [CycleService.cs](../src/api/MyUglyRocks.Core/Services/CycleService.cs)
+  - Fix: Added logic to update/replace materials and update/create cleaning runs in `UpdateStageRunAsync`
+
+- **Water unit not using user settings when editing stage**: When loading existing stage data for editing, water amount displayed in ml regardless of user's measurement preference
+  - File: [stage-form-modal.tsx](../src/web/src/components/stage/stage-form-modal.tsx)
+  - Fix: Convert stored ml value to user's preferred unit (ml or fl oz) based on settings
+
+- **Custom stage name input accessibility**: Added `aria-label` attribute for screen reader support
+  - File: [stage-form-modal.tsx](../src/web/src/components/stage/stage-form-modal.tsx)
+
+#### ESLint Error Fixes
+Fixed all 3 lint errors (reduced warnings from 74 to 41):
+
+- **`openAddStageModal` accessed before declaration** (cycles/[id]/page.tsx:215)
+  - Changed `hasHandledAddStage` from `useState` to `useRef` since it doesn't trigger re-renders
+  - Inlined the modal open logic directly in the useEffect
+  - File: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+
+- **setState in effect errors** (weight-input.tsx)
+  - Refactored to use `useMemo` for deriving display values from props
+  - Added `effectiveIsMetric` computed value that chains: sessionStorage > initialDisplayUnit > settings > fallback
+  - Removed useEffect that synced props to local state (caused cascading renders)
+  - File: [weight-input.tsx](../src/web/src/components/weight-input.tsx)
+
+- **Unused imports/variables** (33+ fixes across 12+ files)
+  - Removed unused Select components, types, functions from imports
+  - Prefixed intentionally unused variables with `_` (e.g., `_router`, `_currentDay`, `_cleaningRunId`)
+  - Removed unused `ModalConfig` type definition
+  - Files affected: cycles/[id]/page.tsx, gallery/[id]/page.tsx, inventory/[id]/share/page.tsx, learn/faq/[topic]/page.tsx, learn/materials/page.tsx, settings/preferences/page.tsx, tumblers/[id]/page.tsx, stage-form-modal.tsx, command-palette.tsx, floating-action-button.tsx, mobile-nav.tsx, skeletons/index.tsx, specimen-multi-select.tsx, confetti.tsx, photo-upload-placeholder.tsx, use-crud-mutation.ts, use-inventory.ts, use-modal-state.ts
 
 ---
 
@@ -321,3 +520,33 @@ Current configuration:
 | Class A (writes) | 1 million |
 | Class B (reads) | 10 million |
 | Egress | Unlimited (free) |
+
+### Timezone Handling Strategy
+
+**Architecture:**
+- Database stores all DateTimes in UTC
+- API returns/accepts UTC ISO strings
+- Frontend converts UTC to user's timezone for display
+- Frontend converts user input back to UTC before sending to API
+
+**Key Files:**
+- `src/web/src/lib/date-utils.ts` - Core timezone conversion utilities
+- `src/web/src/hooks/use-user.ts` - `useTimezone()` hook for React components
+- User timezone preference stored in `UserSettings.Timezone` field
+
+**Usage Pattern:**
+```tsx
+const { formatDate, toUserTz, toUtc, now, isToday, formatForInput, parseFromInput } = useTimezone();
+
+// Display a UTC date from API
+const displayDate = formatDate(stage.startDateTime, 'MMM d, yyyy h:mm a');
+
+// Check if a date is today in user's timezone
+if (isToday(stage.endDateTime)) { /* ... */ }
+
+// For datetime-local inputs
+const inputValue = formatForInput(stage.startDateTime);  // Pre-populate
+const utcValue = parseFromInput(inputValue);              // Submit to API
+```
+
+**Library:** Uses `date-fns-tz` for IANA timezone support (e.g., "America/New_York")

@@ -11,11 +11,10 @@ public class ImageProcessingService : IImageProcessingService
 {
     private readonly ILogger<ImageProcessingService> _logger;
 
-    // Size presets for photo variants
+    // Size presets for photo variants (thumbnail for grids, large for lightbox)
     private static readonly (string Name, int MaxWidth, int MaxHeight)[] PhotoSizes =
     [
         ("thumbnail", 300, 300),
-        ("medium", 800, 800),
         ("large", 1600, 1600)
     ];
 
@@ -37,35 +36,91 @@ public class ImageProcessingService : IImageProcessingService
         _logger.LogDebug("Processing image {FileName}: {Width}x{Height}",
             PiiMaskingHelper.SanitizeForLog(fileName), originalWidth, originalHeight);
 
-        var variants = new List<ImageVariant>();
-
-        // Generate each size variant
-        foreach (var (sizeName, maxWidth, maxHeight) in PhotoSizes)
-        {
-            var variant = await CreateVariantAsync(image, sizeName, maxWidth, maxHeight, cancellationToken);
-            variants.Add(variant);
-        }
-
-        // Also save the original as WebP (unless it's already smaller than large)
+        // Build list of variants to create (including original if larger than large size)
+        var variantSpecs = PhotoSizes.ToList();
         if (originalWidth > PhotoSizes[^1].MaxWidth || originalHeight > PhotoSizes[^1].MaxHeight)
         {
-            var originalVariant = await CreateVariantAsync(image, "original", originalWidth, originalHeight, cancellationToken);
-            variants.Add(originalVariant);
+            variantSpecs.Add(("original", originalWidth, originalHeight));
         }
         else
         {
-            // Original is small enough, just convert to WebP
-            var originalVariant = await CreateVariantAsync(image, "original", originalWidth, originalHeight, cancellationToken);
-            variants.Add(originalVariant);
+            variantSpecs.Add(("original", originalWidth, originalHeight));
         }
 
-        // Generate blur hash (simplified base64 of tiny thumbnail)
+        // Process all variants in parallel for speed
+        var variantTasks = variantSpecs.Select(spec =>
+            CreateVariantAsync(image, spec.Name, spec.MaxWidth, spec.MaxHeight, cancellationToken));
+        var variants = (await Task.WhenAll(variantTasks)).ToList();
+
+        // Generate blur hash
         var blurHash = await GenerateBlurHashAsync(image, cancellationToken);
 
-        _logger.LogInformation("Processed image into {Count} variants: {Sizes}",
+        _logger.LogInformation("Processed image into {Count} variants in parallel: {Sizes}",
             variants.Count, string.Join(", ", variants.Select(v => $"{v.Size}:{v.Width}x{v.Height}")));
 
         return new ProcessedImageResult(variants, originalWidth, originalHeight, blurHash);
+    }
+
+    public async Task<ThumbnailResult> ProcessThumbnailAsync(
+        Stream inputStream,
+        string fileName,
+        CancellationToken cancellationToken = default)
+    {
+        using var image = await Image.LoadAsync(inputStream, cancellationToken);
+        var originalWidth = image.Width;
+        var originalHeight = image.Height;
+
+        _logger.LogDebug("Processing thumbnail for {FileName}: {Width}x{Height}",
+            PiiMaskingHelper.SanitizeForLog(fileName), originalWidth, originalHeight);
+
+        // Create thumbnail only
+        var thumbnail = await CreateVariantAsync(image, "thumbnail", 300, 300, cancellationToken);
+
+        // Generate blur hash
+        var blurHash = await GenerateBlurHashAsync(image, cancellationToken);
+
+        _logger.LogInformation("Processed thumbnail: {Width}x{Height}", thumbnail.Width, thumbnail.Height);
+
+        return new ThumbnailResult(thumbnail, originalWidth, originalHeight, blurHash);
+    }
+
+    public async Task<LargeVariantsResult> ProcessLargeVariantsAsync(
+        Stream inputStream,
+        string fileName,
+        CancellationToken cancellationToken = default)
+    {
+        using var image = await Image.LoadAsync(inputStream, cancellationToken);
+        var originalWidth = image.Width;
+        var originalHeight = image.Height;
+
+        _logger.LogDebug("Processing large variants for {FileName}: {Width}x{Height}",
+            PiiMaskingHelper.SanitizeForLog(fileName), originalWidth, originalHeight);
+
+        // Build list of large variants (large + original)
+        var variantSpecs = new List<(string Name, int MaxWidth, int MaxHeight)>
+        {
+            ("large", 1600, 1600)
+        };
+
+        // Add original if larger than large size
+        if (originalWidth > 1600 || originalHeight > 1600)
+        {
+            variantSpecs.Add(("original", originalWidth, originalHeight));
+        }
+        else
+        {
+            variantSpecs.Add(("original", originalWidth, originalHeight));
+        }
+
+        // Process in parallel
+        var variantTasks = variantSpecs.Select(spec =>
+            CreateVariantAsync(image, spec.Name, spec.MaxWidth, spec.MaxHeight, cancellationToken));
+        var variants = (await Task.WhenAll(variantTasks)).ToList();
+
+        _logger.LogInformation("Processed large variants: {Sizes}",
+            string.Join(", ", variants.Select(v => $"{v.Size}:{v.Width}x{v.Height}")));
+
+        return new LargeVariantsResult(variants);
     }
 
     public async Task<ImageVariant> ProcessAvatarAsync(
@@ -122,7 +177,7 @@ public class ImageProcessingService : IImageProcessingService
         var outputStream = new MemoryStream();
         var encoder = new WebpEncoder
         {
-            Quality = sizeName == "thumbnail" ? 75 : 85,  // Slightly lower quality for thumbnails
+            Quality = sizeName == "thumbnail" ? 70 : 80,  // 70 for thumbnails, 80 for others
             FileFormat = WebpFileFormatType.Lossy
         };
 

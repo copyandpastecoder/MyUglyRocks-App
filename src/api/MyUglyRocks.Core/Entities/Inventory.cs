@@ -52,8 +52,7 @@ public class Inventory : SoftDeletableEntity
     public decimal? RemainingWeightGrams { get; set; }
     public string DisplayUnit { get; set; } = "g";
     public decimal? Cost { get; set; }
-    public InventoryCondition Condition { get; set; } = InventoryCondition.Raw;
-    public string? SizeCategories { get; set; }  // Comma-separated list of SizeCategory values
+    public string? SizeCategories { get; set; }  // Comma-separated list of SizeCategory values (aggregated from specimens)
     public int? QualityRating { get; set; } // 1-5
     public InventoryStatus Status { get; set; } = InventoryStatus.Available;
     public string? StorageLocation { get; set; }

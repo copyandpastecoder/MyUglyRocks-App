@@ -846,7 +846,8 @@ export const inventoryApi = {
     inventoryId: string,
     file: File,
     caption?: string,
-    isCover?: boolean
+    isCover?: boolean,
+    inventorySpecimenId?: string
   ): Promise<UploadInventoryPhotoResponse> => {
     const formData = new FormData();
     formData.append('file', file);
@@ -855,6 +856,9 @@ export const inventoryApi = {
     }
     if (isCover !== undefined) {
       formData.append('isCover', String(isCover));
+    }
+    if (inventorySpecimenId) {
+      formData.append('inventorySpecimenId', inventorySpecimenId);
     }
     const response = await api.post<UploadInventoryPhotoResponse>(
       `/photos/inventory/${inventoryId}`,

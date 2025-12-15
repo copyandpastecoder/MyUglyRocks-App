@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userApi } from '@/lib/api';
+import { useTimezone } from '@/hooks/use-user';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,7 @@ import { PageTransition } from '@/components/ui/page-transition';
 
 export default function ProfileSettingsPage() {
   const queryClient = useQueryClient();
+  const { formatDate } = useTimezone();
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
@@ -188,7 +190,7 @@ export default function ProfileSettingsPage() {
                 <p className="text-sm text-muted-foreground">Member since</p>
                 <p className="font-medium">
                   {profile?.dateCreated
-                    ? new Date(profile.dateCreated).toLocaleDateString()
+                    ? formatDate(profile.dateCreated, 'MMM d, yyyy')
                     : '-'}
                 </p>
               </div>

@@ -6,7 +6,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateInventory, useUploadInventoryPhoto } from '@/hooks/use-inventory';
-import { useSpecimenSearch } from '@/hooks/use-user-specimens';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,44 +27,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
-import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
-import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
-import { WeightInput } from '@/components/weight-input';
-import { StarRating } from '@/components/star-rating';
+import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import { StagedPhotoUpload, type StagedPhoto } from '@/components/staged-photo-upload';
-import { SpecimenWeightTable, type SpecimenWithWeight } from '@/components/specimen-weight-table';
+import { SpecimenRowList, type SpecimenRowItem } from '@/components/specimen-row-list';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import type { SourceType, InventoryCondition, SizeCategory } from '@/types/inventory';
-
-const SOURCE_TYPES: { value: SourceType; label: string }[] = [
-  { value: 'Store', label: 'Store (physical)' },
-  { value: 'Online', label: 'Online' },
-  { value: 'Found', label: 'Found / Collected' },
-  { value: 'Gift', label: 'Gift' },
-  { value: 'Trade', label: 'Trade' },
-  { value: 'Other', label: 'Other' },
-];
-
-const CONDITIONS: { value: InventoryCondition; label: string }[] = [
-  { value: 'Raw', label: 'Raw (unprocessed)' },
-  { value: 'PreShaped', label: 'Pre-shaped' },
-  { value: 'Tumbled', label: 'Tumbled' },
-  { value: 'Polished', label: 'Polished' },
-  { value: 'Mixed', label: 'Mixed conditions' },
-];
-
-const SIZE_CATEGORIES: { value: SizeCategory; label: string }[] = [
-  { value: 'ZeroToOne', label: '0 - 1"' },
-  { value: 'OneToTwo', label: '1" - 2"' },
-  { value: 'TwoToThree', label: '2" - 3"' },
-  { value: 'ThreeToFour', label: '3" - 4"' },
-  { value: 'FourToFive', label: '4" - 5"' },
-  { value: 'GreaterThanFive', label: 'Greater than 5"' },
-  { value: 'Assorted', label: 'Assorted' },
-];
+import type { SourceType } from '@/types/inventory';
+import { SOURCE_TYPE_OPTIONS } from '@/lib/inventory-constants';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -74,11 +43,6 @@ const formSchema = z.object({
   sourceName: z.string().min(1, 'Source name is required').max(255),
   sourceLocation: z.string().max(255).optional(),
   sourceUrl: z.string().url().max(500).optional().or(z.literal('')),
-  totalWeightGrams: z.number().min(0).nullable().optional(),
-  cost: z.coerce.number().min(0).optional(),
-  condition: z.string().min(1, 'Condition is required'),
-  sizeCategories: z.array(z.string()).optional(),
-  qualityRating: z.coerce.number().min(1).max(5).optional(),
   storageLocation: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
   isFavorite: z.boolean().default(false),
@@ -88,23 +52,34 @@ type FormValues = z.infer<typeof formSchema>;
 
 export default function NewInventoryPage() {
   const router = useRouter();
-  const [selectedSpecimenItems, setSelectedSpecimenItems] = useState<SpecimenSelection[]>([]);
+  const [specimenRows, setSpecimenRows] = useState<SpecimenRowItem[]>([]);
   const [specimenError, setSpecimenError] = useState<string | null>(null);
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [displayUnit, setDisplayUnit] = useState<string>('lb');
-  const [trackIndividualWeights, setTrackIndividualWeights] = useState(false);
-  const [specimensWithWeights, setSpecimensWithWeights] = useState<SpecimenWithWeight[]>([]);
 
-  // Use specimen search to get specimen names for auto-populating the name field
-  const { data: allSpecimens = [] } = useSpecimenSearch();
   const createMutation = useCreateInventory();
   const uploadPhotoMutation = useUploadInventoryPhoto();
 
-  // Handle when a custom specimen is created - add it to the selection
-  const handleCustomSpecimenCreated = (specimenId: string) => {
-    setSelectedSpecimenItems(prev => [...prev, { id: specimenId, source: 'user' }]);
+  // Handle when a custom specimen is created - add a new row with that specimen pre-selected
+  const handleCustomSpecimenCreated = (data: CustomSpecimenCreatedData) => {
+    // Create a new row with the custom specimen already selected
+    const newRow: SpecimenRowItem = {
+      id: crypto.randomUUID(),
+      selectedId: data.userSpecimenId,
+      userSpecimenId: data.userSpecimenId,
+      source: 'user',
+      commonName: data.commonName,
+      scientificName: data.scientificName ?? undefined,
+      tumblingDifficulty: data.tumblingDifficulty ?? undefined,
+      weightGrams: null,
+      cost: null,
+      condition: 'Raw',
+      qualityRating: null,
+      sizeCategories: [],
+    };
+    setSpecimenRows(prev => [...prev, newRow]);
+    setSpecimenError(null);
   };
 
   const form = useForm<FormValues>({
@@ -113,15 +88,10 @@ export default function NewInventoryPage() {
     defaultValues: {
       name: '',
       acquiredDate: new Date().toISOString().split('T')[0],
-      sourceType: 'Store',
+      sourceType: '',
       sourceName: '',
       sourceLocation: '',
       sourceUrl: '',
-      totalWeightGrams: null,
-      cost: undefined,
-      condition: 'Raw',
-      sizeCategories: [],
-      qualityRating: undefined,
       storageLocation: '',
       notes: '',
       isFavorite: false,
@@ -140,15 +110,10 @@ export default function NewInventoryPage() {
       parts.push(sourceName.trim());
     }
 
-    // Get specimen names from either mode
-    let specimenNames: string[] = [];
-    if (trackIndividualWeights) {
-      specimenNames = specimensWithWeights.map(s => s.commonName);
-    } else if (selectedSpecimenItems.length > 0 && allSpecimens.length > 0) {
-      specimenNames = selectedSpecimenItems
-        .map(sel => allSpecimens.find(s => s.id === sel.id)?.commonName)
-        .filter(Boolean) as string[];
-    }
+    // Get specimen names from rows
+    const specimenNames = specimenRows
+      .filter(r => r.commonName)
+      .map(r => r.commonName);
 
     if (specimenNames.length > 0) {
       // Show first 3, then "& more" if there are more than 3
@@ -168,47 +133,28 @@ export default function NewInventoryPage() {
     if (parts.length > 0) {
       form.setValue('name', parts.join(' - '));
     }
-  }, [sourceName, selectedSpecimenItems, specimensWithWeights, trackIndividualWeights, acquiredDate, allSpecimens, form]);
+  }, [sourceName, specimenRows, acquiredDate, form]);
 
   const onSubmit = async (data: FormValues) => {
-    // Validate specimens based on mode
-    if (trackIndividualWeights) {
-      if (specimensWithWeights.length === 0) {
-        setSpecimenError('At least one specimen is required');
-        return;
-      }
-    } else {
-      if (selectedSpecimenItems.length === 0) {
-        setSpecimenError('At least one specimen is required');
-        return;
-      }
+    // Validate specimens
+    const validSpecimens = specimenRows.filter(r => r.selectedId);
+    if (validSpecimens.length === 0) {
+      setSpecimenError('At least one specimen is required');
+      return;
     }
     setSpecimenError(null);
     setIsSubmitting(true);
 
-    // Calculate total weight based on mode
-    let totalWeightGrams: number | undefined;
-    let specimensPayload;
-
-    if (trackIndividualWeights) {
-      // Use individual specimen weights
-      specimensPayload = specimensWithWeights.map(s => ({
-        specimenId: s.specimenId,
-        userSpecimenId: s.userSpecimenId,
-        weightGrams: s.weightGrams ?? undefined,
-      }));
-      // Total will be calculated server-side from specimen weights
-      totalWeightGrams = specimensWithWeights
-        .filter(s => s.weightGrams != null)
-        .reduce((sum, s) => sum + (s.weightGrams || 0), 0) || undefined;
-    } else {
-      // Use single total weight
-      totalWeightGrams = data.totalWeightGrams ?? undefined;
-      specimensPayload = selectedSpecimenItems.map(item => ({
-        specimenId: item.source === 'system' ? item.id : undefined,
-        userSpecimenId: item.source === 'user' ? item.id : undefined,
-      }));
-    }
+    // Build specimens payload with all per-specimen fields
+    const specimensPayload = validSpecimens.map(row => ({
+      specimenId: row.specimenId,
+      userSpecimenId: row.userSpecimenId,
+      weightGrams: row.weightGrams ?? undefined,
+      cost: row.cost ?? undefined,
+      condition: row.condition,
+      qualityRating: row.qualityRating ?? undefined,
+      sizeCategories: row.sizeCategories.length > 0 ? row.sizeCategories : undefined,
+    }));
 
     try {
       const inventory = await createMutation.mutateAsync({
@@ -218,15 +164,7 @@ export default function NewInventoryPage() {
         sourceName: data.sourceName || undefined,
         sourceLocation: data.sourceLocation || undefined,
         sourceUrl: data.sourceUrl || undefined,
-        totalWeightGrams,
-        remainingWeightGrams: totalWeightGrams,
-        displayUnit: totalWeightGrams ? displayUnit : undefined,
-        cost: data.cost,
-        condition: data.condition as InventoryCondition,
-        sizeCategories: data.sizeCategories && data.sizeCategories.length > 0
-          ? data.sizeCategories as SizeCategory[]
-          : undefined,
-        qualityRating: data.qualityRating,
+        displayUnit: 'lb',
         storageLocation: data.storageLocation || undefined,
         notes: data.notes || undefined,
         isFavorite: data.isFavorite,
@@ -251,7 +189,8 @@ export default function NewInventoryPage() {
         }
       }
 
-      router.push(`/inventory/${inventory.inventoryId}`);
+      toast.success('Inventory added successfully');
+      router.push('/inventory');
     } catch {
       // Error already handled by mutation
     } finally {
@@ -301,14 +240,14 @@ export default function NewInventoryPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Source Type *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="How did you acquire this?" />
+                            <SelectValue placeholder="Select source type..." />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {SOURCE_TYPES.map(({ value, label }) => (
+                          {SOURCE_TYPE_OPTIONS.map(({ value, label }) => (
                             <SelectItem key={value} value={value}>{label}</SelectItem>
                           ))}
                         </SelectContent>
@@ -375,197 +314,17 @@ export default function NewInventoryPage() {
                 />
               </div>
 
-              {/* Toggle for individual weight tracking */}
-              <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <label className="text-sm font-medium">Track Weight Per Specimen</label>
-                  <p className="text-sm text-muted-foreground">
-                    Enter individual weights for each specimen type instead of a total weight
-                  </p>
-                </div>
-                <Switch
-                  checked={trackIndividualWeights}
-                  onCheckedChange={(checked) => {
-                    setTrackIndividualWeights(checked);
-                    // Clear both forms when switching modes
-                    if (checked) {
-                      setSelectedSpecimenItems([]);
-                      form.setValue('totalWeightGrams', null);
-                    } else {
-                      setSpecimensWithWeights([]);
-                    }
+              {/* Specimens - expandable cards with all fields */}
+              <SpecimenRowList
+                specimens={specimenRows}
+                onSpecimensChange={(rows) => {
+                  setSpecimenRows(rows);
+                  if (rows.filter(r => r.selectedId).length > 0) {
                     setSpecimenError(null);
-                  }}
-                />
-              </div>
-
-              {trackIndividualWeights ? (
-                <>
-                  <SpecimenWeightTable
-                    specimens={specimensWithWeights}
-                    onSpecimensChange={(specimens) => {
-                      setSpecimensWithWeights(specimens);
-                      if (specimens.length > 0) {
-                        setSpecimenError(null);
-                      }
-                    }}
-                    onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
-                  />
-                  {specimenError && (
-                    <p className="text-sm font-medium text-destructive">{specimenError}</p>
-                  )}
-                </>
-              ) : (
-                <>
-                  <FormItem>
-                    <FormLabel>Specimens *</FormLabel>
-                    <SpecimenMultiSelect
-                      selectedItems={selectedSpecimenItems}
-                      onSelectionChange={(items) => {
-                        setSelectedSpecimenItems(items);
-                        if (items.length > 0) {
-                          setSpecimenError(null);
-                        }
-                      }}
-                      placeholder="Select rock/mineral types..."
-                      onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
-                    />
-                    <FormDescription>
-                      What types of rocks are in this batch?
-                    </FormDescription>
-                    {specimenError && (
-                      <p className="text-sm font-medium text-destructive">{specimenError}</p>
-                    )}
-                  </FormItem>
-
-                  <div className="grid gap-6 sm:grid-cols-2">
-                    <FormField
-                      control={form.control}
-                      name="totalWeightGrams"
-                      render={({ field }) => (
-                        <FormItem>
-                          <WeightInput
-                            label="Total Weight"
-                            valueGrams={field.value ?? null}
-                            onValueChange={(grams, unit) => {
-                              field.onChange(grams);
-                              if (unit) setDisplayUnit(unit);
-                            }}
-                          />
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="cost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Cost ($)</FormLabel>
-                          <FormControl>
-                            <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Cost field when in individual weight mode */}
-              {trackIndividualWeights && (
-                <FormField
-                  control={form.control}
-                  name="cost"
-                  render={({ field }) => (
-                    <FormItem className="max-w-xs">
-                      <FormLabel>Cost ($)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" placeholder="0.00" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="condition"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Condition *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select condition" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {CONDITIONS.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="qualityRating"
-                  render={({ field }) => (
-                    <FormItem>
-                      <StarRating
-                        label="Quality"
-                        value={field.value ?? null}
-                        onChange={(val) => field.onChange(val ?? undefined)}
-                        size="md"
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="sizeCategories"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Size Categories</FormLabel>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 p-3 border rounded-md">
-                      {SIZE_CATEGORIES.map(({ value, label }) => (
-                        <div key={value} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`size-${value}`}
-                            checked={field.value?.includes(value) ?? false}
-                            onCheckedChange={(checked) => {
-                              const currentValues = field.value ?? [];
-                              if (checked) {
-                                field.onChange([...currentValues, value]);
-                              } else {
-                                field.onChange(currentValues.filter((v: string) => v !== value));
-                              }
-                            }}
-                          />
-                          <label
-                            htmlFor={`size-${value}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {label}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                    <FormDescription>Select all sizes that apply to this batch</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                  }
+                }}
+                onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
+                error={specimenError}
               />
 
               <FormField

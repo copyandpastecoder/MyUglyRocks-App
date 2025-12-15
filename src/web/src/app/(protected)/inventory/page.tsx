@@ -48,6 +48,10 @@ import {
 } from '@/components/ui/select';
 import Link from 'next/link';
 import type { InventoryListDto, InventoryStatus, SourceType } from '@/types/inventory';
+import {
+  INVENTORY_STATUS_COLORS,
+  INVENTORY_STATUS_LABELS,
+} from '@/lib/inventory-constants';
 
 const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   Store: 'Store',
@@ -56,20 +60,6 @@ const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
   Gift: 'Gift',
   Trade: 'Trade',
   Other: 'Other',
-};
-
-const STATUS_LABELS: Record<InventoryStatus, string> = {
-  Available: 'Available',
-  InUse: 'In Use',
-  Depleted: 'Depleted',
-  Partial: 'Partial',
-};
-
-const STATUS_COLORS: Record<InventoryStatus, string> = {
-  Available: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  InUse: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  Depleted: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200',
-  Partial: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
 };
 
 function formatWeight(grams: number | null, unit: string): string {
@@ -158,8 +148,8 @@ export default function InventoryPage() {
             <p className="text-sm font-medium">{formatWeight(item.remainingWeightGrams, item.displayUnit)}</p>
             <p className="text-xs text-muted-foreground">{formatCost(item.cost)}</p>
           </div>
-          <Badge variant="secondary" className={STATUS_COLORS[item.status]}>
-            {STATUS_LABELS[item.status]}
+          <Badge variant="secondary" className={INVENTORY_STATUS_COLORS[item.status]}>
+            {INVENTORY_STATUS_LABELS[item.status]}
           </Badge>
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -287,7 +277,7 @@ export default function InventoryPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   {activeTab === 'all'
                     ? 'Start tracking your rock collection'
-                    : `No ${STATUS_LABELS[activeTab as InventoryStatus].toLowerCase()} items`}
+                    : `No ${INVENTORY_STATUS_LABELS[activeTab as InventoryStatus].toLowerCase()} items`}
                 </p>
                 {activeTab === 'all' && (
                   <Button asChild>

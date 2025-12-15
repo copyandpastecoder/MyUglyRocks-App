@@ -6,8 +6,11 @@ public class InventorySpecimen : BaseEntity
     public Guid InventoryId { get; set; }
     public Guid? SpecimenId { get; set; }
     public Guid? UserSpecimenId { get; set; }
-    public int? EstimatedPercentage { get; set; } // 0-100
     public decimal? WeightGrams { get; set; } // Individual specimen weight
+    public decimal? Cost { get; set; } // Cost for this specimen
+    public InventoryCondition? Condition { get; set; } // Condition of this specimen
+    public int? QualityRating { get; set; } // Quality 1-5 stars
+    public string? SizeCategories { get; set; } // Comma-separated size categories
     public string? Notes { get; set; }
 
     // Navigation properties

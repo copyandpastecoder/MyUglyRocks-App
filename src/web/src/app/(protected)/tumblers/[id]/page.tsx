@@ -89,12 +89,12 @@ type BarrelFormValues = {
 
 export default function EditTumblerPage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const queryClient = useQueryClient();
   const tumblerId = params.id as string;
 
   const [editingBarrel, setEditingBarrel] = useState<BarrelDto | null>(null);
-  const [isAddingBarrel, setIsAddingBarrel] = useState(false);
+  const [_isAddingBarrel, setIsAddingBarrel] = useState(false);
 
   const { data: tumbler, isLoading } = useQuery({
     queryKey: ['tumbler', tumblerId],

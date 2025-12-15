@@ -195,7 +195,7 @@ export function Confetti({
 export function useConfetti() {
   const [isActive, setIsActive] = useState(false);
 
-  const fire = useCallback((options?: { origin?: { x: number; y: number } }) => {
+  const fire = useCallback((_options?: { origin?: { x: number; y: number } }) => {
     setIsActive(true);
   }, []);
 

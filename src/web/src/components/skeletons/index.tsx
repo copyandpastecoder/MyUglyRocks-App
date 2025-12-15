@@ -52,7 +52,7 @@ export function StatsGridSkeleton({ count = 4 }: { count?: number }) {
 /**
  * Card skeleton for list items (tumblers, cycles, etc.)
  */
-export function CardSkeleton({ height = 'h-48' }: { height?: string }) {
+export function CardSkeleton({ height: _height = 'h-48' }: { height?: string }) {
   return (
     <Card>
       <CardHeader className="pb-2">
