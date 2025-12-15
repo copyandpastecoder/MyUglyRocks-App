@@ -173,6 +173,7 @@ export default function CycleDetailPage() {
   const [issueContamination, setIssueContamination] = useState(false);
   const [lessonsLearned, setLessonsLearned] = useState('');
   const [nextAction, setNextAction] = useState<string>('');
+  const [nextActionError, setNextActionError] = useState(false);
   const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
   const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
   // Barrel capacity for the stage being completed (for validation)
@@ -830,6 +831,12 @@ export default function CycleDetailPage() {
     setCompleteStageDurationHours(String(hours));
     // Store cleaning run info for display
     setCompleteStageCleaningRun(stage.cleaningRun);
+    // Reset form state
+    setNextAction('');
+    setNextActionError(false);
+    setResultRating(0);
+    setLessonsLearned('');
+    setLoadWeightAfterGrams(null);
     setIsCompleteStageOpen(true);
 
     // Fetch full stage details to get weight before and barrel capacity
@@ -858,7 +865,8 @@ export default function CycleDetailPage() {
 
     // What's next is always required
     if (!nextAction) {
-      toast.error('Please select what\'s next for this cycle');
+      setNextActionError(true);
+      toast.error('Please select what\'s next for this cycle', { duration: 5000 });
       return;
     }
 
@@ -2276,21 +2284,40 @@ export default function CycleDetailPage() {
 
             {/* What's Next */}
             <div className="space-y-2">
-              <Label>What&apos;s next? *</Label>
-              <RadioGroup value={nextAction} onValueChange={setNextAction}>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Advance" id="advance" />
-                  <Label htmlFor="advance">Advance to next stage</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Repeat" id="repeat" />
-                  <Label htmlFor="repeat">Repeat this stage</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Abort" id="abort" />
-                  <Label htmlFor="abort">Stop here (abort / re-cut stones)</Label>
-                </div>
-              </RadioGroup>
+              <Label className={nextActionError ? 'text-destructive' : ''}>
+                What&apos;s next? *
+              </Label>
+              <div className={`rounded-lg p-3 border-2 transition-colors ${
+                nextActionError
+                  ? 'border-destructive bg-destructive/5 animate-pulse'
+                  : 'border-transparent'
+              }`}>
+                <RadioGroup
+                  value={nextAction}
+                  onValueChange={(value) => {
+                    setNextAction(value);
+                    setNextActionError(false);
+                  }}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Advance" id="advance" />
+                    <Label htmlFor="advance">Advance to next stage</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Repeat" id="repeat" />
+                    <Label htmlFor="repeat">Repeat this stage</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Abort" id="abort" />
+                    <Label htmlFor="abort">Stop here (abort / re-cut stones)</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              {nextActionError && (
+                <p className="text-sm text-destructive font-medium">
+                  Please select what happens next
+                </p>
+              )}
             </div>
 
             {/* Cleaning Run Display */}
