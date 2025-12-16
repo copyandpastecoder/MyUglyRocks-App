@@ -239,7 +239,7 @@ public class ReferenceDataService : IReferenceDataService
         );
     }
 
-    public async Task<SpecimenDetailDto> CreateSpecimenAsync(CreateSpecimenRequest request)
+    public async Task<SpecimenDetailDto> CreateSpecimenAsync(CreateSpecimenRequest request, Guid userId)
     {
         var specimen = new Specimen
         {
@@ -261,7 +261,9 @@ public class ReferenceDataService : IReferenceDataService
             RecommendedGritSequence = request.RecommendedGritSequence,
             SpecialConsiderations = request.SpecialConsiderations,
             Notes = request.Notes,
-            IsActive = true
+            IsActive = true,
+            UserCreated = userId,
+            UserUpdated = userId
         };
 
         _context.Set<Specimen>().Add(specimen);
@@ -273,7 +275,7 @@ public class ReferenceDataService : IReferenceDataService
         return specimen.Adapt<SpecimenDetailDto>();
     }
 
-    public async Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid specimenId, UpdateSpecimenRequest request)
+    public async Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid specimenId, UpdateSpecimenRequest request, Guid userId)
     {
         var specimen = await _context.Set<Specimen>().FindAsync(specimenId)
             ?? throw new InvalidOperationException("Specimen not found");
@@ -297,7 +299,7 @@ public class ReferenceDataService : IReferenceDataService
         specimen.SpecialConsiderations = request.SpecialConsiderations;
         specimen.Notes = request.Notes;
         specimen.IsActive = request.IsActive;
-        specimen.DateUpdated = DateTime.UtcNow;
+        specimen.UserUpdated = userId;
 
         await _context.SaveChangesAsync();
 

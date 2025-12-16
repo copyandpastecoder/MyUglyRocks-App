@@ -17,5 +17,5 @@ Write-Host ""
 # Use railway run to inject PGHOST and PGPORT, then run docker with those vars
 railway run -- powershell -Command {
     Write-Host "Connecting to: $env:PGHOST`:$env:PGPORT" -ForegroundColor Green
-    docker run --rm -it -p 127.0.0.1:5433:5432 -e PGHOST=$env:PGHOST -e PGPORT=$env:PGPORT railway-proxy
+    docker run --rm -it -p 127.0.0.1:5433:5432 -e "PGHOST=$env:PGHOST" -e "PGPORT=$env:PGPORT" railway-proxy
 }

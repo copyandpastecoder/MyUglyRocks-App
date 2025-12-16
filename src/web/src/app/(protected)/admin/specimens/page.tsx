@@ -395,6 +395,27 @@ export default function SpecimensAdminPage() {
               </div>
             </div>
 
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="species">Species</Label>
+                <Input
+                  id="species"
+                  value={formData.species}
+                  onChange={(e) => setFormData({ ...formData, species: e.target.value })}
+                  placeholder="e.g., Chalcedony"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="variety">Variety</Label>
+                <Input
+                  id="variety"
+                  value={formData.variety}
+                  onChange={(e) => setFormData({ ...formData, variety: e.target.value })}
+                  placeholder="e.g., Blue Lace"
+                />
+              </div>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="materialType">Material Type</Label>

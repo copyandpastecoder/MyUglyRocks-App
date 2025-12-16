@@ -47,6 +47,8 @@ public class InventoryPhotoProcessingJob
         if (photo == null)
         {
             _logger.LogWarning("Inventory photo {PhotoId} not found for thumbnail processing", photoId);
+            // Clean up temp file since continuation job won't run
+            await CleanupTempFileAsync(tempStorageKey);
             return;
         }
 
@@ -61,6 +63,8 @@ public class InventoryPhotoProcessingJob
                 photo.ProcessingError = "Temp image not found";
                 photo.DateUpdated = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync();
+                // Attempt cleanup in case the file still exists (handles exceptions internally)
+                await CleanupTempFileAsync(tempStorageKey);
                 return;
             }
 
@@ -99,6 +103,10 @@ public class InventoryPhotoProcessingJob
             photo.DateUpdated = DateTime.UtcNow;
 
             await _dbContext.SaveChangesAsync();
+
+            // Clean up temp file since continuation job won't run on failure
+            await CleanupTempFileAsync(tempStorageKey);
+            throw; // Re-throw so Hangfire marks job as failed and doesn't run continuation
         }
     }
 
@@ -131,6 +139,8 @@ public class InventoryPhotoProcessingJob
             if (inputStream == null)
             {
                 _logger.LogError("Temp image not found in R2 for inventory photo {PhotoId}: {Key}", photoId, tempStorageKey);
+                // Attempt cleanup in case the file still exists
+                await CleanupTempFileAsync(tempStorageKey);
                 return;
             }
 

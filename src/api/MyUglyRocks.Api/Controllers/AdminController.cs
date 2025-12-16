@@ -323,7 +323,10 @@ public class AdminController : ControllerBase
     public async Task<ActionResult<SpecimenDetailDto>> CreateSpecimen(
         [FromBody] CreateSpecimenRequest request)
     {
-        var specimen = await _referenceDataService.CreateSpecimenAsync(request);
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized();
+
+        var specimen = await _referenceDataService.CreateSpecimenAsync(request, userId.Value);
         return CreatedAtAction(nameof(GetSpecimen), new { specimenId = specimen.SpecimenId }, specimen);
     }
 
@@ -352,9 +355,12 @@ public class AdminController : ControllerBase
         Guid specimenId,
         [FromBody] UpdateSpecimenRequest request)
     {
+        var userId = GetCurrentUserId();
+        if (userId == null) return Unauthorized();
+
         try
         {
-            var specimen = await _referenceDataService.UpdateSpecimenAsync(specimenId, request);
+            var specimen = await _referenceDataService.UpdateSpecimenAsync(specimenId, request, userId.Value);
             return Ok(specimen);
         }
         catch (InvalidOperationException)
