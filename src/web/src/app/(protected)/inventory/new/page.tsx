@@ -6,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCreateInventory, useUploadInventoryPhoto } from '@/hooks/use-inventory';
+import { useInventorySource } from '@/hooks/use-inventory-sources';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,33 +20,21 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import { StagedPhotoUpload, type StagedPhoto } from '@/components/staged-photo-upload';
 import { SpecimenRowList, type SpecimenRowItem } from '@/components/specimen-row-list';
+import { InventorySourcePicker } from '@/components/inventory-source-picker';
+import { InventorySourceFormDialog } from '@/components/inventory-source-form-dialog';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import type { SourceType } from '@/types/inventory';
-import { SOURCE_TYPE_OPTIONS } from '@/lib/inventory-constants';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   acquiredDate: z.string().min(1, 'Acquired date is required'),
-  sourceType: z.string().min(1, 'Source type is required'),
-  sourceName: z.string().min(1, 'Source name is required').max(255),
-  sourceLocation: z.string().max(255).optional(),
-  sourceUrl: z.string().url().max(500).optional().or(z.literal('')),
+  inventorySourceId: z.string().nullable(),
   storageLocation: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
-  isFavorite: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -55,15 +44,33 @@ export default function NewInventoryPage() {
   const [specimenRows, setSpecimenRows] = useState<SpecimenRowItem[]>([]);
   const [specimenError, setSpecimenError] = useState<string | null>(null);
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
+  const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);
   const [stagedPhotos, setStagedPhotos] = useState<StagedPhoto[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createMutation = useCreateInventory();
   const uploadPhotoMutation = useUploadInventoryPhoto();
 
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      acquiredDate: new Date().toISOString().split('T')[0],
+      inventorySourceId: null,
+      storageLocation: '',
+      notes: '',
+    },
+  });
+
+  // Watch inventory source for auto-populating name
+  const inventorySourceId = form.watch('inventorySourceId');
+  const acquiredDate = form.watch('acquiredDate');
+
+  // Fetch source details for name generation
+  const { data: selectedSource } = useInventorySource(inventorySourceId);
+
   // Handle when a custom specimen is created - add a new row with that specimen pre-selected
   const handleCustomSpecimenCreated = (data: CustomSpecimenCreatedData) => {
-    // Create a new row with the custom specimen already selected
     const newRow: SpecimenRowItem = {
       id: crypto.randomUUID(),
       selectedId: data.userSpecimenId,
@@ -77,37 +84,20 @@ export default function NewInventoryPage() {
       condition: 'Raw',
       qualityRating: null,
       sizeCategories: [],
+      status: 'Available',
+      storageLocation: undefined,
+      url: undefined,
     };
     setSpecimenRows(prev => [...prev, newRow]);
     setSpecimenError(null);
   };
 
-  const form = useForm<FormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
-    resolver: zodResolver(formSchema) as any,
-    defaultValues: {
-      name: '',
-      acquiredDate: new Date().toISOString().split('T')[0],
-      sourceType: '',
-      sourceName: '',
-      sourceLocation: '',
-      sourceUrl: '',
-      storageLocation: '',
-      notes: '',
-      isFavorite: false,
-    },
-  });
-
-  // Watch fields for auto-populating name
-  const sourceName = form.watch('sourceName');
-  const acquiredDate = form.watch('acquiredDate');
-
-  // Auto-populate name based on SourceName, Specimens, and Date
+  // Auto-populate name based on Source Name, Specimens, and Date
   useEffect(() => {
     const parts: string[] = [];
 
-    if (sourceName?.trim()) {
-      parts.push(sourceName.trim());
+    if (selectedSource?.name?.trim()) {
+      parts.push(selectedSource.name.trim());
     }
 
     // Get specimen names from rows
@@ -133,7 +123,7 @@ export default function NewInventoryPage() {
     if (parts.length > 0) {
       form.setValue('name', parts.join(' - '));
     }
-  }, [sourceName, specimenRows, acquiredDate, form]);
+  }, [selectedSource, specimenRows, acquiredDate, form]);
 
   const onSubmit = async (data: FormValues) => {
     // Validate specimens
@@ -154,20 +144,20 @@ export default function NewInventoryPage() {
       condition: row.condition,
       qualityRating: row.qualityRating ?? undefined,
       sizeCategories: row.sizeCategories.length > 0 ? row.sizeCategories : undefined,
+      notes: row.notes || undefined,
+      status: row.status,
+      storageLocation: row.storageLocation || undefined,
+      url: row.url || undefined,
     }));
 
     try {
       const inventory = await createMutation.mutateAsync({
         name: data.name,
         acquiredDate: data.acquiredDate,
-        sourceType: data.sourceType as SourceType,
-        sourceName: data.sourceName || undefined,
-        sourceLocation: data.sourceLocation || undefined,
-        sourceUrl: data.sourceUrl || undefined,
+        inventorySourceId: data.inventorySourceId || undefined,
         displayUnit: 'lb',
         storageLocation: data.storageLocation || undefined,
         notes: data.notes || undefined,
-        isFavorite: data.isFavorite,
         specimens: specimensPayload,
       });
 
@@ -233,86 +223,27 @@ export default function NewInventoryPage() {
                 )}
               />
 
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="sourceType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Source Type *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select source type..." />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {SOURCE_TYPE_OPTIONS.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="sourceName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Source Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Store name, website, location..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="sourceLocation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="City, State or general area" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="sourceUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="https://..."
-                          {...field}
-                          onBlur={(e) => {
-                            let value = e.target.value.trim();
-                            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
-                              value = 'https://' + value;
-                              field.onChange(value);
-                            }
-                            field.onBlur();
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              <FormField
+                control={form.control}
+                name="inventorySourceId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Source</FormLabel>
+                    <FormControl>
+                      <InventorySourcePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                        onAddNew={() => setIsAddSourceDialogOpen(true)}
+                        placeholder="Select where you acquired this..."
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Where did you get this material? <Link href="/inventory/sources" className="text-primary hover:underline">Manage sources</Link>
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Specimens - expandable cards with all fields */}
               <SpecimenRowList
@@ -358,27 +289,6 @@ export default function NewInventoryPage() {
                       />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="isFavorite"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Favorite</FormLabel>
-                      <FormDescription>
-                        Mark this as a favorite for quick filtering
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -438,6 +348,13 @@ export default function NewInventoryPage() {
         open={isAddSpecimenDialogOpen}
         onOpenChange={setIsAddSpecimenDialogOpen}
         onSuccess={handleCustomSpecimenCreated}
+      />
+
+      {/* Add Source Dialog */}
+      <InventorySourceFormDialog
+        open={isAddSourceDialogOpen}
+        onOpenChange={setIsAddSourceDialogOpen}
+        onSuccess={(sourceId) => form.setValue('inventorySourceId', sourceId)}
       />
     </div>
   );

@@ -1,3 +1,6 @@
+import { InventorySourceSummaryDto } from './inventory-source';
+
+// Legacy SourceType - kept for backwards compatibility
 export type SourceType = 'Store' | 'Online' | 'Found' | 'Gift' | 'Trade' | 'Other';
 export type InventoryCondition = 'Raw' | 'PreShaped' | 'Tumbled' | 'Polished' | 'Mixed';
 export type InventoryStatus = 'Available' | 'InUse' | 'Depleted' | 'Partial';
@@ -7,20 +10,16 @@ export interface InventoryDto {
   inventoryId: string;
   name: string;
   acquiredDate: string;
-  sourceType: SourceType;
-  sourceName: string | null;
-  sourceLocation: string | null;
-  sourceUrl: string | null;
+  inventorySourceId: string | null;
+  inventorySource: InventorySourceSummaryDto | null;
   totalWeightGrams: number | null;
   remainingWeightGrams: number | null;
   displayUnit: string;
   cost: number | null;  // Aggregated from specimens
   sizeCategories: SizeCategory[] | null;  // Aggregated from specimens
   qualityRating: number | null;  // Aggregated from specimens (average)
-  status: InventoryStatus;
   storageLocation: string | null;
   notes: string | null;
-  isFavorite: boolean;
   dateCreated: string;
   dateUpdated: string;
   specimens: InventorySpecimenDto[];
@@ -29,56 +28,73 @@ export interface InventoryDto {
   displayTotalWeight: number | null;
   displayRemainingWeight: number | null;
   photoCount: number;
+  // Legacy fields for backwards compatibility
+  sourceType: SourceType;
+  sourceName: string | null;
+  sourceLocation: string | null;
+  sourceUrl: string | null;
+  status: InventoryStatus;
+  isFavorite: boolean;
 }
 
 export interface InventoryListDto {
   inventoryId: string;
   name: string;
   acquiredDate: string;
-  sourceType: SourceType;
-  sourceName: string | null;
+  inventorySourceId: string | null;
+  sourceType: string | null;  // From InventorySource
+  sourceName: string | null;  // From InventorySource.Name
   totalWeightGrams: number | null;
   remainingWeightGrams: number | null;
   displayUnit: string;
   cost: number | null;  // Aggregated from specimens
   qualityRating: number | null;  // Aggregated from specimens (average)
-  status: InventoryStatus;
-  isFavorite: boolean;
   dateCreated: string;
   specimenCount: number;
   photoCount: number;
   coverPhotoUrl: string | null;
   coverPhotoThumbnailUrl: string | null;
+  // Specimen status counts
+  availableCount: number;
+  inUseCount: number;
+  depletedCount: number;
+  // Legacy fields for backwards compatibility
+  status: InventoryStatus;
+  isFavorite: boolean;
 }
 
 export interface CreateInventoryRequest {
   name: string;
   acquiredDate: string;
-  sourceType: SourceType;
+  inventorySourceId?: string;
+  displayUnit?: string;
+  storageLocation?: string;
+  notes?: string;
+  specimens?: CreateInventorySpecimenRequest[];
+  // Legacy fields for backwards compatibility
+  sourceType?: SourceType;
   sourceName?: string;
   sourceLocation?: string;
   sourceUrl?: string;
-  displayUnit?: string;
   status?: InventoryStatus;
-  storageLocation?: string;
-  notes?: string;
   isFavorite?: boolean;
-  specimens?: CreateInventorySpecimenRequest[];
 }
 
 export interface UpdateInventoryRequest {
   name: string;
   acquiredDate: string;
-  sourceType: SourceType;
+  inventorySourceId?: string;
+  displayUnit?: string;
+  storageLocation?: string;
+  notes?: string;
+  specimens?: CreateInventorySpecimenRequest[];
+  // Legacy fields for backwards compatibility
+  sourceType?: SourceType;
   sourceName?: string;
   sourceLocation?: string;
   sourceUrl?: string;
-  displayUnit?: string;
   status?: InventoryStatus;
-  storageLocation?: string;
-  notes?: string;
   isFavorite?: boolean;
-  specimens?: CreateInventorySpecimenRequest[];
 }
 
 export interface UpdateInventoryStatusRequest {
@@ -103,6 +119,9 @@ export interface InventorySpecimenDto {
   qualityRating: number | null;
   sizeCategories: SizeCategory[] | null;
   notes: string | null;
+  status: InventoryStatus;
+  storageLocation: string | null;
+  url: string | null;
   source: 'system' | 'user';
 }
 
@@ -115,6 +134,9 @@ export interface CreateInventorySpecimenRequest {
   qualityRating?: number;
   sizeCategories?: SizeCategory[];
   notes?: string;
+  status?: InventoryStatus;
+  storageLocation?: string;
+  url?: string;
 }
 
 export interface InventoryPhotoDto {

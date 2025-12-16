@@ -95,6 +95,21 @@ export const queryKeys = {
     stats: () => [...queryKeys.inventory.all, 'stats'] as const,
   },
 
+  // Inventory Sources
+  inventorySources: {
+    all: ['inventorySources'] as const,
+    lists: () => [...queryKeys.inventorySources.all, 'list'] as const,
+    list: (filters?: {
+      sourceType?: string;
+      isActive?: boolean;
+      search?: string;
+      sortBy?: string;
+      sortOrder?: string;
+    }) => [...queryKeys.inventorySources.lists(), filters] as const,
+    details: () => [...queryKeys.inventorySources.all, 'detail'] as const,
+    detail: (id: string) => [...queryKeys.inventorySources.details(), id] as const,
+  },
+
   // User Specimens (custom specimens)
   userSpecimens: {
     all: ['userSpecimens'] as const,

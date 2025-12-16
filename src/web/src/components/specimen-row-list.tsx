@@ -1,11 +1,12 @@
 'use client';
 
 import * as React from 'react';
-import { Plus, X, ChevronDown, ChevronRight, DollarSign, ChevronsUpDown, Search, Settings2, User } from 'lucide-react';
+import { Plus, X, ChevronDown, ChevronRight, DollarSign, ChevronsUpDown, Search, Settings2, User, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { WeightInput } from '@/components/weight-input';
 import {
   Select,
@@ -40,11 +41,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { StarRating } from '@/components/star-rating';
 import { useSpecimenSearch } from '@/hooks/use-user-specimens';
 import { useSettings } from '@/hooks/use-user';
 import { cn } from '@/lib/utils';
-import type { InventoryCondition, SizeCategory } from '@/types/inventory';
+import type { InventoryCondition, InventoryStatus, SizeCategory } from '@/types/inventory';
 import type { SpecimenOptionDto } from '@/types/user-specimen';
 
 // Column visibility configuration - same as SpecimenMultiSelect
@@ -88,6 +99,13 @@ const SIZE_CATEGORIES: { value: SizeCategory; label: string }[] = [
   { value: 'Assorted', label: 'Assorted' },
 ];
 
+const STATUSES: { value: InventoryStatus; label: string }[] = [
+  { value: 'Available', label: 'Available' },
+  { value: 'InUse', label: 'In Use' },
+  { value: 'Partial', label: 'Partial' },
+  { value: 'Depleted', label: 'Depleted' },
+];
+
 export interface SpecimenRowItem {
   id: string; // unique row id
   specimenId?: string;
@@ -103,6 +121,9 @@ export interface SpecimenRowItem {
   qualityRating: number | null;
   sizeCategories: SizeCategory[];
   notes?: string;
+  status: InventoryStatus;
+  storageLocation?: string;
+  url?: string;
 }
 
 interface SpecimenRowListProps {
@@ -128,6 +149,8 @@ export function SpecimenRowList({
   // Search query for specimen dropdown
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
+  // Delete confirmation state
+  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
 
   // Read metric preference from sessionStorage (shared with WeightInput)
   // Re-check on each render to stay in sync with WeightInput toggles
@@ -231,11 +254,18 @@ export function SpecimenRowList({
     }
   };
 
-  // Auto-expand newly added rows
+  // Auto-expand newly added rows (but not on initial load)
   const prevSpecimensLengthRef = React.useRef(specimens.length);
+  const isInitialLoadRef = React.useRef(true);
   React.useEffect(() => {
+    // Skip auto-expand on initial load (when specimens go from 0 to N)
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      prevSpecimensLengthRef.current = specimens.length;
+      return;
+    }
     if (specimens.length > prevSpecimensLengthRef.current) {
-      // A new row was added, expand it
+      // A new row was added by the user, expand it
       const newRow = specimens[specimens.length - 1];
       if (newRow) {
         setExpandedRows(prev => new Set(prev).add(newRow.id));
@@ -256,19 +286,46 @@ export function SpecimenRowList({
       condition: 'Raw',
       qualityRating: null,
       sizeCategories: [],
+      status: 'Available',
+      storageLocation: undefined,
+      url: undefined,
     };
     onSpecimensChange([...specimens, newRow]);
   };
 
   // Remove a row
-  const removeRow = (rowId: string, e?: React.MouseEvent) => {
+  // Check if a specimen row has any values filled in
+  const hasValues = (row: SpecimenRowItem): boolean => {
+    return !!(
+      row.selectedId ||
+      row.weightGrams ||
+      row.cost ||
+      row.qualityRating ||
+      row.sizeCategories.length > 0 ||
+      row.notes
+    );
+  };
+
+  // Request to remove a row - show confirmation if it has values
+  const requestRemoveRow = (rowId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
+    const row = specimens.find(s => s.id === rowId);
+    if (row && hasValues(row)) {
+      setDeleteConfirmId(rowId);
+    } else {
+      removeRow(rowId);
+    }
+  };
+
+  // Actually remove a row
+  const removeRow = (rowId: string) => {
     setExpandedRows(prev => {
       const next = new Set(prev);
       next.delete(rowId);
       return next;
     });
     onSpecimensChange(specimens.filter(s => s.id !== rowId));
+    setDeleteConfirmId(null);
   };
 
   // Toggle row expansion
@@ -398,6 +455,27 @@ export function SpecimenRowList({
           Add Specimen
         </Button>
       </div>
+
+      {/* Summary Header - shows above specimen rows */}
+      {specimens.length > 0 && totals.count > 0 && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground pb-2 border-b">
+          <span className="font-medium">
+            {totals.count} specimen{totals.count !== 1 ? 's' : ''}
+          </span>
+          <span>Weight: {formatTotalWeight()}</span>
+          {totals.totalCost > 0 && (
+            <span>Cost: ${totals.totalCost.toFixed(2)}</span>
+          )}
+          {totals.avgQuality && (
+            <span>Avg Quality: {totals.avgQuality}★</span>
+          )}
+          {totals.allSizes.length > 0 && (
+            <span>
+              Sizes: {totals.allSizes.map(s => SIZE_CATEGORIES.find(sc => sc.value === s)?.label).join(', ')}
+            </span>
+          )}
+        </div>
+      )}
 
       {specimens.length === 0 ? (
         <p className="text-sm text-muted-foreground py-4 text-center border rounded-md">
@@ -586,7 +664,7 @@ export function SpecimenRowList({
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 shrink-0"
-                        onClick={(e) => removeRow(row.id, e)}
+                        onClick={(e) => requestRemoveRow(row.id, e)}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -701,6 +779,69 @@ export function SpecimenRowList({
                           </div>
                         </div>
                       </div>
+
+                      {/* Row 3: Status, Storage Location, URL */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {/* Status */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Status</Label>
+                          <Select
+                            value={row.status}
+                            onValueChange={(value) =>
+                              updateField(row.id, 'status', value as InventoryStatus)
+                            }
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUSES.map(({ value, label }) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Storage Location */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Storage Location</Label>
+                          <Input
+                            placeholder="e.g., Shelf A, Bin 3"
+                            value={row.storageLocation || ''}
+                            onChange={(e) =>
+                              updateField(row.id, 'storageLocation', e.target.value || undefined)
+                            }
+                            className="h-8 text-sm"
+                          />
+                        </div>
+
+                        {/* URL */}
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">URL</Label>
+                          <Input
+                            type="url"
+                            placeholder="https://..."
+                            value={row.url || ''}
+                            onChange={(e) =>
+                              updateField(row.id, 'url', e.target.value || undefined)
+                            }
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Notes */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Notes</Label>
+                        <Textarea
+                          placeholder="Notes about this specimen..."
+                          className="min-h-[60px] text-sm resize-none"
+                          value={row.notes || ''}
+                          onChange={(e) => updateField(row.id, 'notes', e.target.value || undefined)}
+                        />
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </div>
@@ -710,30 +851,33 @@ export function SpecimenRowList({
         </div>
       )}
 
-      {/* Totals Footer */}
-      {specimens.length > 0 && totals.count > 0 && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground pt-2 border-t">
-          <span className="font-medium">
-            {totals.count} specimen{totals.count !== 1 ? 's' : ''}
-          </span>
-          <span>Weight: {formatTotalWeight()}</span>
-          {totals.totalCost > 0 && (
-            <span>Cost: ${totals.totalCost.toFixed(2)}</span>
-          )}
-          {totals.avgQuality && (
-            <span>Avg Quality: {totals.avgQuality}★</span>
-          )}
-          {totals.allSizes.length > 0 && (
-            <span>
-              Sizes: {totals.allSizes.map(s => SIZE_CATEGORIES.find(sc => sc.value === s)?.label).join(', ')}
-            </span>
-          )}
-        </div>
-      )}
-
       {error && (
         <p className="text-sm font-medium text-destructive">{error}</p>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Remove Specimen
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This specimen has data entered. Are you sure you want to remove it? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirmId && removeRow(deleteConfirmId)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

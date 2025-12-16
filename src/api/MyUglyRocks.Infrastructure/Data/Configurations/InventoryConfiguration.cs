@@ -29,6 +29,10 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
             .HasColumnName("acquired_date")
             .IsRequired();
 
+        builder.Property(i => i.InventorySourceId)
+            .HasColumnName("inventory_source_id");
+
+        // Legacy fields - kept for migration, will be removed after migration
         builder.Property(i => i.SourceType)
             .HasColumnName("source_type");
 
@@ -103,6 +107,11 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
             .HasForeignKey(i => i.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(i => i.InventorySource)
+            .WithMany(s => s.Inventories)
+            .HasForeignKey(i => i.InventorySourceId)
+            .OnDelete(DeleteBehavior.Restrict);
+
         // Indexes
         builder.HasIndex(i => i.UserId)
             .HasDatabaseName("ix_inventory_user_id");
@@ -118,6 +127,9 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
 
         builder.HasIndex(i => i.IsFavorite)
             .HasDatabaseName("ix_inventory_is_favorite");
+
+        builder.HasIndex(i => i.InventorySourceId)
+            .HasDatabaseName("ix_inventory_source_id");
     }
 }
 
@@ -164,6 +176,18 @@ public class InventorySpecimenConfiguration : IEntityTypeConfiguration<Inventory
         builder.Property(i => i.Notes)
             .HasColumnName("notes");
 
+        builder.Property(i => i.Status)
+            .HasColumnName("status")
+            .HasDefaultValue(InventoryStatus.Available);
+
+        builder.Property(i => i.StorageLocation)
+            .HasColumnName("storage_location")
+            .HasMaxLength(255);
+
+        builder.Property(i => i.Url)
+            .HasColumnName("url")
+            .HasMaxLength(500);
+
         builder.Property(i => i.DateCreated)
             .HasColumnName("date_created")
             .HasDefaultValueSql("now()");
@@ -202,6 +226,12 @@ public class InventorySpecimenConfiguration : IEntityTypeConfiguration<Inventory
 
         builder.HasIndex(i => i.UserSpecimenId)
             .HasDatabaseName("ix_inventory_specimens_user_specimen_id");
+
+        builder.HasIndex(i => i.Status)
+            .HasDatabaseName("ix_inventory_specimens_status");
+
+        builder.HasIndex(i => new { i.InventoryId, i.Status })
+            .HasDatabaseName("ix_inventory_specimens_inventory_status");
     }
 }
 

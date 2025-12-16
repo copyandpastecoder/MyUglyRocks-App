@@ -554,6 +554,16 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("date_updated")
                         .HasDefaultValueSql("now()");
 
+                    b.Property<Guid?>("InventorySpecimenId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_specimen_id");
+
+                    b.Property<bool>("MarkDepletedOnComplete")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("mark_depleted_on_complete");
+
                     b.Property<Guid?>("SpecimenId")
                         .HasColumnType("uuid")
                         .HasColumnName("specimen_id");
@@ -566,6 +576,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
                     b.HasIndex("CycleId")
                         .HasDatabaseName("ix_cycle_specimens_cycle_id");
+
+                    b.HasIndex("InventorySpecimenId")
+                        .HasDatabaseName("ix_cycle_specimens_inventory_specimen_id");
 
                     b.HasIndex("SpecimenId")
                         .HasDatabaseName("ix_cycle_specimens_specimen_id");
@@ -619,6 +632,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("character varying(10)")
                         .HasDefaultValue("g")
                         .HasColumnName("display_unit");
+
+                    b.Property<Guid?>("InventorySourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_source_id");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -697,6 +714,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
                     b.HasIndex("AcquiredDate")
                         .HasDatabaseName("ix_inventory_acquired_date");
+
+                    b.HasIndex("InventorySourceId")
+                        .HasDatabaseName("ix_inventory_source_id");
 
                     b.HasIndex("IsFavorite")
                         .HasDatabaseName("ix_inventory_is_favorite");
@@ -850,6 +870,85 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.ToTable("inventory_photos", (string)null);
                 });
 
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySource", b =>
+                {
+                    b.Property<Guid>("InventorySourceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("inventory_source_id")
+                        .HasDefaultValueSql("gen_random_uuid()");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<DateTime>("DateCreated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_created")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<DateTime>("DateUpdated")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_updated")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true)
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("location");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("phone");
+
+                    b.Property<int>("SourceType")
+                        .HasColumnType("integer")
+                        .HasColumnName("source_type");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("url");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("InventorySourceId");
+
+                    b.HasIndex("UserId", "IsActive")
+                        .HasDatabaseName("ix_inventory_sources_user_active");
+
+                    b.HasIndex("UserId", "SourceType", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_inventory_sources_user_type_name");
+
+                    b.ToTable("inventory_sources", null, t =>
+                        {
+                            t.HasCheckConstraint("chk_inventory_sources_name_not_blank", "TRIM(name) <> ''");
+                        });
+                });
+
             modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySpecimen", b =>
                 {
                     b.Property<Guid>("InventorySpecimenId")
@@ -900,6 +999,22 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("specimen_id");
 
+                    b.Property<int>("Status")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("status");
+
+                    b.Property<string>("StorageLocation")
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("storage_location");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("url");
+
                     b.Property<Guid?>("UserSpecimenId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_specimen_id");
@@ -917,8 +1032,14 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasIndex("SpecimenId")
                         .HasDatabaseName("ix_inventory_specimens_specimen_id");
 
+                    b.HasIndex("Status")
+                        .HasDatabaseName("ix_inventory_specimens_status");
+
                     b.HasIndex("UserSpecimenId")
                         .HasDatabaseName("ix_inventory_specimens_user_specimen_id");
+
+                    b.HasIndex("InventoryId", "Status")
+                        .HasDatabaseName("ix_inventory_specimens_inventory_status");
 
                     b.ToTable("inventory_specimens", null, t =>
                         {
@@ -2625,6 +2746,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MyUglyRocks.Core.Entities.InventorySpecimen", "InventorySpecimen")
+                        .WithMany("CycleSpecimens")
+                        .HasForeignKey("InventorySpecimenId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MyUglyRocks.Core.Entities.Specimen", "Specimen")
                         .WithMany("CycleSpecimens")
                         .HasForeignKey("SpecimenId")
@@ -2637,6 +2763,8 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
                     b.Navigation("Cycle");
 
+                    b.Navigation("InventorySpecimen");
+
                     b.Navigation("Specimen");
 
                     b.Navigation("UserSpecimen");
@@ -2644,11 +2772,18 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Inventory", b =>
                 {
+                    b.HasOne("MyUglyRocks.Core.Entities.InventorySource", "InventorySource")
+                        .WithMany("Inventories")
+                        .HasForeignKey("InventorySourceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("MyUglyRocks.Core.Entities.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("InventorySource");
 
                     b.Navigation("User");
                 });
@@ -2669,6 +2804,17 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Navigation("Inventory");
 
                     b.Navigation("InventorySpecimen");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySource", b =>
+                {
+                    b.HasOne("MyUglyRocks.Core.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySpecimen", b =>
@@ -2961,6 +3107,16 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Navigation("InventoryPhotos");
 
                     b.Navigation("InventorySpecimens");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySource", b =>
+                {
+                    b.Navigation("Inventories");
+                });
+
+            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySpecimen", b =>
+                {
+                    b.Navigation("CycleSpecimens");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Material", b =>

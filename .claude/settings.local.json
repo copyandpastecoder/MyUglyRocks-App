@@ -80,7 +80,8 @@
       "Bash(jq:*)",
       "Bash(winget search:*)",
       "Bash(Select-Object -First 50)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(Select-Object -Last 30)"
     ],
     "deny": [],
     "ask": []

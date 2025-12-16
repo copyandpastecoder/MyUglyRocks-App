@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, X, Search, AlertTriangle, Plus, User, Settings2 } from 'lucide-react';
+import { ChevronsUpDown, X, Search, AlertTriangle, Plus, User, Settings2, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,9 +27,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSpecimenSearch } from '@/hooks/use-user-specimens';
+import { useAvailableInventorySpecimens, type AvailableInventorySpecimen, type InventoryGroup } from '@/hooks/use-available-inventory-specimens';
 import type { SpecimenOptionDto } from '@/types/user-specimen';
 
 // Column visibility configuration
@@ -55,6 +62,10 @@ const STORAGE_KEY = 'specimen-dropdown-columns';
 export interface SpecimenSelection {
   id: string;
   source: 'system' | 'user';
+  /** For inventory specimens - the inventory specimen ID for linking to the cycle */
+  inventorySpecimenId?: string;
+  /** For inventory specimens - whether to mark as depleted when cycle completes */
+  markDepletedOnComplete?: boolean;
 }
 
 interface SpecimenMultiSelectProps {
@@ -64,6 +75,8 @@ interface SpecimenMultiSelectProps {
   disabled?: boolean;
   onAddCustom?: () => void;  // Callback to open add custom specimen modal
   includePublicSpecimens?: boolean;
+  /** Enable the inventory mode toggle - allows selecting from user's inventory */
+  enableInventoryMode?: boolean;
 }
 
 export function SpecimenMultiSelect({
@@ -73,10 +86,12 @@ export function SpecimenMultiSelect({
   disabled = false,
   onAddCustom,
   includePublicSpecimens = true,
+  enableInventoryMode = false,
 }: SpecimenMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
+  const [inventoryMode, setInventoryMode] = React.useState(false);
 
   // Column visibility state - load from localStorage
   const [visibleColumns, setVisibleColumns] = React.useState<Record<ColumnKey, boolean>>(() => {
@@ -114,8 +129,11 @@ export function SpecimenMultiSelect({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Fetch combined specimens (system + user + public)
+  // Fetch combined specimens (system + user + public) - for normal mode
   const { data: specimens = [], isLoading } = useSpecimenSearch(debouncedSearch, includePublicSpecimens);
+
+  // Fetch inventory specimens - for inventory mode
+  const { data: inventoryGroups = [], isLoading: isLoadingInventory } = useAvailableInventorySpecimens();
 
   // Group specimens by source
   const groupedSpecimens = React.useMemo(() => {
@@ -196,6 +214,80 @@ export function SpecimenMultiSelect({
       (item) => item.id === specimen.id && item.source === specimen.source
     );
   };
+
+  // Inventory mode handlers
+  const isInventorySpecimenSelected = (invSpecimen: AvailableInventorySpecimen) => {
+    return selectedItems.some(
+      (item) => item.inventorySpecimenId === invSpecimen.inventorySpecimenId
+    );
+  };
+
+  const handleInventoryToggle = (invSpecimen: AvailableInventorySpecimen) => {
+    const existingItem = selectedItems.find(
+      (item) => item.inventorySpecimenId === invSpecimen.inventorySpecimenId
+    );
+
+    if (existingItem) {
+      // Remove from selection
+      onSelectionChange(
+        selectedItems.filter((item) => item.inventorySpecimenId !== invSpecimen.inventorySpecimenId)
+      );
+    } else {
+      // Add to selection with inventory specimen link
+      const selection: SpecimenSelection = {
+        id: invSpecimen.specimenId || invSpecimen.userSpecimenId || invSpecimen.inventorySpecimenId,
+        source: invSpecimen.userSpecimenId ? 'user' : 'system',
+        inventorySpecimenId: invSpecimen.inventorySpecimenId,
+        markDepletedOnComplete: false,
+      };
+      onSelectionChange([...selectedItems, selection]);
+    }
+  };
+
+  const handleMarkDepletedToggle = (inventorySpecimenId: string, checked: boolean) => {
+    onSelectionChange(
+      selectedItems.map((item) =>
+        item.inventorySpecimenId === inventorySpecimenId
+          ? { ...item, markDepletedOnComplete: checked }
+          : item
+      )
+    );
+  };
+
+  const handleRemoveInventorySpecimen = (inventorySpecimenId: string) => {
+    onSelectionChange(
+      selectedItems.filter((item) => item.inventorySpecimenId !== inventorySpecimenId)
+    );
+  };
+
+  // Filter inventory groups by search query
+  const filteredInventoryGroups = React.useMemo(() => {
+    if (!searchQuery.trim()) return inventoryGroups;
+    const query = searchQuery.toLowerCase();
+    return inventoryGroups
+      .map((group) => ({
+        ...group,
+        specimens: group.specimens.filter((s) =>
+          s.commonName.toLowerCase().includes(query) ||
+          group.inventoryName.toLowerCase().includes(query)
+        ),
+      }))
+      .filter((group) => group.specimens.length > 0);
+  }, [inventoryGroups, searchQuery]);
+
+  // Get selected inventory specimens for display
+  const selectedInventorySpecimens = React.useMemo(() => {
+    const inventoryItems = selectedItems.filter((item) => item.inventorySpecimenId);
+    return inventoryItems.map((item) => {
+      for (const group of inventoryGroups) {
+        const specimen = group.specimens.find((s) => s.inventorySpecimenId === item.inventorySpecimenId);
+        if (specimen) {
+          return { ...specimen, markDepletedOnComplete: item.markDepletedOnComplete };
+        }
+      }
+      return null;
+    }).filter(Boolean) as (AvailableInventorySpecimen & { markDepletedOnComplete?: boolean })[];
+  }, [selectedItems, inventoryGroups]);
 
   const renderSpecimenItem = (specimen: SpecimenOptionDto) => {
     const selected = isSelected(specimen);
@@ -282,96 +374,222 @@ export function SpecimenMultiSelect({
             <div className="flex items-center border-b px-3">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
               <input
-                placeholder="Search specimens..."
+                placeholder={inventoryMode ? "Search inventory..." : "Search specimens..."}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
               />
-              {/* Column selector dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-1">
-                    <Settings2 className="h-4 w-4" />
-                    <span className="sr-only">Toggle columns</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuLabel>Show Columns</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {AVAILABLE_COLUMNS.map((column) => (
-                    <DropdownMenuCheckboxItem
-                      key={column.key}
-                      checked={visibleColumns[column.key]}
-                      onCheckedChange={() => toggleColumn(column.key)}
-                    >
-                      {column.label}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Inventory mode toggle */}
+              {enableInventoryMode && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "h-8 w-8 p-0 ml-1",
+                          inventoryMode && "bg-blue-500/20 text-blue-500 hover:bg-blue-500/30 hover:text-blue-600"
+                        )}
+                        onClick={() => setInventoryMode(!inventoryMode)}
+                      >
+                        <Package className="h-4 w-4" />
+                        <span className="sr-only">Toggle inventory mode</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{inventoryMode ? "Switch to all specimens" : "Select from my inventory"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {/* Column selector dropdown - only show in normal mode */}
+              {!inventoryMode && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 ml-1">
+                      <Settings2 className="h-4 w-4" />
+                      <span className="sr-only">Toggle columns</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuLabel>Show Columns</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {AVAILABLE_COLUMNS.map((column) => (
+                      <DropdownMenuCheckboxItem
+                        key={column.key}
+                        checked={visibleColumns[column.key]}
+                        onCheckedChange={() => toggleColumn(column.key)}
+                      >
+                        {column.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
 
             <CommandList>
-              {/* Add Custom Specimen Button */}
-              {onAddCustom && (
+              {inventoryMode ? (
+                /* Inventory Mode View */
                 <>
-                  <CommandGroup>
-                    <CommandItem
-                      onSelect={() => {
-                        setOpen(false);
-                        onAddCustom();
-                      }}
-                      className="flex items-center gap-2 cursor-pointer text-primary"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Add Custom Specimen</span>
-                    </CommandItem>
-                  </CommandGroup>
-                  <CommandSeparator />
+                  {isLoadingInventory ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      Loading inventory...
+                    </div>
+                  ) : filteredInventoryGroups.length === 0 ? (
+                    <CommandEmpty>
+                      <div className="text-center py-6">
+                        <p className="text-muted-foreground">
+                          {inventoryGroups.length === 0
+                            ? "No available specimens in your inventory."
+                            : "No matching specimens found."}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Only specimens with &quot;Available&quot; status are shown.
+                        </p>
+                      </div>
+                    </CommandEmpty>
+                  ) : (
+                    <>
+                      {filteredInventoryGroups.map((group) => (
+                        <CommandGroup
+                          key={group.inventoryId}
+                          heading={
+                            <div className="flex items-center gap-2">
+                              <Package className="h-3.5 w-3.5" />
+                              <span>{group.inventoryName}</span>
+                            </div>
+                          }
+                          className="max-h-[180px] overflow-auto"
+                        >
+                          {group.specimens.map((invSpecimen) => {
+                            const selected = isInventorySpecimenSelected(invSpecimen);
+                            const selectedItem = selectedItems.find(
+                              (item) => item.inventorySpecimenId === invSpecimen.inventorySpecimenId
+                            );
+                            return (
+                              <div
+                                key={invSpecimen.inventorySpecimenId}
+                                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-accent rounded-sm"
+                              >
+                                <Checkbox
+                                  checked={selected}
+                                  onCheckedChange={() => handleInventoryToggle(invSpecimen)}
+                                />
+                                <div
+                                  className="flex-1 min-w-0"
+                                  onClick={() => handleInventoryToggle(invSpecimen)}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium truncate">{invSpecimen.commonName}</span>
+                                    {invSpecimen.weightGrams && (
+                                      <span className="text-xs text-muted-foreground">
+                                        ({invSpecimen.weightGrams}g)
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                {selected && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div
+                                          className="flex items-center gap-1"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Checkbox
+                                            checked={selectedItem?.markDepletedOnComplete || false}
+                                            onCheckedChange={(checked) =>
+                                              handleMarkDepletedToggle(
+                                                invSpecimen.inventorySpecimenId,
+                                                checked === true
+                                              )
+                                            }
+                                            className="h-3.5 w-3.5"
+                                          />
+                                          <span className="text-[10px] text-muted-foreground">Deplete</span>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left">
+                                        <p>Mark as depleted when cycle completes</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </CommandGroup>
+                      ))}
+                    </>
+                  )}
                 </>
-              )}
-
-              {isLoading ? (
-                <div className="py-6 text-center text-sm text-muted-foreground">
-                  Loading specimens...
-                </div>
-              ) : specimens.length === 0 ? (
-                <CommandEmpty>
-                  <div className="text-center py-6">
-                    <p className="text-muted-foreground">No specimens found.</p>
-                    {onAddCustom && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        onClick={() => {
-                          setOpen(false);
-                          onAddCustom();
-                        }}
-                        className="mt-2"
-                      >
-                        <Plus className="h-4 w-4 mr-1" />
-                        Add a custom specimen
-                      </Button>
-                    )}
-                  </div>
-                </CommandEmpty>
               ) : (
+                /* Normal Mode View */
                 <>
-                  {/* Your Specimens Section */}
-                  {groupedSpecimens.userSpecimens.length > 0 && (
-                    <CommandGroup heading="Your Specimens" className="max-h-[120px] overflow-auto">
-                      {groupedSpecimens.userSpecimens.map(renderSpecimenItem)}
-                    </CommandGroup>
+                  {/* Add Custom Specimen Button */}
+                  {onAddCustom && (
+                    <>
+                      <CommandGroup>
+                        <CommandItem
+                          onSelect={() => {
+                            setOpen(false);
+                            onAddCustom();
+                          }}
+                          className="flex items-center gap-2 cursor-pointer text-primary"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Add Custom Specimen</span>
+                        </CommandItem>
+                      </CommandGroup>
+                      <CommandSeparator />
+                    </>
                   )}
 
-                  {groupedSpecimens.userSpecimens.length > 0 &&
-                    groupedSpecimens.systemSpecimens.length > 0 && <CommandSeparator />}
+                  {isLoading ? (
+                    <div className="py-6 text-center text-sm text-muted-foreground">
+                      Loading specimens...
+                    </div>
+                  ) : specimens.length === 0 ? (
+                    <CommandEmpty>
+                      <div className="text-center py-6">
+                        <p className="text-muted-foreground">No specimens found.</p>
+                        {onAddCustom && (
+                          <Button
+                            variant="link"
+                            size="sm"
+                            onClick={() => {
+                              setOpen(false);
+                              onAddCustom();
+                            }}
+                            className="mt-2"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add a custom specimen
+                          </Button>
+                        )}
+                      </div>
+                    </CommandEmpty>
+                  ) : (
+                    <>
+                      {/* Your Specimens Section */}
+                      {groupedSpecimens.userSpecimens.length > 0 && (
+                        <CommandGroup heading="Your Specimens" className="max-h-[120px] overflow-auto">
+                          {groupedSpecimens.userSpecimens.map(renderSpecimenItem)}
+                        </CommandGroup>
+                      )}
 
-                  {/* Reference Specimens Section */}
-                  {groupedSpecimens.systemSpecimens.length > 0 && (
-                    <CommandGroup heading="Reference Specimens" className="max-h-[200px] overflow-auto">
-                      {groupedSpecimens.systemSpecimens.map(renderSpecimenItem)}
-                    </CommandGroup>
+                      {groupedSpecimens.userSpecimens.length > 0 &&
+                        groupedSpecimens.systemSpecimens.length > 0 && <CommandSeparator />}
+
+                      {/* Reference Specimens Section */}
+                      {groupedSpecimens.systemSpecimens.length > 0 && (
+                        <CommandGroup heading="Reference Specimens" className="max-h-[200px] overflow-auto">
+                          {groupedSpecimens.systemSpecimens.map(renderSpecimenItem)}
+                        </CommandGroup>
+                      )}
+                    </>
                   )}
                 </>
               )}
@@ -394,7 +612,7 @@ export function SpecimenMultiSelect({
         </PopoverContent>
       </Popover>
 
-      {/* Selected Specimens as Chips */}
+      {/* Selected Specimens as Chips - Normal Mode */}
       {selectedSpecimens.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {selectedSpecimens.map((specimen) => (
@@ -427,18 +645,56 @@ export function SpecimenMultiSelect({
               </button>
             </Badge>
           ))}
-          {selectedSpecimens.length > 1 && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleClearAll}
-              className="h-6 text-xs text-muted-foreground hover:text-destructive"
-            >
-              Clear all
-            </Button>
-          )}
         </div>
+      )}
+
+      {/* Selected Inventory Specimens as Chips */}
+      {selectedInventorySpecimens.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selectedInventorySpecimens.map((invSpec) => (
+            <Badge
+              key={invSpec.inventorySpecimenId}
+              variant="secondary"
+              className="flex items-center gap-1 pr-1 text-foreground border bg-green-500/25 border-green-500/50"
+            >
+              <Package className="h-3 w-3" />
+              <span className="truncate max-w-[150px]">{invSpec.commonName}</span>
+              {invSpec.weightGrams && (
+                <span className="text-muted-foreground text-xs">
+                  ({invSpec.weightGrams}g)
+                </span>
+              )}
+              {invSpec.markDepletedOnComplete && (
+                <span className="text-orange-500 text-[10px] font-medium">
+                  DEPLETE
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveInventorySpecimen(invSpec.inventorySpecimenId);
+                }}
+                className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Clear All button */}
+      {(selectedSpecimens.length + selectedInventorySpecimens.length) > 1 && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={handleClearAll}
+          className="h-6 text-xs text-muted-foreground hover:text-destructive"
+        >
+          Clear all
+        </Button>
       )}
 
       {/* Hardness Warning */}

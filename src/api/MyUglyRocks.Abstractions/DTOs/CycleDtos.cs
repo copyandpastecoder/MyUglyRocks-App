@@ -74,7 +74,21 @@ public record CreateCycleRequest(
     Guid[]? SpecimenIds,
 
     /// <summary>User specimen IDs (custom user-created specimens)</summary>
-    Guid[]? UserSpecimenIds
+    Guid[]? UserSpecimenIds,
+
+    /// <summary>Inventory specimens (from user's inventory) with options for status management</summary>
+    InventorySpecimenInput[]? InventorySpecimens
+);
+
+/// <summary>
+/// Input for selecting a specimen from inventory with options for status management
+/// </summary>
+public record InventorySpecimenInput(
+    /// <summary>The inventory specimen ID to link to the cycle</summary>
+    Guid InventorySpecimenId,
+
+    /// <summary>If true, mark the specimen as Depleted when the cycle completes</summary>
+    bool MarkDepletedOnComplete = false
 );
 
 public record UpdateCycleRequest(

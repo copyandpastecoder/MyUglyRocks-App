@@ -121,6 +121,10 @@ spec:
             path: R2__BucketName
           - key: r2-public-url
             path: R2__PublicUrl
+          - key: r2-backup-bucket-name
+            path: R2__BackupBucketName
+          - key: backup-password
+            path: R2__BackupPassword
           - key: resend-api-key
             path: Email__ApiKey
       # Mount local photo folder for seeding (temporary - remove after seeding)

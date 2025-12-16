@@ -875,6 +875,14 @@ export const inventoryApi = {
   setCoverPhoto: async (inventoryId: string, photoId: string): Promise<void> => {
     await api.put(`/photos/inventory/${inventoryId}/cover/${photoId}`);
   },
+
+  updatePhoto: async (
+    photoId: string,
+    data: { inventorySpecimenId?: string | null; caption?: string | null }
+  ): Promise<InventoryPhotoDto> => {
+    const response = await api.put<InventoryPhotoDto>(`/photos/inventory/${photoId}`, data);
+    return response.data;
+  },
 };
 
 // User Specimen API functions
@@ -922,6 +930,55 @@ export const userSpecimenApi = {
     const response = await api.get<SpecimenOptionDto[]>('/user-specimens/search', {
       params: { search, includePublic, skip, take },
     });
+    return response.data;
+  },
+};
+
+// Inventory Source API functions
+import type {
+  InventorySourceDto,
+  InventorySourceListDto,
+  CreateInventorySourceRequest,
+  UpdateInventorySourceRequest,
+  InventorySourceFilters,
+} from '@/types/inventory-source';
+
+export const inventorySourceApi = {
+  getAll: async (filters?: InventorySourceFilters, skip = 0, take = 50): Promise<InventorySourceListDto[]> => {
+    const params = {
+      ...filters,
+      skip,
+      take,
+    };
+    const response = await api.get<InventorySourceListDto[]>('/inventory-sources', { params });
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<InventorySourceDto> => {
+    const response = await api.get<InventorySourceDto>(`/inventory-sources/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateInventorySourceRequest): Promise<InventorySourceDto> => {
+    const response = await api.post<InventorySourceDto>('/inventory-sources', data);
+    return response.data;
+  },
+
+  update: async (id: string, data: UpdateInventorySourceRequest): Promise<InventorySourceDto> => {
+    const response = await api.put<InventorySourceDto>(`/inventory-sources/${id}`, data);
+    return response.data;
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/inventory-sources/${id}`);
+  },
+
+  checkName: async (sourceType: string, name: string, excludeSourceId?: string): Promise<{ exists: boolean }> => {
+    const params: Record<string, string> = { sourceType, name };
+    if (excludeSourceId) {
+      params.excludeSourceId = excludeSourceId;
+    }
+    const response = await api.get<{ exists: boolean }>('/inventory-sources/check-name', { params });
     return response.data;
   },
 };

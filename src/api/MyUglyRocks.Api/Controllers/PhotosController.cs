@@ -509,6 +509,96 @@ public class PhotosController : ControllerBase
     }
 
     /// <summary>
+    /// Update an inventory photo's specimen tag and/or caption
+    /// </summary>
+    [HttpPut("inventory/{photoId}")]
+    [ProducesResponseType(typeof(InventoryPhotoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateInventoryPhoto(
+        Guid photoId,
+        [FromBody] UpdateInventoryPhotoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var photo = await InventoryPhotos
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i.InventorySpecimens)
+                    .ThenInclude(s => s.Specimen)
+            .Include(p => p.Inventory)
+                .ThenInclude(i => i.InventorySpecimens)
+                    .ThenInclude(s => s.UserSpecimen)
+            .FirstOrDefaultAsync(p => p.InventoryPhotoId == photoId, cancellationToken);
+
+        if (photo == null)
+        {
+            return NotFound();
+        }
+
+        if (photo.Inventory.UserId != userId)
+        {
+            return Forbid();
+        }
+
+        // Validate specimen belongs to this inventory (if provided)
+        if (request.InventorySpecimenId.HasValue)
+        {
+            var specimenExists = photo.Inventory.InventorySpecimens
+                .Any(s => s.InventorySpecimenId == request.InventorySpecimenId.Value);
+            if (!specimenExists)
+            {
+                return BadRequest(new { error = "Specimen not found in this inventory" });
+            }
+        }
+
+        // Update fields
+        photo.InventorySpecimenId = request.InventorySpecimenId;
+        photo.Caption = request.Caption;
+        photo.DateUpdated = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // Get specimen name for response
+        string? specimenName = null;
+        if (photo.InventorySpecimenId.HasValue)
+        {
+            var linkedSpecimen = photo.Inventory.InventorySpecimens
+                .FirstOrDefault(s => s.InventorySpecimenId == photo.InventorySpecimenId);
+            if (linkedSpecimen != null)
+            {
+                specimenName = linkedSpecimen.Specimen?.CommonName
+                    ?? linkedSpecimen.UserSpecimen?.CommonName;
+            }
+        }
+
+        var dto = new InventoryPhotoDto(
+            photo.InventoryPhotoId,
+            photo.Url,
+            photo.FileName,
+            photo.Caption,
+            photo.IsCover,
+            photo.SortOrder,
+            photo.DateCreated,
+            photo.ThumbnailUrl,
+            photo.MediumUrl,
+            photo.LargeUrl,
+            photo.BlurHash,
+            photo.Width,
+            photo.Height,
+            photo.ProcessingStatus.ToString(),
+            photo.ProcessingError,
+            photo.InventorySpecimenId,
+            specimenName
+        );
+
+        _logger.LogInformation("Inventory photo {PhotoId} updated", photoId);
+
+        return Ok(dto);
+    }
+
+    /// <summary>
     /// Delete a photo
     /// </summary>
     [HttpDelete("{photoId}")]

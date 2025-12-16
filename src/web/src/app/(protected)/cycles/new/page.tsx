@@ -144,13 +144,23 @@ export default function NewCyclePage() {
       return;
     }
 
-    // Separate system and user specimen IDs
-    const systemSpecimenIds = selectedSpecimenItems
+    // Separate regular specimens from inventory specimens
+    const regularSpecimens = selectedSpecimenItems.filter(s => !s.inventorySpecimenId);
+    const inventorySpecimensData = selectedSpecimenItems.filter(s => s.inventorySpecimenId);
+
+    // Separate system and user specimen IDs (for regular specimens only)
+    const systemSpecimenIds = regularSpecimens
       .filter(s => s.source === 'system')
       .map(s => s.id);
-    const userSpecimenIds = selectedSpecimenItems
+    const userSpecimenIds = regularSpecimens
       .filter(s => s.source === 'user')
       .map(s => s.id);
+
+    // Build inventory specimens array
+    const inventorySpecimens = inventorySpecimensData.map(s => ({
+      inventorySpecimenId: s.inventorySpecimenId!,
+      markDepletedOnComplete: s.markDepletedOnComplete || false,
+    }));
 
     setSpecimenError(null);
     createMutation.mutate({
@@ -160,6 +170,7 @@ export default function NewCyclePage() {
       notes: data.notes || undefined,
       specimenIds: systemSpecimenIds.length > 0 ? systemSpecimenIds : undefined,
       userSpecimenIds: userSpecimenIds.length > 0 ? userSpecimenIds : undefined,
+      inventorySpecimens: inventorySpecimens.length > 0 ? inventorySpecimens : undefined,
     });
   };
 
@@ -225,9 +236,10 @@ export default function NewCyclePage() {
                   }}
                   placeholder="Select specimens from the list..."
                   onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
+                  enableInventoryMode={true}
                 />
                 <FormDescription className="text-helpful-tip">
-                  Select the types of rocks you&apos;re tumbling. Search by name, alias, variety, or family.
+                  Select the types of rocks you&apos;re tumbling. Click the package icon to select from your inventory.
                 </FormDescription>
                 {specimenError && (
                   <p className="text-sm font-medium text-destructive">{specimenError}</p>

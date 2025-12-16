@@ -42,25 +42,35 @@ public class Inventory : SoftDeletableEntity
 {
     public Guid InventoryId { get; set; }
     public Guid UserId { get; set; }
+    public Guid? InventorySourceId { get; set; }
     public required string Name { get; set; }
     public DateOnly AcquiredDate { get; set; }
-    public SourceType SourceType { get; set; }
-    public string? SourceName { get; set; }
-    public string? SourceLocation { get; set; }
-    public string? SourceUrl { get; set; }
     public decimal? TotalWeightGrams { get; set; }
     public decimal? RemainingWeightGrams { get; set; }
     public string DisplayUnit { get; set; } = "g";
     public decimal? Cost { get; set; }
     public string? SizeCategories { get; set; }  // Comma-separated list of SizeCategory values (aggregated from specimens)
     public int? QualityRating { get; set; } // 1-5
-    public InventoryStatus Status { get; set; } = InventoryStatus.Available;
     public string? StorageLocation { get; set; }
     public string? Notes { get; set; }
+
+    // Legacy fields - kept for migration, will be removed after migration
+    [Obsolete("Use InventorySource.SourceType instead. Kept for migration.")]
+    public SourceType SourceType { get; set; }
+    [Obsolete("Use InventorySource.Name instead. Kept for migration.")]
+    public string? SourceName { get; set; }
+    [Obsolete("Use InventorySource.Location instead. Kept for migration.")]
+    public string? SourceLocation { get; set; }
+    [Obsolete("Use InventorySource.Url instead. Kept for migration.")]
+    public string? SourceUrl { get; set; }
+    [Obsolete("Status moved to InventorySpecimen. Kept for migration.")]
+    public InventoryStatus Status { get; set; } = InventoryStatus.Available;
+    [Obsolete("IsFavorite feature removed. Kept for migration.")]
     public bool IsFavorite { get; set; }
 
     // Navigation properties
     public virtual User User { get; set; } = null!;
+    public virtual InventorySource? InventorySource { get; set; }
     public virtual ICollection<InventorySpecimen> InventorySpecimens { get; set; } = [];
     public virtual ICollection<InventoryPhoto> InventoryPhotos { get; set; } = [];
 }

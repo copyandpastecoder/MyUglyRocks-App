@@ -23,6 +23,7 @@ public class CycleService : ICycleService
     private DbSet<StageMaterial> StageMaterials => _context.Set<StageMaterial>();
     private DbSet<CleaningMaterial> CleaningMaterials => _context.Set<CleaningMaterial>();
     private DbSet<CycleSpecimen> CycleSpecimens => _context.Set<CycleSpecimen>();
+    private DbSet<InventorySpecimen> InventorySpecimens => _context.Set<InventorySpecimen>();
 
     public async Task<IEnumerable<CycleListDto>> GetUserCyclesAsync(Guid userId, string? status = null, CancellationToken cancellationToken = default)
     {
@@ -355,6 +356,40 @@ public class CycleService : ICycleService
             }
         }
 
+        // Add inventory specimens if provided
+        if (request.InventorySpecimens?.Any() == true)
+        {
+            var inventorySpecimenIds = request.InventorySpecimens.Select(i => i.InventorySpecimenId).ToList();
+            var inventorySpecimens = await InventorySpecimens
+                .Where(invs => inventorySpecimenIds.Contains(invs.InventorySpecimenId))
+                .ToListAsync(cancellationToken);
+
+            foreach (var input in request.InventorySpecimens)
+            {
+                var invSpecimen = inventorySpecimens.FirstOrDefault(i => i.InventorySpecimenId == input.InventorySpecimenId);
+                if (invSpecimen == null) continue;
+
+                // Create CycleSpecimen with link to InventorySpecimen
+                cycle.CycleSpecimens.Add(new CycleSpecimen
+                {
+                    CycleId = cycle.CycleId,
+                    SpecimenId = invSpecimen.SpecimenId,
+                    UserSpecimenId = invSpecimen.UserSpecimenId,
+                    InventorySpecimenId = invSpecimen.InventorySpecimenId,
+                    MarkDepletedOnComplete = input.MarkDepletedOnComplete,
+                    DateCreated = DateTime.UtcNow,
+                    DateUpdated = DateTime.UtcNow
+                });
+
+                // Update InventorySpecimen status to InUse if currently Available
+                if (invSpecimen.Status == InventoryStatus.Available)
+                {
+                    invSpecimen.Status = InventoryStatus.InUse;
+                    invSpecimen.DateUpdated = DateTime.UtcNow;
+                }
+            }
+        }
+
         await Cycles.AddAsync(cycle, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -400,6 +435,8 @@ public class CycleService : ICycleService
     {
         var cycle = await Cycles
             .Include(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+            .Include(c => c.CycleSpecimens)
+                .ThenInclude(cs => cs.InventorySpecimen)
             .FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
@@ -422,6 +459,51 @@ public class CycleService : ICycleService
         if (!string.IsNullOrEmpty(request.Notes))
             cycle.Notes = string.IsNullOrEmpty(cycle.Notes) ? request.Notes : $"{cycle.Notes}\n\n{request.Notes}";
         cycle.DateUpdated = DateTime.UtcNow;
+
+        // Update inventory specimen statuses for specimens linked from inventory
+        var cycleSpecimensWithInventory = cycle.CycleSpecimens
+            .Where(cs => cs.InventorySpecimenId.HasValue && cs.InventorySpecimen != null)
+            .ToList();
+
+        if (cycleSpecimensWithInventory.Count > 0)
+        {
+            // Get all inventory specimen IDs that need status updates
+            var inventorySpecimenIds = cycleSpecimensWithInventory
+                .Select(cs => cs.InventorySpecimenId!.Value)
+                .ToList();
+
+            // Find which inventory specimens are used in other active (non-completed) cycles
+            var inventorySpecimensInOtherActiveCycles = await CycleSpecimens
+                .Where(cs => cs.InventorySpecimenId.HasValue
+                    && inventorySpecimenIds.Contains(cs.InventorySpecimenId.Value)
+                    && cs.CycleId != cycleId
+                    && cs.Cycle.Status != CycleStatus.Completed
+                    && !cs.Cycle.IsDeleted)
+                .Select(cs => cs.InventorySpecimenId!.Value)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+
+            var inOtherActiveCyclesSet = new HashSet<Guid>(inventorySpecimensInOtherActiveCycles);
+
+            foreach (var cycleSpecimen in cycleSpecimensWithInventory)
+            {
+                var invSpecimen = cycleSpecimen.InventorySpecimen!;
+
+                if (cycleSpecimen.MarkDepletedOnComplete)
+                {
+                    // User explicitly wants this marked as depleted
+                    invSpecimen.Status = InventoryStatus.Depleted;
+                    invSpecimen.DateUpdated = DateTime.UtcNow;
+                }
+                else if (!inOtherActiveCyclesSet.Contains(cycleSpecimen.InventorySpecimenId!.Value))
+                {
+                    // No other active cycles using this specimen, set back to Available
+                    invSpecimen.Status = InventoryStatus.Available;
+                    invSpecimen.DateUpdated = DateTime.UtcNow;
+                }
+                // else: Other active cycles are using this specimen, leave as InUse
+            }
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

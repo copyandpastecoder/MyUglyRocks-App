@@ -1,5 +1,0 @@
-name: "MyUglyRocks CodeQL Config"
-
-# Extend the default queries with our custom model extensions
-model-extensions:
-  - .github/codeql/sanitizers.yml

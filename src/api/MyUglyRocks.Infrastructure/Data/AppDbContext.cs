@@ -36,6 +36,7 @@ public class AppDbContext : DbContext
 
     // Inventory entities
     public DbSet<Inventory> Inventory => Set<Inventory>();
+    public DbSet<InventorySource> InventorySources => Set<InventorySource>();
     public DbSet<InventorySpecimen> InventorySpecimens => Set<InventorySpecimen>();
     public DbSet<InventoryPhoto> InventoryPhotos => Set<InventoryPhoto>();
 
