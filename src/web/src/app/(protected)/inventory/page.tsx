@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useInventory, useInventoryStats, useDeleteInventory, useUpdateInventoryStatus } from '@/hooks/use-inventory';
 import { useDebouncedValue } from '@/hooks';
@@ -83,6 +83,7 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<InventoryStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'acquiredDate' | 'name' | 'cost'>('acquiredDate');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Debounce search to avoid API call on every keystroke
   const debouncedSearch = useDebouncedValue(search, 300);
