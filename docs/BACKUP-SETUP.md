@@ -196,6 +196,192 @@ All endpoints require Admin role authentication.
 
 ---
 
+## Testing the Backup System (Step-by-Step)
+
+Follow these steps to manually test the backup system after deployment.
+
+### Step 1: Get an Admin JWT Token
+
+You need an admin account token to access the backup APIs.
+
+**Option A: Login via the Web App**
+
+1. Open https://dev.myuglyrocks.com in your browser
+2. Login with your admin account
+3. Open browser DevTools (F12) → Network tab
+4. Make any authenticated request (e.g., navigate to a page)
+5. Find a request and look for the `Authorization` header
+6. Copy the token (everything after "Bearer ")
+
+**Option B: Login via API (PowerShell)**
+
+Open PowerShell (any directory is fine) and run:
+
+```powershell
+# Login to get a token
+$loginResponse = Invoke-RestMethod -Uri "https://dev.myuglyrocks.com/api/auth/login" `
+    -Method POST `
+    -ContentType "application/json" `
+    -Body '{"email": "your-admin@email.com", "password": "your-password"}'
+
+# Save the token to a variable
+$token = $loginResponse.token
+
+# Verify you got a token
+Write-Host "Token: $token"
+```
+
+**Option C: Login via API (Bash/Linux/Mac)**
+
+```bash
+# Login and extract token
+TOKEN=$(curl -s -X POST https://dev.myuglyrocks.com/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "your-admin@email.com", "password": "your-password"}' \
+  | jq -r '.token')
+
+# Verify you got a token
+echo "Token: $TOKEN"
+```
+
+### Step 2: Create a Manual Backup (PowerShell)
+
+```powershell
+# Use the token from Step 1
+$token = "YOUR_TOKEN_HERE"  # Paste your token here
+
+# Create a backup
+$response = Invoke-RestMethod -Uri "https://dev.myuglyrocks.com/api/admin/backups" `
+    -Method POST `
+    -Headers @{ "Authorization" = "Bearer $token" }
+
+# Show the result
+$response | ConvertTo-Json
+```
+
+**Expected output:**
+```json
+{
+  "success": true,
+  "r2Key": "manual/myuglyrocks_2025-01-15_12-30-00.dump",
+  "sizeBytes": 1234567,
+  "duration": "00:00:05.123",
+  "checksum": "abc123def456...",
+  "errorMessage": null
+}
+```
+
+### Step 2 (Alternative): Create a Backup (Bash/Linux/Mac)
+
+```bash
+TOKEN="YOUR_TOKEN_HERE"
+
+curl -X POST https://dev.myuglyrocks.com/api/admin/backups \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json"
+```
+
+### Step 3: List All Backups
+
+**PowerShell:**
+```powershell
+$response = Invoke-RestMethod -Uri "https://dev.myuglyrocks.com/api/admin/backups" `
+    -Method GET `
+    -Headers @{ "Authorization" = "Bearer $token" }
+
+$response | ConvertTo-Json -Depth 3
+```
+
+**Bash:**
+```bash
+curl -s https://dev.myuglyrocks.com/api/admin/backups \
+  -H "Authorization: Bearer $TOKEN" | jq
+```
+
+### Step 4: Validate a Backup
+
+**PowerShell:**
+```powershell
+$body = @{
+    backupKey = "manual/myuglyrocks_2025-01-15_12-30-00.dump"
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod -Uri "https://dev.myuglyrocks.com/api/admin/backups/validate" `
+    -Method POST `
+    -Headers @{ "Authorization" = "Bearer $token" } `
+    -ContentType "application/json" `
+    -Body $body
+
+$response | ConvertTo-Json
+```
+
+**Bash:**
+```bash
+curl -X POST https://dev.myuglyrocks.com/api/admin/backups/validate \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"backupKey": "manual/myuglyrocks_2025-01-15_12-30-00.dump"}'
+```
+
+### Step 5: Verify Backup in R2 (Optional)
+
+**Using Wrangler CLI:**
+```bash
+# Install wrangler if you haven't
+npm install -g wrangler
+wrangler login
+
+# List backups in R2
+wrangler r2 object list myuglyrocks-media-backup --prefix="manual/"
+```
+
+**Using Cloudflare Dashboard:**
+1. Go to https://dash.cloudflare.com
+2. Navigate to R2 → your backup bucket
+3. Browse the `manual/` folder to see your backup
+
+### Step 6: Test Restore (CAUTION!)
+
+⚠️ **WARNING**: This will REPLACE ALL DATA in the database!
+
+Only do this on a test environment or if you understand the consequences.
+
+**PowerShell:**
+```powershell
+$body = @{
+    backupKey = "manual/myuglyrocks_2025-01-15_12-30-00.dump"
+    confirmation = "RESTORE"
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod -Uri "https://dev.myuglyrocks.com/api/admin/backups/restore" `
+    -Method POST `
+    -Headers @{ "Authorization" = "Bearer $token" } `
+    -ContentType "application/json" `
+    -Body $body
+
+$response | ConvertTo-Json
+```
+
+### Troubleshooting
+
+**"401 Unauthorized"**
+- Your token may have expired (tokens last ~15 minutes)
+- Get a new token using Step 1
+
+**"403 Forbidden"**
+- Your account doesn't have Admin role
+- Check your user's role in the database
+
+**"Backup encryption disabled" warning in logs**
+- The `backup-password` secret is not set
+- Backups will work but won't be encrypted
+
+**Backup takes a long time**
+- Normal for large databases
+- Timeout is 30 minutes
+
+---
+
 ## Backup Schedule & Retention
 
 | Type | Schedule | Retention | Minimum Kept |
