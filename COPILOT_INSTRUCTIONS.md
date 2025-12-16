@@ -113,11 +113,12 @@ _Use this workflow to keep your repository organized and your history clear._
    - Feature branches merge to `develop` for integration testing.
    - Only merge `develop` to `Master` when ready for production release.
 
-5. **Run lint before committing**
-   - Before committing frontend changes, run lint to check for errors and warnings:
+5. **Run lint and build before committing**
+   - Before committing frontend changes, run lint and build to check for errors:
      ```powershell
      cd src/web
      npm run lint
+     npm run build
      ```
    - **All errors must be fixed before committing.**
    - Review warnings and fix them when reasonable (some may be intentional).
@@ -126,6 +127,11 @@ _Use this workflow to keep your repository organized and your history clear._
      - Missing dependencies in hooks
      - Accessing refs during render (React Compiler)
      - Type errors
+   - Common build errors:
+     - TypeScript type mismatches
+     - Missing imports/exports
+     - Invalid JSX syntax
+     - Next.js specific issues (dynamic imports, server/client components)
 
 6. **Review changes before committing**
    - Use `git status` and `git diff` to review what you're about to commit.
