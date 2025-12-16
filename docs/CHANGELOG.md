@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2025-12-15
 
+### Fixed
+
+#### Hangfire Database Bloat (Production Outage Fix)
+- **Problem**: Production PostgreSQL database grew to 500MB and ran out of disk space, crashing the database
+- **Root Cause**: Hangfire jobs were receiving `byte[] imageData` parameters (entire photo files ~5-10MB each). Hangfire serializes job arguments to JSON and stores them in PostgreSQL's `hangfire.job` table. Every photo upload stored the image twice (thumbnail job + large variants job).
+- **Solution**: Changed to R2 temp storage pattern - images are uploaded to R2 first, and only a small string key is passed to Hangfire jobs
+- **Files**:
+  - [IStorageService.cs](../src/api/MyUglyRocks.Abstractions/Interfaces/IStorageService.cs) - Added `GetStreamAsync()` method
+  - [R2StorageService.cs](../src/api/MyUglyRocks.Infrastructure/Services/R2StorageService.cs) - Implemented `GetStreamAsync()`
+  - [PhotoProcessingJob.cs](../src/api/MyUglyRocks.Infrastructure/Jobs/PhotoProcessingJob.cs) - Changed from `byte[] imageData` to `string tempStorageKey`, fetches from R2
+  - [InventoryPhotoProcessingJob.cs](../src/api/MyUglyRocks.Infrastructure/Jobs/InventoryPhotoProcessingJob.cs) - Same change
+  - [PhotosController.cs](../src/api/MyUglyRocks.Api/Controllers/PhotosController.cs) - Uploads to R2 temp folder before queueing jobs
+- **New Flow**:
+  1. Controller uploads image to `temp/{photoId}.{ext}` in R2
+  2. Controller queues Hangfire job with just the temp key string (~50 bytes)
+  3. Job fetches image from R2, processes it, uploads variants
+  4. Job deletes temp file after processing
+- **Impact**: Hangfire job table stays tiny (KB instead of hundreds of MB), database won't fill up
+
 ### Improved
 
 #### Photo Upload Performance Optimization

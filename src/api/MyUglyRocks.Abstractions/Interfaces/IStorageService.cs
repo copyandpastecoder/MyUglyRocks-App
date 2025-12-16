@@ -43,4 +43,12 @@ public interface IStorageService
     /// Check if storage is configured and available
     /// </summary>
     bool IsConfigured { get; }
+
+    /// <summary>
+    /// Download a file from storage as a stream
+    /// </summary>
+    /// <param name="key">The storage key (path) of the file</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>The file stream, or null if not found</returns>
+    Task<Stream?> GetStreamAsync(string key, CancellationToken cancellationToken = default);
 }
