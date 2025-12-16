@@ -6,6 +6,178 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+#### Inventory Specimen Selection for Cycles
+- **Feature**: When creating a new cycle, users can now select specimens directly from their inventory
+- **Toggle**: Package icon (📦) in the specimen picker toggles between "All Specimens" and "My Inventory" modes
+- **Inventory Mode**:
+  - Shows only specimens with "Available" status grouped by inventory item
+  - Each specimen displays its weight in grams
+  - "Mark depleted" checkbox per specimen - if checked, specimen status becomes "Depleted" when cycle completes
+- **Status Management**:
+  - When cycle is created: Selected inventory specimens change from "Available" to "InUse"
+  - When cycle completes (default): Specimens return to "Available" (unless used in other active cycles)
+  - When cycle completes (with "Mark depleted" checked): Specimen status becomes "Depleted"
+- **Backend Files**:
+  - [CycleSpecimen.cs](../src/api/MyUglyRocks.Core/Entities/CycleSpecimen.cs) - Added `InventorySpecimenId` and `MarkDepletedOnComplete` fields
+  - [CycleDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs) - Added `InventorySpecimenInput` record
+  - [CycleService.cs](../src/api/MyUglyRocks.Core/Services/CycleService.cs) - Updated `CreateCycleAsync` and `CompleteCycleAsync`
+  - [MaterialConfiguration.cs](../src/api/MyUglyRocks.Infrastructure/Data/Configurations/MaterialConfiguration.cs) - EF configuration for new FK
+- **Frontend Files**:
+  - [specimen-multi-select.tsx](../src/web/src/components/specimen-multi-select.tsx) - Added inventory mode toggle and UI
+  - [use-available-inventory-specimens.ts](../src/web/src/hooks/use-available-inventory-specimens.ts) - New hook for fetching available specimens
+  - [cycles/new/page.tsx](../src/web/src/app/(protected)/cycles/new/page.tsx) - Enabled inventory mode, passes `inventorySpecimens` to API
+  - [cycle.ts](../src/web/src/types/cycle.ts) - Added `InventorySpecimenInput` interface
+- **Database Migration**: `20251216203204_AddInventorySpecimenToCycleSpecimen`
+
+#### InventorySpecimen Per-Specimen Fields
+- **Feature**: Each specimen in an inventory can now have its own Status, Storage Location, URL, and Notes
+- **Backend** (already implemented in previous migration):
+  - `InventorySpecimen.Status` - Available, InUse, Depleted, Partial
+  - `InventorySpecimen.StorageLocation` - Where this specific specimen is stored
+  - `InventorySpecimen.Url` - Specific listing URL for this specimen (e.g., eBay listing)
+  - `InventorySpecimen.Notes` - Notes about this specific specimen
+- **Frontend Files**:
+  - [specimen-row-list.tsx](../src/web/src/components/specimen-row-list.tsx) - Added Status dropdown, Storage Location input, URL input in expanded row
+  - [inventory/new/page.tsx](../src/web/src/app/(protected)/inventory/new/page.tsx) - `specimensPayload` includes all new fields
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Loads and saves all new fields
+- **UI**: New "Row 3" section in specimen row with Status, Storage Location, and URL fields
+
+#### Inventory Source Filter on List Page
+- **Feature**: Inventory list page now has a dropdown to filter by InventorySource
+- **File**: [inventory/page.tsx](../src/web/src/app/(protected)/inventory/page.tsx)
+- **Details**:
+  - New "Filter by source" dropdown in filters bar
+  - Lists all active sources for the user
+  - Client-side filtering (API filtering can be added later)
+  - Shows "No items from this source" message when filter yields no results
+
+### Changed
+
+#### Theme Refresh - Modern Dark Themes
+- **Change**: Updated all dark themes with improved contrast, readability, and modern styling
+- **File**: [globals.css](../src/web/src/app/globals.css)
+- **Themes Updated**:
+  - **Malachite**: Near-neutral backgrounds with vibrant emerald accents
+  - **Rose Quartz**: Subtle pink undertones with bright rose accents
+  - **Tiger's Eye**: Shifted from harsh orange to elegant bronze/gold tones
+  - **Amethyst** (NEW): Replaced Bumblebee Jasper with a rich purple/violet theme
+- **Improvements**:
+  - Better card/background contrast for visibility
+  - Brighter text (0.95 lightness) for readability
+  - Visible colored borders instead of pure white alpha
+  - More saturated, vibrant accent colors for buttons
+  - Reduced background color saturation for easier viewing
+
+#### Complete Stage Modal Radio Button Styling
+- **Change**: "What's Next?" section now displayed in a prominent card with header
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Details**:
+  - Removed "What's next?" label
+  - Radio buttons now in a card with primary-colored border and background
+  - Header reads "Please Choose *required" with asterisk in red
+  - Card has shadow and border to stand out from surrounding content
+
+#### Inventory List Page - Removed Favorites
+- **Change**: Removed the yellow favorite star icon from inventory list items
+- **File**: [inventory/page.tsx](../src/web/src/app/(protected)/inventory/page.tsx)
+- **Rationale**: Favorites feature deprecated as part of InventorySource refactor (per plan line 724)
+
+#### Inventory Detail Page - Clickable Source Name
+- **Change**: Source name in "Acquired from [source]" text is now a link to /inventory/sources
+- **File**: [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx)
+- **Details**: Uses primary color and underline on hover
+
+### Fixed
+
+#### InventorySource Delete with Soft-Deleted Inventory
+- **Problem**: Deleting an InventorySource failed with FK constraint violation when soft-deleted inventory items were linked to it
+- **Root Cause**: `Inventory` entity has a global query filter for `!IsDeleted`, so the service couldn't find soft-deleted items to nullify their FK before deleting the source
+- **Fix**: Added `IgnoreQueryFilters()` when querying for soft-deleted inventory items in `DeleteSourceAsync`
+- **File**: [InventorySourceService.cs](../src/api/MyUglyRocks.Core/Services/InventorySourceService.cs)
+
+#### Specimen Notes Not Saving
+- **Problem**: Notes field was visible in the specimen row UI but was not being sent to the API when creating/updating inventory
+- **Fix**: Added `notes: row.notes || undefined` to `specimensPayload` in both new and edit pages
+- **Files**: [inventory/new/page.tsx](../src/web/src/app/(protected)/inventory/new/page.tsx), [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx)
+
+#### Specimen Notes Not Loading on Edit
+- **Problem**: When editing an inventory item, specimen notes weren't being loaded into the form
+- **Fix**: Added `notes: s.notes ?? undefined` when initializing specimen rows from inventory data
+- **File**: [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx)
+
+#### Inventory Source Management System
+- **Feature**: Complete source tracking system for managing where you acquire rock specimens
+- **Backend Files**:
+  - [InventorySource.cs](../src/api/MyUglyRocks.Core/Entities/InventorySource.cs) - **New** entity with SourceType enum (Store, Online, Found, Contact, GemShow, Other)
+  - [IInventorySourceService.cs](../src/api/MyUglyRocks.Abstractions/Interfaces/IInventorySourceService.cs) - **New** service interface
+  - [InventorySourceService.cs](../src/api/MyUglyRocks.Core/Services/InventorySourceService.cs) - **New** service implementation with filtering, pagination, sorting
+  - [InventorySourcesController.cs](../src/api/MyUglyRocks.Api/Controllers/InventorySourcesController.cs) - **New** REST API controller
+  - [InventorySourceDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/InventorySourceDtos.cs) - **New** DTOs for list, detail, create, update operations
+  - [InventoryConfiguration.cs](../src/api/MyUglyRocks.Infrastructure/Data/Configurations/InventoryConfiguration.cs) - EF Core configuration with case-insensitive unique constraint
+- **Frontend Files**:
+  - [inventory/sources/page.tsx](../src/web/src/app/(protected)/inventory/sources/page.tsx) - **New** source management page with tabs, search, sorting
+  - [inventory-source-picker.tsx](../src/web/src/components/inventory-source-picker.tsx) - **New** dropdown component for selecting sources in forms
+  - [inventory-source-form-dialog.tsx](../src/web/src/components/inventory-source-form-dialog.tsx) - **New** create/edit dialog with type-specific fields
+  - [url-input.tsx](../src/web/src/components/url-input.tsx) - **New** URL input with validation and external link button
+  - [use-inventory-sources.ts](../src/web/src/hooks/use-inventory-sources.ts) - **New** React Query hooks for CRUD operations
+  - [inventory-source.ts](../src/web/src/types/inventory-source.ts) - **New** TypeScript types and display name mappings
+  - [hooks/index.ts](../src/web/src/hooks/index.ts) - Export new hooks
+- **Source Types**:
+  - **Store**: Physical rock shops, gift shops (fields: name, location, phone, URL, notes)
+  - **Online**: E-commerce sites, eBay, Etsy (fields: name, URL, notes)
+  - **Found**: Field-collected specimens (fields: name, location, notes)
+  - **Contact**: Friends, club members, trades (fields: name, contact name, phone, notes)
+  - **Gem Show**: Gem & mineral shows (fields: name, location, notes)
+  - **Other**: Catch-all category
+- **Features**:
+  - Tabbed view to filter by source type
+  - Full-text search across name and location
+  - Sort by name, total purchases, or last purchase date
+  - Shows purchase count and last purchase date per source
+  - Sources are user-scoped (each user has their own sources)
+  - Soft delete support (isActive flag)
+  - Sources with purchases cannot be deleted (Delete button disabled)
+- **Integration**:
+  - Updated `/inventory/new` and `/inventory/[id]` pages with InventorySourcePicker
+  - Added "Manage sources" link in source picker dropdown
+  - Added "Add New Source" option in picker for inline creation
+  - Inventory records now link to InventorySource via `inventorySourceId` FK
+
+#### Migration with Data Normalization
+- **Migration**: [20251216171612_InventorySourceRefactor.cs](../src/api/MyUglyRocks.Infrastructure/Migrations/20251216171612_InventorySourceRefactor.cs)
+- **Schema Changes**:
+  - New `inventory_sources` table with all source fields
+  - Added `inventory_source_id` FK on `inventory` table
+  - Added `status`, `storage_location`, `url` columns to `inventory_specimens` table
+  - Indexes for user/active filtering and case-insensitive unique name constraint
+- **Data Migration**:
+  - Phase 1: Creates unique InventorySource records from existing inventory data
+  - Phase 2: Links existing inventory records to their normalized sources
+  - Phase 3: Copies status from Inventory to InventorySpecimen
+  - Handles Gift/Trade → Contact type consolidation with migration notes
+  - Uses ROW_NUMBER() for PostgreSQL portability
+
+### Fixed
+
+#### ESLint Warning Fixes
+- **`form.watch()` incompatibility warning** in `inventory-source-form-dialog.tsx`
+  - Changed from `const selectedSourceType = form.watch('sourceType')` to using `field.value` inside the render prop
+  - File: [inventory-source-form-dialog.tsx](../src/web/src/components/inventory-source-form-dialog.tsx)
+- **`completedPhotos` dependency warnings** in share pages
+  - Wrapped `completedPhotos` filter in `useMemo` to stabilize reference
+  - Files: [cycles/[id]/share/page.tsx](../src/web/src/app/(protected)/cycles/[id]/share/page.tsx), [inventory/[id]/share/page.tsx](../src/web/src/app/(protected)/inventory/[id]/share/page.tsx)
+  - Added `useMemo` to imports
+
+### Fixed
+
+#### Code Cleanup - Unused Parameters and State
+- **CardSkeleton unused height parameter**: Removed unused `height` parameter from `CardSkeleton` component and its eslint-disable comment
+  - File: [skeletons/index.tsx](../src/web/src/components/skeletons/index.tsx)
+- **Unused isAddingBarrel state**: Removed entirely unused `isAddingBarrel` useState from tumbler edit page - the setter was being called but no code ever read the state value
+  - File: [tumblers/[id]/page.tsx](../src/web/src/app/(protected)/tumblers/[id]/page.tsx)
+
+### Added
+
 #### Animated Vote Counter in Gallery
 - **Feature**: Vote counts in the gallery now animate smoothly when users vote
 - **File**: [gallery/page.tsx](../src/web/src/app/(protected)/gallery/page.tsx)

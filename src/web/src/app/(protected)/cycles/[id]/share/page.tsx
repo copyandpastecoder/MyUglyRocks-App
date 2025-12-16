@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -68,7 +68,10 @@ export default function ShareCyclePage() {
   });
 
   // Filter to only show completed photos (not processing or failed)
-  const completedPhotos = photos?.filter(p => p.processingStatus === 'Completed') ?? [];
+  const completedPhotos = useMemo(
+    () => photos?.filter(p => p.processingStatus === 'Completed') ?? [],
+    [photos]
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

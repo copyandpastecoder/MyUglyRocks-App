@@ -52,8 +52,7 @@ export function StatsGridSkeleton({ count = 4 }: { count?: number }) {
 /**
  * Card skeleton for list items (tumblers, cycles, etc.)
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function CardSkeleton({ height }: { height?: string }) {
+export function CardSkeleton() {
   return (
     <Card>
       <CardHeader className="pb-2">

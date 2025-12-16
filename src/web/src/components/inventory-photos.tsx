@@ -3,12 +3,13 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Star, Camera } from 'lucide-react';
+import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Star, Camera, Pencil } from 'lucide-react';
 import { photosApi } from '@/lib/api';
 import { useDeleteInventoryPhoto, useSetInventoryCoverPhoto } from '@/hooks/use-inventory';
 import type { InventoryPhotoDto, InventorySpecimenDto } from '@/types/inventory';
 import { PhotoLightbox, useLightbox } from './photo-lightbox';
 import { InventoryPhotoUploadModal } from './inventory-photo-upload-modal';
+import { InventoryPhotoEditDialog } from './inventory-photo-edit-dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -27,6 +28,8 @@ export function InventoryPhotos({ inventoryId, photos, specimens, onPhotosChange
   const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState<InventoryPhotoDto | null>(null);
   const lightbox = useLightbox();
 
   const deleteMutation = useDeleteInventoryPhoto();
@@ -74,6 +77,11 @@ export function InventoryPhotos({ inventoryId, photos, specimens, onPhotosChange
   const handleSetCover = async (photoId: string) => {
     await setCoverMutation.mutateAsync({ inventoryId, photoId });
     onPhotosChange?.();
+  };
+
+  const handleEdit = (photo: InventoryPhotoDto) => {
+    setEditingPhoto(photo);
+    setEditDialogOpen(true);
   };
 
   if (storageConfigured === false) {
@@ -199,6 +207,15 @@ export function InventoryPhotos({ inventoryId, photos, specimens, onPhotosChange
 
                         {/* Action buttons on hover */}
                         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {photo.processingStatus === 'Completed' && (
+                            <button
+                              onClick={() => handleEdit(photo)}
+                              className="p-1 bg-black/50 rounded-full text-white hover:bg-black/70 transition-colors"
+                              title="Edit photo"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
                           {!photo.isCover && photo.processingStatus === 'Completed' && (
                             <button
                               onClick={() => handleSetCover(photo.inventoryPhotoId)}
@@ -277,6 +294,16 @@ export function InventoryPhotos({ inventoryId, photos, specimens, onPhotosChange
         inventoryId={inventoryId}
         specimens={specimens}
         onUploadComplete={handleUploadComplete}
+      />
+
+      {/* Edit Dialog */}
+      <InventoryPhotoEditDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        inventoryId={inventoryId}
+        photo={editingPhoto}
+        specimens={specimens}
+        onSuccess={onPhotosChange}
       />
     </Card>
   );

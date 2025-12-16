@@ -12,9 +12,13 @@ public class InventorySpecimen : BaseEntity
     public int? QualityRating { get; set; } // Quality 1-5 stars
     public string? SizeCategories { get; set; } // Comma-separated size categories
     public string? Notes { get; set; }
+    public InventoryStatus Status { get; set; } = InventoryStatus.Available; // Availability status
+    public string? StorageLocation { get; set; } // Where this specimen is stored
+    public string? Url { get; set; } // Specific listing URL for this specimen
 
     // Navigation properties
     public virtual Inventory Inventory { get; set; } = null!;
     public virtual Specimen? Specimen { get; set; }
     public virtual UserSpecimen? UserSpecimen { get; set; }
+    public virtual ICollection<CycleSpecimen> CycleSpecimens { get; set; } = new List<CycleSpecimen>();
 }

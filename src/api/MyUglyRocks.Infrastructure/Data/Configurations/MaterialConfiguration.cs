@@ -130,6 +130,13 @@ public class CycleSpecimenConfiguration : IEntityTypeConfiguration<CycleSpecimen
         builder.Property(cs => cs.UserSpecimenId)
             .HasColumnName("user_specimen_id");
 
+        builder.Property(cs => cs.InventorySpecimenId)
+            .HasColumnName("inventory_specimen_id");
+
+        builder.Property(cs => cs.MarkDepletedOnComplete)
+            .HasColumnName("mark_depleted_on_complete")
+            .HasDefaultValue(false);
+
         builder.Property(cs => cs.DateCreated)
             .HasColumnName("date_created")
             .HasDefaultValueSql("now()");
@@ -154,6 +161,11 @@ public class CycleSpecimenConfiguration : IEntityTypeConfiguration<CycleSpecimen
             .HasForeignKey(cs => cs.UserSpecimenId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        builder.HasOne(cs => cs.InventorySpecimen)
+            .WithMany(invs => invs.CycleSpecimens)
+            .HasForeignKey(cs => cs.InventorySpecimenId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // XOR constraint: exactly one specimen type must be set
         builder.ToTable(t => t.HasCheckConstraint(
             "chk_cycle_specimen_xor",
@@ -168,6 +180,9 @@ public class CycleSpecimenConfiguration : IEntityTypeConfiguration<CycleSpecimen
 
         builder.HasIndex(cs => cs.UserSpecimenId)
             .HasDatabaseName("ix_cycle_specimens_user_specimen_id");
+
+        builder.HasIndex(cs => cs.InventorySpecimenId)
+            .HasDatabaseName("ix_cycle_specimens_inventory_specimen_id");
     }
 }
 

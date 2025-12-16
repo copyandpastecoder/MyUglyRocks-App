@@ -59,6 +59,18 @@ export interface CreateCycleRequest {
   specimenIds?: string[];
   /** User specimen IDs (custom user-created specimens) */
   userSpecimenIds?: string[];
+  /** Inventory specimens (from user's inventory) with options for status management */
+  inventorySpecimens?: InventorySpecimenInput[];
+}
+
+/**
+ * Input for selecting a specimen from inventory with options for status management
+ */
+export interface InventorySpecimenInput {
+  /** The inventory specimen ID to link to the cycle */
+  inventorySpecimenId: string;
+  /** If true, mark the specimen as Depleted when the cycle completes */
+  markDepletedOnComplete?: boolean;
 }
 
 export interface UpdateCycleRequest {

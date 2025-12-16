@@ -33,6 +33,7 @@ public class InventoryService : IInventoryService
         CancellationToken cancellationToken = default)
     {
         var query = Inventories
+            .Include(i => i.InventorySource)
             .Include(i => i.InventorySpecimens)
             .Include(i => i.InventoryPhotos)
             .Where(i => i.UserId == userId);
@@ -86,6 +87,7 @@ public class InventoryService : IInventoryService
     public async Task<InventoryDto?> GetInventoryAsync(Guid inventoryId, Guid userId, CancellationToken cancellationToken = default)
     {
         var inventory = await Inventories
+            .Include(i => i.InventorySource)
             .Include(i => i.InventorySpecimens)
                 .ThenInclude(s => s.Specimen)
             .Include(i => i.InventorySpecimens)
@@ -103,14 +105,16 @@ public class InventoryService : IInventoryService
             UserId = userId,
             Name = request.Name,
             AcquiredDate = request.AcquiredDate,
-            SourceType = Enum.Parse<SourceType>(request.SourceType, true),
+            InventorySourceId = request.InventorySourceId,
+            DisplayUnit = request.DisplayUnit ?? "g",
+            StorageLocation = request.StorageLocation,
+            Notes = request.Notes,
+            // Legacy fields - still set for backwards compatibility
+            SourceType = string.IsNullOrEmpty(request.SourceType) ? SourceType.Other : Enum.Parse<SourceType>(request.SourceType, true),
             SourceName = request.SourceName,
             SourceLocation = request.SourceLocation,
             SourceUrl = request.SourceUrl,
-            DisplayUnit = request.DisplayUnit ?? "g",
             Status = string.IsNullOrEmpty(request.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(request.Status, true),
-            StorageLocation = request.StorageLocation,
-            Notes = request.Notes,
             IsFavorite = request.IsFavorite ?? false
         };
 
@@ -136,7 +140,10 @@ public class InventoryService : IInventoryService
                     SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
                         ? string.Join(",", specimenRequest.SizeCategories)
                         : null,
-                    Notes = specimenRequest.Notes
+                    Notes = specimenRequest.Notes,
+                    Status = string.IsNullOrEmpty(specimenRequest.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(specimenRequest.Status, true),
+                    StorageLocation = specimenRequest.StorageLocation,
+                    Url = specimenRequest.Url
                 };
                 InventorySpecimens.Add(inventorySpecimen);
             }
@@ -168,14 +175,17 @@ public class InventoryService : IInventoryService
 
         inventory.Name = request.Name;
         inventory.AcquiredDate = request.AcquiredDate;
-        inventory.SourceType = Enum.Parse<SourceType>(request.SourceType, true);
+        inventory.InventorySourceId = request.InventorySourceId;
+        inventory.DisplayUnit = request.DisplayUnit ?? "g";
+        inventory.StorageLocation = request.StorageLocation;
+        inventory.Notes = request.Notes;
+        // Legacy fields - still set for backwards compatibility
+        if (!string.IsNullOrEmpty(request.SourceType))
+            inventory.SourceType = Enum.Parse<SourceType>(request.SourceType, true);
         inventory.SourceName = request.SourceName;
         inventory.SourceLocation = request.SourceLocation;
         inventory.SourceUrl = request.SourceUrl;
-        inventory.DisplayUnit = request.DisplayUnit ?? "g";
         inventory.Status = string.IsNullOrEmpty(request.Status) ? inventory.Status : Enum.Parse<InventoryStatus>(request.Status, true);
-        inventory.StorageLocation = request.StorageLocation;
-        inventory.Notes = request.Notes;
         inventory.IsFavorite = request.IsFavorite ?? inventory.IsFavorite;
 
         // Update specimens if provided
@@ -199,7 +209,10 @@ public class InventoryService : IInventoryService
                 SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
                     ? string.Join(",", specimenRequest.SizeCategories)
                     : null,
-                Notes = specimenRequest.Notes
+                Notes = specimenRequest.Notes,
+                Status = string.IsNullOrEmpty(specimenRequest.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(specimenRequest.Status, true),
+                StorageLocation = specimenRequest.StorageLocation,
+                Url = specimenRequest.Url
             });
             InventorySpecimens.AddRange(newSpecimens);
         }
@@ -277,7 +290,10 @@ public class InventoryService : IInventoryService
                 SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
                     ? string.Join(",", specimenRequest.SizeCategories)
                     : null,
-                Notes = specimenRequest.Notes
+                Notes = specimenRequest.Notes,
+                Status = string.IsNullOrEmpty(specimenRequest.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(specimenRequest.Status, true),
+                StorageLocation = specimenRequest.StorageLocation,
+                Url = specimenRequest.Url
             };
             InventorySpecimens.Add(inventorySpecimen);
         }
@@ -320,24 +336,35 @@ public class InventoryService : IInventoryService
             .Where(p => p.IsCover)
             .FirstOrDefault() ?? inventory.InventoryPhotos.FirstOrDefault();
 
+        // Calculate specimen status counts
+        var specimens = inventory.InventorySpecimens.ToList();
+        var availableCount = specimens.Count(s => s.Status == InventoryStatus.Available);
+        var inUseCount = specimens.Count(s => s.Status == InventoryStatus.InUse);
+        var depletedCount = specimens.Count(s => s.Status == InventoryStatus.Depleted);
+
         return new InventoryListDto(
             inventory.InventoryId,
             inventory.Name,
             inventory.AcquiredDate,
-            inventory.SourceType.ToString(),
-            inventory.SourceName,
+            inventory.InventorySourceId,
+            inventory.InventorySource?.SourceType.ToString() ?? inventory.SourceType.ToString(),
+            inventory.InventorySource?.Name ?? inventory.SourceName,
             inventory.TotalWeightGrams,
             inventory.RemainingWeightGrams,
             inventory.DisplayUnit,
             inventory.Cost,
             inventory.QualityRating,
-            inventory.Status.ToString(),
-            inventory.IsFavorite,
             inventory.DateCreated,
             inventory.InventorySpecimens.Count,
             inventory.InventoryPhotos.Count,
             coverPhoto?.Url,
-            coverPhoto?.ThumbnailUrl
+            coverPhoto?.ThumbnailUrl,
+            availableCount,
+            inUseCount,
+            depletedCount,
+            // Legacy fields
+            inventory.Status.ToString(),
+            inventory.IsFavorite
         );
     }
 
@@ -364,6 +391,9 @@ public class InventoryService : IInventoryService
                     ? null
                     : s.SizeCategories.Split(',', StringSplitOptions.RemoveEmptyEntries),
                 s.Notes,
+                s.Status.ToString(),
+                s.StorageLocation,
+                s.Url,
                 specimen != null ? "system" : "user"
             );
         }).ToList();
@@ -402,14 +432,27 @@ public class InventoryService : IInventoryService
             );
         }).ToList();
 
+        // Map InventorySource if present
+        InventorySourceSummaryDto? inventorySourceDto = null;
+        if (inventory.InventorySource != null)
+        {
+            inventorySourceDto = new InventorySourceSummaryDto(
+                inventory.InventorySource.InventorySourceId,
+                inventory.InventorySource.SourceType.ToString(),
+                inventory.InventorySource.Name,
+                inventory.InventorySource.Location,
+                inventory.InventorySource.Phone,
+                inventory.InventorySource.Url,
+                inventory.InventorySource.ContactName
+            );
+        }
+
         return new InventoryDto(
             inventory.InventoryId,
             inventory.Name,
             inventory.AcquiredDate,
-            inventory.SourceType.ToString(),
-            inventory.SourceName,
-            inventory.SourceLocation,
-            inventory.SourceUrl,
+            inventory.InventorySourceId,
+            inventorySourceDto,
             inventory.TotalWeightGrams,
             inventory.RemainingWeightGrams,
             inventory.DisplayUnit,
@@ -418,10 +461,8 @@ public class InventoryService : IInventoryService
                 ? null
                 : inventory.SizeCategories.Split(',', StringSplitOptions.RemoveEmptyEntries),
             inventory.QualityRating,
-            inventory.Status.ToString(),
             inventory.StorageLocation,
             inventory.Notes,
-            inventory.IsFavorite,
             inventory.DateCreated,
             inventory.DateUpdated,
             specimens,
@@ -429,7 +470,14 @@ public class InventoryService : IInventoryService
             // Computed fields - weight conversion would be done in frontend
             inventory.TotalWeightGrams,
             inventory.RemainingWeightGrams,
-            inventory.InventoryPhotos.Count
+            inventory.InventoryPhotos.Count,
+            // Legacy fields for backwards compatibility
+            inventory.InventorySource?.SourceType.ToString() ?? inventory.SourceType.ToString(),
+            inventory.InventorySource?.Name ?? inventory.SourceName,
+            inventory.InventorySource?.Location ?? inventory.SourceLocation,
+            inventory.InventorySource?.Url ?? inventory.SourceUrl,
+            inventory.Status.ToString(),
+            inventory.IsFavorite
         );
     }
 

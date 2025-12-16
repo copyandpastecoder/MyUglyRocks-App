@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyUglyRocks.Infrastructure.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyUglyRocks.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251216171612_InventorySourceRefactor")]
+    partial class InventorySourceRefactor
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -554,16 +557,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnName("date_updated")
                         .HasDefaultValueSql("now()");
 
-                    b.Property<Guid?>("InventorySpecimenId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("inventory_specimen_id");
-
-                    b.Property<bool>("MarkDepletedOnComplete")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("boolean")
-                        .HasDefaultValue(false)
-                        .HasColumnName("mark_depleted_on_complete");
-
                     b.Property<Guid?>("SpecimenId")
                         .HasColumnType("uuid")
                         .HasColumnName("specimen_id");
@@ -576,9 +569,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
 
                     b.HasIndex("CycleId")
                         .HasDatabaseName("ix_cycle_specimens_cycle_id");
-
-                    b.HasIndex("InventorySpecimenId")
-                        .HasDatabaseName("ix_cycle_specimens_inventory_specimen_id");
 
                     b.HasIndex("SpecimenId")
                         .HasDatabaseName("ix_cycle_specimens_specimen_id");
@@ -2746,11 +2736,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("MyUglyRocks.Core.Entities.InventorySpecimen", "InventorySpecimen")
-                        .WithMany("CycleSpecimens")
-                        .HasForeignKey("InventorySpecimenId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("MyUglyRocks.Core.Entities.Specimen", "Specimen")
                         .WithMany("CycleSpecimens")
                         .HasForeignKey("SpecimenId")
@@ -2762,8 +2747,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Cycle");
-
-                    b.Navigation("InventorySpecimen");
 
                     b.Navigation("Specimen");
 
@@ -3112,11 +3095,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
             modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySource", b =>
                 {
                     b.Navigation("Inventories");
-                });
-
-            modelBuilder.Entity("MyUglyRocks.Core.Entities.InventorySpecimen", b =>
-                {
-                    b.Navigation("CycleSpecimens");
                 });
 
             modelBuilder.Entity("MyUglyRocks.Core.Entities.Material", b =>

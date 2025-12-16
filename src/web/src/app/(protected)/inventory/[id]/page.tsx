@@ -24,14 +24,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -44,26 +36,21 @@ import {
 import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import { InventoryPhotos } from '@/components/inventory-photos';
 import { SpecimenRowList, type SpecimenRowItem } from '@/components/specimen-row-list';
-import { ArrowLeft, Loader2, Trash2, Package, Star, Share2 } from 'lucide-react';
+import { InventorySourcePicker } from '@/components/inventory-source-picker';
+import { InventorySourceFormDialog } from '@/components/inventory-source-form-dialog';
+import { ArrowLeft, Loader2, Trash2, Package, Share2, MapPin, Phone, Globe, User, Store } from 'lucide-react';
 import Link from 'next/link';
-import type { InventoryStatus, SourceType } from '@/types/inventory';
 import {
   INVENTORY_STATUS_COLORS,
-  INVENTORY_STATUS_OPTIONS,
-  SOURCE_TYPE_OPTIONS,
 } from '@/lib/inventory-constants';
+import { sourceTypeDisplayNames } from '@/types/inventory-source';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   acquiredDate: z.string().min(1, 'Acquired date is required'),
-  sourceType: z.string().min(1, 'Source type is required'),
-  sourceName: z.string().max(255).optional(),
-  sourceLocation: z.string().max(255).optional(),
-  sourceUrl: z.string().url().max(500).optional().or(z.literal('')),
-  status: z.string().min(1, 'Status is required'),
+  inventorySourceId: z.string().nullable(),
   storageLocation: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
-  isFavorite: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -78,6 +65,8 @@ export default function InventoryDetailPage() {
   const [specimenRows, setSpecimenRows] = useState<SpecimenRowItem[]>([]);
   const [specimenError, setSpecimenError] = useState<string | null>(null);
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
+  const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);
+  const [isSourceDetailsOpen, setIsSourceDetailsOpen] = useState(false);
   const hasInitializedForm = useRef(false);
   const hasInitializedSpecimens = useRef(false);
 
@@ -86,19 +75,13 @@ export default function InventoryDetailPage() {
   const deleteMutation = useDeleteInventory();
 
   const form = useForm<FormValues>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
-    resolver: zodResolver(formSchema) as any,
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       acquiredDate: '',
-      sourceType: '',
-      sourceName: '',
-      sourceLocation: '',
-      sourceUrl: '',
-      status: '',
+      inventorySourceId: null,
       storageLocation: '',
       notes: '',
-      isFavorite: false,
     },
   });
 
@@ -109,14 +92,9 @@ export default function InventoryDetailPage() {
       form.reset({
         name: inventory.name,
         acquiredDate: inventory.acquiredDate,
-        sourceType: inventory.sourceType,
-        sourceName: inventory.sourceName || '',
-        sourceLocation: inventory.sourceLocation || '',
-        sourceUrl: inventory.sourceUrl || '',
-        status: inventory.status,
+        inventorySourceId: inventory.inventorySourceId || null,
         storageLocation: inventory.storageLocation || '',
         notes: inventory.notes || '',
-        isFavorite: inventory.isFavorite,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- one-time initialization, form.reset is stable
@@ -140,6 +118,10 @@ export default function InventoryDetailPage() {
           condition: s.condition || 'Raw',
           qualityRating: s.qualityRating,
           sizeCategories: s.sizeCategories || [],
+          notes: s.notes ?? undefined,
+          status: s.status || 'Available',
+          storageLocation: s.storageLocation ?? undefined,
+          url: s.url ?? undefined,
         }));
       setSpecimenRows(rows);
     }
@@ -161,6 +143,9 @@ export default function InventoryDetailPage() {
       condition: 'Raw',
       qualityRating: null,
       sizeCategories: [],
+      status: 'Available',
+      storageLocation: undefined,
+      url: undefined,
     };
     setSpecimenRows(prev => [...prev, newRow]);
     setSpecimenError(null);
@@ -184,6 +169,10 @@ export default function InventoryDetailPage() {
       condition: row.condition,
       qualityRating: row.qualityRating ?? undefined,
       sizeCategories: row.sizeCategories.length > 0 ? row.sizeCategories : undefined,
+      notes: row.notes || undefined,
+      status: row.status,
+      storageLocation: row.storageLocation || undefined,
+      url: row.url || undefined,
     }));
 
     // Update inventory (aggregates are calculated on backend from specimens)
@@ -192,15 +181,10 @@ export default function InventoryDetailPage() {
       data: {
         name: data.name,
         acquiredDate: data.acquiredDate,
-        sourceType: data.sourceType as SourceType,
-        sourceName: data.sourceName || undefined,
-        sourceLocation: data.sourceLocation || undefined,
-        sourceUrl: data.sourceUrl || undefined,
+        inventorySourceId: data.inventorySourceId || undefined,
         displayUnit: 'lb',
-        status: data.status as InventoryStatus,
         storageLocation: data.storageLocation || undefined,
         notes: data.notes || undefined,
-        isFavorite: data.isFavorite,
         specimens: specimensPayload,
       },
     });
@@ -242,10 +226,7 @@ export default function InventoryDetailPage() {
           </Link>
         </Button>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">{inventory.name}</h1>
-            {inventory.isFavorite && <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" />}
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight">{inventory.name}</h1>
           <p className="text-muted-foreground">
             Acquired {formatDate(inventory.acquiredDate, 'MMM d, yyyy')}
           </p>
@@ -276,86 +257,119 @@ export default function InventoryDetailPage() {
                 )}
               />
 
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="sourceType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Source Type *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value} key={field.value}>
+              {/* Source Section - Clean integrated design */}
+              <FormField
+                control={form.control}
+                name="inventorySourceId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Source</FormLabel>
+                    {inventory.inventorySource && !isSourceDetailsOpen ? (
+                      // Display mode - show source info card
+                      <div className="rounded-lg border bg-card p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Store className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{inventory.inventorySource.name}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {sourceTypeDisplayNames[inventory.inventorySource.sourceType]}
+                              </Badge>
+                            </div>
+
+                            {/* Source details in a compact grid */}
+                            {(inventory.inventorySource.location || inventory.inventorySource.contactName || inventory.inventorySource.phone || inventory.inventorySource.url) ? (
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-muted-foreground">
+                                {inventory.inventorySource.location && (
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">{inventory.inventorySource.location}</span>
+                                  </div>
+                                )}
+                                {inventory.inventorySource.contactName && (
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="truncate">{inventory.inventorySource.contactName}</span>
+                                  </div>
+                                )}
+                                {inventory.inventorySource.phone && (
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                                    <a href={`tel:${inventory.inventorySource.phone}`} className="text-primary hover:underline">
+                                      {inventory.inventorySource.phone}
+                                    </a>
+                                  </div>
+                                )}
+                                {inventory.inventorySource.url && (
+                                  <div className="flex items-center gap-2">
+                                    <Globe className="h-3.5 w-3.5 shrink-0" />
+                                    <a
+                                      href={inventory.inventorySource.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline truncate"
+                                    >
+                                      {new URL(inventory.inventorySource.url).hostname}
+                                    </a>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">
+                                No additional details.{' '}
+                                <Link href="/inventory/sources" className="text-primary hover:underline">
+                                  Edit source
+                                </Link>
+                              </p>
+                            )}
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsSourceDetailsOpen(true)}
+                          >
+                            Change
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      // Edit mode - show picker
+                      <div className="space-y-2">
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="How did you acquire this?" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {SOURCE_TYPE_OPTIONS.map(({ value, label }) => (
-                            <SelectItem key={value} value={value}>{label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="sourceName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Source Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Store name, website, location..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-6 sm:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="sourceLocation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location</FormLabel>
-                      <FormControl>
-                        <Input placeholder="City, State or general area" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="sourceUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="url"
-                          placeholder="https://..."
-                          {...field}
-                          onBlur={(e) => {
-                            let value = e.target.value.trim();
-                            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
-                              value = 'https://' + value;
+                          <InventorySourcePicker
+                            value={field.value}
+                            onChange={(value) => {
                               field.onChange(value);
-                            }
-                            field.onBlur();
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                              // Close edit mode after selection if we have a source
+                              if (value) {
+                                setTimeout(() => setIsSourceDetailsOpen(false), 100);
+                              }
+                            }}
+                            onAddNew={() => setIsAddSourceDialogOpen(true)}
+                            placeholder="Select where you acquired this..."
+                          />
+                        </FormControl>
+                        {inventory.inventorySource && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setIsSourceDetailsOpen(false)}
+                          >
+                            Cancel
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                    <FormDescription>
+                      Where did you acquire this material?
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Specimens - expandable cards with all fields */}
               <SpecimenRowList
@@ -368,29 +382,6 @@ export default function InventoryDetailPage() {
                 }}
                 onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
                 error={specimenError}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem className="max-w-xs">
-                    <FormLabel>Status *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} key={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {INVENTORY_STATUS_OPTIONS.map(({ value, label }) => (
-                          <SelectItem key={value} value={value}>{label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
               />
 
               <FormField
@@ -424,27 +415,6 @@ export default function InventoryDetailPage() {
                       />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="isFavorite"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">Favorite</FormLabel>
-                      <FormDescription>
-                        Mark this as a favorite for quick filtering
-                      </FormDescription>
-                    </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -504,8 +474,16 @@ export default function InventoryDetailPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete &quot;{inventory.name}&quot;? This action cannot be undone.
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>Are you sure you want to delete &quot;{inventory.name}&quot;?</p>
+                {inventory.specimens.length > 0 && (
+                  <p className="text-amber-600 dark:text-amber-500 font-medium">
+                    This will also delete {inventory.specimens.length} specimen{inventory.specimens.length !== 1 ? 's' : ''} and all associated data.
+                  </p>
+                )}
+                <p className="text-muted-foreground">This action cannot be undone.</p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -522,6 +500,13 @@ export default function InventoryDetailPage() {
         open={isAddSpecimenDialogOpen}
         onOpenChange={setIsAddSpecimenDialogOpen}
         onSuccess={handleCustomSpecimenCreated}
+      />
+
+      {/* Add Source Dialog */}
+      <InventorySourceFormDialog
+        open={isAddSourceDialogOpen}
+        onOpenChange={setIsAddSourceDialogOpen}
+        onSuccess={(sourceId) => form.setValue('inventorySourceId', sourceId)}
       />
     </div>
   );

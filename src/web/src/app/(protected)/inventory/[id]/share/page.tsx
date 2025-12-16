@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -59,7 +59,10 @@ export default function ShareInventoryPage() {
   const { data: inventory, isLoading } = useInventoryItem(inventoryId);
 
   // Filter to only show completed photos (not processing or failed)
-  const completedPhotos = inventory?.photos?.filter(p => p.processingStatus === 'Completed') ?? [];
+  const completedPhotos = useMemo(
+    () => inventory?.photos?.filter(p => p.processingStatus === 'Completed') ?? [],
+    [inventory?.photos]
+  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),

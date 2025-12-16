@@ -1206,16 +1206,18 @@ export default function CycleDetailPage() {
               />
             </div>
 
-            {/* What's Next */}
-            <div className="space-y-2">
-              <Label className={nextActionError ? 'text-destructive' : ''}>
-                What&apos;s next? *
-              </Label>
-              <div className={`rounded-lg p-3 border-2 transition-colors ${
-                nextActionError
-                  ? 'border-destructive bg-destructive/5 animate-pulse'
-                  : 'border-transparent'
-              }`}>
+            {/* Next Action Selection */}
+            <div className={`rounded-lg border-2 shadow-md transition-all ${
+              nextActionError
+                ? 'border-destructive bg-destructive/5 animate-pulse'
+                : 'border-primary/30 bg-primary/5'
+            }`}>
+              <div className="px-4 py-3 border-b border-primary/20">
+                <Label className={`text-base font-semibold ${nextActionError ? 'text-destructive' : ''}`}>
+                  Please Choose <span className="text-destructive">*required</span>
+                </Label>
+              </div>
+              <div className="p-4">
                 <RadioGroup
                   value={nextAction}
                   onValueChange={(value) => {
@@ -1242,9 +1244,11 @@ export default function CycleDetailPage() {
                 </RadioGroup>
               </div>
               {nextActionError && (
-                <p className="text-sm text-destructive font-medium">
-                  Please select what happens next
-                </p>
+                <div className="px-4 pb-3">
+                  <p className="text-sm text-destructive font-medium">
+                    Please select what happens next
+                  </p>
+                </div>
               )}
             </div>
 

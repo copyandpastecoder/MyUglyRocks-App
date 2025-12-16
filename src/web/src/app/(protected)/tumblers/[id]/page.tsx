@@ -93,7 +93,6 @@ export default function EditTumblerPage() {
   const tumblerId = params.id as string;
 
   const [editingBarrel, setEditingBarrel] = useState<BarrelDto | null>(null);
-  const [, setIsAddingBarrel] = useState(false);
 
   const { data: tumbler, isLoading } = useQuery({
     queryKey: ['tumbler', tumblerId],
@@ -161,7 +160,6 @@ export default function EditTumblerPage() {
       queryClient.invalidateQueries({ queryKey: ['tumbler', tumblerId] });
       queryClient.invalidateQueries({ queryKey: ['tumblers'] });
       toast.success('Barrel added successfully');
-      setIsAddingBarrel(false);
     },
     onError: () => {
       toast.error('Failed to add barrel');
