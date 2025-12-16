@@ -200,24 +200,27 @@ function Decrypt-Backup {
         return $false
     }
 
-    Write-Host "Decrypting backup (AES-256-CBC)..." -ForegroundColor Yellow
+    Write-Host "Decrypting backup (AES-256-CBC with 600K PBKDF2 iterations)..." -ForegroundColor Yellow
 
     # Set password as environment variable for openssl
     $env:BACKUP_PASSWORD_TEMP = $BackupPassword
 
-    & openssl enc -d -aes-256-cbc -pbkdf2 -in $EncryptedFile -out $DecryptedFile -pass env:BACKUP_PASSWORD_TEMP 2>&1
-    $result = $LASTEXITCODE
+    try {
+        & openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in $EncryptedFile -out $DecryptedFile -pass env:BACKUP_PASSWORD_TEMP 2>&1
+        $result = $LASTEXITCODE
 
-    # Clear the temp password
-    Remove-Item Env:\BACKUP_PASSWORD_TEMP -ErrorAction SilentlyContinue
+        if ($result -ne 0) {
+            Write-Host "Failed to decrypt backup. Wrong password?" -ForegroundColor Red
+            return $false
+        }
 
-    if ($result -ne 0) {
-        Write-Host "Failed to decrypt backup. Wrong password?" -ForegroundColor Red
-        return $false
+        Write-Host "Backup decrypted successfully" -ForegroundColor Green
+        return $true
     }
-
-    Write-Host "Backup decrypted successfully" -ForegroundColor Green
-    return $true
+    finally {
+        # Always clear the temp password, even if an exception occurs
+        Remove-Item Env:\BACKUP_PASSWORD_TEMP -ErrorAction SilentlyContinue
+    }
 }
 
 # Function to restore backup

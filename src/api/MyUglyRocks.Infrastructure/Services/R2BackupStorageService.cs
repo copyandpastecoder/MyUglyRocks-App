@@ -174,8 +174,21 @@ public class R2BackupStorageService : IBackupStorageService
 
                 var response = await _s3Client.ListObjectsV2Async(request, cancellationToken);
 
-                results.AddRange(response.S3Objects.Select(o =>
-                    new BackupObjectInfo(o.Key, o.Size ?? 0, o.LastModified ?? DateTime.MinValue)));
+                foreach (var obj in response.S3Objects)
+                {
+                    // S3 objects should always have Size and LastModified.
+                    // If missing, log a warning and skip (could indicate API issues or data corruption).
+                    // Using default values would cause retention policy to incorrectly delete backups.
+                    if (obj.Size == null || obj.LastModified == null)
+                    {
+                        _logger.LogWarning(
+                            "Skipping backup object with missing metadata: {Key}, Size: {Size}, LastModified: {LastModified}",
+                            obj.Key, obj.Size?.ToString() ?? "null", obj.LastModified?.ToString() ?? "null");
+                        continue;
+                    }
+
+                    results.Add(new BackupObjectInfo(obj.Key, obj.Size.Value, obj.LastModified.Value));
+                }
 
                 continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
 
