@@ -116,13 +116,11 @@ public class PhotosController : ControllerBase
             var folder = $"photos/stages/{stageRunId}";
             var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
 
-            // Read file into memory for background processing
-            byte[] imageData;
+            // Upload to R2 temp storage first - avoids storing large byte arrays in Hangfire
+            var tempStorageKey = $"temp/{photoId:N}{extension}";
             await using (var inputStream = file.OpenReadStream())
             {
-                using var memoryStream = new MemoryStream();
-                await inputStream.CopyToAsync(memoryStream, cancellationToken);
-                imageData = memoryStream.ToArray();
+                await _storageService.UploadAsync(inputStream, file.FileName, "temp", $"{photoId:N}{extension}", cancellationToken);
             }
 
             // Create photo record immediately with "Processing" status
@@ -148,16 +146,18 @@ public class PhotosController : ControllerBase
             await _context.SaveChangesAsync(cancellationToken);
 
             // Two-phase processing: thumbnail first (fast), then large variants (background)
+            // Jobs fetch from R2 temp storage instead of receiving byte[] (prevents DB bloat)
             // Phase 1: Thumbnail - user sees this quickly, status becomes Completed
             var thumbnailJobId = _backgroundJobClient.Enqueue<PhotoProcessingJob>(
-                job => job.ProcessThumbnailAsync(photoId, imageData, file.FileName));
+                job => job.ProcessThumbnailAsync(photoId, tempStorageKey, file.FileName));
 
             // Phase 2: Large variants - runs after thumbnail, user doesn't wait
+            // This job also cleans up the temp file after processing
             _backgroundJobClient.ContinueJobWith<PhotoProcessingJob>(
                 thumbnailJobId,
-                job => job.ProcessLargeVariantsAsync(photoId, imageData, file.FileName));
+                job => job.ProcessLargeVariantsAsync(photoId, tempStorageKey, file.FileName));
 
-            _logger.LogInformation("Photo {PhotoId} queued for two-phase processing", photoId);
+            _logger.LogInformation("Photo {PhotoId} queued for two-phase processing, temp key: {TempKey}", photoId, tempStorageKey);
 
             var dto = new PhotoDto(
                 photo.PhotoId,
@@ -265,13 +265,11 @@ public class PhotosController : ControllerBase
             var folder = $"photos/inventory/{inventoryId}";
             var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
 
-            // Read file into memory for background processing
-            byte[] imageData;
+            // Upload to R2 temp storage first - avoids storing large byte arrays in Hangfire
+            var tempStorageKey = $"temp/{photoId:N}{extension}";
             await using (var inputStream = file.OpenReadStream())
             {
-                using var memoryStream = new MemoryStream();
-                await inputStream.CopyToAsync(memoryStream, cancellationToken);
-                imageData = memoryStream.ToArray();
+                await _storageService.UploadAsync(inputStream, file.FileName, "temp", $"{photoId:N}{extension}", cancellationToken);
             }
 
             // If this is set as cover, unset existing cover
@@ -307,16 +305,18 @@ public class PhotosController : ControllerBase
             await _context.SaveChangesAsync(cancellationToken);
 
             // Two-phase processing: thumbnail first (fast), then large variants (background)
+            // Jobs fetch from R2 temp storage instead of receiving byte[] (prevents DB bloat)
             // Phase 1: Thumbnail - user sees this quickly, status becomes Completed
             var thumbnailJobId = _backgroundJobClient.Enqueue<InventoryPhotoProcessingJob>(
-                job => job.ProcessThumbnailAsync(photoId, imageData, file.FileName));
+                job => job.ProcessThumbnailAsync(photoId, tempStorageKey, file.FileName));
 
             // Phase 2: Large variants - runs after thumbnail, user doesn't wait
+            // This job also cleans up the temp file after processing
             _backgroundJobClient.ContinueJobWith<InventoryPhotoProcessingJob>(
                 thumbnailJobId,
-                job => job.ProcessLargeVariantsAsync(photoId, imageData, file.FileName));
+                job => job.ProcessLargeVariantsAsync(photoId, tempStorageKey, file.FileName));
 
-            _logger.LogInformation("Inventory photo {PhotoId} queued for two-phase processing", photoId);
+            _logger.LogInformation("Inventory photo {PhotoId} queued for two-phase processing, temp key: {TempKey}", photoId, tempStorageKey);
 
             var dto = new InventoryPhotoDto(
                 photo.InventoryPhotoId,
