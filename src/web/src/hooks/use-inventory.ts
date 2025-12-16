@@ -208,3 +208,28 @@ export function useSetInventoryCoverPhoto() {
     },
   });
 }
+
+/**
+ * Hook for updating inventory photo (specimen tag and caption)
+ */
+export function useUpdateInventoryPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      photoId,
+      data,
+    }: {
+      inventoryId: string;
+      photoId: string;
+      data: { inventorySpecimenId?: string | null; caption?: string | null };
+    }) => inventoryApi.updatePhoto(photoId, data),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(variables.inventoryId) });
+      toast.success('Photo updated');
+    },
+    onError: () => {
+      toast.error('Failed to update photo');
+    },
+  });
+}

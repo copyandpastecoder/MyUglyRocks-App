@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useInventory, useInventoryStats, useDeleteInventory, useUpdateInventoryStatus } from '@/hooks/use-inventory';
+import { useInventorySources } from '@/hooks/use-inventory-sources';
 import { useDebouncedValue } from '@/hooks';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
@@ -17,12 +18,12 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
-  Star,
   Search,
   DollarSign,
   Scale,
   CheckCircle,
   Loader2,
+  Store,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -49,20 +50,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import Link from 'next/link';
-import type { InventoryListDto, InventoryStatus, SourceType } from '@/types/inventory';
+import type { InventoryListDto, InventoryStatus } from '@/types/inventory';
+import type { InventorySourceType } from '@/types/inventory-source';
+import { sourceTypeDisplayNames } from '@/types/inventory-source';
 import {
   INVENTORY_STATUS_COLORS,
   INVENTORY_STATUS_LABELS,
 } from '@/lib/inventory-constants';
-
-const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
-  Store: 'Store',
-  Online: 'Online',
-  Found: 'Found',
-  Gift: 'Gift',
-  Trade: 'Trade',
-  Other: 'Other',
-};
 
 function formatWeight(grams: number | null, unit: string): string {
   if (grams === null) return '-';
@@ -83,10 +77,14 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<InventoryStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'acquiredDate' | 'name' | 'cost'>('acquiredDate');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Debounce search to avoid API call on every keystroke
   const debouncedSearch = useDebouncedValue(search, 300);
+
+  // Fetch inventory sources for filter dropdown
+  const { data: sources } = useInventorySources({ isActive: true });
 
   const filters = {
     status: activeTab === 'all' ? undefined : activeTab,
@@ -96,6 +94,11 @@ export default function InventoryPage() {
   };
 
   const { data: inventory, isLoading, isFetching, isPlaceholderData } = useInventory(filters);
+
+  // Filter by source client-side (API doesn't support source filter yet)
+  const filteredInventory = sourceFilter === 'all'
+    ? inventory
+    : inventory?.filter(item => item.inventorySourceId === sourceFilter);
 
   const { data: stats } = useInventoryStats();
   const deleteMutation = useDeleteInventory();
@@ -139,13 +142,9 @@ export default function InventoryPage() {
             </div>
           )}
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="font-medium truncate">{item.name}</p>
-              {item.isFavorite && <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500" />}
-            </div>
+            <p className="font-medium truncate">{item.name}</p>
             <p className="text-sm text-muted-foreground truncate">
-              {SOURCE_TYPE_LABELS[item.sourceType]}
-              {item.sourceName && ` · ${item.sourceName}`}
+              {item.sourceName || (item.sourceType ? sourceTypeDisplayNames[item.sourceType as InventorySourceType] : null) || 'No source'}
               {item.specimenCount > 0 && ` · ${item.specimenCount} specimen${item.specimenCount !== 1 ? 's' : ''}`}
             </p>
           </div>
@@ -205,12 +204,20 @@ export default function InventoryPage() {
             <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
             <p className="text-muted-foreground">Track your rock and specimen collection</p>
           </div>
-          <Button asChild>
-            <Link href="/inventory/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Inventory
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/inventory/sources">
+                <Store className="mr-2 h-4 w-4" />
+                Manage Sources
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/inventory/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Inventory
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Stats Bar */}
@@ -262,6 +269,19 @@ export default function InventoryPage() {
               <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
             )}
           </div>
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              {sources?.map((source) => (
+                <SelectItem key={source.inventorySourceId} value={source.inventorySourceId}>
+                  {source.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
             <SelectTrigger className="w-full sm:w-[150px]">
               <SelectValue placeholder="Sort by" />
@@ -283,16 +303,18 @@ export default function InventoryPage() {
           </TabsList>
 
           <TabsContent value={activeTab} className="mt-4">
-            {inventory?.length === 0 ? (
+            {filteredInventory?.length === 0 ? (
               <div className="border rounded-lg border-dashed py-12 text-center">
                 <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="font-medium mb-1">No inventory items</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  {activeTab === 'all'
+                  {activeTab === 'all' && sourceFilter === 'all'
                     ? 'Start tracking your rock collection'
+                    : sourceFilter !== 'all'
+                    ? 'No items from this source'
                     : `No ${INVENTORY_STATUS_LABELS[activeTab as InventoryStatus].toLowerCase()} items`}
                 </p>
-                {activeTab === 'all' && (
+                {activeTab === 'all' && sourceFilter === 'all' && (
                   <Button asChild>
                     <Link href="/inventory/new">
                       <Plus className="mr-2 h-4 w-4" />
@@ -303,7 +325,7 @@ export default function InventoryPage() {
               </div>
             ) : (
               <StaggerContainer className="space-y-2">
-                {inventory?.map((item) => (
+                {filteredInventory?.map((item) => (
                   <StaggerItem key={item.inventoryId}>
                     {renderInventoryRow(item)}
                   </StaggerItem>
@@ -317,8 +339,22 @@ export default function InventoryPage() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Delete Inventory Item</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to delete this inventory item? This action cannot be undone.
+              <AlertDialogDescription asChild>
+                <div className="space-y-2">
+                  <p>Are you sure you want to delete this inventory item?</p>
+                  {(() => {
+                    const item = filteredInventory?.find(i => i.inventoryId === deleteId);
+                    if (item && item.specimenCount > 0) {
+                      return (
+                        <p className="text-amber-600 dark:text-amber-500 font-medium">
+                          This will also delete {item.specimenCount} specimen{item.specimenCount !== 1 ? 's' : ''} and all associated data.
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
+                  <p className="text-muted-foreground">This action cannot be undone.</p>
+                </div>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

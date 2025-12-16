@@ -30,3 +30,8 @@ public record UploadInventoryPhotoResponse(
     InventoryPhotoDto? Photo = null,
     string? Error = null
 );
+
+public record UpdateInventoryPhotoRequest(
+    Guid? InventorySpecimenId,
+    string? Caption
+);

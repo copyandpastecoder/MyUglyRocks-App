@@ -6,20 +6,16 @@ public record InventoryDto(
     Guid InventoryId,
     string Name,
     DateOnly AcquiredDate,
-    string SourceType,
-    string? SourceName,
-    string? SourceLocation,
-    string? SourceUrl,
+    Guid? InventorySourceId,
+    InventorySourceSummaryDto? InventorySource,
     decimal? TotalWeightGrams,
     decimal? RemainingWeightGrams,
     string DisplayUnit,
     decimal? Cost,  // Aggregated from specimens
     string[]? SizeCategories,  // Aggregated from specimens
     int? QualityRating,  // Aggregated from specimens (average)
-    string Status,
     string? StorageLocation,
     string? Notes,
-    bool IsFavorite,
     DateTime DateCreated,
     DateTime DateUpdated,
     IEnumerable<InventorySpecimenDto> Specimens,
@@ -27,27 +23,53 @@ public record InventoryDto(
     // Computed fields
     decimal? DisplayTotalWeight,
     decimal? DisplayRemainingWeight,
-    int PhotoCount
+    int PhotoCount,
+    // Legacy fields for backwards compatibility during transition
+    string SourceType,
+    string? SourceName,
+    string? SourceLocation,
+    string? SourceUrl,
+    string Status,
+    bool IsFavorite
+);
+
+/// <summary>
+/// Summary DTO for InventorySource when embedded in Inventory responses
+/// </summary>
+public record InventorySourceSummaryDto(
+    Guid InventorySourceId,
+    string SourceType,
+    string Name,
+    string? Location,
+    string? Phone,
+    string? Url,
+    string? ContactName
 );
 
 public record InventoryListDto(
     Guid InventoryId,
     string Name,
     DateOnly AcquiredDate,
-    string SourceType,
-    string? SourceName,
+    Guid? InventorySourceId,
+    string? SourceType,  // From InventorySource
+    string? SourceName,  // From InventorySource.Name
     decimal? TotalWeightGrams,
     decimal? RemainingWeightGrams,
     string DisplayUnit,
     decimal? Cost,  // Aggregated from specimens
     int? QualityRating,  // Aggregated from specimens (average)
-    string Status,
-    bool IsFavorite,
     DateTime DateCreated,
     int SpecimenCount,
     int PhotoCount,
     string? CoverPhotoUrl,
-    string? CoverPhotoThumbnailUrl
+    string? CoverPhotoThumbnailUrl,
+    // Specimen status counts
+    int AvailableCount,
+    int InUseCount,
+    int DepletedCount,
+    // Legacy fields for backwards compatibility
+    string Status,
+    bool IsFavorite
 );
 
 public record CreateInventoryRequest(
@@ -58,23 +80,10 @@ public record CreateInventoryRequest(
     [Required(ErrorMessage = "Acquired date is required")]
     DateOnly AcquiredDate,
 
-    [Required(ErrorMessage = "Source type is required")]
-    string SourceType,
-
-    [StringLength(255, ErrorMessage = "Source name must be at most 255 characters")]
-    string? SourceName,
-
-    [StringLength(255, ErrorMessage = "Source location must be at most 255 characters")]
-    string? SourceLocation,
-
-    [StringLength(500, ErrorMessage = "Source URL must be at most 500 characters")]
-    [Url(ErrorMessage = "Source URL must be a valid URL")]
-    string? SourceUrl,
+    Guid? InventorySourceId,
 
     [StringLength(10, ErrorMessage = "Display unit must be at most 10 characters")]
     string? DisplayUnit,
-
-    string? Status,
 
     [StringLength(255, ErrorMessage = "Storage location must be at most 255 characters")]
     string? StorageLocation,
@@ -82,9 +91,15 @@ public record CreateInventoryRequest(
     [StringLength(2000, ErrorMessage = "Notes must be at most 2000 characters")]
     string? Notes,
 
-    bool? IsFavorite,
+    IEnumerable<CreateInventorySpecimenRequest>? Specimens,
 
-    IEnumerable<CreateInventorySpecimenRequest>? Specimens
+    // Legacy fields - still accepted for backwards compatibility during transition
+    string? SourceType,
+    string? SourceName,
+    string? SourceLocation,
+    string? SourceUrl,
+    string? Status,
+    bool? IsFavorite
 );
 
 public record UpdateInventoryRequest(
@@ -95,23 +110,10 @@ public record UpdateInventoryRequest(
     [Required(ErrorMessage = "Acquired date is required")]
     DateOnly AcquiredDate,
 
-    [Required(ErrorMessage = "Source type is required")]
-    string SourceType,
-
-    [StringLength(255, ErrorMessage = "Source name must be at most 255 characters")]
-    string? SourceName,
-
-    [StringLength(255, ErrorMessage = "Source location must be at most 255 characters")]
-    string? SourceLocation,
-
-    [StringLength(500, ErrorMessage = "Source URL must be at most 500 characters")]
-    [Url(ErrorMessage = "Source URL must be a valid URL")]
-    string? SourceUrl,
+    Guid? InventorySourceId,
 
     [StringLength(10, ErrorMessage = "Display unit must be at most 10 characters")]
     string? DisplayUnit,
-
-    string? Status,
 
     [StringLength(255, ErrorMessage = "Storage location must be at most 255 characters")]
     string? StorageLocation,
@@ -119,9 +121,15 @@ public record UpdateInventoryRequest(
     [StringLength(2000, ErrorMessage = "Notes must be at most 2000 characters")]
     string? Notes,
 
-    bool? IsFavorite,
+    IEnumerable<CreateInventorySpecimenRequest>? Specimens,
 
-    IEnumerable<CreateInventorySpecimenRequest>? Specimens
+    // Legacy fields - still accepted for backwards compatibility during transition
+    string? SourceType,
+    string? SourceName,
+    string? SourceLocation,
+    string? SourceUrl,
+    string? Status,
+    bool? IsFavorite
 );
 
 public record UpdateInventoryStatusRequest(
@@ -148,6 +156,9 @@ public record InventorySpecimenDto(
     int? QualityRating,
     string[]? SizeCategories,
     string? Notes,
+    string Status,  // Available, InUse, Depleted, Partial
+    string? StorageLocation,
+    string? Url,
     string Source  // "system" or "user"
 );
 
@@ -169,7 +180,15 @@ public record CreateInventorySpecimenRequest(
     string[]? SizeCategories,
 
     [StringLength(500, ErrorMessage = "Notes must be at most 500 characters")]
-    string? Notes
+    string? Notes,
+
+    string? Status,  // Available, InUse, Depleted, Partial (defaults to Available)
+
+    [StringLength(255, ErrorMessage = "Storage location must be at most 255 characters")]
+    string? StorageLocation,
+
+    [StringLength(500, ErrorMessage = "URL must be at most 500 characters")]
+    string? Url
 );
 
 public record InventoryPhotoDto(

@@ -179,6 +179,7 @@ try
     builder.Services.AddScoped<IAdminService, AdminService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
     builder.Services.AddScoped<IInventoryService, InventoryService>();
+    builder.Services.AddScoped<IInventorySourceService, InventorySourceService>();
     builder.Services.AddScoped<IUserSpecimenService, UserSpecimenService>();
     builder.Services.AddScoped<SeedDataService>();
 
