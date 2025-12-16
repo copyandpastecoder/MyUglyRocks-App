@@ -79,7 +79,8 @@
       "Bash(kubectl run:*)",
       "Bash(jq:*)",
       "Bash(winget search:*)",
-      "Bash(Select-Object -First 50)"
+      "Bash(Select-Object -First 50)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []

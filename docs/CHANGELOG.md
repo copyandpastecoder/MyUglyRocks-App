@@ -2,6 +2,48 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-16
+
+### Added
+
+#### Animated Vote Counter in Gallery
+- **Feature**: Vote counts in the gallery now animate smoothly when users vote
+- **File**: [gallery/page.tsx](../src/web/src/app/(protected)/gallery/page.tsx)
+- **Details**:
+  - Uses existing `AnimatedCounter` component from `components/ui/animated-counter.tsx`
+  - Vote count animates up/down with spring physics when clicking the heart button
+  - Local state tracks optimistic vote count for immediate feedback
+
+#### Confetti Celebration on Cycle Completion
+- **Feature**: Completing a tumbling cycle now triggers a celebratory confetti animation
+- **File**: [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx)
+- **Details**:
+  - Uses existing `useConfetti` hook from `components/ui/confetti.tsx`
+  - Confetti fires automatically when `completeCycleMutation` succeeds
+  - Canvas-based particle animation with colorful shapes (squares, circles, rectangles)
+  - Animation runs for 3 seconds with gravity and air resistance physics
+
+### Fixed
+
+#### Inventory Search Focus Loss
+- **Problem**: Typing in the inventory search box caused the cursor to leave the input after each character, requiring re-clicking to continue typing
+- **Root Cause**: Each keystroke triggered an immediate API call, which caused react-query to refetch. The `isLoading` state toggled true, causing the full page skeleton to render and unmount the input.
+- **Solution**: Three-part fix:
+  1. **Debouncing**: Created `useDebouncedValue` hook (300ms delay) so API calls only fire after user stops typing
+  2. **Keep previous data**: Added `placeholderData: keepPreviousData` to `useInventory` hook so old results stay visible during refetch
+  3. **Smarter loading state**: Full page skeleton only shows on initial load, not during search refetches
+- **Files**:
+  - [use-debounce.ts](../src/web/src/hooks/use-debounce.ts) - **New** reusable debounce hook
+  - [use-inventory.ts](../src/web/src/hooks/use-inventory.ts) - Added `keepPreviousData` import and usage
+  - [inventory/page.tsx](../src/web/src/app/(protected)/inventory/page.tsx) - Added debounced search, loading spinner, `hasLoadedOnce` ref
+  - [hooks/index.ts](../src/web/src/hooks/index.ts) - Export `useDebouncedValue`
+- **UX Improvements**:
+  - Loading spinner appears in search input while fetching
+  - Placeholder text changed to "Search by name..." to clarify what's being searched
+  - Results update smoothly after typing stops
+
+---
+
 ## [Unreleased] - 2025-12-15
 
 ### Fixed

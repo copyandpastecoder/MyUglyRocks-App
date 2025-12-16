@@ -10,6 +10,7 @@ import { GalleryGridSkeleton } from '@/components/skeletons';
 import { LazyImage } from '@/components/lazy-image';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
 import { NoPhotosEmpty } from '@/components/ui/empty-state';
+import { AnimatedCounter } from '@/components/ui/animated-counter';
 import {
   Select,
   SelectContent,
@@ -111,6 +112,7 @@ function PostRow({
   isAuthenticated: boolean;
 }) {
   const [hasVoted, setHasVoted] = useState(false);
+  const [voteCount, setVoteCount] = useState(post.voteCount);
 
   const handleVoteClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -118,6 +120,7 @@ function PostRow({
     onVote(hasVoted);
     if (isAuthenticated) {
       setHasVoted(!hasVoted);
+      setVoteCount(prev => hasVoted ? prev - 1 : prev + 1);
     }
   };
 
@@ -179,7 +182,7 @@ function PostRow({
           }`}
         >
           <Heart className={`h-4 w-4 ${hasVoted ? 'fill-current' : ''}`} />
-          <span>{post.voteCount}</span>
+          <AnimatedCounter value={voteCount} />
         </button>
         <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <MessageCircle className="h-4 w-4" />

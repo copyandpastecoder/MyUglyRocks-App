@@ -87,6 +87,7 @@ import { formatCleaningPurpose } from '@/lib/cleaning-constants';
 import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
 import type { StageRunSummaryDto, StageRunDto, CompleteStageRunRequest, UpdateCycleRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import { PageTransition } from '@/components/ui/page-transition';
+import { useConfetti } from '@/components/ui/confetti';
 
 export default function CycleDetailPage() {
   const params = useParams();
@@ -168,6 +169,9 @@ export default function CycleDetailPage() {
   const [isCompleteCycleOpen, setIsCompleteCycleOpen] = useState(false);
   const [completeCycleFinalQuality, setCompleteCycleFinalQuality] = useState<number>(0);
   const [completeCycleNotes, setCompleteCycleNotes] = useState('');
+
+  // Confetti for cycle completion celebration
+  const { fire: fireConfetti, Confetti } = useConfetti();
 
   // View Stage Modal State
   const [isViewStageOpen, setIsViewStageOpen] = useState(false);
@@ -362,6 +366,8 @@ export default function CycleDetailPage() {
       setIsCompleteCycleOpen(false);
       setCompleteCycleFinalQuality(0);
       setCompleteCycleNotes('');
+      // Celebrate with confetti!
+      fireConfetti();
     },
     onError: () => {
       toast.error('Failed to complete cycle');
@@ -655,6 +661,9 @@ export default function CycleDetailPage() {
 
   return (
     <PageTransition>
+      {/* Confetti celebration for cycle completion */}
+      <Confetti />
+
       <div className={PAGE_CONTAINER}>
         {/* Back button */}
         <div className="flex items-center gap-2 mb-4">

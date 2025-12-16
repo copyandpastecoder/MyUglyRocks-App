@@ -256,3 +256,37 @@ See `docs/SECURITY-AUDIT.md` for:
 
 - See `src/web/CLAUDE.md` for frontend-specific coding standards
 - See `docs/` for architecture and feature documentation
+
+## Planning Review Checklist
+
+When creating implementation plans (especially for migrations, scripts, or multi-phase features), review against this checklist before considering the plan complete:
+
+### Data & SQL
+- [ ] **Trace with sample data**: Walk through SQL with 2-3 concrete rows including edge cases (nulls, blanks, special characters)
+- [ ] **Match logic across phases**: If Phase 1 transforms data (e.g., defaults blank names to "Store"), Phase 2 must use the SAME transformation when matching
+- [ ] **Verify GROUP BY / DISTINCT ON keys**: Ensure grouping columns match the unique constraint being enforced
+- [ ] **Check enum backing values**: Document and verify C# enum integer values match SQL DEFAULT values
+- [ ] **Consider concurrent writes**: Add re-verification queries after constraint changes to catch race conditions during deployment
+
+### Cross-Platform & Scripts
+- [ ] **macOS vs Linux commands**: Check for platform-specific tools (md5sum vs md5, date formats, etc.)
+- [ ] **Shell injection vectors**: Avoid `eval` on untrusted input; use temp files or environment variables instead
+- [ ] **Prerequisites list**: Document ALL required tools (Python, pg_dump, wrangler, etc.)
+- [ ] **URL/connection string parsing**: Handle special characters in passwords (@ : % etc.) via proper URL decoding
+
+### Interface vs Implementation
+- [ ] **Re-read interface comments**: After writing implementation, verify comments/docs match actual behavior
+- [ ] **Test cases match implementation**: If implementation does checksum + format validation, tests should cover both
+- [ ] **Record/DTO fields match data source**: Don't include fields that won't be populated (e.g., Checksum in S3 LIST response)
+
+### EF Core / Database
+- [ ] **Constraint idempotency**: Use `DROP CONSTRAINT IF EXISTS` before `ADD CONSTRAINT`
+- [ ] **Index idempotency**: Use `CREATE INDEX IF NOT EXISTS`
+- [ ] **DEFAULT values**: If dropping a DEFAULT, configure EF Core to not re-add it and add a test to catch drift
+- [ ] **PostgreSQL-specific syntax**: Note when using DISTINCT ON, and provide ROW_NUMBER() alternative for portability
+
+### Deployment & Rollback
+- [ ] **Verification queries**: Include queries to check migration success before proceeding to next phase
+- [ ] **Diagnostic queries**: If verification fails, include a query to LIST affected rows (not just COUNT)
+- [ ] **Keep old columns**: Don't drop columns until verification passes
+- [ ] **Re-verify after constraints**: Check for orphans again after setting NOT NULL / adding FK
