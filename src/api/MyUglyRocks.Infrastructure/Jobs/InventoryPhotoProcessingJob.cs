@@ -9,6 +9,7 @@ namespace MyUglyRocks.Infrastructure.Jobs;
 /// <summary>
 /// Hangfire background job for processing inventory photo variants.
 /// Uses two-phase processing: thumbnail first (fast), then large variants (background).
+/// Images are fetched from R2 temp storage to avoid storing large byte arrays in Hangfire.
 /// </summary>
 public class InventoryPhotoProcessingJob
 {
@@ -33,7 +34,10 @@ public class InventoryPhotoProcessingJob
     /// Phase 1: Process thumbnail only and mark as completed immediately.
     /// User sees the thumbnail right away without waiting for large variants.
     /// </summary>
-    public async Task ProcessThumbnailAsync(Guid photoId, byte[] imageData, string fileName)
+    /// <param name="photoId">The photo ID</param>
+    /// <param name="tempStorageKey">R2 temp storage key where the original image is stored</param>
+    /// <param name="fileName">Original file name for content type detection</param>
+    public async Task ProcessThumbnailAsync(Guid photoId, string tempStorageKey, string fileName)
     {
         _logger.LogInformation("Starting thumbnail processing for inventory photo {PhotoId}", photoId);
 
@@ -48,7 +52,18 @@ public class InventoryPhotoProcessingJob
 
         try
         {
-            using var inputStream = new MemoryStream(imageData);
+            // Fetch image from R2 temp storage instead of receiving byte[] through Hangfire
+            using var inputStream = await _storageService.GetStreamAsync(tempStorageKey);
+            if (inputStream == null)
+            {
+                _logger.LogError("Temp image not found in R2 for inventory photo {PhotoId}: {Key}", photoId, tempStorageKey);
+                photo.ProcessingStatus = PhotoProcessingStatus.Failed;
+                photo.ProcessingError = "Temp image not found";
+                photo.DateUpdated = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                return;
+            }
+
             var result = await _imageProcessingService.ProcessThumbnailAsync(inputStream, fileName);
 
             var folder = $"photos/inventory/{photo.InventoryId}";
@@ -89,8 +104,12 @@ public class InventoryPhotoProcessingJob
 
     /// <summary>
     /// Phase 2: Process large variants in background. User doesn't wait for this.
+    /// Also cleans up the temp storage file after processing.
     /// </summary>
-    public async Task ProcessLargeVariantsAsync(Guid photoId, byte[] imageData, string fileName)
+    /// <param name="photoId">The photo ID</param>
+    /// <param name="tempStorageKey">R2 temp storage key where the original image is stored</param>
+    /// <param name="fileName">Original file name for content type detection</param>
+    public async Task ProcessLargeVariantsAsync(Guid photoId, string tempStorageKey, string fileName)
     {
         _logger.LogInformation("Starting large variant processing for inventory photo {PhotoId}", photoId);
 
@@ -100,12 +119,21 @@ public class InventoryPhotoProcessingJob
         if (photo == null)
         {
             _logger.LogWarning("Inventory photo {PhotoId} not found for large variant processing", photoId);
+            // Clean up temp file even if photo not found
+            await CleanupTempFileAsync(tempStorageKey);
             return;
         }
 
         try
         {
-            using var inputStream = new MemoryStream(imageData);
+            // Fetch image from R2 temp storage
+            using var inputStream = await _storageService.GetStreamAsync(tempStorageKey);
+            if (inputStream == null)
+            {
+                _logger.LogError("Temp image not found in R2 for inventory photo {PhotoId}: {Key}", photoId, tempStorageKey);
+                return;
+            }
+
             var result = await _imageProcessingService.ProcessLargeVariantsAsync(inputStream, fileName);
 
             var folder = $"photos/inventory/{photo.InventoryId}";
@@ -154,6 +182,24 @@ public class InventoryPhotoProcessingJob
         {
             // Don't mark as failed - thumbnail is already showing
             _logger.LogError(ex, "Failed to process large variants for inventory photo {PhotoId}", photoId);
+        }
+        finally
+        {
+            // Always clean up temp file after processing
+            await CleanupTempFileAsync(tempStorageKey);
+        }
+    }
+
+    private async Task CleanupTempFileAsync(string tempStorageKey)
+    {
+        try
+        {
+            await _storageService.DeleteAsync(tempStorageKey);
+            _logger.LogDebug("Cleaned up temp file: {Key}", tempStorageKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to clean up temp file: {Key}", tempStorageKey);
         }
     }
 

@@ -156,6 +156,43 @@ public class R2StorageService : IStorageService
         }
     }
 
+    public async Task<Stream?> GetStreamAsync(string key, CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured)
+        {
+            _logger.LogWarning("R2 storage is not configured, download skipped");
+            return null;
+        }
+
+        try
+        {
+            var request = new GetObjectRequest
+            {
+                BucketName = _settings.BucketName,
+                Key = key
+            };
+
+            var response = await _s3Client.GetObjectAsync(request, cancellationToken);
+
+            // Copy to MemoryStream so we can dispose the S3 response
+            var memoryStream = new MemoryStream();
+            await response.ResponseStream.CopyToAsync(memoryStream, cancellationToken);
+            memoryStream.Position = 0;
+
+            return memoryStream;
+        }
+        catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            _logger.LogWarning("File not found in R2: {Key}", key);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to download file from R2: {Key}", key);
+            throw;
+        }
+    }
+
     public string GetPublicUrl(string key)
     {
         if (!string.IsNullOrEmpty(_settings.PublicUrl))
