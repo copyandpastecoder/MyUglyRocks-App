@@ -21,6 +21,11 @@ All notable changes to this project will be documented in this file.
   2. Controller queues Hangfire job with just the temp key string (~50 bytes)
   3. Job fetches image from R2, processes it, uploads variants
   4. Job deletes temp file after processing
+- **Cleanup Handling**: Temp files are cleaned up in all failure scenarios:
+  - Photo record not found: thumbnail job cleans up before returning
+  - Processing exception: thumbnail job cleans up before re-throwing (prevents continuation)
+  - Large variants success/failure: always cleans up in `finally` block
+- **Resource Management**: S3 GetObjectResponse is properly disposed with `using` statement
 - **Impact**: Hangfire job table stays tiny (KB instead of hundreds of MB), database won't fill up
 
 ### Improved
