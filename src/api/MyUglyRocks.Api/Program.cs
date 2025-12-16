@@ -406,15 +406,19 @@ try
     // Only configure if backup bucket is set (prevents failures in environments without backup config)
     if (!string.IsNullOrEmpty(r2Settings?.BackupBucketName))
     {
+        // Use IRecurringJobManager from DI instead of static RecurringJob API
+        // (static API requires JobStorage.Current which isn't set until server starts)
+        var recurringJobManager = app.Services.GetRequiredService<IRecurringJobManager>();
+
         // Daily backup at 4 AM UTC
-        RecurringJob.AddOrUpdate<MyUglyRocks.Infrastructure.Jobs.DatabaseBackupJob>(
+        recurringJobManager.AddOrUpdate<MyUglyRocks.Infrastructure.Jobs.DatabaseBackupJob>(
             "database-backup",
             job => job.ExecuteAsync(CancellationToken.None),
             "0 4 * * *", // Cron: 4:00 AM UTC daily
             new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
 
         // Weekly backup validation at 5 AM UTC on Sundays (after daily backup)
-        RecurringJob.AddOrUpdate<MyUglyRocks.Infrastructure.Jobs.BackupValidationJob>(
+        recurringJobManager.AddOrUpdate<MyUglyRocks.Infrastructure.Jobs.BackupValidationJob>(
             "backup-validation",
             job => job.ExecuteAsync(CancellationToken.None),
             "0 5 * * 0", // Cron: 5:00 AM UTC every Sunday
