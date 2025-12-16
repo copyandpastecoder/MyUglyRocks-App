@@ -1,6 +1,9 @@
 // Query keys and cache configuration
 export { queryKeys, cacheConfig } from '@/lib/query-keys';
 
+// Debounce hook
+export { useDebouncedValue } from './use-debounce';
+
 // Shared utility hooks
 export {
   useCrudMutation,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -89,12 +89,11 @@ type BarrelFormValues = {
 
 export default function EditTumblerPage() {
   const params = useParams();
-  const _router = useRouter();
   const queryClient = useQueryClient();
   const tumblerId = params.id as string;
 
   const [editingBarrel, setEditingBarrel] = useState<BarrelDto | null>(null);
-  const [_isAddingBarrel, setIsAddingBarrel] = useState(false);
+  const [, setIsAddingBarrel] = useState(false);
 
   const { data: tumbler, isLoading } = useQuery({
     queryKey: ['tumbler', tumblerId],

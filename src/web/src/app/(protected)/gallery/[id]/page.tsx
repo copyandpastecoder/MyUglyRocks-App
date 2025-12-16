@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { postApi } from '@/lib/api';
 import { PAGE_CONTAINER } from '@/lib/layout';
@@ -40,7 +40,6 @@ import type { CommentDto } from '@/types/post';
 
 export default function PostDetailPage() {
   const params = useParams();
-  const _router = useRouter();
   const { isAuthenticated, user } = useAuth();
   const queryClient = useQueryClient();
   const { formatDate } = useTimezone();

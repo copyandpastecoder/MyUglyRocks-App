@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { inventoryApi } from '@/lib/api';
 import { queryKeys, cacheConfig } from '@/lib/query-keys';
 import { toast } from 'sonner';
@@ -19,6 +19,7 @@ export function useInventory(filters?: InventoryFilters, skip = 0, take = 20) {
   return useQuery({
     queryKey: queryKeys.inventory.list(filters),
     queryFn: () => inventoryApi.getAll(filters, skip, take),
+    placeholderData: keepPreviousData,
     ...cacheConfig.userData,
   });
 }
