@@ -16,6 +16,27 @@ namespace MyUglyRocks.Infrastructure.Services;
 /// Uses pg_dump/pg_restore CLI tools and stores backups in R2.
 /// Supports optional AES-256-CBC encryption (OpenSSL-compatible format).
 /// </summary>
+/// <remarks>
+/// <para><b>Required Configuration:</b></para>
+/// <list type="bullet">
+///   <item><description>ConnectionStrings:DefaultConnection - PostgreSQL connection string</description></item>
+///   <item><description>R2:BackupBucketName - R2 bucket name for backup storage</description></item>
+///   <item><description>R2:AccountId, R2:AccessKeyId, R2:SecretAccessKey - R2 credentials</description></item>
+/// </list>
+/// <para><b>Optional Configuration:</b></para>
+/// <list type="bullet">
+///   <item><description>R2:BackupPassword - Password for AES-256 encryption. If empty, backups are stored unencrypted.</description></item>
+/// </list>
+/// <para><b>CLI Restore Scripts:</b></para>
+/// <para>
+/// When using CLI scripts (restore.sh/restore.ps1), set these environment variables:
+/// </para>
+/// <list type="bullet">
+///   <item><description>DATABASE_URL - PostgreSQL connection URL (postgresql://user:pass@host:port/db)</description></item>
+///   <item><description>BACKUP_PASSWORD - Decryption password (only if backups are encrypted)</description></item>
+///   <item><description>R2_BUCKET - Optional: Override default bucket name</description></item>
+/// </list>
+/// </remarks>
 public class DatabaseBackupService : IDatabaseBackupService
 {
     private readonly IConfiguration _configuration;
@@ -134,7 +155,7 @@ public class DatabaseBackupService : IDatabaseBackupService
             }
 
             // 3. Calculate checksum for integrity verification (of encrypted file if applicable)
-            var checksum = await CalculateMd5Async(tempFile, cancellationToken);
+            var checksum = await CalculateSha256Async(tempFile, cancellationToken);
 
             // 4. Upload to R2 (backup bucket) with checksum in metadata
             var fileInfo = new FileInfo(tempFile);
@@ -335,7 +356,7 @@ public class DatabaseBackupService : IDatabaseBackupService
             // 4. Verify checksum before decryption (checksum is of encrypted file)
             if (!string.IsNullOrEmpty(storedChecksum))
             {
-                var downloadedChecksum = await CalculateMd5Async(tempFile, cancellationToken);
+                var downloadedChecksum = await CalculateSha256Async(tempFile, cancellationToken);
                 if (!string.Equals(storedChecksum, downloadedChecksum, StringComparison.OrdinalIgnoreCase))
                 {
                     File.Delete(tempFile);
@@ -611,7 +632,7 @@ public class DatabaseBackupService : IDatabaseBackupService
             // 3. Verify checksum matches stored value (checksum is of encrypted file)
             if (!string.IsNullOrEmpty(storedChecksum))
             {
-                var downloadedChecksum = await CalculateMd5Async(tempFile, cancellationToken);
+                var downloadedChecksum = await CalculateSha256Async(tempFile, cancellationToken);
                 if (!string.Equals(storedChecksum, downloadedChecksum, StringComparison.OrdinalIgnoreCase))
                 {
                     return new ValidationResult(false,
@@ -688,11 +709,11 @@ public class DatabaseBackupService : IDatabaseBackupService
         }
     }
 
-    private static async Task<string> CalculateMd5Async(string filePath, CancellationToken cancellationToken)
+    private static async Task<string> CalculateSha256Async(string filePath, CancellationToken cancellationToken)
     {
-        using var md5 = MD5.Create();
+        using var sha256 = SHA256.Create();
         await using var stream = File.OpenRead(filePath);
-        var hash = await md5.ComputeHashAsync(stream, cancellationToken);
+        var hash = await sha256.ComputeHashAsync(stream, cancellationToken);
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
@@ -776,15 +797,16 @@ public class DatabaseBackupService : IDatabaseBackupService
 
     /// <summary>
     /// Derives AES-256 key (32 bytes) and IV (16 bytes) from password and salt using PBKDF2.
-    /// Parameters match OpenSSL defaults: SHA256, 10000 iterations.
+    /// Uses 600,000 iterations per OWASP 2023 recommendations for PBKDF2-HMAC-SHA256.
+    /// CLI scripts must use: openssl enc -iter 600000
     /// </summary>
     private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(string password, byte[] salt)
     {
-        // OpenSSL uses PBKDF2 with SHA256 and 10000 iterations by default
+        // OWASP recommends at least 600,000 iterations for PBKDF2-HMAC-SHA256 (2023)
         using var pbkdf2 = new Rfc2898DeriveBytes(
             Encoding.UTF8.GetBytes(password),
             salt,
-            iterations: 10000,
+            iterations: 600000,
             HashAlgorithmName.SHA256);
 
         // AES-256 requires 32-byte key, CBC requires 16-byte IV

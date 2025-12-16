@@ -89,6 +89,10 @@ PGUSER=$(echo "$URL_PARTS" | sed -n '4p')
 PGPASSWORD=$(echo "$URL_PARTS" | sed -n '5p')
 PGSSLMODE=$(echo "$URL_PARTS" | sed -n '6p')
 
+# SECURITY NOTE: PGPASSWORD is exported as an environment variable for pg_dump/pg_restore.
+# This is the standard method for non-interactive PostgreSQL authentication.
+# The password is only visible to the current process and its children, not to other users.
+# For higher security, consider using .pgpass file or PGPASSFILE environment variable.
 export PGHOST PGPORT PGDATABASE PGUSER PGPASSWORD
 [ -n "$PGSSLMODE" ] && export PGSSLMODE
 
@@ -154,8 +158,8 @@ decrypt_backup() {
         return 1
     fi
 
-    echo -e "${YELLOW}Decrypting backup (AES-256-CBC)...${NC}"
-    openssl enc -d -aes-256-cbc -pbkdf2 -in "$encrypted_file" -out "$decrypted_file" -pass env:BACKUP_PASSWORD 2>&1 || {
+    echo -e "${YELLOW}Decrypting backup (AES-256-CBC with 600K PBKDF2 iterations)...${NC}"
+    openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -in "$encrypted_file" -out "$decrypted_file" -pass env:BACKUP_PASSWORD 2>&1 || {
         echo -e "${RED}Failed to decrypt backup. Wrong password?${NC}"
         return 1
     }
