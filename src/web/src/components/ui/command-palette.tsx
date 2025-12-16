@@ -64,7 +64,7 @@ interface CommandPaletteProps {
 export function CommandPalette({ customCommands = [] }: CommandPaletteProps) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const { setTheme, theme: _theme } = useTheme();
+  const { setTheme } = useTheme();
 
   // Handle keyboard shortcut
   useEffect(() => {

@@ -111,17 +111,33 @@ _Use this workflow to keep your repository organized and your history clear._
 
 4. **Most commits go to develop**
    - Feature branches merge to `develop` for integration testing.
-   - Only merge `develop` to `Master` when ready for production release.5. **Review changes before committing**  
-   - Use `git status` and `git diff` to review what you’re about to commit.
+   - Only merge `develop` to `Master` when ready for production release.
 
-6. **Avoid committing sensitive data**  
+5. **Run lint before committing**
+   - Before committing frontend changes, run lint to check for errors and warnings:
+     ```powershell
+     cd src/web
+     npm run lint
+     ```
+   - **All errors must be fixed before committing.**
+   - Review warnings and fix them when reasonable (some may be intentional).
+   - Common lint errors:
+     - Unused variables/imports
+     - Missing dependencies in hooks
+     - Accessing refs during render (React Compiler)
+     - Type errors
+
+6. **Review changes before committing**
+   - Use `git status` and `git diff` to review what you're about to commit.
+
+7. **Avoid committing sensitive data**
    - Never commit API keys, passwords, or secrets.
 
-7. **Use .gitignore**  
+8. **Use .gitignore**
    - Ensure unnecessary files (build outputs, logs, etc.) are ignored.
 
-8. **Push and merge frequently**
+9. **Push and merge frequently**
    - Don't let branches drift too far from develop; merge and push regularly.
 
-9. **Get approval before merging to Master**  
+10. **Get approval before merging to Master**
    - Always get explicit OK from the project owner before merging any branch into Master.

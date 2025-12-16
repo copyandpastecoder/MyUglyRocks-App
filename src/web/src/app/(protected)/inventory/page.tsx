@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useInventory, useInventoryStats, useDeleteInventory, useUpdateInventoryStatus } from '@/hooks/use-inventory';
 import { useDebouncedValue } from '@/hooks';
@@ -83,8 +83,6 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<InventoryStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'acquiredDate' | 'name' | 'cost'>('acquiredDate');
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const hasLoadedOnce = useRef(false);
 
   // Debounce search to avoid API call on every keystroke
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -96,14 +94,8 @@ export default function InventoryPage() {
     sortOrder: 'desc' as const,
   };
 
-  const { data: inventory, isLoading, isFetching } = useInventory(filters);
+  const { data: inventory, isLoading, isFetching, isPlaceholderData } = useInventory(filters);
 
-  // Track when we've loaded data at least once
-  useEffect(() => {
-    if (!isLoading && inventory) {
-      hasLoadedOnce.current = true;
-    }
-  }, [isLoading, inventory]);
   const { data: stats } = useInventoryStats();
   const deleteMutation = useDeleteInventory();
   const updateStatusMutation = useUpdateInventoryStatus();
@@ -198,8 +190,9 @@ export default function InventoryPage() {
     );
   };
 
-  // Only show full page skeleton on initial load, not on subsequent searches
-  if (isLoading && !hasLoadedOnce.current) {
+  // Only show full page skeleton on initial load, not on subsequent searches/refetches
+  // isPlaceholderData is false on initial load, true when showing stale data during refetch
+  if (isLoading && !isPlaceholderData && !inventory) {
     return <FullPageSkeleton withTabs cardCount={3} />;
   }
 
