@@ -23,10 +23,34 @@ All notable changes to this project will be documented in this file.
   4. Job deletes temp file after processing
 - **Cleanup Handling**: Temp files are cleaned up in all failure scenarios:
   - Photo record not found: thumbnail job cleans up before returning
+  - Temp file not found (GetStreamAsync returns null): cleans up in case file exists but read failed
   - Processing exception: thumbnail job cleans up before re-throwing (prevents continuation)
   - Large variants success/failure: always cleans up in `finally` block
 - **Resource Management**: S3 GetObjectResponse is properly disposed with `using` statement
 - **Impact**: Hangfire job table stays tiny (KB instead of hundreds of MB), database won't fill up
+
+#### Admin Specimen Creation 500 Error
+- **Problem**: Creating a new specimen via Admin > Specimens returned HTTP 500 error
+- **Root Cause**: `Specimen` entity extends `UserAuditedEntity` which requires `UserCreated` and `UserUpdated` (non-nullable Guids), but `CreateSpecimenAsync` and `UpdateSpecimenAsync` weren't setting these fields
+- **Fix**:
+  - Updated `IReferenceDataService` interface to accept `Guid userId` parameter for create/update
+  - Updated `ReferenceDataService.CreateSpecimenAsync` to set `UserCreated` and `UserUpdated`
+  - Updated `ReferenceDataService.UpdateSpecimenAsync` to set `UserUpdated`
+  - Updated `AdminController` to pass current user ID from JWT claims
+- **Files**:
+  - [IReferenceDataService.cs](../src/api/MyUglyRocks.Abstractions/Interfaces/IReferenceDataService.cs)
+  - [ReferenceDataService.cs](../src/api/MyUglyRocks.Core/Services/ReferenceDataService.cs)
+  - [AdminController.cs](../src/api/MyUglyRocks.Api/Controllers/AdminController.cs)
+
+#### Missing Species/Variety Fields in Admin Specimen Form
+- **Problem**: Admin specimen create/edit form was missing Species and Variety input fields
+- **Fix**: Added Species and Variety input fields to the form dialog
+- **File**: [admin/specimens/page.tsx](../src/web/src/app/(protected)/admin/specimens/page.tsx)
+
+#### Railway Proxy Script Command Injection
+- **Problem**: Environment variables in docker run command weren't properly quoted, allowing potential command injection
+- **Fix**: Quoted `-e` parameters: `-e "PGHOST=$env:PGHOST"` instead of `-e PGHOST=$env:PGHOST`
+- **File**: [start-proxy.ps1](../tools/railway-proxy/start-proxy.ps1)
 
 ### Improved
 

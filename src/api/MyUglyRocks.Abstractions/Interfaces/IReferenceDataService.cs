@@ -19,8 +19,8 @@ public interface IReferenceDataService
         bool? isActive = null,
         int page = 1,
         int pageSize = 20);
-    Task<SpecimenDetailDto> CreateSpecimenAsync(CreateSpecimenRequest request);
-    Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid specimenId, UpdateSpecimenRequest request);
+    Task<SpecimenDetailDto> CreateSpecimenAsync(CreateSpecimenRequest request, Guid userId);
+    Task<SpecimenDetailDto> UpdateSpecimenAsync(Guid specimenId, UpdateSpecimenRequest request, Guid userId);
     Task DeleteSpecimenAsync(Guid specimenId);
 
     // Admin - Materials
