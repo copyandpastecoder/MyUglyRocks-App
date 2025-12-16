@@ -172,8 +172,16 @@ All endpoints require Admin role authentication.
 | `GET` | `/api/admin/backups` | List all backups (limit=50) |
 | `GET` | `/api/admin/backups/latest` | Get most recent backup info |
 | `POST` | `/api/admin/backups` | Create manual backup |
-| `POST` | `/api/admin/backups/{key}/validate` | Validate backup integrity |
-| `POST` | `/api/admin/backups/{key}/restore` | Restore from backup |
+| `POST` | `/api/admin/backups/validate` | Validate backup integrity |
+| `POST` | `/api/admin/backups/restore` | Restore from backup |
+
+### Validate Request Body
+
+```json
+{
+  "backupKey": "daily/myuglyrocks_2025-01-15_04-00-00.dump"
+}
+```
 
 ### Restore Request Body
 

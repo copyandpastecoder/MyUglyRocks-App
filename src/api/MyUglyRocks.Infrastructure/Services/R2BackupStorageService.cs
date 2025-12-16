@@ -91,7 +91,7 @@ public class R2BackupStorageService : IBackupStorageService
                 Key = key
             };
 
-            var response = await _s3Client.GetObjectAsync(request, cancellationToken);
+            using var response = await _s3Client.GetObjectAsync(request, cancellationToken);
 
             // Copy to MemoryStream so we can dispose the S3 response
             var memoryStream = new MemoryStream();

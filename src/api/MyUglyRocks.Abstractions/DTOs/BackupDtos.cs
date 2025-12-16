@@ -71,6 +71,11 @@ public record BackupStatusDto
 }
 
 /// <summary>
+/// Request to validate a backup
+/// </summary>
+public record ValidateRequest(string BackupKey);
+
+/// <summary>
 /// Request to restore a backup
 /// </summary>
 public record RestoreRequest(string BackupKey, string Confirmation);

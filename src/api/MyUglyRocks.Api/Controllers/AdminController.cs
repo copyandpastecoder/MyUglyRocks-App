@@ -550,16 +550,23 @@ public class AdminController : ControllerBase
     }
 
     /// <summary>
-    /// Validate a backup's integrity (admin only)
+    /// Validate a backup's integrity (admin only).
+    /// Pass the backup key in the request body since keys contain slashes.
     /// </summary>
-    [HttpPost("backups/{*backupKey}/validate")]
+    [HttpPost("backups/validate")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ValidationResult>> ValidateBackup(
-        string backupKey,
+        [FromBody] ValidateRequest request,
         CancellationToken cancellationToken = default)
     {
-        var result = await _databaseBackupService.ValidateBackupAsync(backupKey, cancellationToken);
+        if (string.IsNullOrWhiteSpace(request.BackupKey))
+        {
+            return BadRequest(new { message = "BackupKey is required" });
+        }
+
+        var result = await _databaseBackupService.ValidateBackupAsync(request.BackupKey, cancellationToken);
         return Ok(result);
     }
 
@@ -568,13 +575,12 @@ public class AdminController : ControllerBase
     /// DANGEROUS: This replaces the current database with backup data.
     /// A pre-restore safety backup is created automatically.
     /// </summary>
-    [HttpPost("backups/{*backupKey}/restore")]
+    [HttpPost("backups/restore")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(RestoreResult), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<RestoreResult>> RestoreBackup(
-        string backupKey,
         [FromBody] RestoreRequest request,
         CancellationToken cancellationToken = default)
     {
@@ -584,13 +590,13 @@ public class AdminController : ControllerBase
             return BadRequest(new { message = "Confirmation must be 'RESTORE' to proceed" });
         }
 
-        if (request.BackupKey != backupKey)
+        if (string.IsNullOrWhiteSpace(request.BackupKey))
         {
-            return BadRequest(new { message = "BackupKey in body must match URL" });
+            return BadRequest(new { message = "BackupKey is required" });
         }
 
         var result = await _databaseBackupService.RestoreAsync(
-            backupKey,
+            request.BackupKey,
             createPreRestoreBackup: true,
             useSingleTransaction: true,
             cancellationToken);
