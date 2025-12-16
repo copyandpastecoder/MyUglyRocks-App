@@ -63,7 +63,8 @@ public class InventoryPhotoProcessingJob
                 photo.ProcessingError = "Temp image not found";
                 photo.DateUpdated = DateTime.UtcNow;
                 await _dbContext.SaveChangesAsync();
-                // No cleanup needed - file doesn't exist
+                // Attempt cleanup in case the file still exists (handles exceptions internally)
+                await CleanupTempFileAsync(tempStorageKey);
                 return;
             }
 
@@ -138,6 +139,8 @@ public class InventoryPhotoProcessingJob
             if (inputStream == null)
             {
                 _logger.LogError("Temp image not found in R2 for inventory photo {PhotoId}: {Key}", photoId, tempStorageKey);
+                // Attempt cleanup in case the file still exists
+                await CleanupTempFileAsync(tempStorageKey);
                 return;
             }
 
