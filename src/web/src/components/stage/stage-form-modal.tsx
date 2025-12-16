@@ -236,7 +236,7 @@ export function StageFormModal({
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [formatForInput, getNow, settings?.measurementSystem, toUserTz]);
 
   // Initialize form when modal opens
   useEffect(() => {

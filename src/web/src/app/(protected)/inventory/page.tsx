@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useInventory, useInventoryStats, useDeleteInventory, useUpdateInventoryStatus } from '@/hooks/use-inventory';
+import { useDebouncedValue } from '@/hooks';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { FullPageSkeleton } from '@/components/skeletons';
@@ -21,6 +22,7 @@ import {
   DollarSign,
   Scale,
   CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -81,15 +83,20 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab] = useState<InventoryStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'acquiredDate' | 'name' | 'cost'>('acquiredDate');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search to avoid API call on every keystroke
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const filters = {
     status: activeTab === 'all' ? undefined : activeTab,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     sortBy,
     sortOrder: 'desc' as const,
   };
 
-  const { data: inventory, isLoading } = useInventory(filters);
+  const { data: inventory, isLoading, isFetching, isPlaceholderData } = useInventory(filters);
+
   const { data: stats } = useInventoryStats();
   const deleteMutation = useDeleteInventory();
   const updateStatusMutation = useUpdateInventoryStatus();
@@ -184,7 +191,9 @@ export default function InventoryPage() {
     );
   };
 
-  if (isLoading) {
+  // Only show full page skeleton on initial load, not on subsequent searches/refetches
+  // isPlaceholderData is false on initial load, true when showing stale data during refetch
+  if (isLoading && !isPlaceholderData && !inventory) {
     return <FullPageSkeleton withTabs cardCount={3} />;
   }
 
@@ -243,11 +252,15 @@ export default function InventoryPage() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search inventory..."
+              ref={searchInputRef}
+              placeholder="Search by name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="pl-10 pr-10"
             />
+            {isFetching && search && (
+              <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+            )}
           </div>
           <Select value={sortBy} onValueChange={(value) => setSortBy(value as typeof sortBy)}>
             <SelectTrigger className="w-full sm:w-[150px]">

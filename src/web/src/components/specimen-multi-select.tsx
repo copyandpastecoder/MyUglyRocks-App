@@ -474,16 +474,6 @@ export function LegacySpecimenMultiSelect({
   disabled = false,
   isLoading = false,
 }: LegacySpecimenMultiSelectProps) {
-  // Convert legacy format to new format
-  const _selectedItems: SpecimenSelection[] = selectedIds.map((id) => ({
-    id,
-    source: 'system' as const,
-  }));
-
-  const _handleSelectionChange = (items: SpecimenSelection[]) => {
-    // Convert back to legacy format (just IDs for system specimens)
-    onSelectionChange(items.filter((i) => i.source === 'system').map((i) => i.id));
-  };
 
   // This component doesn't use the new search API, it uses the passed specimens directly
   // For full functionality, update the parent component to use the new SpecimenMultiSelect
