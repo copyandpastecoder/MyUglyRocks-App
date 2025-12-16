@@ -175,9 +175,9 @@ public class R2BackupStorageService : IBackupStorageService
                 var response = await _s3Client.ListObjectsV2Async(request, cancellationToken);
 
                 results.AddRange(response.S3Objects.Select(o =>
-                    new BackupObjectInfo(o.Key, o.Size, o.LastModified)));
+                    new BackupObjectInfo(o.Key, o.Size ?? 0, o.LastModified ?? DateTime.MinValue)));
 
-                continuationToken = response.IsTruncated ? response.NextContinuationToken : null;
+                continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
 
             } while (continuationToken != null);
 
