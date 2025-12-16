@@ -190,6 +190,12 @@ try
     // Background jobs
     builder.Services.AddScoped<MyUglyRocks.Infrastructure.Jobs.PhotoProcessingJob>();
 
+    // Database backup services
+    builder.Services.AddScoped<IBackupStorageService, R2BackupStorageService>();
+    builder.Services.AddScoped<IDatabaseBackupService, DatabaseBackupService>();
+    builder.Services.AddScoped<MyUglyRocks.Infrastructure.Jobs.DatabaseBackupJob>();
+    builder.Services.AddScoped<MyUglyRocks.Infrastructure.Jobs.BackupValidationJob>();
+
     // Configure CORS
     // Default origins + config-based origins
     var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
@@ -393,6 +399,31 @@ try
 
         var seeder = scope.ServiceProvider.GetRequiredService<SeedDataService>();
         await seeder.SeedAllAsync();
+    }
+
+    // Configure Hangfire recurring jobs
+    // Only configure if backup bucket is set (prevents failures in environments without backup config)
+    if (!string.IsNullOrEmpty(r2Settings?.BackupBucketName))
+    {
+        // Daily backup at 4 AM UTC
+        RecurringJob.AddOrUpdate<MyUglyRocks.Infrastructure.Jobs.DatabaseBackupJob>(
+            "database-backup",
+            job => job.ExecuteAsync(CancellationToken.None),
+            "0 4 * * *", // Cron: 4:00 AM UTC daily
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        // Weekly backup validation at 5 AM UTC on Sundays (after daily backup)
+        RecurringJob.AddOrUpdate<MyUglyRocks.Infrastructure.Jobs.BackupValidationJob>(
+            "backup-validation",
+            job => job.ExecuteAsync(CancellationToken.None),
+            "0 5 * * 0", // Cron: 5:00 AM UTC every Sunday
+            new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+        Log.Information("Database backup jobs configured (daily at 4 AM UTC, validation weekly at 5 AM UTC)");
+    }
+    else
+    {
+        Log.Warning("R2:BackupBucketName not configured, database backup jobs disabled");
     }
 
     app.Run();
