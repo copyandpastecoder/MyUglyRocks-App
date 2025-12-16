@@ -37,7 +37,8 @@
 param(
     [string]$BackupKey,
     [switch]$NoSafety,
-    [string]$DatabaseUrl = $env:DATABASE_URL
+    [string]$DatabaseUrl = $env:DATABASE_URL,
+    [string]$BackupPassword = $env:BACKUP_PASSWORD
 )
 
 # Load System.Web assembly for URL decoding (required for passwords with special chars)
@@ -175,11 +176,56 @@ function Create-SafetyBackup {
     return $true
 }
 
+# Function to check if file is encrypted (has OpenSSL "Salted__" header)
+function Test-IsEncrypted {
+    param([string]$FilePath)
+
+    $bytes = [System.IO.File]::ReadAllBytes($FilePath)
+    if ($bytes.Length -lt 8) { return $false }
+
+    $header = [System.Text.Encoding]::ASCII.GetString($bytes[0..7])
+    return $header -eq "Salted__"
+}
+
+# Function to decrypt backup file
+function Decrypt-Backup {
+    param(
+        [string]$EncryptedFile,
+        [string]$DecryptedFile
+    )
+
+    if ([string]::IsNullOrEmpty($BackupPassword)) {
+        Write-Host "Error: Backup is encrypted but BACKUP_PASSWORD is not set" -ForegroundColor Red
+        Write-Host "Set it with: `$env:BACKUP_PASSWORD = 'your-backup-password'"
+        return $false
+    }
+
+    Write-Host "Decrypting backup (AES-256-CBC)..." -ForegroundColor Yellow
+
+    # Set password as environment variable for openssl
+    $env:BACKUP_PASSWORD_TEMP = $BackupPassword
+
+    & openssl enc -d -aes-256-cbc -pbkdf2 -in $EncryptedFile -out $DecryptedFile -pass env:BACKUP_PASSWORD_TEMP 2>&1
+    $result = $LASTEXITCODE
+
+    # Clear the temp password
+    Remove-Item Env:\BACKUP_PASSWORD_TEMP -ErrorAction SilentlyContinue
+
+    if ($result -ne 0) {
+        Write-Host "Failed to decrypt backup. Wrong password?" -ForegroundColor Red
+        return $false
+    }
+
+    Write-Host "Backup decrypted successfully" -ForegroundColor Green
+    return $true
+}
+
 # Function to restore backup
 function Restore-Backup {
     param([string]$Key)
 
     $tempfile = Join-Path $TempDir "restore.dump"
+    $restorefile = $tempfile
 
     Write-Host "Downloading backup: $Key" -ForegroundColor Yellow
 
@@ -194,20 +240,37 @@ function Restore-Backup {
         exit 1
     }
 
+    # Check if backup is encrypted and decrypt if needed
+    if (Test-IsEncrypted -FilePath $tempfile) {
+        Write-Host "Backup is encrypted" -ForegroundColor Yellow
+        $decrypted = Join-Path $TempDir "restore_decrypted.dump"
+
+        $decryptResult = Decrypt-Backup -EncryptedFile $tempfile -DecryptedFile $decrypted
+        if (-not $decryptResult) {
+            Remove-Item -Path $tempfile -ErrorAction SilentlyContinue
+            exit 1
+        }
+
+        Remove-Item -Path $tempfile -ErrorAction SilentlyContinue
+        $restorefile = $decrypted
+    } else {
+        Write-Host "Backup is not encrypted" -ForegroundColor Green
+    }
+
     Write-Host "Restoring database..." -ForegroundColor Yellow
     Write-Host "WARNING: This will REPLACE ALL DATA in $($DbConfig.Database)" -ForegroundColor Red
     Write-Host ""
 
     # Restore
     & pg_restore --clean --if-exists --single-transaction --no-owner --no-acl `
-        -d $DbConfig.Database $tempfile 2>&1
+        -d $DbConfig.Database $restorefile 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host "pg_restore failed. Check the error messages above." -ForegroundColor Red
-        Remove-Item -Path $tempfile -ErrorAction SilentlyContinue
+        Remove-Item -Path $restorefile -ErrorAction SilentlyContinue
         exit 1
     }
 
-    Remove-Item -Path $tempfile -ErrorAction SilentlyContinue
+    Remove-Item -Path $restorefile -ErrorAction SilentlyContinue
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Green
     Write-Host "  Restore completed successfully!" -ForegroundColor Green

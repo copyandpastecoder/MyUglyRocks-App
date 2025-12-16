@@ -1,9 +1,12 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
+using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
+using MyUglyRocks.Infrastructure.Configuration;
 using Npgsql;
 
 namespace MyUglyRocks.Infrastructure.Services;
@@ -11,12 +14,17 @@ namespace MyUglyRocks.Infrastructure.Services;
 /// <summary>
 /// Service for PostgreSQL database backup and restore operations.
 /// Uses pg_dump/pg_restore CLI tools and stores backups in R2.
+/// Supports optional AES-256-CBC encryption (OpenSSL-compatible format).
 /// </summary>
 public class DatabaseBackupService : IDatabaseBackupService
 {
     private readonly IConfiguration _configuration;
     private readonly IBackupStorageService _backupStorage;
     private readonly ILogger<DatabaseBackupService> _logger;
+    private readonly string? _backupPassword;
+
+    // OpenSSL magic header for "Salted__" format
+    private static readonly byte[] OpenSslSaltHeader = "Salted__"u8.ToArray();
 
     // Mutex to prevent concurrent backup/restore operations
     // Prevents: scheduled job + manual backup, or two restores running simultaneously
@@ -40,11 +48,24 @@ public class DatabaseBackupService : IDatabaseBackupService
     public DatabaseBackupService(
         IConfiguration configuration,
         IBackupStorageService backupStorage,
+        IOptions<R2Settings> r2Settings,
         ILogger<DatabaseBackupService> logger)
     {
         _configuration = configuration;
         _backupStorage = backupStorage;
         _logger = logger;
+        _backupPassword = string.IsNullOrEmpty(r2Settings.Value.BackupPassword)
+            ? null
+            : r2Settings.Value.BackupPassword;
+
+        if (_backupPassword != null)
+        {
+            _logger.LogInformation("Backup encryption enabled (AES-256-CBC)");
+        }
+        else
+        {
+            _logger.LogWarning("Backup encryption disabled - backups will be stored unencrypted");
+        }
     }
 
     public async Task<BackupResult> CreateBackupAsync(BackupType backupType, CancellationToken cancellationToken = default)
@@ -100,17 +121,30 @@ public class DatabaseBackupService : IDatabaseBackupService
                 return new BackupResult(false, null, null, stopwatch.Elapsed, null, pgDumpResult.Error);
             }
 
-            // 2. Calculate checksum for integrity verification
+            // 2. Encrypt the backup file if password is configured
+            var isEncrypted = false;
+            if (_backupPassword != null)
+            {
+                var encryptedFile = tempFile + ".enc";
+                await EncryptFileAsync(tempFile, encryptedFile, _backupPassword, cancellationToken);
+                File.Delete(tempFile);
+                File.Move(encryptedFile, tempFile);
+                isEncrypted = true;
+                _logger.LogInformation("Backup encrypted with AES-256-CBC");
+            }
+
+            // 3. Calculate checksum for integrity verification (of encrypted file if applicable)
             var checksum = await CalculateMd5Async(tempFile, cancellationToken);
 
-            // 3. Upload to R2 (backup bucket) with checksum in metadata
+            // 4. Upload to R2 (backup bucket) with checksum in metadata
             var fileInfo = new FileInfo(tempFile);
             await using var fileStream = File.OpenRead(tempFile);
             var metadata = new Dictionary<string, string>
             {
                 ["x-amz-meta-checksum"] = checksum,
                 ["x-amz-meta-backup-type"] = backupType.ToString(),
-                ["x-amz-meta-created-at"] = DateTime.UtcNow.ToString("O")
+                ["x-amz-meta-created-at"] = DateTime.UtcNow.ToString("O"),
+                ["x-amz-meta-encrypted"] = isEncrypted.ToString().ToLowerInvariant()
             };
             await _backupStorage.UploadAsync(r2Key, fileStream, "application/octet-stream", metadata, cancellationToken);
 
@@ -281,6 +315,8 @@ public class DatabaseBackupService : IDatabaseBackupService
             }
 
             var storedChecksum = metadata.TryGetValue("x-amz-meta-checksum", out var cs) ? cs : null;
+            var isEncrypted = metadata.TryGetValue("x-amz-meta-encrypted", out var enc)
+                && string.Equals(enc, "true", StringComparison.OrdinalIgnoreCase);
 
             // 3. Download backup from R2
             var tempFile = Path.Combine(Path.GetTempPath(), $"restore_{Guid.NewGuid()}.dump");
@@ -296,7 +332,7 @@ public class DatabaseBackupService : IDatabaseBackupService
                     $"Failed to download backup: {ex.Message}");
             }
 
-            // 4. Verify checksum before restore (fail fast on corrupted download)
+            // 4. Verify checksum before decryption (checksum is of encrypted file)
             if (!string.IsNullOrEmpty(storedChecksum))
             {
                 var downloadedChecksum = await CalculateMd5Async(tempFile, cancellationToken);
@@ -314,7 +350,35 @@ public class DatabaseBackupService : IDatabaseBackupService
                 _logger.LogWarning("No stored checksum found for {BackupKey}, skipping verification", backupKey);
             }
 
-            // 5. Run pg_restore
+            // 5. Decrypt if encrypted
+            if (isEncrypted)
+            {
+                if (_backupPassword == null)
+                {
+                    File.Delete(tempFile);
+                    return new RestoreResult(false, preRestoreKey, stopwatch.Elapsed,
+                        "Backup is encrypted but no backup password is configured. " +
+                        "Set the backup-password secret to decrypt this backup.");
+                }
+
+                var decryptedFile = tempFile + ".dec";
+                try
+                {
+                    await DecryptFileAsync(tempFile, decryptedFile, _backupPassword, cancellationToken);
+                    File.Delete(tempFile);
+                    File.Move(decryptedFile, tempFile);
+                    _logger.LogInformation("Backup decrypted successfully");
+                }
+                catch (CryptographicException ex)
+                {
+                    File.Delete(tempFile);
+                    if (File.Exists(decryptedFile)) File.Delete(decryptedFile);
+                    return new RestoreResult(false, preRestoreKey, stopwatch.Elapsed,
+                        $"Failed to decrypt backup. Wrong password? Error: {ex.Message}");
+                }
+            }
+
+            // 6. Run pg_restore
             var connectionString = _configuration.GetConnectionString("DefaultConnection")
                 ?? throw new InvalidOperationException("DefaultConnection not configured");
 
@@ -535,6 +599,8 @@ public class DatabaseBackupService : IDatabaseBackupService
             }
 
             var storedChecksum = metadata.TryGetValue("x-amz-meta-checksum", out var cs) ? cs : null;
+            var isEncrypted = metadata.TryGetValue("x-amz-meta-encrypted", out var enc)
+                && string.Equals(enc, "true", StringComparison.OrdinalIgnoreCase);
 
             // 2. Download backup
             await using var downloadStream = await _backupStorage.GetAsync(backupKey, cancellationToken);
@@ -542,7 +608,7 @@ public class DatabaseBackupService : IDatabaseBackupService
             await downloadStream.CopyToAsync(fileStream, cancellationToken);
             fileStream.Close();
 
-            // 3. Verify checksum matches stored value
+            // 3. Verify checksum matches stored value (checksum is of encrypted file)
             if (!string.IsNullOrEmpty(storedChecksum))
             {
                 var downloadedChecksum = await CalculateMd5Async(tempFile, cancellationToken);
@@ -559,7 +625,32 @@ public class DatabaseBackupService : IDatabaseBackupService
                 _logger.LogWarning("No stored checksum found for {BackupKey}, skipping checksum verification", backupKey);
             }
 
-            // 4. Run pg_restore --list to verify format/integrity (doesn't actually restore)
+            // 4. Decrypt if encrypted
+            if (isEncrypted)
+            {
+                if (_backupPassword == null)
+                {
+                    return new ValidationResult(false,
+                        "Backup is encrypted but no backup password is configured.");
+                }
+
+                var decryptedFile = tempFile + ".dec";
+                try
+                {
+                    await DecryptFileAsync(tempFile, decryptedFile, _backupPassword, cancellationToken);
+                    File.Delete(tempFile);
+                    File.Move(decryptedFile, tempFile);
+                    _logger.LogInformation("Backup decrypted for validation");
+                }
+                catch (CryptographicException ex)
+                {
+                    if (File.Exists(decryptedFile)) File.Delete(decryptedFile);
+                    return new ValidationResult(false,
+                        $"Failed to decrypt backup. Wrong password? Error: {ex.Message}");
+                }
+            }
+
+            // 5. Run pg_restore --list to verify format/integrity (doesn't actually restore)
             var processInfo = new ProcessStartInfo
             {
                 FileName = "pg_restore",
@@ -603,5 +694,103 @@ public class DatabaseBackupService : IDatabaseBackupService
         await using var stream = File.OpenRead(filePath);
         var hash = await md5.ComputeHashAsync(stream, cancellationToken);
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Encrypts a file using AES-256-CBC with PBKDF2 key derivation.
+    /// Output format is OpenSSL-compatible: "Salted__" + 8-byte salt + ciphertext
+    /// This allows decryption via: openssl enc -d -aes-256-cbc -pbkdf2 -in file.enc -out file
+    /// </summary>
+    private static async Task EncryptFileAsync(
+        string inputPath,
+        string outputPath,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        // Generate random 8-byte salt (OpenSSL format)
+        var salt = RandomNumberGenerator.GetBytes(8);
+
+        // Derive key and IV using PBKDF2 (OpenSSL default: 10000 iterations, SHA256)
+        var (key, iv) = DeriveKeyAndIv(password, salt);
+
+        await using var inputStream = File.OpenRead(inputPath);
+        await using var outputStream = File.Create(outputPath);
+
+        // Write OpenSSL header: "Salted__" + salt
+        await outputStream.WriteAsync(OpenSslSaltHeader, cancellationToken);
+        await outputStream.WriteAsync(salt, cancellationToken);
+
+        // Encrypt with AES-256-CBC
+        using var aes = Aes.Create();
+        aes.Key = key;
+        aes.IV = iv;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+
+        await using var cryptoStream = new CryptoStream(outputStream, aes.CreateEncryptor(), CryptoStreamMode.Write);
+        await inputStream.CopyToAsync(cryptoStream, cancellationToken);
+    }
+
+    /// <summary>
+    /// Decrypts a file encrypted with AES-256-CBC (OpenSSL format).
+    /// Expects format: "Salted__" + 8-byte salt + ciphertext
+    /// </summary>
+    private static async Task DecryptFileAsync(
+        string inputPath,
+        string outputPath,
+        string password,
+        CancellationToken cancellationToken)
+    {
+        await using var inputStream = File.OpenRead(inputPath);
+
+        // Read and verify OpenSSL header
+        var header = new byte[8];
+        var bytesRead = await inputStream.ReadAsync(header, cancellationToken);
+        if (bytesRead != 8 || !header.AsSpan().SequenceEqual(OpenSslSaltHeader))
+        {
+            throw new CryptographicException("Invalid encrypted file format. Missing OpenSSL 'Salted__' header.");
+        }
+
+        // Read 8-byte salt
+        var salt = new byte[8];
+        bytesRead = await inputStream.ReadAsync(salt, cancellationToken);
+        if (bytesRead != 8)
+        {
+            throw new CryptographicException("Invalid encrypted file format. Could not read salt.");
+        }
+
+        // Derive key and IV using same parameters as encryption
+        var (key, iv) = DeriveKeyAndIv(password, salt);
+
+        // Decrypt with AES-256-CBC
+        using var aes = Aes.Create();
+        aes.Key = key;
+        aes.IV = iv;
+        aes.Mode = CipherMode.CBC;
+        aes.Padding = PaddingMode.PKCS7;
+
+        await using var outputStream = File.Create(outputPath);
+        await using var cryptoStream = new CryptoStream(inputStream, aes.CreateDecryptor(), CryptoStreamMode.Read);
+        await cryptoStream.CopyToAsync(outputStream, cancellationToken);
+    }
+
+    /// <summary>
+    /// Derives AES-256 key (32 bytes) and IV (16 bytes) from password and salt using PBKDF2.
+    /// Parameters match OpenSSL defaults: SHA256, 10000 iterations.
+    /// </summary>
+    private static (byte[] Key, byte[] Iv) DeriveKeyAndIv(string password, byte[] salt)
+    {
+        // OpenSSL uses PBKDF2 with SHA256 and 10000 iterations by default
+        using var pbkdf2 = new Rfc2898DeriveBytes(
+            Encoding.UTF8.GetBytes(password),
+            salt,
+            iterations: 10000,
+            HashAlgorithmName.SHA256);
+
+        // AES-256 requires 32-byte key, CBC requires 16-byte IV
+        var key = pbkdf2.GetBytes(32);
+        var iv = pbkdf2.GetBytes(16);
+
+        return (key, iv);
     }
 }

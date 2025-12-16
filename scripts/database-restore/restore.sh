@@ -19,8 +19,9 @@
 #   ./restore.sh --no-safety <key>   # Restore without creating safety backup
 #
 # Environment variables:
-#   DATABASE_URL  - PostgreSQL connection URL (required)
-#   R2_BUCKET     - R2 backup bucket name (default: myuglyrocks-media-backup)
+#   DATABASE_URL     - PostgreSQL connection URL (required)
+#   BACKUP_PASSWORD  - Decryption password for encrypted backups (optional)
+#   R2_BUCKET        - R2 backup bucket name (default: myuglyrocks-media-backup)
 #
 
 set -e
@@ -135,10 +136,37 @@ create_safety_backup() {
     echo ""
 }
 
+# Function to check if file is encrypted (has OpenSSL "Salted__" header)
+is_encrypted() {
+    local file="$1"
+    local header=$(head -c 8 "$file" 2>/dev/null)
+    [ "$header" = "Salted__" ]
+}
+
+# Function to decrypt backup file
+decrypt_backup() {
+    local encrypted_file="$1"
+    local decrypted_file="$2"
+
+    if [ -z "$BACKUP_PASSWORD" ]; then
+        echo -e "${RED}Error: Backup is encrypted but BACKUP_PASSWORD is not set${NC}"
+        echo "Set it with: export BACKUP_PASSWORD='your-backup-password'"
+        return 1
+    fi
+
+    echo -e "${YELLOW}Decrypting backup (AES-256-CBC)...${NC}"
+    openssl enc -d -aes-256-cbc -pbkdf2 -in "$encrypted_file" -out "$decrypted_file" -pass env:BACKUP_PASSWORD 2>&1 || {
+        echo -e "${RED}Failed to decrypt backup. Wrong password?${NC}"
+        return 1
+    }
+    echo -e "${GREEN}Backup decrypted successfully${NC}"
+}
+
 # Function to restore backup
 restore_backup() {
     local backup_key="$1"
     local tempfile="$TEMP_DIR/restore.dump"
+    local restorefile="$tempfile"
 
     echo -e "${YELLOW}Downloading backup: $backup_key${NC}"
     mkdir -p "$TEMP_DIR"
@@ -148,18 +176,32 @@ restore_backup() {
         exit 1
     }
 
+    # Check if backup is encrypted and decrypt if needed
+    if is_encrypted "$tempfile"; then
+        echo -e "${YELLOW}Backup is encrypted${NC}"
+        local decrypted="$TEMP_DIR/restore_decrypted.dump"
+        decrypt_backup "$tempfile" "$decrypted" || {
+            rm -f "$tempfile"
+            exit 1
+        }
+        rm -f "$tempfile"
+        restorefile="$decrypted"
+    else
+        echo -e "${GREEN}Backup is not encrypted${NC}"
+    fi
+
     echo -e "${YELLOW}Restoring database...${NC}"
     echo -e "${RED}WARNING: This will REPLACE ALL DATA in $PGDATABASE${NC}"
     echo ""
 
     pg_restore --clean --if-exists --single-transaction --no-owner --no-acl \
-        -d "$PGDATABASE" "$tempfile" 2>&1 || {
+        -d "$PGDATABASE" "$restorefile" 2>&1 || {
         echo -e "${RED}pg_restore failed. Check the error messages above.${NC}"
-        rm -f "$tempfile"
+        rm -f "$restorefile"
         exit 1
     }
 
-    rm -f "$tempfile"
+    rm -f "$restorefile"
     echo ""
     echo -e "${GREEN}========================================"
     echo "  Restore completed successfully!"

@@ -10,6 +10,7 @@ The backup system provides:
 - **Manual backup/restore** via Admin panel API endpoints
 - **Retention policy**: 7 daily, 4 weekly, 3 monthly (minimum)
 - **Fallback CLI scripts** for emergency restore when API is down
+- **AES-256 encryption** (optional but recommended) - OpenSSL-compatible format
 
 ---
 
@@ -59,6 +60,7 @@ kubectl create secret generic myuglyrocks-api-secrets -n myuglyrocks \
   --from-literal=r2-bucket-name="YOUR_MEDIA_BUCKET_NAME" \
   --from-literal=r2-public-url="YOUR_R2_PUBLIC_URL" \
   --from-literal=r2-backup-bucket-name="myuglyrocks-media-backup" \
+  --from-literal=backup-password="YOUR_STRONG_ENCRYPTION_PASSWORD" \
   --from-literal=resend-api-key="YOUR_RESEND_API_KEY"
 ```
 
@@ -315,6 +317,48 @@ docker build --no-cache -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Doc
 | Secret Key | Config Path | Description |
 |------------|-------------|-------------|
 | `r2-backup-bucket-name` | `R2__BackupBucketName` | R2 bucket for backups |
+| `backup-password` | `R2__BackupPassword` | AES-256 encryption password (optional) |
+
+---
+
+## Encryption
+
+Backups can optionally be encrypted using **AES-256-CBC** with PBKDF2 key derivation.
+
+### Enabling Encryption
+
+Set the `backup-password` secret in your K8s secrets. If the password is set, all new backups will be automatically encrypted.
+
+### Encryption Format
+
+The encryption format is **OpenSSL-compatible**, meaning you can decrypt backups manually using:
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -in backup.dump -out decrypted.dump -pass pass:YOUR_PASSWORD
+```
+
+### Encryption Metadata
+
+Encrypted backups include metadata:
+- `x-amz-meta-encrypted`: `true` or `false`
+- `x-amz-meta-checksum`: MD5 of the encrypted file
+
+### Restoring Encrypted Backups
+
+**Via API:** The API automatically detects and decrypts encrypted backups using the configured password.
+
+**Via CLI Scripts:** Set the `BACKUP_PASSWORD` environment variable:
+```bash
+export BACKUP_PASSWORD="your-encryption-password"
+./restore.sh daily/myuglyrocks_2025-01-15_04-00-00.dump
+```
+
+### Important Notes
+
+- If you lose the backup password, encrypted backups **cannot be recovered**
+- Store the password securely (password manager, vault, etc.)
+- The checksum is calculated on the encrypted file (verified before decryption)
+- Changing the password only affects new backups; old backups use their original password
 
 ---
 
@@ -322,6 +366,7 @@ docker build --no-cache -t myuglyrocks-api:latest -f src/api/MyUglyRocks.Api/Doc
 
 - Backup bucket is **private** (no public access)
 - Backups contain **hashed passwords** (not plaintext)
+- **AES-256 encryption** available for backups at rest (in addition to R2 SSE)
 - Pre-restore safety backup created automatically
 - CLI scripts use environment variables (not command-line passwords)
 - R2 provides encryption at rest (SSE)

@@ -41,6 +41,8 @@ Use these scripts when:
 
 ## Configuration
 
+### Required: Database URL
+
 Set the `DATABASE_URL` environment variable with your PostgreSQL connection string:
 
 ### Linux/Mac
@@ -60,6 +62,24 @@ Get your connection string from Railway dashboard:
 3. Copy the "DATABASE_URL" value
 
 **Note:** Passwords with special characters (@ : % etc.) are automatically handled by the scripts.
+
+### Optional: Backup Decryption Password
+
+If your backups are encrypted (recommended), set the `BACKUP_PASSWORD` environment variable:
+
+```bash
+# Linux/Mac
+export BACKUP_PASSWORD="your-backup-encryption-password"
+
+# Windows (PowerShell)
+$env:BACKUP_PASSWORD = "your-backup-encryption-password"
+```
+
+The scripts automatically detect if a backup is encrypted and will:
+- Prompt for the password if encrypted but not set
+- Skip decryption if the backup is not encrypted
+
+**Note:** The encryption uses AES-256-CBC with PBKDF2 key derivation (OpenSSL-compatible format).
 
 ## Usage
 
