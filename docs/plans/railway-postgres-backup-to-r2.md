@@ -96,6 +96,15 @@ myuglyrocks-media-backup/
 - R2 doesn't support SigV4 payload signing
 - Safe because we're using HTTPS (TLS encryption in transit)
 
+**Encryption Strategy:**
+- **At rest**: R2 automatically encrypts all objects using SSE (Server-Side Encryption)
+- **In transit**: All R2 operations use HTTPS (TLS encryption)
+- **Client-side encryption**: Not implemented in initial version
+  - Acceptable risk for now: R2 SSE + private bucket + dedicated API token provides sufficient protection
+  - Database dumps don't contain raw credentials (hashed passwords, encrypted tokens)
+  - Future enhancement: Add AES-256 encryption before upload for defense-in-depth
+  - If implemented, store encryption key in separate secret (not with R2 credentials)
+
 **Database Role Requirements (for restore):**
 - The Railway PostgreSQL connection string user must be the database owner or have sufficient privileges
 - Required permissions: DROP/CREATE tables, indexes, sequences, functions; TRUNCATE
@@ -199,13 +208,19 @@ public record BackupResult(
     string? ErrorMessage
 );
 
+/// <summary>
+/// Backup metadata. Note: Checksum is null when returned from ListBackupsAsync
+/// because S3/R2 LIST operations don't include custom metadata.
+/// Use GetBackupMetadataAsync to fetch checksum for a specific backup when needed
+/// (e.g., on-demand when user expands a row in the admin UI).
+/// </summary>
 public record BackupInfo(
     string R2Key,
     string FileName,
     DateTime CreatedAt,
     long SizeBytes,
     BackupType Type,
-    string? Checksum
+    string? Checksum  // null from ListBackupsAsync; populated from HEAD request on-demand
 );
 
 public record RestoreResult(
@@ -322,6 +337,9 @@ public class DatabaseBackupService : IDatabaseBackupService
     {
         var now = DateTime.UtcNow;
 
+        // Priority order: monthly > weekly > daily
+        // If the 1st of the month falls on a Sunday, it goes to monthly/ (not weekly/)
+        // This is intentional: monthly retention is indefinite, so we preserve more history
         if (now.Day == 1)
             return "monthly";
 
@@ -330,6 +348,14 @@ public class DatabaseBackupService : IDatabaseBackupService
 
         return "daily";
     }
+
+    // Process timeout for pg_dump/pg_restore operations
+    // Prevents hung processes from blocking forever
+    private static readonly TimeSpan _processTimeout = TimeSpan.FromMinutes(30);
+
+    // Minimum required disk space for backup (50MB buffer + estimated dump size)
+    // For small databases, 100MB is sufficient; adjust for larger databases
+    private const long MinimumDiskSpaceBytes = 100 * 1024 * 1024; // 100 MB
 
     /// <summary>
     /// Uses pg_dump with custom format (-Fc) which:
@@ -342,6 +368,14 @@ public class DatabaseBackupService : IDatabaseBackupService
         string outputPath,
         CancellationToken cancellationToken)
     {
+        // Pre-flight check: ensure sufficient disk space
+        var tempDrive = new DriveInfo(Path.GetPathRoot(Path.GetTempPath()) ?? "/");
+        if (tempDrive.AvailableFreeSpace < MinimumDiskSpaceBytes)
+        {
+            return (false, $"Insufficient disk space. Required: {MinimumDiskSpaceBytes / 1024 / 1024} MB, " +
+                $"Available: {tempDrive.AvailableFreeSpace / 1024 / 1024} MB");
+        }
+
         var builder = new NpgsqlConnectionStringBuilder(connectionString);
 
         var processInfo = new ProcessStartInfo
@@ -373,15 +407,28 @@ public class DatabaseBackupService : IDatabaseBackupService
         using var process = new Process { StartInfo = processInfo };
         process.Start();
 
-        var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        // Apply timeout to prevent hung processes from blocking forever
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(_processTimeout);
 
-        if (process.ExitCode != 0)
+        try
         {
-            return (false, $"pg_dump failed with exit code {process.ExitCode}: {stderr}");
-        }
+            var stderr = await process.StandardError.ReadToEndAsync(timeoutCts.Token);
+            await process.WaitForExitAsync(timeoutCts.Token);
 
-        return (true, null);
+            if (process.ExitCode != 0)
+            {
+                return (false, $"pg_dump failed with exit code {process.ExitCode}: {stderr}");
+            }
+
+            return (true, null);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // Timeout occurred (not user cancellation)
+            try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
+            return (false, $"pg_dump timed out after {_processTimeout.TotalMinutes} minutes");
+        }
     }
 
     public async Task<RestoreResult> RestoreAsync(
@@ -495,7 +542,7 @@ public class DatabaseBackupService : IDatabaseBackupService
     /// Uses pg_restore with:
     /// - --clean: Drop existing objects before recreating
     /// - --if-exists: Don't error if objects don't exist
-    /// - --single-transaction: All-or-nothing restore (rollback on error)
+    /// - --single-transaction (optional): All-or-nothing restore (rollback on error)
     /// - --no-owner --no-acl: Skip ownership/permissions
     ///
     /// Connection info is passed via PGHOST/PGPORT/PGUSER/PGPASSWORD environment variables
@@ -509,21 +556,33 @@ public class DatabaseBackupService : IDatabaseBackupService
     /// - Railway's default postgres user typically has these permissions
     /// - If restore fails with "permission denied", check that the user owns the database
     ///   or has been granted the necessary roles
+    ///
+    /// TRADEOFF: --single-transaction
+    /// - PRO: Atomic restore - if any statement fails, entire restore rolls back (no partial state)
+    /// - CON: Holds exclusive locks for entire restore duration, can cause connection timeouts
+    /// - CON: For very large databases, transaction log can grow significantly
+    /// - RECOMMENDATION: Use for small-medium databases (&lt;1GB). For larger databases,
+    ///   consider disabling and accepting the risk of partial restore on failure.
     /// </summary>
     private async Task<(bool Success, string? Error)> RunPgRestoreAsync(
         string connectionString,
         string inputPath,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool useSingleTransaction = true)
     {
         // Parse connection string to extract individual components
         // pg_restore doesn't accept a connection string directly - it needs PGHOST/etc env vars
         var builder = new NpgsqlConnectionStringBuilder(connectionString);
 
+        var arguments = useSingleTransaction
+            ? $"--clean --if-exists --single-transaction --no-owner --no-acl -d \"{builder.Database}\" \"{inputPath}\""
+            : $"--clean --if-exists --no-owner --no-acl -d \"{builder.Database}\" \"{inputPath}\"";
+
         var processInfo = new ProcessStartInfo
         {
             FileName = "pg_restore",
             // -d specifies database name; host/port/user/password come from env vars below
-            Arguments = $"--clean --if-exists --single-transaction --no-owner --no-acl -d \"{builder.Database}\" \"{inputPath}\"",
+            Arguments = arguments,
             Environment =
             {
                 // Required for Railway (remote host) - without these, pg_restore tries localhost
@@ -546,34 +605,118 @@ public class DatabaseBackupService : IDatabaseBackupService
         using var process = new Process { StartInfo = processInfo };
         process.Start();
 
-        var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        // Apply timeout to prevent hung processes from blocking forever
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeoutCts.CancelAfter(_processTimeout);
 
-        // pg_restore returns warnings on stderr even for success
-        // Only fail on non-zero exit code
-        if (process.ExitCode != 0)
+        try
         {
-            return (false, $"pg_restore failed with exit code {process.ExitCode}: {stderr}");
-        }
+            var stderr = await process.StandardError.ReadToEndAsync(timeoutCts.Token);
+            await process.WaitForExitAsync(timeoutCts.Token);
 
-        return (true, null);
+            // pg_restore returns warnings on stderr even for success
+            // Only fail on non-zero exit code
+            if (process.ExitCode != 0)
+            {
+                return (false, $"pg_restore failed with exit code {process.ExitCode}: {stderr}");
+            }
+
+            return (true, null);
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            // Timeout occurred (not user cancellation)
+            try { process.Kill(entireProcessTree: true); } catch { /* ignore */ }
+            return (false, $"pg_restore timed out after {_processTimeout.TotalMinutes} minutes");
+        }
     }
+
+    // Minimum backups to always keep, regardless of age
+    // This safeguard prevents a bug in retention logic from deleting all backups
+    private const int MinDailyBackups = 7;    // Always keep at least 1 week
+    private const int MinWeeklyBackups = 4;   // Always keep at least 1 month
+    private const int MinMonthlyBackups = 3;  // Always keep at least 1 quarter
 
     public async Task ApplyRetentionPolicyAsync(CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
 
-        // Delete daily backups older than 30 days
+        // Delete daily backups older than 30 days, but always keep at least MinDailyBackups
         var dailyCutoff = now.AddDays(-30);
-        await DeleteBackupsOlderThanAsync("daily/", dailyCutoff, cancellationToken);
+        await DeleteBackupsOlderThanAsync("daily/", dailyCutoff, MinDailyBackups, cancellationToken);
 
-        // Delete weekly backups older than 180 days
+        // Delete weekly backups older than 180 days, but always keep at least MinWeeklyBackups
         var weeklyCutoff = now.AddDays(-180);
-        await DeleteBackupsOlderThanAsync("weekly/", weeklyCutoff, cancellationToken);
+        await DeleteBackupsOlderThanAsync("weekly/", weeklyCutoff, MinWeeklyBackups, cancellationToken);
 
-        // Monthly backups are kept indefinitely
+        // Monthly backups: only enforce minimum, no age-based deletion
+        // This ensures we always have at least MinMonthlyBackups even if they're very old
+        await EnforceMinimumBackupsAsync("monthly/", MinMonthlyBackups, cancellationToken);
 
         _logger.LogInformation("Retention policy applied");
+    }
+
+    /// <summary>
+    /// Deletes backups older than cutoff, but always keeps at least minKeep backups.
+    /// Backups are sorted by date (newest first) before applying the minimum.
+    /// </summary>
+    private async Task DeleteBackupsOlderThanAsync(
+        string prefix,
+        DateTime cutoff,
+        int minKeep,
+        CancellationToken cancellationToken)
+    {
+        var backups = (await _storageService.ListBackupBucketAsync(prefix, cancellationToken))
+            .OrderByDescending(b => b.LastModified)
+            .ToList();
+
+        // Identify candidates for deletion (older than cutoff)
+        var toDelete = backups
+            .Where(b => b.LastModified < cutoff)
+            .ToList();
+
+        // Ensure we keep at least minKeep backups
+        var totalAfterDelete = backups.Count - toDelete.Count;
+        if (totalAfterDelete < minKeep)
+        {
+            // Keep the newest ones from toDelete to meet minimum
+            var mustKeep = minKeep - totalAfterDelete;
+            toDelete = toDelete
+                .OrderByDescending(b => b.LastModified)
+                .Skip(mustKeep)
+                .ToList();
+
+            _logger.LogInformation(
+                "Retention: Keeping {MustKeep} extra backups in {Prefix} to meet minimum of {MinKeep}",
+                mustKeep, prefix, minKeep);
+        }
+
+        foreach (var backup in toDelete)
+        {
+            await _storageService.DeleteFromBackupBucketAsync(backup.Key, cancellationToken);
+            _logger.LogInformation("Deleted old backup: {Key}", backup.Key);
+        }
+    }
+
+    /// <summary>
+    /// Ensures at least minKeep backups exist in the prefix.
+    /// Does not delete based on age - only enforces a minimum count.
+    /// </summary>
+    private async Task EnforceMinimumBackupsAsync(
+        string prefix,
+        int minKeep,
+        CancellationToken cancellationToken)
+    {
+        var backups = (await _storageService.ListBackupBucketAsync(prefix, cancellationToken))
+            .OrderByDescending(b => b.LastModified)
+            .ToList();
+
+        if (backups.Count < minKeep)
+        {
+            _logger.LogWarning(
+                "Only {Count} backups in {Prefix}, below minimum of {MinKeep}. No deletions performed.",
+                backups.Count, prefix, minKeep);
+        }
     }
 
     private async Task<string> CalculateMd5Async(string filePath, CancellationToken cancellationToken)
@@ -1045,10 +1188,12 @@ public async Task<IEnumerable<S3ObjectInfo>> ListBackupBucketAsync(string? prefi
 # This script restores the PostgreSQL database from an R2 backup.
 # Use this when the API/Hangfire is down and you cannot restore via Admin panel.
 #
-# Prerequisites:
+# Prerequisites (ALL required):
 #   - Wrangler CLI: npm install -g wrangler
 #   - PostgreSQL client: apt-get install postgresql-client (or brew install postgresql)
-#   - Python 3: apt-get install python3 (or brew install python3) - for URL parsing
+#   - Python 3: apt-get install python3 (or brew install python3)
+#     * REQUIRED for URL parsing - handles special characters in passwords (@ : % etc.)
+#     * Simple bash parsing breaks on these characters
 #   - Wrangler authenticated: wrangler login
 #
 # Usage:
@@ -1275,6 +1420,9 @@ param(
     [switch]$NoSafety,
     [string]$DatabaseUrl = $env:DATABASE_URL
 )
+
+# Load System.Web assembly for URL decoding (required for passwords with special chars)
+Add-Type -AssemblyName System.Web
 
 $ErrorActionPreference = "Stop"
 $Bucket = "myuglyrocks-media-backup"
