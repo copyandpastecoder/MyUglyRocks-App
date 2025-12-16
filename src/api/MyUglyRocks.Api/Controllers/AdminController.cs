@@ -15,15 +15,18 @@ public class AdminController : ControllerBase
     private readonly IAdminService _adminService;
     private readonly IReferenceDataService _referenceDataService;
     private readonly ISessionAnalyticsService _sessionAnalyticsService;
+    private readonly IDatabaseBackupService _databaseBackupService;
 
     public AdminController(
         IAdminService adminService,
         IReferenceDataService referenceDataService,
-        ISessionAnalyticsService sessionAnalyticsService)
+        ISessionAnalyticsService sessionAnalyticsService,
+        IDatabaseBackupService databaseBackupService)
     {
         _adminService = adminService;
         _referenceDataService = referenceDataService;
         _sessionAnalyticsService = sessionAnalyticsService;
+        _databaseBackupService = databaseBackupService;
     }
 
     private Guid? GetCurrentUserId()
@@ -483,6 +486,132 @@ public class AdminController : ControllerBase
         {
             return NotFound(new { message = "Material not found" });
         }
+    }
+
+    #endregion
+
+    #region Database Backup
+
+    /// <summary>
+    /// List available database backups (admin only)
+    /// </summary>
+    [HttpGet("backups")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(IEnumerable<BackupInfo>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<BackupInfo>>> ListBackups(
+        [FromQuery] int limit = 50,
+        CancellationToken cancellationToken = default)
+    {
+        // Clamp limit to prevent excessive listing
+        limit = Math.Clamp(limit, 1, 100);
+        var backups = await _databaseBackupService.ListBackupsAsync(limit, cancellationToken);
+        return Ok(backups);
+    }
+
+    /// <summary>
+    /// Get the most recent backup info (admin only)
+    /// </summary>
+    [HttpGet("backups/latest")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BackupInfo), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<BackupInfo>> GetLatestBackup(CancellationToken cancellationToken = default)
+    {
+        var backup = await _databaseBackupService.GetLastBackupAsync(cancellationToken);
+        if (backup == null)
+        {
+            return NotFound(new { message = "No backups found" });
+        }
+        return Ok(backup);
+    }
+
+    /// <summary>
+    /// Create a manual database backup (admin only)
+    /// </summary>
+    [HttpPost("backups")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(BackupResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<BackupResult>> CreateBackup(CancellationToken cancellationToken = default)
+    {
+        var result = await _databaseBackupService.CreateBackupAsync(BackupType.Manual, cancellationToken);
+
+        if (!result.Success && result.ErrorMessage?.Contains("Another backup/restore operation") == true)
+        {
+            return Conflict(new { message = result.ErrorMessage });
+        }
+
+        if (!result.Success)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Validate a backup's integrity (admin only).
+    /// Pass the backup key in the request body since keys contain slashes.
+    /// </summary>
+    [HttpPost("backups/validate")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ValidationResult>> ValidateBackup(
+        [FromBody] ValidateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.BackupKey))
+        {
+            return BadRequest(new { message = "BackupKey is required" });
+        }
+
+        var result = await _databaseBackupService.ValidateBackupAsync(request.BackupKey, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Restore database from a backup (admin only).
+    /// DANGEROUS: This replaces the current database with backup data.
+    /// A pre-restore safety backup is created automatically.
+    /// </summary>
+    [HttpPost("backups/restore")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(RestoreResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<RestoreResult>> RestoreBackup(
+        [FromBody] RestoreRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // Require explicit confirmation to prevent accidental restores
+        if (request.Confirmation != "RESTORE")
+        {
+            return BadRequest(new { message = "Confirmation must be 'RESTORE' to proceed" });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.BackupKey))
+        {
+            return BadRequest(new { message = "BackupKey is required" });
+        }
+
+        var result = await _databaseBackupService.RestoreAsync(
+            request.BackupKey,
+            createPreRestoreBackup: true,
+            useSingleTransaction: true,
+            cancellationToken);
+
+        if (!result.Success && result.ErrorMessage?.Contains("Another backup/restore operation") == true)
+        {
+            return Conflict(new { message = result.ErrorMessage });
+        }
+
+        if (!result.Success)
+        {
+            return BadRequest(new { message = result.ErrorMessage });
+        }
+
+        return Ok(result);
     }
 
     #endregion

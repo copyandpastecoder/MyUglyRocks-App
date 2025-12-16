@@ -11,6 +11,12 @@ public class R2Settings
     public string BackupBucketName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Password for AES-256 encryption of backup files.
+    /// If empty, backups are stored unencrypted.
+    /// </summary>
+    public string BackupPassword { get; set; } = string.Empty;
+
+    /// <summary>
     /// The R2 endpoint URL, constructed from the account ID
     /// </summary>
     public string Endpoint => $"https://{AccountId}.r2.cloudflarestorage.com";
