@@ -111,6 +111,7 @@ export default function InventoryDetailPage() {
         .filter(s => s.specimenId || s.userSpecimenId)
         .map(s => ({
           id: crypto.randomUUID(),
+          inventorySpecimenId: s.inventorySpecimenId, // preserve to maintain photo tags
           specimenId: s.specimenId ?? undefined,
           userSpecimenId: s.userSpecimenId ?? undefined,
           selectedId: (s.specimenId || s.userSpecimenId) as string,
@@ -197,7 +198,9 @@ export default function InventoryDetailPage() {
     setSpecimenError(null);
 
     // Build specimens payload with all per-specimen fields
+    // Include inventorySpecimenId for existing specimens to preserve photo tags
     const specimensPayload = validSpecimens.map(row => ({
+      inventorySpecimenId: row.inventorySpecimenId || undefined,
       specimenId: row.specimenId,
       userSpecimenId: row.userSpecimenId,
       weightGrams: row.weightGrams ?? undefined,

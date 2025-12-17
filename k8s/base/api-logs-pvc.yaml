@@ -1,0 +1,14 @@
+# PersistentVolumeClaim for API logs
+# Logs are stored at /var/log/myuglyrocks in the API container
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: api-logs-pvc
+  namespace: myuglyrocks
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: hostpath

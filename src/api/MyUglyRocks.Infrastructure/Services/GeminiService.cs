@@ -40,79 +40,118 @@ public class GeminiService : IGeminiService
             return new SpecimenLookupResponse(false, "Gemini AI lookup is not configured", null);
         }
 
-        try
+        const int maxRetries = 2;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
-            var prompt = BuildPrompt(request);
-            var geminiRequest = new GeminiRequest
+            try
             {
-                Contents = new[]
+                var result = await TryLookupAsync(request, cancellationToken);
+
+                // If successful or it's a non-retryable error, return immediately
+                if (result.Success || result.Error == "Rate limit reached. Please try again in 1 minute." ||
+                    result.Error == "Gemini AI lookup is not configured")
                 {
-                    new GeminiContent
-                    {
-                        Parts = new[] { new GeminiPart { Text = prompt } }
-                    }
-                },
-                GenerationConfig = new GeminiGenerationConfig
-                {
-                    Temperature = 0.2f, // Low temperature for factual responses
-                    TopP = 0.8f,
-                    TopK = 40,
-                    MaxOutputTokens = 1024,
-                    ResponseMimeType = "application/json"
-                }
-            };
-
-            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_settings.Model}:generateContent?key={_settings.ApiKey}";
-
-            var response = await _httpClient.PostAsJsonAsync(url, geminiRequest, JsonOptions, cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("Gemini API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
-
-                // Check for rate limit error (429) or quota exceeded in error content
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
-                    errorContent.Contains("RESOURCE_EXHAUSTED", StringComparison.OrdinalIgnoreCase) ||
-                    errorContent.Contains("quota", StringComparison.OrdinalIgnoreCase))
-                {
-                    return new SpecimenLookupResponse(false, "Rate limit reached. Please try again in 1 minute.", null);
+                    return result;
                 }
 
-                return new SpecimenLookupResponse(false, "Failed to lookup specimen information", null);
+                // If parsing failed and we have retries left, try again
+                if (attempt < maxRetries && result.Error == "Failed to parse AI response")
+                {
+                    _logger.LogWarning("Gemini response parsing failed, retrying (attempt {Attempt}/{MaxRetries})",
+                        attempt, maxRetries);
+                    await Task.Delay(500, cancellationToken); // Brief delay before retry
+                    continue;
+                }
+
+                return result;
             }
-
-            var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(JsonOptions, cancellationToken);
-
-            if (geminiResponse?.Candidates == null || geminiResponse.Candidates.Length == 0)
+            catch (Exception ex)
             {
-                return new SpecimenLookupResponse(false, "No response from AI", null);
+                _logger.LogError(ex, "Error looking up specimen: {CommonName} (attempt {Attempt})",
+                    request.CommonName, attempt);
+
+                if (attempt == maxRetries)
+                {
+                    return new SpecimenLookupResponse(false, "An error occurred while looking up specimen information", null);
+                }
             }
-
-            var text = geminiResponse.Candidates[0].Content?.Parts?[0]?.Text;
-            if (string.IsNullOrEmpty(text))
-            {
-                return new SpecimenLookupResponse(false, "Empty response from AI", null);
-            }
-
-            // Parse the JSON response from Gemini
-            var lookupData = ParseGeminiResponse(text, request.CommonName);
-            if (lookupData == null)
-            {
-                return new SpecimenLookupResponse(false, "Failed to parse AI response", null);
-            }
-
-            _logger.LogInformation(
-                "Specimen lookup successful: {CommonName} - Known: {IsKnown}, Confidence: {Confidence}%",
-                request.CommonName, lookupData.IsKnownSpecimen, lookupData.ConfidenceScore);
-
-            return new SpecimenLookupResponse(true, null, lookupData);
         }
-        catch (Exception ex)
+
+        return new SpecimenLookupResponse(false, "Failed to lookup specimen information", null);
+    }
+
+    private async Task<SpecimenLookupResponse> TryLookupAsync(SpecimenLookupRequest request, CancellationToken cancellationToken)
+    {
+        var prompt = BuildPrompt(request);
+        var geminiRequest = new GeminiRequest
         {
-            _logger.LogError(ex, "Error looking up specimen: {CommonName}", request.CommonName);
-            return new SpecimenLookupResponse(false, "An error occurred while looking up specimen information", null);
+            Contents = new[]
+            {
+                new GeminiContent
+                {
+                    Parts = new[] { new GeminiPart { Text = prompt } }
+                }
+            },
+            GenerationConfig = new GeminiGenerationConfig
+            {
+                Temperature = 0.2f, // Low temperature for factual responses
+                TopP = 0.8f,
+                TopK = 40,
+                MaxOutputTokens = 2048, // Increased to prevent truncation
+                ResponseMimeType = "application/json"
+            }
+        };
+
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_settings.Model}:generateContent";
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+        httpRequest.Headers.Add("x-goog-api-key", _settings.ApiKey);
+        httpRequest.Content = JsonContent.Create(geminiRequest, options: JsonOptions);
+
+        var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("Gemini API error: {StatusCode} - {Error}", response.StatusCode, errorContent);
+
+            // Check for rate limit error (429) or quota exceeded in error content
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                errorContent.Contains("RESOURCE_EXHAUSTED", StringComparison.OrdinalIgnoreCase) ||
+                errorContent.Contains("quota", StringComparison.OrdinalIgnoreCase))
+            {
+                return new SpecimenLookupResponse(false, "Rate limit reached. Please try again in 1 minute.", null);
+            }
+
+            return new SpecimenLookupResponse(false, "Failed to lookup specimen information", null);
         }
+
+        var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(JsonOptions, cancellationToken);
+
+        if (geminiResponse?.Candidates == null || geminiResponse.Candidates.Length == 0)
+        {
+            return new SpecimenLookupResponse(false, "No response from AI", null);
+        }
+
+        var text = geminiResponse.Candidates[0].Content?.Parts?[0]?.Text;
+        if (string.IsNullOrEmpty(text))
+        {
+            return new SpecimenLookupResponse(false, "Empty response from AI", null);
+        }
+
+        // Parse the JSON response from Gemini
+        var lookupData = ParseGeminiResponse(text, request.CommonName);
+        if (lookupData == null)
+        {
+            return new SpecimenLookupResponse(false, "Failed to parse AI response", null);
+        }
+
+        _logger.LogInformation(
+            "Specimen lookup successful: {CommonName} - Known: {IsKnown}, Confidence: {Confidence}%",
+            request.CommonName, lookupData.IsKnownSpecimen, lookupData.ConfidenceScore);
+
+        return new SpecimenLookupResponse(true, null, lookupData);
     }
 
     private static string BuildPrompt(SpecimenLookupRequest request)

@@ -408,7 +408,7 @@ try
 
     // Configure Hangfire recurring jobs
     // Only configure if backup bucket is set (prevents failures in environments without backup config)
-    if (!string.IsNullOrEmpty(r2Settings.BackupBucketName))
+    if (!string.IsNullOrEmpty(r2Settings?.BackupBucketName))
     {
         // Use IRecurringJobManager from DI instead of static RecurringJob API
         // (static API requires JobStorage.Current which isn't set until server starts)

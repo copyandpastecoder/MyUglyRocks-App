@@ -217,9 +217,9 @@ export function PhotoUpload({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/*"
           multiple
-          className="hidden"
+          className="absolute w-px h-px overflow-hidden opacity-0"
           onChange={handleFileSelect}
           disabled={uploading}
         />
@@ -369,9 +369,9 @@ export function PhotoUploadPlaceholder({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/*"
           multiple
-          className="hidden"
+          className="absolute w-px h-px overflow-hidden opacity-0"
           onChange={handleFileSelect}
         />
       </CardContent>
