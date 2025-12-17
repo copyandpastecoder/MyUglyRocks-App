@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Force Node.js runtime (not Edge) for internal DNS resolution
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 // Proxy handler for all /api/* requests (except /api/config)
 async function proxyRequest(request: NextRequest) {
@@ -19,10 +21,12 @@ async function proxyRequest(request: NextRequest) {
   const search = request.nextUrl.search;
   const url = new URL(pathname + search, apiUrl);
 
-  // Prepare headers - copy all but host
+  // Prepare headers - copy all but host and content-length
+  // (content-length will be recalculated by fetch for the streamed body)
   const headers = new Headers();
   request.headers.forEach((value, key) => {
-    if (key.toLowerCase() !== 'host') {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey !== 'host' && lowerKey !== 'content-length') {
       headers.set(key, value);
     }
   });
@@ -34,9 +38,11 @@ async function proxyRequest(request: NextRequest) {
       headers,
     };
 
-    // Only include body for methods that support it
+    // Stream the body directly to avoid encoding issues
     if (request.method !== 'GET' && request.method !== 'HEAD') {
-      fetchOptions.body = await request.text();
+      fetchOptions.body = request.body;
+      // Required for streaming bodies in Node.js
+      (fetchOptions as Record<string, unknown>).duplex = 'half';
     }
 
     const response = await fetch(url, fetchOptions);
