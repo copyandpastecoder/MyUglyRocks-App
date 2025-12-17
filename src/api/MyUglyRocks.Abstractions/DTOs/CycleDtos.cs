@@ -88,7 +88,10 @@ public record InventorySpecimenInput(
     Guid InventorySpecimenId,
 
     /// <summary>If true, mark the specimen as Depleted when the cycle completes</summary>
-    bool MarkDepletedOnComplete = false
+    bool MarkDepletedOnComplete = false,
+
+    /// <summary>If true, copy tagged photos from inventory to the cycle when the first stage is created</summary>
+    bool AddPhotosFromInventory = false
 );
 
 public record UpdateCycleRequest(
@@ -106,7 +109,25 @@ public record UpdateCycleRequest(
     string? AdditionalSpecimens,
 
     [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
-    string? Notes
+    string? Notes,
+
+    /// <summary>System specimen IDs to add (from reference data)</summary>
+    Guid[]? SpecimenIds = null,
+
+    /// <summary>User specimen IDs to add (custom user-created specimens)</summary>
+    Guid[]? UserSpecimenIds = null,
+
+    /// <summary>Inventory specimens to add (from user's inventory) with options for status management</summary>
+    InventorySpecimenInput[]? InventorySpecimens = null,
+
+    /// <summary>Specimen IDs to remove from the cycle (system specimens)</summary>
+    Guid[]? RemovedSpecimenIds = null,
+
+    /// <summary>User specimen IDs to remove from the cycle</summary>
+    Guid[]? RemovedUserSpecimenIds = null,
+
+    /// <summary>Inventory specimen IDs to remove from the cycle</summary>
+    Guid[]? RemovedInventorySpecimenIds = null
 );
 
 public record CompleteCycleRequest(
@@ -400,7 +421,9 @@ public record SpecimenDto(
     /// <summary>Source: "system" for reference specimens, "user" for custom user specimens</summary>
     string Source = "system",
     /// <summary>Only set for user specimens - the user who created it</summary>
-    Guid? UserId = null
+    Guid? UserId = null,
+    /// <summary>Set when the specimen was linked via inventory</summary>
+    Guid? InventorySpecimenId = null
 );
 
 public record MaterialDto(

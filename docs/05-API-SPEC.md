@@ -1570,6 +1570,243 @@ Suggest a new specimen (user submission).
 
 ---
 
+## 13.1 User Specimens
+
+User-created custom specimen records with optional AI-powered lookup.
+
+#### GET /user-specimens
+List user's custom specimens.
+
+**Auth Required:** Yes
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `search` | string | Search by name |
+| `materialType` | string | `Rock`, `Mineral`, `Glass`, `Fossil`, `Other` |
+| `sortBy` | string | `commonName`, `dateCreated` |
+| `sortOrder` | string | `asc`, `desc` |
+| `skip` | int | Skip count |
+| `take` | int | Items per page |
+
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "userSpecimenId": "uuid",
+      "commonName": "Lake Superior Agate",
+      "scientificName": "Chalcedony variety",
+      "materialType": "Mineral",
+      "tumblingDifficulty": "Easy",
+      "isPublic": false,
+      "dateCreated": "2025-01-20T10:30:00Z",
+      "aiConfidenceScore": 95,
+      "aiIsKnownSpecimen": true
+    }
+  ]
+}
+```
+
+---
+
+#### GET /user-specimens/:userSpecimenId
+Get user specimen details.
+
+**Auth Required:** Yes (must be owner)
+
+**Response (200 OK):**
+```json
+{
+  "userSpecimenId": "uuid",
+  "userId": "uuid",
+  "commonName": "Lake Superior Agate",
+  "scientificName": "Chalcedony variety",
+  "alias": "Lakers, LSA",
+  "rockFamily": "Quartz",
+  "species": "Chalcedony",
+  "variety": "Agate",
+  "materialType": "Mineral",
+  "mohsHardnessMin": 6.5,
+  "mohsHardnessMax": 7.0,
+  "tumblingDifficulty": "Easy",
+  "recommendedGritSequence": "60/90 → 120/220 → Pre-polish → Polish",
+  "specialConsiderations": "Watch for banding direction",
+  "notes": "Found near Grand Marais",
+  "isPublic": false,
+  "basedOnSpecimenId": null,
+  "dateCreated": "2025-01-20T10:30:00Z",
+  "aiConfidenceScore": 95,
+  "aiIsKnownSpecimen": true
+}
+```
+
+---
+
+#### POST /user-specimens
+Create a new user specimen.
+
+**Auth Required:** Yes
+
+**Request:**
+```json
+{
+  "commonName": "Lake Superior Agate",
+  "scientificName": "Chalcedony variety",
+  "alias": "Lakers, LSA",
+  "rockFamily": "Quartz",
+  "species": "Chalcedony",
+  "variety": "Agate",
+  "materialType": "Mineral",
+  "mohsHardnessMin": 6.5,
+  "mohsHardnessMax": 7.0,
+  "tumblingDifficulty": "Easy",
+  "recommendedGritSequence": "60/90 → 120/220 → Pre-polish → Polish",
+  "specialConsiderations": "Watch for banding direction",
+  "notes": "Found near Grand Marais",
+  "isPublic": false,
+  "basedOnSpecimenId": null,
+  "aiConfidenceScore": 95,
+  "aiIsKnownSpecimen": true
+}
+```
+
+**Response (201 Created):** Created user specimen object
+
+---
+
+#### PATCH /user-specimens/:userSpecimenId
+Update a user specimen.
+
+**Auth Required:** Yes (must be owner)
+
+**Request:**
+```json
+{
+  "commonName": "Updated Name",
+  "notes": "Updated notes"
+}
+```
+
+**Response (200 OK):** Updated user specimen object
+
+---
+
+#### DELETE /user-specimens/:userSpecimenId
+Delete a user specimen.
+
+**Auth Required:** Yes (must be owner)
+
+**Response (204 No Content)**
+
+---
+
+#### POST /user-specimens/lookup
+AI-powered specimen lookup using Google Gemini.
+
+**Auth Required:** Yes
+
+**Request:**
+```json
+{
+  "commonName": "Lake Superior Agate",
+  "sourceUrl": "https://example.com/rock-info",
+  "sourceName": "Rock Hound Guide",
+  "sourceDescription": "Found along the shores of Lake Superior"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "success": true,
+  "error": null,
+  "data": {
+    "commonName": "Lake Superior Agate",
+    "scientificName": "Chalcedony variety",
+    "alias": "Lakers, LSA, Lake Superior Stone",
+    "rockFamily": "Quartz",
+    "species": "Chalcedony",
+    "variety": "Agate",
+    "materialType": "Mineral",
+    "mohsHardnessMin": 6.5,
+    "mohsHardnessMax": 7.0,
+    "tumblingDifficulty": "Easy",
+    "recommendedGritSequence": "60/90 → 120/220 → Pre-polish → Polish",
+    "specialConsiderations": "Iron-banded variety; watch for fractures along bands",
+    "isKnownSpecimen": true,
+    "confidenceScore": 95,
+    "confidenceReason": "Well-documented mineral with consistent properties"
+  }
+}
+```
+
+**Notes:**
+- `confidenceScore`: 0-100 percentage indicating AI confidence in the identification
+- `isKnownSpecimen`: true if recognized as an established rock/mineral type, false for trade names or unknown specimens
+- AI uses structured output schema to ensure consistent response format
+- Source info (URL, name, description) is optional but improves accuracy
+
+**Errors:**
+| Code | Description |
+|------|-------------|
+| 400 | Invalid request (commonName required) |
+| 503 | AI service temporarily unavailable |
+
+---
+
+#### GET /user-specimens/search
+Search both system specimens and user specimens for use in pickers/dropdowns.
+
+**Auth Required:** Yes
+
+**Query Parameters:**
+| Param | Type | Description |
+|-------|------|-------------|
+| `search` | string | Search by name |
+| `includePublic` | bool | Include public specimens from other users |
+| `skip` | int | Skip count |
+| `take` | int | Items per page |
+
+**Response (200 OK):**
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "commonName": "Lake Superior Agate",
+      "scientificName": "Chalcedony variety",
+      "alias": "Lakers",
+      "materialType": "Mineral",
+      "tumblingDifficulty": "Easy",
+      "mohsHardnessMax": 7.0,
+      "source": "user",
+      "isOwned": true,
+      "basedOnSpecimenId": null
+    },
+    {
+      "id": "uuid",
+      "commonName": "Agate",
+      "scientificName": null,
+      "alias": null,
+      "materialType": "Mineral",
+      "tumblingDifficulty": "Easy",
+      "mohsHardnessMax": 7.0,
+      "source": "system",
+      "isOwned": false,
+      "basedOnSpecimenId": null
+    }
+  ]
+}
+```
+
+**Notes:**
+- Results ordered: user's specimens first, then system specimens, then public specimens from other users
+- `source`: "user" for UserSpecimen records, "system" for Specimen records
+- `isOwned`: true if the user owns this specimen
+
+---
+
 ## 11. Materials
 
 #### GET /materials

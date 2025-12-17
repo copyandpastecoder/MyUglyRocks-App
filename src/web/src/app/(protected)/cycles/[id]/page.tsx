@@ -21,7 +21,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -76,6 +75,7 @@ import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
 import { StageFormModal, type BarrelInfo } from '@/components/stage/stage-form-modal';
+import { CycleFormDialog } from '@/components/cycle-form-dialog';
 import {
   CleaningRunSection,
 } from '@/components/stage';
@@ -85,7 +85,7 @@ import { calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes, formatDurationMinutes } from '@/lib/duration-utils';
 import { formatCleaningPurpose } from '@/lib/cleaning-constants';
 import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
-import type { StageRunSummaryDto, StageRunDto, CompleteStageRunRequest, UpdateCycleRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
+import type { StageRunSummaryDto, StageRunDto, CompleteStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useConfetti } from '@/components/ui/confetti';
 
@@ -156,9 +156,6 @@ export default function CycleDetailPage() {
 
   // Edit Cycle Dialog State
   const [isEditCycleOpen, setIsEditCycleOpen] = useState(false);
-  const [editCycleName, setEditCycleName] = useState('');
-  const [editCycleStartDate, setEditCycleStartDate] = useState('');
-  const [editCycleNotes, setEditCycleNotes] = useState('');
 
   // Cleaning Run Modal State
   const [isCleaningRunOpen, setIsCleaningRunOpen] = useState(false);
@@ -341,19 +338,6 @@ export default function CycleDetailPage() {
     },
     onError: () => {
       toast.error('Failed to complete stage');
-    },
-  });
-
-  const updateCycleMutation = useMutation({
-    mutationFn: (data: UpdateCycleRequest) => cycleApi.update(cycleId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
-      queryClient.invalidateQueries({ queryKey: ['cycles'] });
-      toast.success('Cycle updated');
-      setIsEditCycleOpen(false);
-    },
-    onError: () => {
-      toast.error('Failed to update cycle');
     },
   });
 
@@ -582,25 +566,6 @@ export default function CycleDetailPage() {
     completeStageMutation.mutate({ id: completeStageId, data });
   };
 
-  const openEditCycleModal = () => {
-    if (!cycle) return;
-    setEditCycleName(cycle.name);
-    setEditCycleStartDate(cycle.startDate.split('T')[0]);
-    setEditCycleNotes(cycle.notes || '');
-    setIsEditCycleOpen(true);
-  };
-
-  const handleEditCycle = () => {
-    if (!editCycleName.trim()) {
-      toast.error('Please enter a cycle name');
-      return;
-    }
-    updateCycleMutation.mutate({
-      name: editCycleName,
-      startDate: editCycleStartDate, // Already in YYYY-MM-DD format from date input
-      notes: editCycleNotes || undefined,
-    });
-  };
 
   const openViewStageModal = (stage: StageRunSummaryDto) => {
     setViewStageId(stage.stageRunId);
@@ -722,7 +687,7 @@ export default function CycleDetailPage() {
                 <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {cycle.status === 'Active' && (
                     <>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={openEditCycleModal}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditCycleOpen(true)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button variant="default" size="sm" className="h-8" onClick={() => setIsCompleteCycleOpen(true)}>
@@ -1308,54 +1273,12 @@ export default function CycleDetailPage() {
       </Dialog>
 
       {/* Edit Cycle Modal */}
-      <Dialog open={isEditCycleOpen} onOpenChange={setIsEditCycleOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Cycle</DialogTitle>
-            <DialogDescription>
-              Update cycle details
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Cycle Name *</Label>
-              <Input
-                value={editCycleName}
-                onChange={(e) => setEditCycleName(e.target.value)}
-                placeholder="e.g., Beach Agates Batch 1"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Start Date</Label>
-              <Input
-                type="date"
-                value={editCycleStartDate}
-                onChange={(e) => setEditCycleStartDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Notes (optional)</Label>
-              <Textarea
-                value={editCycleNotes}
-                onChange={(e) => setEditCycleNotes(e.target.value)}
-                placeholder="Any notes about this cycle..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditCycleOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleEditCycle} disabled={updateCycleMutation.isPending}>
-              {updateCycleMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <CycleFormDialog
+        open={isEditCycleOpen}
+        onOpenChange={setIsEditCycleOpen}
+        cycle={cycle}
+        onUpdated={() => queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] })}
+      />
 
       {/* Stage Form Modal (New and Edit) */}
       {cycle && (

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
 
@@ -12,10 +13,14 @@ namespace MyUglyRocks.Api.Controllers;
 public class UserSpecimensController : ControllerBase
 {
     private readonly IUserSpecimenService _userSpecimenService;
+    private readonly IGeminiService _geminiService;
 
-    public UserSpecimensController(IUserSpecimenService userSpecimenService)
+    public UserSpecimensController(
+        IUserSpecimenService userSpecimenService,
+        IGeminiService geminiService)
     {
         _userSpecimenService = userSpecimenService;
+        _geminiService = geminiService;
     }
 
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -112,5 +117,36 @@ public class UserSpecimensController : ControllerBase
         var specimens = await _userSpecimenService.SearchAllSpecimensAsync(
             GetUserId(), search, includePublic, skip, take, cancellationToken);
         return Ok(specimens);
+    }
+
+    /// <summary>
+    /// Look up specimen information using AI (Google Gemini)
+    /// Returns specimen data with confidence indicators for review
+    /// </summary>
+    [HttpPost("lookup")]
+    [EnableRateLimiting("intensive")]
+    [ProducesResponseType(typeof(SpecimenLookupResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> LookupSpecimen([FromBody] SpecimenLookupRequest request, CancellationToken cancellationToken)
+    {
+        if (!_geminiService.IsConfigured)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new SpecimenLookupResponse(
+                false, "AI lookup service is not available", null));
+        }
+
+        var result = await _geminiService.LookupSpecimenAsync(request, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Check if AI lookup service is available
+    /// </summary>
+    [HttpGet("lookup/status")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    public IActionResult GetLookupStatus()
+    {
+        return Ok(new { available = _geminiService.IsConfigured });
     }
 }
