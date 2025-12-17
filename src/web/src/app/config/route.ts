@@ -42,7 +42,13 @@ export async function GET(request: NextRequest) {
     });
   }
 
-  // For local/NodePort access, use the configured API_URL (empty = relative URLs)
+  // For localhost development, return empty string to use same-origin proxy
+  // This allows testing the proxy locally
+  if (host === 'localhost') {
+    return NextResponse.json({ apiUrl: '' });
+  }
+
+  // For other local/NodePort access, use the configured API_URL (empty = relative URLs)
   return NextResponse.json({
     apiUrl: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '',
   });
