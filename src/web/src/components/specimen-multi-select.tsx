@@ -198,9 +198,10 @@ export function SpecimenMultiSelect({
 
     if (isSelected) {
       // Only remove non-inventory specimens with this id/source
+      // Keep items that: have an inventorySpecimenId OR don't match the id/source being removed
       onSelectionChange(
         selectedItems.filter((item) =>
-          !(!item.inventorySpecimenId && item.id === specimen.id && item.source === specimen.source)
+          item.inventorySpecimenId || item.id !== specimen.id || item.source !== specimen.source
         )
       );
     } else {
@@ -210,9 +211,10 @@ export function SpecimenMultiSelect({
 
   const handleRemove = (id: string, source: 'system' | 'user') => {
     // Only remove non-inventory specimens (inventory specimens have their own removal logic)
+    // Keep items that: have an inventorySpecimenId OR don't match the id/source being removed
     onSelectionChange(
       selectedItems.filter((item) =>
-        !(!item.inventorySpecimenId && item.id === id && item.source === source)
+        item.inventorySpecimenId || item.id !== id || item.source !== source
       )
     );
   };

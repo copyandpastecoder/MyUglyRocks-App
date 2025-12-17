@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
   // Allow dev access
   allowedDevOrigins: ["https://dev.myuglyrocks.com"],
 
-  // Note: API proxying is handled by middleware.ts at runtime
+  // Note: API proxying is handled by catch-all route handler (api/[...path]/route.ts)
   // This allows reading API_URL from runtime environment variables
   // (next.config.ts rewrites are evaluated at build time only)
 

@@ -1,5 +1,6 @@
-# Code quality checks - DISABLED for now
-# Manual trigger only
+# Code quality checks workflow - intentionally DISABLED
+# TODO: Re-enable this workflow (uncomment `name:` and update triggers)
+#       once the code quality pipeline is ready and approved.
 
 # name: Code Quality
 

@@ -121,11 +121,11 @@ All notable changes to this project will be documented in this file.
 - **Fix**: Added `&& !item.inventorySpecimenId` check to all selection matching logic for non-inventory specimens
 - **File**: [specimen-multi-select.tsx](../src/web/src/components/specimen-multi-select.tsx)
 - **Locations Fixed** (5 total):
-  - Line 163: `selectedSpecimens` memo - filter for blue chip rendering
-  - Line 195: `handleToggle` - isSelected check
-  - Line 199: `handleToggle` - filter for removal
-  - Line 211: `handleRemove` - filter for removal
-  - Line 223: `isSelected` function - checkbox state
+  - `selectedSpecimens` memo - filter for blue chip rendering
+  - `handleToggle` - isSelected check
+  - `handleToggle` - filter for removal
+  - `handleRemove` - filter for removal
+  - `isSelected` function - checkbox state
 - **Pattern**: For unique selection keys, use `inventorySpecimenId` when present, otherwise `${source}-${id}`
 
 #### Photo Tags Lost When Saving Inventory
@@ -188,15 +188,18 @@ All notable changes to this project will be documented in this file.
 - **Problem Solved**: `SameSite=Lax` cookies were not being sent on cross-origin POST requests (like `/auth/refresh`), causing 401 errors when users were logged in
 - **Backend Files**: No changes needed - cookie configuration (`SameSite=Lax`) remains secure
 - **Frontend Files**:
-  - [middleware.ts](../src/web/src/middleware.ts) - New middleware to proxy `/api/*` requests to backend at runtime
+  - [api/[...path]/route.ts](../src/web/src/app/api/[...path]/route.ts) - New catch-all route handler to proxy `/api/*` requests to backend
   - [config/route.ts](../src/web/src/app/config/route.ts) - Updated to return same-origin API URLs for all public domains
-- **Why Middleware Instead of Rewrites**: Next.js `rewrites()` in `next.config.ts` are evaluated at build time, but Railway injects environment variables at runtime. Middleware runs at runtime and can read `API_URL`.
+- **Why Route Handlers Instead of Middleware/Rewrites**:
+  - Next.js `rewrites()` in `next.config.ts` are evaluated at build time, but Railway injects env vars at runtime
+  - Middleware runs on Edge Runtime which can't resolve Railway's internal DNS (`*.railway.internal`)
+  - Route handlers run in Node.js runtime and can resolve internal DNS
 - **Railway Configuration**:
   - Set `API_URL` to Railway's private networking URL (e.g., `http://api.railway.internal`)
   - HTTP is fine for internal traffic since TLS terminates at Railway's edge proxy
 - **How It Works**:
   1. Browser makes request to `myuglyrocks.com/api/*`
-  2. Next.js middleware proxies the request to backend via private network
+  2. Next.js catch-all route handler proxies the request to backend via private network
   3. Cookies are sent because request is same-origin
   4. Response flows back through Next.js to browser
 
