@@ -247,6 +247,7 @@ public abstract class BaseWeightableEntity : BaseEntity, IWeightable
 |--------|---------|-----------|----------------|----------------|-------------|
 | User | `UserId` | ✅ | ❌ | ❌ | ❌ |
 | UserSettings | `UserId` | ✅ | ❌ | ❌ | ❌ |
+| UserSpecimen | `UserSpecimenId` | ✅ | ❌ | ✅ | ❌ |
 | Cycle | `CycleId` | ✅ | ❌ | ✅ | ❌ |
 | CycleSpecimen | `CycleId + SpecimenId` | ✅ | ❌ | ❌ | ❌ |
 | Specimen | `SpecimenId` | ✅ | ✅ | ❌ | ❌ |
@@ -528,6 +529,53 @@ Reference data for rock/mineral types.
 public enum MaterialType { Rock = 0, Mineral = 1, Glass = 2, Fossil = 3, Other = 4 }
 public enum TumblingDifficulty { Easy = 0, Medium = 1, Hard = 2 }
 ```
+
+---
+
+### 4.5.1 UserSpecimen
+
+User-created custom specimen records. These are user-specific specimens that can be based on system specimens or created entirely custom.
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| `UserSpecimenId` | uuid | PK | Unique identifier |
+| `UserId` | uuid | FK → User, NOT NULL | Owner of this specimen |
+| `CommonName` | varchar(100) | NOT NULL | Primary name |
+| `ScientificName` | varchar(100) | NULL | Scientific name |
+| `Alias` | varchar(255) | NULL | Alternative names |
+| `RockFamily` | varchar(100) | NULL | Rock family |
+| `Species` | varchar(100) | NULL | Species |
+| `Variety` | varchar(100) | NULL | Variety |
+| `MaterialType` | smallint | NOT NULL, DEFAULT 0 | 0=Rock, 1=Mineral, 2=Glass, 3=Fossil, 4=Other |
+| `MohsHardnessMin` | decimal(3,1) | NULL | Minimum hardness |
+| `MohsHardnessMax` | decimal(3,1) | NULL | Maximum hardness |
+| `TumblingDifficulty` | smallint | NULL | 0=Easy, 1=Medium, 2=Hard |
+| `RecommendedGritSequence` | text | NULL | Recommended grit sequence |
+| `SpecialConsiderations` | text | NULL | Special handling notes |
+| `Notes` | text | NULL | User notes |
+| `IsPublic` | boolean | NOT NULL, DEFAULT false | Visible to other users |
+| `BasedOnSpecimenId` | uuid | FK → Specimen, NULL | System specimen this is based on |
+| `AiConfidenceScore` | smallint | NULL | AI lookup confidence 0-100% |
+| `AiIsKnownSpecimen` | boolean | NULL | AI determined if specimen is known |
+| `IsDeleted` | boolean | NOT NULL, DEFAULT false | Soft delete |
+| `DateDeleted` | timestamptz | NULL | When deleted |
+| `DateCreated` | timestamptz | NOT NULL | |
+| `DateUpdated` | timestamptz | NOT NULL | |
+
+**Indexes:**
+- `IX_UserSpecimen_UserId`
+- `IX_UserSpecimen_CommonName`
+- `IX_UserSpecimen_BasedOnSpecimenId`
+
+**AI Metadata Fields:**
+- `AiConfidenceScore`: When a user creates a specimen via AI lookup, this stores the confidence percentage (0-100) returned by Google Gemini
+- `AiIsKnownSpecimen`: Indicates whether the AI recognized this as an established rock/mineral type (true) vs. a trade name, locality name, or unknown specimen (false)
+
+**Usage:**
+- Users can create custom specimens for rocks not in the system database
+- Custom specimens appear in specimen pickers alongside system specimens
+- AI lookup populates fields automatically with confidence indication
+- `BasedOnSpecimenId` links to a system specimen if the user modified/copied one
 
 ---
 
@@ -1484,6 +1532,7 @@ Junction table for Post ↔ Tag (many-to-many).
 | Parent | Child | Relationship | FK Column |
 |--------|-------|--------------|-----------|
 | User | Cycle | 1:N | Cycle.UserId |
+| User | UserSpecimen | 1:N | UserSpecimen.UserId |
 | User | Tumbler | 1:N | Tumbler.UserId |
 | User | Post | 1:N | Post.UserId |
 | User | Comment | 1:N | Comment.UserId |
@@ -1493,6 +1542,7 @@ Junction table for Post ↔ Tag (many-to-many).
 | Cycle | CycleSpecimen | 1:N | CycleSpecimen.CycleId |
 | Cycle | Post | 1:N | Post.CycleId |
 | Specimen | CycleSpecimen | 1:N | CycleSpecimen.SpecimenId |
+| Specimen | UserSpecimen | 1:N | UserSpecimen.BasedOnSpecimenId |
 | StageRun | CleaningRun | 1:0..1 | CleaningRun.StageRunId |
 | StageRun | StageMaterial | 1:N | StageMaterial.StageRunId |
 | StageRun | Photo | 1:N | Photo.StageRunId |

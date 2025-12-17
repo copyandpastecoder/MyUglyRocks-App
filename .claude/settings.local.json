@@ -81,7 +81,8 @@
       "Bash(winget search:*)",
       "Bash(Select-Object -First 50)",
       "Bash(ls:*)",
-      "Bash(Select-Object -Last 30)"
+      "Bash(Select-Object -Last 30)",
+      "Bash(gh pr create --repo copyandpastecoder/MyUglyRocks-App --base Master --head hotfix/hangfire-startup-crash --title \"fix: use IRecurringJobManager from DI to fix Hangfire startup crash\" --body \"$(cat <<''EOF''\n## Summary\n- Fix production startup crash caused by using static `RecurringJob.AddOrUpdate` API before Hangfire storage is initialized\n- Use `IRecurringJobManager` from DI instead, which resolves the service correctly\n\n## Root Cause\nThe static `RecurringJob.AddOrUpdate` API requires `JobStorage.Current` to be set, but this isn''t initialized until the Hangfire server starts. When `R2__BackupBucketName` is configured (production), the app tries to register backup jobs and crashes.\n\n## Test plan\n- [ ] Verify Railway API starts without crash\n- [ ] Verify login works\n- [ ] Verify backup jobs are registered in Hangfire dashboard\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []

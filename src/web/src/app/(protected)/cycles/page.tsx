@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useCycles, useDeleteCycle } from '@/hooks';
+import { useCycles, useDeleteCycle, useCycle } from '@/hooks';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { Button } from '@/components/ui/button';
 import { FullPageSkeleton } from '@/components/skeletons';
@@ -29,17 +29,40 @@ import {
 } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
 import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
+import { CycleFormDialog } from '@/components/cycle-form-dialog';
 import type { CycleListDto } from '@/types/cycle';
 
 export default function CyclesPage() {
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('Active');
+  const [formDialogOpen, setFormDialogOpen] = useState(false);
+  const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
 
   // Active cycles: oldest first (ASC), Completed: newest first (DESC)
   const sortOrder = activeTab === 'Active' ? 'asc' : 'desc';
-  const { data: cycles, isLoading } = useCycles(activeTab, sortOrder);
+  const { data: cycles, isLoading, refetch } = useCycles(activeTab, sortOrder);
   const deleteMutation = useDeleteCycle();
+
+  // Fetch full cycle details when editing
+  const { data: editingCycle } = useCycle(editingCycleId);
+
+  const handleEdit = (cycleId: string) => {
+    setEditingCycleId(cycleId);
+    setFormDialogOpen(true);
+  };
+
+  const handleNewCycle = () => {
+    setEditingCycleId(null);
+    setFormDialogOpen(true);
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setFormDialogOpen(open);
+    if (!open) {
+      setEditingCycleId(null);
+    }
+  };
 
   const handleDelete = (id: string) => {
     setDeleteId(id);
@@ -114,8 +137,12 @@ export default function CyclesPage() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}`)}>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              View Details
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => handleEdit(cycle.cycleId)}>
               <Pencil className="mr-2 h-4 w-4" />
-              View/Edit
+              Edit
             </DropdownMenuItem>
             {cycle.status === 'Active' && (
               <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}/complete`)}>
@@ -150,11 +177,9 @@ export default function CyclesPage() {
             <h1 className="text-2xl font-bold tracking-tight">Tumbling Cycles</h1>
             <p className="text-muted-foreground">Track your rock tumbling progress</p>
           </div>
-          <Button asChild>
-            <Link href="/cycles/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Cycle
-            </Link>
+          <Button onClick={handleNewCycle}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Cycle
           </Button>
         </div>
 
@@ -168,7 +193,7 @@ export default function CyclesPage() {
             {cycles?.length === 0 ? (
               <div className="border rounded-lg border-dashed py-4">
                 <NoCyclesEmpty
-                  onAction={activeTab === 'Active' ? () => router.push('/cycles/new') : undefined}
+                  onAction={activeTab === 'Active' ? handleNewCycle : undefined}
                 />
               </div>
             ) : (
@@ -203,6 +228,13 @@ export default function CyclesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <CycleFormDialog
+        open={formDialogOpen}
+        onOpenChange={handleDialogClose}
+        cycle={editingCycle}
+        onUpdated={() => refetch()}
+      />
       </div>
     </PageTransition>
   );

@@ -127,6 +127,8 @@ spec:
             path: R2__BackupPassword
           - key: resend-api-key
             path: Email__ApiKey
+          - key: gemini-api-key
+            path: Gemini__ApiKey
       # Mount local photo folder for seeding (temporary - remove after seeding)
       # Docker Desktop maps D:\ to /run/desktop/mnt/host/d/
       - name: demo-photos

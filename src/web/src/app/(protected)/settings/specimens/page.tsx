@@ -47,14 +47,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Pencil, Trash2, Loader2, Search, Globe, Lock, Gem } from 'lucide-react';
 import { PageTransition } from '@/components/ui/page-transition';
+import { AddCustomSpecimenDialog } from '@/components/add-custom-specimen-dialog';
 import {
   useUserSpecimens,
   useUserSpecimen,
-  useCreateUserSpecimen,
   useUpdateUserSpecimen,
   useDeleteUserSpecimen,
 } from '@/hooks/use-user-specimens';
-import type { CreateUserSpecimenRequest, UpdateUserSpecimenRequest, UserSpecimenListDto } from '@/types/user-specimen';
+import type { UpdateUserSpecimenRequest, UserSpecimenListDto } from '@/types/user-specimen';
 
 const materialTypes = ['Rock', 'Mineral', 'Glass', 'Fossil', 'Other'];
 const difficulties = ['Easy', 'Medium', 'Hard'];
@@ -80,7 +80,8 @@ type SpecimenFormData = z.infer<typeof specimenSchema>;
 
 export default function MySpecimensPage() {
   const [search, setSearch] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -88,7 +89,6 @@ export default function MySpecimensPage() {
   const { data: specimens, isLoading } = useUserSpecimens({ search });
 
   // Mutations
-  const createMutation = useCreateUserSpecimen();
   const updateMutation = useUpdateUserSpecimen();
   const deleteMutation = useDeleteUserSpecimen();
 
@@ -116,29 +116,9 @@ export default function MySpecimensPage() {
     },
   });
 
-  const handleOpenDialog = (id?: string) => {
-    if (id) {
-      setEditingId(id);
-    } else {
-      setEditingId(null);
-      form.reset({
-        commonName: '',
-        scientificName: null,
-        alias: null,
-        rockFamily: null,
-        species: null,
-        variety: null,
-        materialType: 'Rock',
-        mohsHardnessMin: null,
-        mohsHardnessMax: null,
-        tumblingDifficulty: null,
-        recommendedGritSequence: null,
-        specialConsiderations: null,
-        notes: null,
-        isPublic: false,
-      });
-    }
-    setIsDialogOpen(true);
+  const handleOpenEditDialog = (id: string) => {
+    setEditingId(id);
+    setIsEditDialogOpen(true);
   };
 
   // Update form when editing specimen loads
@@ -163,17 +143,14 @@ export default function MySpecimensPage() {
     }
   }, [editingSpecimen, editingId, form]);
 
-  const handleSubmit = async (data: SpecimenFormData) => {
+  const handleEditSubmit = async (data: SpecimenFormData) => {
+    if (!editingId) return;
     try {
-      if (editingId) {
-        await updateMutation.mutateAsync({
-          id: editingId,
-          data: data as UpdateUserSpecimenRequest,
-        });
-      } else {
-        await createMutation.mutateAsync(data as CreateUserSpecimenRequest);
-      }
-      setIsDialogOpen(false);
+      await updateMutation.mutateAsync({
+        id: editingId,
+        data: data as UpdateUserSpecimenRequest,
+      });
+      setIsEditDialogOpen(false);
       setEditingId(null);
       form.reset();
     } catch {
@@ -190,7 +167,7 @@ export default function MySpecimensPage() {
     }
   };
 
-  const isPending = createMutation.isPending || updateMutation.isPending;
+  const isPending = updateMutation.isPending;
 
   return (
     <PageTransition>
@@ -205,7 +182,7 @@ export default function MySpecimensPage() {
                   Create and manage your own specimen entries for rocks not in the reference database
                 </CardDescription>
               </div>
-              <Button onClick={() => handleOpenDialog()}>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Specimen
               </Button>
@@ -296,7 +273,7 @@ export default function MySpecimensPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleOpenDialog(specimen.userSpecimenId)}
+                            onClick={() => handleOpenEditDialog(specimen.userSpecimenId)}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -320,7 +297,7 @@ export default function MySpecimensPage() {
                 <p className="text-muted-foreground max-w-sm mt-1">
                   Create your first custom specimen for rocks and minerals that aren&apos;t in our reference database.
                 </p>
-                <Button className="mt-4" onClick={() => handleOpenDialog()}>
+                <Button className="mt-4" onClick={() => setIsCreateDialogOpen(true)}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Your First Specimen
                 </Button>
@@ -329,21 +306,23 @@ export default function MySpecimensPage() {
           </CardContent>
         </Card>
 
-        {/* Add/Edit Dialog */}
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        {/* Create Dialog - using shared component with AI lookup */}
+        <AddCustomSpecimenDialog
+          open={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+        />
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {editingId ? 'Edit Specimen' : 'Add Custom Specimen'}
-              </DialogTitle>
+              <DialogTitle>Edit Specimen</DialogTitle>
               <DialogDescription>
-                {editingId
-                  ? 'Update the details of your custom specimen.'
-                  : 'Create a new specimen entry for rocks not in the reference database.'}
+                Update the details of your custom specimen.
               </DialogDescription>
             </DialogHeader>
 
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleEditSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Common Name */}
                 <div className="space-y-2">
@@ -521,13 +500,13 @@ export default function MySpecimensPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
+                  onClick={() => setIsEditDialogOpen(false)}
                 >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isPending}>
                   {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editingId ? 'Save Changes' : 'Create Specimen'}
+                  Save Changes
                 </Button>
               </DialogFooter>
             </form>

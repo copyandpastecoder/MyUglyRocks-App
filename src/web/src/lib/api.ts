@@ -893,6 +893,8 @@ import type {
   UpdateUserSpecimenRequest,
   SpecimenOptionDto,
   UserSpecimenFilters,
+  SpecimenLookupRequest,
+  SpecimenLookupResponse,
 } from '@/types/user-specimen';
 
 export const userSpecimenApi = {
@@ -930,6 +932,18 @@ export const userSpecimenApi = {
     const response = await api.get<SpecimenOptionDto[]>('/user-specimens/search', {
       params: { search, includePublic, skip, take },
     });
+    return response.data;
+  },
+
+  // AI-powered specimen lookup using Google Gemini
+  lookup: async (request: SpecimenLookupRequest): Promise<SpecimenLookupResponse> => {
+    const response = await api.post<SpecimenLookupResponse>('/user-specimens/lookup', request);
+    return response.data;
+  },
+
+  // Check if AI lookup is available
+  getLookupStatus: async (): Promise<{ available: boolean }> => {
+    const response = await api.get<{ available: boolean }>('/user-specimens/lookup/status');
     return response.data;
   },
 };

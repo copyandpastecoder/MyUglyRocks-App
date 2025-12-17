@@ -20,6 +20,10 @@ public class UserSpecimen : SoftDeletableEntity
     public bool IsPublic { get; set; }
     public Guid? BasedOnSpecimenId { get; set; }
 
+    // AI Lookup metadata
+    public int? AiConfidenceScore { get; set; }
+    public bool? AiIsKnownSpecimen { get; set; }
+
     // Navigation properties
     public virtual User User { get; set; } = null!;
     public virtual Specimen? BasedOnSpecimen { get; set; }

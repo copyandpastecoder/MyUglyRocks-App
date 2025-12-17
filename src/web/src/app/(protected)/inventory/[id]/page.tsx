@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,7 +38,7 @@ import { InventoryPhotos } from '@/components/inventory-photos';
 import { SpecimenRowList, type SpecimenRowItem } from '@/components/specimen-row-list';
 import { InventorySourcePicker } from '@/components/inventory-source-picker';
 import { InventorySourceFormDialog } from '@/components/inventory-source-form-dialog';
-import { ArrowLeft, Loader2, Trash2, Package, Share2, MapPin, Phone, Globe, User, Store } from 'lucide-react';
+import { ArrowLeft, Loader2, Trash2, Package, Share2, MapPin, Phone, Globe, User, Store, Pencil, Check, X } from 'lucide-react';
 import Link from 'next/link';
 import {
   INVENTORY_STATUS_COLORS,
@@ -67,6 +67,9 @@ export default function InventoryDetailPage() {
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
   const [isAddSourceDialogOpen, setIsAddSourceDialogOpen] = useState(false);
   const [isSourceDetailsOpen, setIsSourceDetailsOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const hasInitializedForm = useRef(false);
   const hasInitializedSpecimens = useRef(false);
 
@@ -126,6 +129,39 @@ export default function InventoryDetailPage() {
       setSpecimenRows(rows);
     }
   }, [inventory]);
+
+  // Handle name editing
+  const startEditingName = useCallback(() => {
+    if (inventory) {
+      setEditedName(inventory.name);
+      setIsEditingName(true);
+      setTimeout(() => nameInputRef.current?.focus(), 0);
+    }
+  }, [inventory]);
+
+  const cancelEditingName = useCallback(() => {
+    setIsEditingName(false);
+    setEditedName('');
+  }, []);
+
+  const saveEditedName = useCallback(() => {
+    if (!editedName.trim() || !inventory) {
+      cancelEditingName();
+      return;
+    }
+    // Update the form field so it saves with the rest of the form
+    form.setValue('name', editedName.trim());
+    setIsEditingName(false);
+  }, [editedName, inventory, form, cancelEditingName]);
+
+  const handleNameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEditedName();
+    } else if (e.key === 'Escape') {
+      cancelEditingName();
+    }
+  }, [saveEditedName, cancelEditingName]);
 
   // Handle when a custom specimen is created - add a new row with that specimen pre-selected
   const handleCustomSpecimenCreated = (data: CustomSpecimenCreatedData) => {
@@ -225,8 +261,57 @@ export default function InventoryDetailPage() {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">{inventory.name}</h1>
+        <div className="flex-1 min-w-0">
+          {isEditingName ? (
+            <div className="flex items-center gap-2">
+              <Input
+                ref={nameInputRef}
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onKeyDown={handleNameKeyDown}
+                onBlur={saveEditedName}
+                className="text-2xl font-bold h-auto py-1 px-2"
+                maxLength={255}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={saveEditedName}
+              >
+                <Check className="h-4 w-4 text-green-600" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={cancelEditingName}
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </div>
+          ) : (
+            <div className="group flex items-center gap-2">
+              <h1
+                className="text-2xl font-bold tracking-tight truncate cursor-pointer hover:text-primary transition-colors"
+                onClick={startEditingName}
+                title="Click to edit name"
+              >
+                {form.watch('name') || inventory.name}
+              </h1>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={startEditingName}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           <p className="text-muted-foreground">
             Acquired {formatDate(inventory.acquiredDate, 'MMM d, yyyy')}
           </p>
@@ -419,22 +504,6 @@ export default function InventoryDetailPage() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Rock Shop - Agates - Dec 13, 2025" {...field} />
-                    </FormControl>
-                    <FormDescription>
-                      Display name for this inventory item
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </form>
           </Form>
         </CardContent>

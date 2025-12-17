@@ -24,6 +24,8 @@ public class CycleService : ICycleService
     private DbSet<CleaningMaterial> CleaningMaterials => _context.Set<CleaningMaterial>();
     private DbSet<CycleSpecimen> CycleSpecimens => _context.Set<CycleSpecimen>();
     private DbSet<InventorySpecimen> InventorySpecimens => _context.Set<InventorySpecimen>();
+    private DbSet<InventoryPhoto> InventoryPhotos => _context.Set<InventoryPhoto>();
+    private DbSet<Photo> Photos => _context.Set<Photo>();
 
     public async Task<IEnumerable<CycleListDto>> GetUserCyclesAsync(Guid userId, string? status = null, CancellationToken cancellationToken = default)
     {
@@ -210,7 +212,8 @@ public class CycleService : ICycleService
                     cs.Specimen.MohsHardnessMax,
                     cs.Specimen.TumblingDifficulty?.ToString(),
                     "system",
-                    null)
+                    null,
+                    cs.InventorySpecimenId)
                 : cs.UserSpecimen != null
                     ? new SpecimenDto(
                         cs.UserSpecimen.UserSpecimenId,
@@ -221,7 +224,8 @@ public class CycleService : ICycleService
                         cs.UserSpecimen.MohsHardnessMax,
                         cs.UserSpecimen.TumblingDifficulty?.ToString(),
                         "user",
-                        cs.UserSpecimen.UserId)
+                        cs.UserSpecimen.UserId,
+                        cs.InventorySpecimenId)
                     : null)
             .Where(s => s != null)
             .Cast<SpecimenDto>();
@@ -377,6 +381,8 @@ public class CycleService : ICycleService
                     UserSpecimenId = invSpecimen.UserSpecimenId,
                     InventorySpecimenId = invSpecimen.InventorySpecimenId,
                     MarkDepletedOnComplete = input.MarkDepletedOnComplete,
+                    AddPhotosFromInventory = input.AddPhotosFromInventory,
+                    PhotosCopied = false,
                     DateCreated = DateTime.UtcNow,
                     DateUpdated = DateTime.UtcNow
                 });
@@ -398,7 +404,10 @@ public class CycleService : ICycleService
 
     public async Task<CycleDto?> UpdateCycleAsync(Guid cycleId, Guid userId, UpdateCycleRequest request, CancellationToken cancellationToken = default)
     {
-        var cycle = await Cycles.FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
+        var cycle = await Cycles
+            .Include(c => c.CycleSpecimens)
+            .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
+            .FirstOrDefaultAsync(c => c.CycleId == cycleId && c.UserId == userId, cancellationToken);
 
         if (cycle == null)
             return null;
@@ -410,7 +419,165 @@ public class CycleService : ICycleService
         cycle.Notes = request.Notes;
         cycle.DateUpdated = DateTime.UtcNow;
 
+        // Remove system specimens if requested
+        if (request.RemovedSpecimenIds?.Any() == true)
+        {
+            var toRemove = cycle.CycleSpecimens
+                .Where(cs => cs.SpecimenId.HasValue && request.RemovedSpecimenIds.Contains(cs.SpecimenId.Value))
+                .ToList();
+            foreach (var cs in toRemove)
+            {
+                cycle.CycleSpecimens.Remove(cs);
+            }
+        }
+
+        // Remove user specimens if requested
+        if (request.RemovedUserSpecimenIds?.Any() == true)
+        {
+            var toRemove = cycle.CycleSpecimens
+                .Where(cs => cs.UserSpecimenId.HasValue && request.RemovedUserSpecimenIds.Contains(cs.UserSpecimenId.Value))
+                .ToList();
+            foreach (var cs in toRemove)
+            {
+                cycle.CycleSpecimens.Remove(cs);
+            }
+        }
+
+        // Remove inventory specimens if requested
+        if (request.RemovedInventorySpecimenIds?.Any() == true)
+        {
+            var toRemove = cycle.CycleSpecimens
+                .Where(cs => cs.InventorySpecimenId.HasValue && request.RemovedInventorySpecimenIds.Contains(cs.InventorySpecimenId.Value))
+                .ToList();
+
+            // Update InventorySpecimen status back to Available if it was InUse
+            var inventorySpecimenIds = toRemove.Select(cs => cs.InventorySpecimenId!.Value).ToList();
+            var inventorySpecimensToUpdate = await InventorySpecimens
+                .Where(invs => inventorySpecimenIds.Contains(invs.InventorySpecimenId) && invs.Status == InventoryStatus.InUse)
+                .ToListAsync(cancellationToken);
+
+            foreach (var invSpecimen in inventorySpecimensToUpdate)
+            {
+                invSpecimen.Status = InventoryStatus.Available;
+                invSpecimen.DateUpdated = DateTime.UtcNow;
+            }
+
+            foreach (var cs in toRemove)
+            {
+                cycle.CycleSpecimens.Remove(cs);
+            }
+        }
+
+        // Track if we added any new inventory specimens with AddPhotosFromInventory
+        var newInventorySpecimensWithPhotos = new List<CycleSpecimen>();
+
+        // Add new system specimens if provided
+        if (request.SpecimenIds?.Any() == true)
+        {
+            var existingSpecimenIds = cycle.CycleSpecimens
+                .Where(cs => cs.SpecimenId.HasValue)
+                .Select(cs => cs.SpecimenId!.Value)
+                .ToHashSet();
+
+            foreach (var specimenId in request.SpecimenIds.Where(id => !existingSpecimenIds.Contains(id)))
+            {
+                cycle.CycleSpecimens.Add(new CycleSpecimen
+                {
+                    CycleId = cycle.CycleId,
+                    SpecimenId = specimenId,
+                    UserSpecimenId = null,
+                    DateCreated = DateTime.UtcNow,
+                    DateUpdated = DateTime.UtcNow
+                });
+            }
+        }
+
+        // Add new user specimens if provided
+        if (request.UserSpecimenIds?.Any() == true)
+        {
+            var existingUserSpecimenIds = cycle.CycleSpecimens
+                .Where(cs => cs.UserSpecimenId.HasValue)
+                .Select(cs => cs.UserSpecimenId!.Value)
+                .ToHashSet();
+
+            foreach (var userSpecimenId in request.UserSpecimenIds.Where(id => !existingUserSpecimenIds.Contains(id)))
+            {
+                cycle.CycleSpecimens.Add(new CycleSpecimen
+                {
+                    CycleId = cycle.CycleId,
+                    SpecimenId = null,
+                    UserSpecimenId = userSpecimenId,
+                    DateCreated = DateTime.UtcNow,
+                    DateUpdated = DateTime.UtcNow
+                });
+            }
+        }
+
+        // Add new inventory specimens if provided
+        if (request.InventorySpecimens?.Any() == true)
+        {
+            var existingInventorySpecimenIds = cycle.CycleSpecimens
+                .Where(cs => cs.InventorySpecimenId.HasValue)
+                .Select(cs => cs.InventorySpecimenId!.Value)
+                .ToHashSet();
+
+            var newInventorySpecimenIds = request.InventorySpecimens
+                .Where(i => !existingInventorySpecimenIds.Contains(i.InventorySpecimenId))
+                .Select(i => i.InventorySpecimenId)
+                .ToList();
+
+            if (newInventorySpecimenIds.Any())
+            {
+                var inventorySpecimens = await InventorySpecimens
+                    .Where(invs => newInventorySpecimenIds.Contains(invs.InventorySpecimenId))
+                    .ToListAsync(cancellationToken);
+
+                foreach (var input in request.InventorySpecimens.Where(i => !existingInventorySpecimenIds.Contains(i.InventorySpecimenId)))
+                {
+                    var invSpecimen = inventorySpecimens.FirstOrDefault(i => i.InventorySpecimenId == input.InventorySpecimenId);
+                    if (invSpecimen == null) continue;
+
+                    var cycleSpecimen = new CycleSpecimen
+                    {
+                        CycleId = cycle.CycleId,
+                        SpecimenId = invSpecimen.SpecimenId,
+                        UserSpecimenId = invSpecimen.UserSpecimenId,
+                        InventorySpecimenId = invSpecimen.InventorySpecimenId,
+                        MarkDepletedOnComplete = input.MarkDepletedOnComplete,
+                        AddPhotosFromInventory = input.AddPhotosFromInventory,
+                        PhotosCopied = false,
+                        DateCreated = DateTime.UtcNow,
+                        DateUpdated = DateTime.UtcNow
+                    };
+                    cycle.CycleSpecimens.Add(cycleSpecimen);
+
+                    // Track specimens that need photo copying
+                    if (input.AddPhotosFromInventory)
+                    {
+                        newInventorySpecimensWithPhotos.Add(cycleSpecimen);
+                    }
+
+                    // Update InventorySpecimen status to InUse if currently Available
+                    if (invSpecimen.Status == InventoryStatus.Available)
+                    {
+                        invSpecimen.Status = InventoryStatus.InUse;
+                        invSpecimen.DateUpdated = DateTime.UtcNow;
+                    }
+                }
+            }
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
+
+        // If there are new inventory specimens with AddPhotosFromInventory and the cycle has stages,
+        // copy photos to the first stage now
+        if (newInventorySpecimensWithPhotos.Any() && cycle.StageRuns.Any())
+        {
+            var firstStage = cycle.StageRuns
+                .OrderBy(s => s.StartDateTime)
+                .First();
+            await CopyInventoryPhotosToStageAsync(cycleId, firstStage.StageRunId, cancellationToken);
+        }
 
         return await GetCycleAsync(cycleId, userId, cancellationToken);
     }
@@ -709,6 +876,9 @@ public class CycleService : ICycleService
 
         await StageRuns.AddAsync(stageRun, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+
+        // Copy photos from inventory if this is the first stage and there are inventory specimens with AddPhotosFromInventory
+        await CopyInventoryPhotosToStageAsync(cycleId, stageRun.StageRunId, cancellationToken);
 
         // Schedule stage reminder if enabled
         if (stageRun.ReminderEnabled && stageRun.DurationEstimateEndDate.HasValue)
@@ -1170,5 +1340,113 @@ public class CycleService : ICycleService
             .ToList();
 
         return photos;
+    }
+
+    /// <summary>
+    /// Copy photos from inventory to a stage run for inventory specimens with AddPhotosFromInventory=true
+    /// that haven't had their photos copied yet (PhotosCopied=false).
+    /// Implements deduplication by checking if a photo with the same storage key already exists in the cycle.
+    /// </summary>
+    private async Task CopyInventoryPhotosToStageAsync(Guid cycleId, Guid stageRunId, CancellationToken cancellationToken)
+    {
+        // Find CycleSpecimens with AddPhotosFromInventory=true and PhotosCopied=false
+        var cycleSpecimensToCopy = await CycleSpecimens
+            .Where(cs => cs.CycleId == cycleId
+                && cs.AddPhotosFromInventory
+                && !cs.PhotosCopied
+                && cs.InventorySpecimenId.HasValue)
+            .ToListAsync(cancellationToken);
+
+        if (!cycleSpecimensToCopy.Any())
+            return;
+
+        var inventorySpecimenIds = cycleSpecimensToCopy
+            .Select(cs => cs.InventorySpecimenId!.Value)
+            .ToList();
+
+        // Get inventory photos tagged with these inventory specimens
+        var inventoryPhotos = await InventoryPhotos
+            .Where(ip => ip.InventorySpecimenId.HasValue
+                && inventorySpecimenIds.Contains(ip.InventorySpecimenId.Value)
+                && ip.ProcessingStatus == PhotoProcessingStatus.Completed)
+            .ToListAsync(cancellationToken);
+
+        if (!inventoryPhotos.Any())
+        {
+            // Mark as copied even if no photos found
+            foreach (var cs in cycleSpecimensToCopy)
+            {
+                cs.PhotosCopied = true;
+                cs.DateUpdated = DateTime.UtcNow;
+            }
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        // Get existing photo storage keys in this cycle for deduplication
+        var existingStorageKeys = await Photos
+            .Where(p => p.StageRun.CycleId == cycleId && !p.IsDeleted)
+            .Select(p => p.StorageKey)
+            .ToHashSetAsync(cancellationToken);
+
+        // Get current max sort order for the stage
+        var maxSortOrder = await Photos
+            .Where(p => p.StageRunId == stageRunId && !p.IsDeleted)
+            .Select(p => (int?)p.SortOrder)
+            .MaxAsync(cancellationToken) ?? -1;
+
+        var photosToAdd = new List<Photo>();
+
+        foreach (var invPhoto in inventoryPhotos)
+        {
+            // Skip if this photo already exists in the cycle (deduplication by storage key)
+            if (existingStorageKeys.Contains(invPhoto.StorageKey))
+                continue;
+
+            // Create a new Photo linked to the stage run
+            var photo = new Photo
+            {
+                PhotoId = Guid.NewGuid(),
+                StageRunId = stageRunId,
+                StorageKey = invPhoto.StorageKey,
+                Url = invPhoto.Url,
+                FileName = invPhoto.FileName,
+                MimeType = invPhoto.MimeType,
+                FileSizeBytes = invPhoto.FileSizeBytes,
+                Width = invPhoto.Width,
+                Height = invPhoto.Height,
+                PhotoType = PhotoType.Before, // Photos from inventory are "Before" type
+                Caption = invPhoto.Caption,
+                SortOrder = ++maxSortOrder,
+                ProcessingStatus = invPhoto.ProcessingStatus,
+                ProcessingError = invPhoto.ProcessingError,
+                ThumbnailUrl = invPhoto.ThumbnailUrl,
+                MediumUrl = invPhoto.MediumUrl,
+                LargeUrl = invPhoto.LargeUrl,
+                BlurHash = invPhoto.BlurHash,
+                ThumbnailStorageKey = invPhoto.ThumbnailStorageKey,
+                MediumStorageKey = invPhoto.MediumStorageKey,
+                LargeStorageKey = invPhoto.LargeStorageKey,
+                DateCreated = DateTime.UtcNow,
+                DateUpdated = DateTime.UtcNow
+            };
+
+            photosToAdd.Add(photo);
+            existingStorageKeys.Add(invPhoto.StorageKey); // Prevent duplicates within this batch
+        }
+
+        if (photosToAdd.Any())
+        {
+            await Photos.AddRangeAsync(photosToAdd, cancellationToken);
+        }
+
+        // Mark CycleSpecimens as copied
+        foreach (var cs in cycleSpecimensToCopy)
+        {
+            cs.PhotosCopied = true;
+            cs.DateUpdated = DateTime.UtcNow;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
     }
 }

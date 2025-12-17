@@ -66,6 +66,8 @@ export interface SpecimenSelection {
   inventorySpecimenId?: string;
   /** For inventory specimens - whether to mark as depleted when cycle completes */
   markDepletedOnComplete?: boolean;
+  /** For inventory specimens - whether to copy tagged photos from inventory to cycle */
+  addPhotosFromInventory?: boolean;
 }
 
 interface SpecimenMultiSelectProps {
@@ -254,6 +256,16 @@ export function SpecimenMultiSelect({
     );
   };
 
+  const handleAddPhotosToggle = (inventorySpecimenId: string, checked: boolean) => {
+    onSelectionChange(
+      selectedItems.map((item) =>
+        item.inventorySpecimenId === inventorySpecimenId
+          ? { ...item, addPhotosFromInventory: checked }
+          : item
+      )
+    );
+  };
+
   const handleRemoveInventorySpecimen = (inventorySpecimenId: string) => {
     onSelectionChange(
       selectedItems.filter((item) => item.inventorySpecimenId !== inventorySpecimenId)
@@ -282,11 +294,15 @@ export function SpecimenMultiSelect({
       for (const group of inventoryGroups) {
         const specimen = group.specimens.find((s) => s.inventorySpecimenId === item.inventorySpecimenId);
         if (specimen) {
-          return { ...specimen, markDepletedOnComplete: item.markDepletedOnComplete };
+          return {
+            ...specimen,
+            markDepletedOnComplete: item.markDepletedOnComplete,
+            addPhotosFromInventory: item.addPhotosFromInventory,
+          };
         }
       }
       return null;
-    }).filter(Boolean) as (AvailableInventorySpecimen & { markDepletedOnComplete?: boolean })[];
+    }).filter(Boolean) as (AvailableInventorySpecimen & { markDepletedOnComplete?: boolean; addPhotosFromInventory?: boolean })[];
   }, [selectedItems, inventoryGroups]);
 
   const renderSpecimenItem = (specimen: SpecimenOptionDto) => {
@@ -446,7 +462,7 @@ export function SpecimenMultiSelect({
                             : "No matching specimens found."}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Only specimens with &quot;Available&quot; status are shown.
+                          Depleted specimens are hidden.
                         </p>
                       </div>
                     </CommandEmpty>
@@ -491,31 +507,55 @@ export function SpecimenMultiSelect({
                                   </div>
                                 </div>
                                 {selected && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <div
-                                          className="flex items-center gap-1"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <Checkbox
-                                            checked={selectedItem?.markDepletedOnComplete || false}
-                                            onCheckedChange={(checked) =>
-                                              handleMarkDepletedToggle(
-                                                invSpecimen.inventorySpecimenId,
-                                                checked === true
-                                              )
-                                            }
-                                            className="h-3.5 w-3.5"
-                                          />
-                                          <span className="text-[10px] text-muted-foreground">Deplete</span>
-                                        </div>
-                                      </TooltipTrigger>
-                                      <TooltipContent side="left">
-                                        <p>Mark as depleted when cycle completes</p>
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
+                                  <div
+                                    className="flex items-center gap-2"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-1">
+                                            <Checkbox
+                                              checked={selectedItem?.addPhotosFromInventory || false}
+                                              onCheckedChange={(checked) =>
+                                                handleAddPhotosToggle(
+                                                  invSpecimen.inventorySpecimenId,
+                                                  checked === true
+                                                )
+                                              }
+                                              className="h-3.5 w-3.5"
+                                            />
+                                            <span className="text-[10px] text-muted-foreground">Photos</span>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          <p>Copy tagged photos to cycle</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                    <TooltipProvider>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <div className="flex items-center gap-1">
+                                            <Checkbox
+                                              checked={selectedItem?.markDepletedOnComplete || false}
+                                              onCheckedChange={(checked) =>
+                                                handleMarkDepletedToggle(
+                                                  invSpecimen.inventorySpecimenId,
+                                                  checked === true
+                                                )
+                                              }
+                                              className="h-3.5 w-3.5"
+                                            />
+                                            <span className="text-[10px] text-muted-foreground">Deplete</span>
+                                          </div>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          <p>Mark as depleted when cycle completes</p>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    </TooltipProvider>
+                                  </div>
                                 )}
                               </div>
                             );
@@ -664,6 +704,11 @@ export function SpecimenMultiSelect({
                   ({invSpec.weightGrams}g)
                 </span>
               )}
+              {invSpec.addPhotosFromInventory && (
+                <span className="text-blue-500 text-[10px] font-medium">
+                  +PHOTOS
+                </span>
+              )}
               {invSpec.markDepletedOnComplete && (
                 <span className="text-orange-500 text-[10px] font-medium">
                   DEPLETE
@@ -699,7 +744,7 @@ export function SpecimenMultiSelect({
 
       {/* Hardness Warning */}
       {hardnessWarning && (
-        <Alert variant="destructive" className="py-2">
+        <Alert variant="warning" className="py-2">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="text-sm">
             Selected specimens have a hardness difference of {hardnessWarning.difference} (range: {hardnessWarning.min} - {hardnessWarning.max}).

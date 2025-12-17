@@ -71,6 +71,8 @@ export interface InventorySpecimenInput {
   inventorySpecimenId: string;
   /** If true, mark the specimen as Depleted when the cycle completes */
   markDepletedOnComplete?: boolean;
+  /** If true, copy tagged photos from inventory to the cycle when the first stage is created */
+  addPhotosFromInventory?: boolean;
 }
 
 export interface UpdateCycleRequest {
@@ -79,6 +81,18 @@ export interface UpdateCycleRequest {
   difficultyRating?: number;
   additionalSpecimens?: string;
   notes?: string;
+  /** System specimen IDs to add (from reference data) */
+  specimenIds?: string[];
+  /** User specimen IDs to add (custom user-created specimens) */
+  userSpecimenIds?: string[];
+  /** Inventory specimens to add (from user's inventory) with options */
+  inventorySpecimens?: InventorySpecimenInput[];
+  /** System specimen IDs to remove from the cycle */
+  removedSpecimenIds?: string[];
+  /** User specimen IDs to remove from the cycle */
+  removedUserSpecimenIds?: string[];
+  /** Inventory specimen IDs to remove from the cycle */
+  removedInventorySpecimenIds?: string[];
 }
 
 export interface CompleteCycleRequest {
@@ -278,6 +292,8 @@ export interface SpecimenDto {
   source?: 'system' | 'user';
   /** Only set for user specimens - the user who created it */
   userId?: string | null;
+  /** Set when the specimen was linked via inventory */
+  inventorySpecimenId?: string | null;
 }
 
 export interface CyclePhotoDto {

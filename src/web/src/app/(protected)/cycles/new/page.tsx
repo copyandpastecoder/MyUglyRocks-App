@@ -160,6 +160,7 @@ export default function NewCyclePage() {
     const inventorySpecimens = inventorySpecimensData.map(s => ({
       inventorySpecimenId: s.inventorySpecimenId!,
       markDepletedOnComplete: s.markDepletedOnComplete || false,
+      addPhotosFromInventory: s.addPhotosFromInventory || false,
     }));
 
     setSpecimenError(null);

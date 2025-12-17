@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyUglyRocks.Infrastructure.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyUglyRocks.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251217023323_AddCycleSpecimenPhotoCopyFields")]
+    partial class AddCycleSpecimenPhotoCopyFields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2424,12 +2427,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_specimen_id")
                         .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<int?>("AiConfidenceScore")
-                        .HasColumnType("integer");
-
-                    b.Property<bool?>("AiIsKnownSpecimen")
-                        .HasColumnType("boolean");
 
                     b.Property<string>("Alias")
                         .HasMaxLength(255)
