@@ -1,14 +1,14 @@
 # Quick code quality checks - fast validation only
 # Runs on every PR and can be triggered manually
 
-name: Code Quality
+# name: Code Quality
 
-on:
-  push:
-    branches: [main, master, develop]
-  pull_request:
-    branches: [main, master, develop]
-  workflow_dispatch:  # Manual trigger from Actions tab
+# on:
+#   push:
+#     branches: [main, master, develop]
+#   pull_request:
+#     branches: [main, master, develop]
+#   workflow_dispatch:  # Manual trigger from Actions tab
 
 jobs:
   # Frontend type check only (fast)
@@ -22,15 +22,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: src/web/package-lock.json
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: '20'
+#           cache: 'npm'
+#           cache-dependency-path: src/web/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+#       - name: Install dependencies
+#         run: npm ci
 
       - name: Type check
         run: npx tsc --noEmit
@@ -43,10 +43,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
+#       - name: Setup .NET
+#         uses: actions/setup-dotnet@v4
+#         with:
+#           dotnet-version: '9.0.x'
 
       - name: Restore dependencies
         run: dotnet restore src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj

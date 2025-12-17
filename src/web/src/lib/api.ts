@@ -784,7 +784,6 @@ import type {
   CreateInventoryRequest,
   UpdateInventoryRequest,
   UpdateInventoryStatusRequest,
-  UpdateInventorySpecimensRequest,
   InventoryStatsDto,
   InventoryFilters,
   InventoryPhotoDto,
@@ -823,11 +822,6 @@ export const inventoryApi = {
 
   updateStatus: async (id: string, data: UpdateInventoryStatusRequest): Promise<InventoryDto> => {
     const response = await api.patch<InventoryDto>(`/inventory/${id}/status`, data);
-    return response.data;
-  },
-
-  updateSpecimens: async (id: string, data: UpdateInventorySpecimensRequest): Promise<InventoryDto> => {
-    const response = await api.put<InventoryDto>(`/inventory/${id}/specimens`, data);
     return response.data;
   },
 

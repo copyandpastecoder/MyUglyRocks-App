@@ -8,7 +8,6 @@ import type {
   CreateInventoryRequest,
   UpdateInventoryRequest,
   UpdateInventoryStatusRequest,
-  UpdateInventorySpecimensRequest,
   InventoryFilters,
 } from '@/types/inventory';
 
@@ -121,25 +120,6 @@ export function useUpdateInventoryStatus() {
     },
     onError: () => {
       toast.error('Failed to update status');
-    },
-  });
-}
-
-/**
- * Hook for updating inventory specimens
- */
-export function useUpdateInventorySpecimens() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateInventorySpecimensRequest }) =>
-      inventoryApi.updateSpecimens(id, data),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.inventory.detail(variables.id) });
-      toast.success('Specimens updated');
-    },
-    onError: () => {
-      toast.error('Failed to update specimens');
     },
   });
 }
