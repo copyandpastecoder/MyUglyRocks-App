@@ -137,11 +137,6 @@ public record UpdateInventoryStatusRequest(
     string Status
 );
 
-public record UpdateInventorySpecimensRequest(
-    [Required(ErrorMessage = "Specimens list is required")]
-    IEnumerable<CreateInventorySpecimenRequest> Specimens
-);
-
 public record InventorySpecimenDto(
     Guid InventorySpecimenId,
     Guid? SpecimenId,

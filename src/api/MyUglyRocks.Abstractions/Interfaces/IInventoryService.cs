@@ -24,9 +24,6 @@ public interface IInventoryService
     Task<bool> DeleteInventoryAsync(Guid inventoryId, Guid userId, CancellationToken cancellationToken = default);
     Task<InventoryDto?> UpdateInventoryStatusAsync(Guid inventoryId, Guid userId, UpdateInventoryStatusRequest request, CancellationToken cancellationToken = default);
 
-    // Specimen operations
-    Task<InventoryDto?> UpdateInventorySpecimensAsync(Guid inventoryId, Guid userId, UpdateInventorySpecimensRequest request, CancellationToken cancellationToken = default);
-
     // Stats
     Task<InventoryStatsDto> GetInventoryStatsAsync(Guid userId, CancellationToken cancellationToken = default);
 }

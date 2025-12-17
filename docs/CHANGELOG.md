@@ -97,7 +97,36 @@ All notable changes to this project will be documented in this file.
   kubectl exec deployment/myuglyrocks-api -n myuglyrocks -- cat /var/log/myuglyrocks/api-20251217.log
   ```
 
+### Removed
+
+#### Dead Code: UpdateInventorySpecimens Endpoint
+- **Removed**: Unused `PUT /api/inventory/{id}/specimens` endpoint and all related code
+- **Reason**: Endpoint was exposed but never called from the frontend - the main `UpdateInventoryAsync` endpoint handles specimen updates
+- **Backend Files Removed**:
+  - `IInventoryService.UpdateInventorySpecimensAsync` method removed from interface
+  - `InventoryService.UpdateInventorySpecimensAsync` implementation removed (~50 lines)
+  - `InventoryController.UpdateSpecimens` endpoint removed
+  - `UpdateInventorySpecimensRequest` DTO removed from [InventoryDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/InventoryDtos.cs)
+- **Frontend Files Removed**:
+  - `useUpdateInventorySpecimens` hook removed from [use-inventory.ts](../src/web/src/hooks/use-inventory.ts)
+  - `updateSpecimens` API function removed from [api.ts](../src/web/src/lib/api.ts)
+  - `UpdateInventorySpecimensRequest` interface removed from [inventory.ts](../src/web/src/types/inventory.ts)
+- **Note**: The removed endpoint used a delete-and-recreate pattern that would have broken photo tags - good thing it was never used
+
 ### Fixed
+
+#### Specimen Multi-Select ID Collision Bug
+- **Problem**: When a cycle had both a system specimen (blue chip) and an inventory specimen (green chip) of the same rock type (e.g., "Agate (Mozambique)"), clicking X on the system specimen would remove BOTH chips
+- **Root Cause**: The selection logic filtered by `id + source`, but system specimens and inventory specimens with the same underlying rock type share the same `id` and `source`. The distinguishing factor is `inventorySpecimenId` - only inventory specimens have this field set.
+- **Fix**: Added `&& !item.inventorySpecimenId` check to all selection matching logic for non-inventory specimens
+- **File**: [specimen-multi-select.tsx](../src/web/src/components/specimen-multi-select.tsx)
+- **Locations Fixed** (5 total):
+  - Line 163: `selectedSpecimens` memo - filter for blue chip rendering
+  - Line 195: `handleToggle` - isSelected check
+  - Line 199: `handleToggle` - filter for removal
+  - Line 211: `handleRemove` - filter for removal
+  - Line 223: `isSelected` function - checkbox state
+- **Pattern**: For unique selection keys, use `inventorySpecimenId` when present, otherwise `${source}-${id}`
 
 #### Photo Tags Lost When Saving Inventory
 - **Problem**: When clicking "Save Changes" on the inventory edit page, all photo specimen tags (links between photos and specimens) were being removed
@@ -136,6 +165,47 @@ All notable changes to this project will be documented in this file.
 - **Problem**: The hardness difference warning in specimen selection was styled as a destructive/error alert (red), implying the user couldn't save
 - **Fix**: Changed `variant="destructive"` to `variant="warning"` (yellow) to indicate it's informational, not blocking
 - **File**: [specimen-multi-select.tsx](../src/web/src/components/specimen-multi-select.tsx) - Line 747
+
+#### Auto-Populate Specimen Tag in Photo Upload
+- **Improvement**: When uploading photos to an inventory item with only one specimen, the specimen tag is now auto-selected
+- **Benefit**: Saves users from manually selecting the specimen when it's the only option
+- **File**: [inventory-photo-upload-modal.tsx](../src/web/src/components/inventory-photo-upload-modal.tsx)
+- **Implementation**:
+  - Calculate `defaultSpecimenId` based on `specimens.length === 1`
+  - Use `useEffect` to update selection when modal opens with changing props
+  - Reset form uses `defaultSpecimenId` instead of always defaulting to "None"
+
+#### Tag Specimen Dropdown Sorted Alphabetically
+- **Improvement**: The "Tag Specimen" dropdown in the photo upload modal now displays specimens sorted alphabetically by name
+- **Benefit**: Makes it easier to find the desired specimen in inventories with many specimens
+- **File**: [inventory-photo-upload-modal.tsx](../src/web/src/components/inventory-photo-upload-modal.tsx)
+- **Implementation**:
+  - Added `useMemo` hook to create `sortedSpecimens` array
+  - Sorts by `commonName` using `localeCompare()` for proper alphabetical ordering
+
+#### Same-Origin Cookie Support for Railway Production
+- **Improvement**: Production API requests now go through same-origin routing (`myuglyrocks.com/api/*`) instead of cross-subdomain (`api.myuglyrocks.com`)
+- **Problem Solved**: `SameSite=Lax` cookies were not being sent on cross-origin POST requests (like `/auth/refresh`), causing 401 errors when users were logged in
+- **Backend Files**: No changes needed - cookie configuration (`SameSite=Lax`) remains secure
+- **Frontend Files**:
+  - [next.config.ts](../src/web/next.config.ts) - Added `rewrites()` to proxy `/api/*` requests to backend via `INTERNAL_API_URL` or `API_URL`
+  - [config/route.ts](../src/web/src/app/config/route.ts) - Updated to return same-origin API URLs for all public domains
+- **Railway Configuration**:
+  - Set `API_URL` to Railway's private networking URL (e.g., `http://api.railway.internal`)
+  - HTTP is fine for internal traffic since TLS terminates at Railway's edge proxy
+- **How It Works**:
+  1. Browser makes request to `myuglyrocks.com/api/*`
+  2. Next.js rewrites proxy the request to backend via private network
+  3. Cookies are sent because request is same-origin
+  4. Response flows back through Next.js to browser
+
+#### Lint Errors and Code Quality Fixes
+- **Fixed**: ESLint errors that were causing `npm run lint` to fail
+- **Files**:
+  - [specimen-multi-select.tsx](../src/web/src/components/specimen-multi-select.tsx) - Removed unused `InventoryGroup` type import
+  - [inventory-photo-upload-modal.tsx](../src/web/src/components/inventory-photo-upload-modal.tsx) - Wrapped `setState` in `startTransition` to fix React Compiler error about cascading renders in useEffect
+  - [inventory-source-form-dialog.tsx](../src/web/src/components/inventory-source-form-dialog.tsx) - Removed unused `e` parameter from onBlur handler
+- **Result**: Lint now passes with 0 errors (21 warnings remain - expected `<img>` vs `<Image />` suggestions)
 
 ---
 

@@ -12,6 +12,21 @@ const nextConfig: NextConfig = {
   // Allow dev access
   allowedDevOrigins: ["https://dev.myuglyrocks.com"],
 
+  // Proxy /api requests to backend API for same-origin cookie support
+  // This allows SameSite=Lax cookies to work without cross-subdomain issues
+  async rewrites() {
+    const apiUrl = process.env.INTERNAL_API_URL || process.env.API_URL;
+    if (!apiUrl) {
+      return [];
+    }
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${apiUrl}/api/:path*`,
+      },
+    ];
+  },
+
   // Optimize images
   // Note: AVIF removed - encoding is too slow on-demand and WEBP provides excellent compression
   images: {
