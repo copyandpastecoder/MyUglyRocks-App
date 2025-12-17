@@ -264,7 +264,7 @@ export function InventorySourceFormDialog({
                       <Input
                         placeholder="e.g., Arizona Rock Shop"
                         {...field}
-                        onBlur={(e) => {
+                        onBlur={() => {
                           field.onBlur();
                           handleNameBlur();
                         }}

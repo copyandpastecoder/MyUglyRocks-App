@@ -124,19 +124,4 @@ public class InventoryController : ControllerBase
 
         return Ok(inventory);
     }
-
-    /// <summary>
-    /// Update specimens for an inventory item
-    /// </summary>
-    [HttpPut("{inventoryId:guid}/specimens")]
-    [ProducesResponseType(typeof(InventoryDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateInventorySpecimens(Guid inventoryId, [FromBody] UpdateInventorySpecimensRequest request, CancellationToken cancellationToken)
-    {
-        var inventory = await _inventoryService.UpdateInventorySpecimensAsync(inventoryId, GetUserId(), request, cancellationToken);
-        if (inventory == null)
-            return NotFound();
-
-        return Ok(inventory);
-    }
 }

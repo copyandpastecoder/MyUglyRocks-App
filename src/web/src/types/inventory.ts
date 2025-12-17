@@ -101,10 +101,6 @@ export interface UpdateInventoryStatusRequest {
   status: InventoryStatus;
 }
 
-export interface UpdateInventorySpecimensRequest {
-  specimens: CreateInventorySpecimenRequest[];
-}
-
 export interface InventorySpecimenDto {
   inventorySpecimenId: string;
   specimenId: string | null;
