@@ -31,14 +31,15 @@ async function proxyRequest(request: NextRequest) {
     }
   });
 
-  // Forward the original Host header so backend's AllowedHosts validation passes
-  // (the backend sees Host: myuglyrocks.com, not Host: api.railway.internal)
+  // Add proxy headers for backend logging and CSRF validation
   const originalHost = request.headers.get('host');
   if (originalHost) {
-    headers.set('Host', originalHost);
     headers.set('X-Forwarded-Host', originalHost);
   }
   headers.set('X-Forwarded-Proto', 'https');
+
+  // Note: Don't override Host header - let fetch use the target URL's host
+  // This avoids TLS/SNI issues with the public URL (api.myuglyrocks.com)
 
   // Forward client IP if available
   const forwardedFor = request.headers.get('x-forwarded-for');
