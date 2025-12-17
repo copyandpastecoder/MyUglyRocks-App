@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // All public domains use same-origin API URLs
 // Dev: K8s nginx-ingress routes /api to API service
-// Prod: Next.js middleware proxies /api to Railway API service (see middleware.ts)
+// Prod: Next.js route handler proxies /api to Railway API service (see api/[...path]/route.ts)
 // This enables SameSite=Lax cookies to work without cross-subdomain issues
 const SAME_ORIGIN_HOSTS = [
   'dev.myuglyrocks.com',
@@ -15,7 +15,7 @@ const SAME_ORIGIN_HOSTS = [
 //
 // IMPORTANT: All public domains return same-origin API URLs.
 // - Dev: nginx-ingress handles routing /api to the API service
-// - Prod: Next.js middleware proxies /api to the Railway API service
+// - Prod: Next.js catch-all route handler proxies /api to the Railway API service
 export async function GET(request: NextRequest) {
   // Get the host from request headers (strip port if present)
   const hostHeader = request.headers.get('host');
