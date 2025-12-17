@@ -138,10 +138,10 @@ export function StagedPhotoUpload({ photos, onChange, maxPhotos = 10 }: StagedPh
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/*"
           multiple
           onChange={handleFileSelect}
-          className="hidden"
+          className="absolute w-px h-px overflow-hidden opacity-0"
         />
 
         {photos.length === 0 ? (

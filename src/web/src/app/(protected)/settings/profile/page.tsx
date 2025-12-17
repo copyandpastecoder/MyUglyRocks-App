@@ -152,8 +152,8 @@ export default function ProfileSettingsPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
-                className="hidden"
+                accept="image/jpeg,image/png,image/gif,image/webp,image/heic,image/heif,image/*"
+                className="absolute w-px h-px overflow-hidden opacity-0"
                 onChange={handleAvatarChange}
               />
               <Button

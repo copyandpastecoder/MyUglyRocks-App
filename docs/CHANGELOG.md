@@ -57,7 +57,71 @@ All notable changes to this project will be documented in this file.
   - Sends removed specimen IDs to API categorized by type (system, user, inventory)
   - When inventory specimens are removed, their status is restored to "Available" if it was "InUse"
 
+### Improved
+
+#### AI Specimen Lookup Reliability
+- **Improvement**: Gemini AI lookup now retries automatically if the response is truncated/malformed
+- **Changes**:
+  - Increased `MaxOutputTokens` from 1024 to 2048 to prevent response truncation
+  - Added automatic retry logic (up to 2 attempts) when JSON parsing fails
+  - Brief 500ms delay between retries to allow API recovery
+- **File**: [GeminiService.cs](../src/api/MyUglyRocks.Infrastructure/Services/GeminiService.cs)
+- **Problem Solved**: Intermittent "Failed to parse AI response" errors caused by Gemini returning incomplete JSON
+
+#### iOS Safari Photo Upload Compatibility
+- **Improvement**: Better support for multiple photo uploads on iOS Safari
+- **Changes**:
+  - Changed file input hiding from `display: none` to `opacity: 0` with absolute positioning (iOS Safari sometimes doesn't trigger file picker on hidden inputs)
+  - Added explicit MIME types including `image/heic,image/heif` for iOS native format support
+- **Files**:
+  - [photo-upload-placeholder.tsx](../src/web/src/components/photo-upload-placeholder.tsx)
+  - [staged-photo-upload.tsx](../src/web/src/components/staged-photo-upload.tsx)
+  - [settings/profile/page.tsx](../src/web/src/app/(protected)/settings/profile/page.tsx)
+
+#### Persistent API Logging
+- **Improvement**: API logs now persist to disk, surviving pod restarts
+- **Changes**:
+  - Added Serilog file sink writing to `/var/log/myuglyrocks/api-{date}.log`
+  - Rolling daily logs with 7-day retention
+  - Logs mounted on PersistentVolumeClaim for durability
+- **Files**:
+  - [appsettings.json](../src/api/MyUglyRocks.Api/appsettings.json) - Added File sink configuration
+  - [api-logs-pvc.yaml](../k8s/base/api-logs-pvc.yaml) - New PVC for log storage
+  - [api-deployment.yaml](../k8s/base/api-deployment.yaml) - Volume mount for logs
+- **Viewing Logs**:
+  ```bash
+  # Live logs
+  kubectl logs -l app=myuglyrocks-api -n myuglyrocks -f
+
+  # Persisted log files
+  kubectl exec deployment/myuglyrocks-api -n myuglyrocks -- cat /var/log/myuglyrocks/api-20251217.log
+  ```
+
 ### Fixed
+
+#### Photo Tags Lost When Saving Inventory
+- **Problem**: When clicking "Save Changes" on the inventory edit page, all photo specimen tags (links between photos and specimens) were being removed
+- **Root Cause**: The backend's `UpdateInventoryAsync` deleted ALL existing InventorySpecimens and recreated them with new IDs. Since `InventoryPhoto.InventorySpecimenId` has `OnDelete(SetNull)`, this nullified all photo tags.
+- **Fix**: Modified update logic to preserve specimen IDs:
+  - Update existing specimens in-place (preserving IDs and photo tags)
+  - Only delete specimens that are no longer in the request
+  - Only create new specimens for items without existing IDs
+- **Backend Files**:
+  - [InventoryDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/InventoryDtos.cs) - Added `InventorySpecimenId` to `CreateInventorySpecimenRequest`
+  - [InventoryService.cs](../src/api/MyUglyRocks.Core/Services/InventoryService.cs) - Rewrote specimen update logic to preserve IDs
+- **Frontend Files**:
+  - [specimen-row-list.tsx](../src/web/src/components/specimen-row-list.tsx) - Added `inventorySpecimenId` to `SpecimenRowItem` interface
+  - [inventory/[id]/page.tsx](../src/web/src/app/(protected)/inventory/[id]/page.tsx) - Populates and sends `inventorySpecimenId` in save payload
+
+#### Null Reference Exception in Hangfire Configuration
+- **Problem**: Removed null-conditional operator (`r2Settings?.BackupBucketName` → `r2Settings.BackupBucketName`) could throw NullReferenceException if r2Settings is null
+- **Fix**: Restored null-conditional operator
+- **File**: [Program.cs](../src/api/MyUglyRocks.Api/Program.cs) - Line 411
+
+#### Gemini API Key Exposed in URL
+- **Problem**: API key was included in URL query string (`?key=...`), which could expose it in server logs and proxy logs
+- **Fix**: Moved API key to `x-goog-api-key` header for security
+- **File**: [GeminiService.cs](../src/api/MyUglyRocks.Infrastructure/Services/GeminiService.cs) - Lines 65-71
 
 #### Inventory Specimen Filter Shows InUse Specimens
 - **Problem**: When selecting specimens from inventory in cycle creation/edit, only specimens with status "Available" were shown. Specimens with status "InUse" (already used in other cycles) were hidden.
