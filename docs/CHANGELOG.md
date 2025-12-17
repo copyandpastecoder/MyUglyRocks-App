@@ -2,6 +2,79 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-17
+
+### Added
+
+#### AI-Powered Specimen Lookup
+- **Feature**: Users can look up rock/mineral specimens using Google Gemini AI when creating custom specimens
+- **AI Model**: Uses `gemini-2.5-flash` with structured JSON schema output
+- **Confidence Score**: AI provides a 0-100% confidence score and indicates if it's a "known specimen" in its database
+- **Data Persistence**: Confidence score and known specimen flag are saved to the UserSpecimen table for later viewing
+- **Backend Files**:
+  - [IGeminiService.cs](../src/api/MyUglyRocks.Abstractions/Interfaces/IGeminiService.cs) - Service interface
+  - [GeminiService.cs](../src/api/MyUglyRocks.Infrastructure/Services/GeminiService.cs) - Gemini API integration with structured prompts
+  - [GeminiConfiguration.cs](../src/api/MyUglyRocks.Infrastructure/Configuration/GeminiConfiguration.cs) - Configuration model
+  - [UserSpecimen.cs](../src/api/MyUglyRocks.Core/Entities/UserSpecimen.cs) - Added `AiConfidenceScore` and `AiIsKnownSpecimen` fields
+  - [UserSpecimenDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/UserSpecimenDtos.cs) - Added AI fields to all DTOs
+  - [UserSpecimenService.cs](../src/api/MyUglyRocks.Core/Services/UserSpecimenService.cs) - Updated to handle AI fields
+- **Frontend Files**:
+  - [user-specimen.ts](../src/web/src/types/user-specimen.ts) - Added TypeScript types for AI fields
+  - [add-custom-specimen-dialog.tsx](../src/web/src/components/add-custom-specimen-dialog.tsx) - AI lookup UI with collapsible source info section
+  - [admin/specimens/page.tsx](../src/web/src/app/(protected)/admin/specimens/page.tsx) - Added AI lookup to admin specimen creation
+- **Database Migration**: `20251217_AddUserSpecimenAiFields` adds nullable columns for AI metadata
+- **API Endpoints**:
+  - `POST /api/user-specimens/lookup` - AI-powered specimen lookup
+- **UI Flow**:
+  1. User enters specimen name and optionally source info (URL, name, description)
+  2. Clicks "Lookup with AI" button
+  3. AI returns populated form fields with confidence indicator
+  4. User reviews, adjusts if needed, and saves
+  5. Confidence score is persisted and visible on user's specimens list
+
+#### Shared AddCustomSpecimenDialog Component
+- **Feature**: Consolidated duplicate "Add Custom Specimen" dialog code into a single reusable component
+- **File**: [add-custom-specimen-dialog.tsx](../src/web/src/components/add-custom-specimen-dialog.tsx)
+- **Usage**: Used by both `/settings/specimens` and `/cycles/new` pages
+- **Benefits**:
+  - Single source of truth for specimen creation UI
+  - AI lookup functionality available everywhere specimens can be created
+  - Consistent form validation and user experience
+
+#### Specimen Removal from Cycles
+- **Feature**: Users can now remove specimens from a cycle when editing (clicking X on specimen badges)
+- **Problem Solved**: Previously, removing a specimen in the Edit Cycle dialog didn't persist - the specimen would reappear when reopening the dialog
+- **Backend Files**:
+  - [CycleDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs) - Added `RemovedSpecimenIds`, `RemovedUserSpecimenIds`, `RemovedInventorySpecimenIds` to `UpdateCycleRequest`
+  - [CycleDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs) - Added `InventorySpecimenId` to `SpecimenDto` for tracking inventory-linked specimens
+  - [CycleService.cs](../src/api/MyUglyRocks.Core/Services/CycleService.cs) - Added removal logic in `UpdateCycleAsync` to remove CycleSpecimens and restore InventorySpecimen status to Available
+- **Frontend Files**:
+  - [cycle.ts](../src/web/src/types/cycle.ts) - Added `removedSpecimenIds`, `removedUserSpecimenIds`, `removedInventorySpecimenIds` to `UpdateCycleRequest`, added `inventorySpecimenId` to `SpecimenDto`
+  - [cycle-form-dialog.tsx](../src/web/src/components/cycle-form-dialog.tsx) - Added `originalSpecimenItems` state to track original specimens on dialog open, calculates removed specimens by comparing original vs current selection
+- **Behavior**:
+  - Tracks original specimen selection when opening edit dialog
+  - Compares current selection to original to identify removed specimens
+  - Sends removed specimen IDs to API categorized by type (system, user, inventory)
+  - When inventory specimens are removed, their status is restored to "Available" if it was "InUse"
+
+### Fixed
+
+#### Inventory Specimen Filter Shows InUse Specimens
+- **Problem**: When selecting specimens from inventory in cycle creation/edit, only specimens with status "Available" were shown. Specimens with status "InUse" (already used in other cycles) were hidden.
+- **Expected Behavior**: Show both "Available" and "InUse" specimens, only hide "Depleted" specimens
+- **Fix**: Changed filter from `s.status === 'Available'` to `s.status !== 'Depleted'`
+- **File**: [use-available-inventory-specimens.ts](../src/web/src/hooks/use-available-inventory-specimens.ts)
+  - Line 42: Changed `inv.availableCount > 0` to `(inv.availableCount + inv.inUseCount) > 0`
+  - Line 60: Changed `s.status === 'Available'` to `s.status !== 'Depleted'`
+- **Updated**: Empty state message changed from "Only specimens with 'Available' status are shown." to "Depleted specimens are hidden."
+
+#### Hardness Warning Now Informational
+- **Problem**: The hardness difference warning in specimen selection was styled as a destructive/error alert (red), implying the user couldn't save
+- **Fix**: Changed `variant="destructive"` to `variant="warning"` (yellow) to indicate it's informational, not blocking
+- **File**: [specimen-multi-select.tsx](../src/web/src/components/specimen-multi-select.tsx) - Line 747
+
+---
+
 ## [Unreleased] - 2025-12-16
 
 ### Added

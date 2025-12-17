@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -24,9 +24,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Loader2, Sparkles, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useCreateUserSpecimen } from '@/hooks/use-user-specimens';
-import type { CreateUserSpecimenRequest } from '@/types/user-specimen';
+import { userSpecimenApi } from '@/lib/api';
+import type { CreateUserSpecimenRequest, SpecimenLookupData } from '@/types/user-specimen';
 
 const materialTypes = ['Rock', 'Mineral', 'Glass', 'Fossil', 'Other'];
 const difficulties = ['Easy', 'Medium', 'Hard'];
@@ -73,6 +81,13 @@ export function AddCustomSpecimenDialog({
   initialName,
 }: AddCustomSpecimenDialogProps) {
   const createMutation = useCreateUserSpecimen();
+  const [isLookingUp, setIsLookingUp] = useState(false);
+  const [lookupResult, setLookupResult] = useState<SpecimenLookupData | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [sourceOpen, setSourceOpen] = useState(false);
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [sourceName, setSourceName] = useState('');
+  const [sourceDescription, setSourceDescription] = useState('');
 
   const form = useForm<SpecimenFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- zodResolver type inference limitation
@@ -114,12 +129,68 @@ export function AddCustomSpecimenDialog({
         notes: null,
         isPublic: false,
       });
+      setLookupResult(null);
+      setLookupError(null);
+      setSourceUrl('');
+      setSourceName('');
+      setSourceDescription('');
+      setSourceOpen(false);
     }
   }, [open, initialName, form]);
 
+  const handleLookup = async () => {
+    const commonName = form.getValues('commonName');
+    if (!commonName || commonName.length < 2) {
+      setLookupError('Please enter a name with at least 2 characters');
+      return;
+    }
+
+    setIsLookingUp(true);
+    setLookupError(null);
+    setLookupResult(null);
+
+    try {
+      const response = await userSpecimenApi.lookup({
+        commonName,
+        sourceUrl: sourceUrl || null,
+        sourceName: sourceName || null,
+        sourceDescription: sourceDescription || null,
+      });
+
+      if (response.success && response.data) {
+        setLookupResult(response.data);
+        // Auto-populate form fields
+        const data = response.data;
+        form.setValue('scientificName', data.scientificName);
+        form.setValue('alias', data.alias);
+        form.setValue('rockFamily', data.rockFamily);
+        form.setValue('species', data.species);
+        form.setValue('variety', data.variety);
+        form.setValue('materialType', data.materialType || 'Rock');
+        form.setValue('mohsHardnessMin', data.mohsHardnessMin);
+        form.setValue('mohsHardnessMax', data.mohsHardnessMax);
+        form.setValue('tumblingDifficulty', data.tumblingDifficulty);
+        form.setValue('recommendedGritSequence', data.recommendedGritSequence);
+        form.setValue('specialConsiderations', data.specialConsiderations);
+      } else {
+        setLookupError(response.error || 'Failed to lookup specimen');
+      }
+    } catch {
+      setLookupError('Failed to connect to AI service');
+    } finally {
+      setIsLookingUp(false);
+    }
+  };
+
   const handleSubmit = async (data: SpecimenFormData) => {
     try {
-      const result = await createMutation.mutateAsync(data as CreateUserSpecimenRequest);
+      // Include AI lookup data if available
+      const requestData: CreateUserSpecimenRequest = {
+        ...data,
+        aiConfidenceScore: lookupResult?.confidenceScore ?? null,
+        aiIsKnownSpecimen: lookupResult?.isKnownSpecimen ?? null,
+      };
+      const result = await createMutation.mutateAsync(requestData);
       onOpenChange(false);
       form.reset();
       if (onSuccess && result.userSpecimenId) {
@@ -147,22 +218,124 @@ export function AddCustomSpecimenDialog({
         </DialogHeader>
 
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Common Name */}
-            <div className="space-y-2">
-              <Label htmlFor="commonName">Common Name *</Label>
+          {/* AI Lookup Section */}
+          <div className="space-y-3 rounded-lg border p-4 bg-muted/30">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-500" />
+              <span className="text-sm font-medium">AI-Powered Lookup</span>
+            </div>
+
+            <div className="flex gap-2">
               <Input
                 id="commonName"
                 {...form.register('commonName')}
-                placeholder="e.g., Rainbow Jasper"
+                placeholder="e.g., Rainbow Jasper, Dragon Stone"
+                className="flex-1"
               />
-              {form.formState.errors.commonName && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.commonName.message}
-                </p>
-              )}
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleLookup}
+                disabled={isLookingUp}
+              >
+                {isLookingUp ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    Lookup
+                  </>
+                )}
+              </Button>
             </div>
+            {form.formState.errors.commonName && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.commonName.message}
+              </p>
+            )}
 
+            {/* Source Info Collapsible */}
+            <Collapsible open={sourceOpen} onOpenChange={setSourceOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground">
+                  <span>Add source info (optional)</span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${sourceOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-2 pt-2">
+                <div className="space-y-1">
+                  <Label htmlFor="sourceUrl" className="text-xs text-muted-foreground">Listing URL</Label>
+                  <Input
+                    id="sourceUrl"
+                    value={sourceUrl}
+                    onChange={(e) => setSourceUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sourceName" className="text-xs text-muted-foreground">Seller / Store</Label>
+                  <Input
+                    id="sourceName"
+                    value={sourceName}
+                    onChange={(e) => setSourceName(e.target.value)}
+                    placeholder="e.g., RockShed, eBay seller name"
+                    className="text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sourceDescription" className="text-xs text-muted-foreground">Listing Description</Label>
+                  <Textarea
+                    id="sourceDescription"
+                    value={sourceDescription}
+                    onChange={(e) => setSourceDescription(e.target.value)}
+                    placeholder="Copy/paste any description from the listing..."
+                    rows={2}
+                    className="text-sm"
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* Lookup Error */}
+            {lookupError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{lookupError}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Lookup Result Indicator */}
+            {lookupResult && (
+              <div className="flex items-center justify-between rounded-md border p-2 bg-background">
+                <div className="flex items-center gap-2">
+                  {lookupResult.isKnownSpecimen ? (
+                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <AlertCircle className="h-4 w-4 text-amber-500" />
+                  )}
+                  <span className="text-sm">
+                    {lookupResult.isKnownSpecimen ? 'Recognized specimen' : 'Unrecognized name'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={lookupResult.confidenceScore >= 80 ? 'default' : lookupResult.confidenceScore >= 50 ? 'secondary' : 'outline'}>
+                    {lookupResult.confidenceScore}% confidence
+                  </Badge>
+                  {lookupResult.isKnownSpecimen && (
+                    <Badge variant="outline" className="text-green-600 border-green-600">
+                      Review for DB
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+            {lookupResult?.confidenceReason && (
+              <p className="text-xs text-muted-foreground">{lookupResult.confidenceReason}</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Scientific Name */}
             <div className="space-y-2">
               <Label htmlFor="scientificName">Scientific Name</Label>
@@ -248,7 +421,17 @@ export function AddCustomSpecimenDialog({
               <Input
                 id="rockFamily"
                 {...form.register('rockFamily')}
-                placeholder="e.g., Silicate"
+                placeholder="e.g., Agate, Jasper, Silicate"
+              />
+            </div>
+
+            {/* Species */}
+            <div className="space-y-2">
+              <Label htmlFor="species">Species</Label>
+              <Input
+                id="species"
+                {...form.register('species')}
+                placeholder="e.g., Quartz, Feldspar, Beryl"
               />
             </div>
 
@@ -258,7 +441,7 @@ export function AddCustomSpecimenDialog({
               <Input
                 id="variety"
                 {...form.register('variety')}
-                placeholder="e.g., Banded"
+                placeholder="e.g., Banded, Moss, Brazilian"
               />
             </div>
           </div>

@@ -30,16 +30,16 @@ export interface InventoryGroup {
 }
 
 /**
- * Fetches inventory items with available specimens, grouped by inventory
- * Only returns specimens with status "Available"
+ * Fetches inventory items with non-depleted specimens, grouped by inventory
+ * Returns specimens with status "Available" or "InUse" (excludes "Depleted")
  */
 export function useAvailableInventorySpecimens() {
   return useQuery({
     queryKey: [...queryKeys.inventory.all, 'available-specimens'],
     queryFn: async (): Promise<InventoryGroup[]> => {
-      // First get all inventory items with available count > 0
+      // First get all inventory items with non-depleted specimens
       const inventoryList = await inventoryApi.getAll(undefined, 0, 100);
-      const inventoryWithAvailable = inventoryList.filter(inv => inv.availableCount > 0);
+      const inventoryWithAvailable = inventoryList.filter(inv => (inv.availableCount + inv.inUseCount) > 0);
 
       if (inventoryWithAvailable.length === 0) {
         return [];
@@ -50,14 +50,14 @@ export function useAvailableInventorySpecimens() {
         inventoryWithAvailable.map(inv => inventoryApi.getById(inv.inventoryId))
       );
 
-      // Group available specimens by inventory
+      // Group non-depleted specimens by inventory
       return inventoryDetails
         .map((inv: InventoryDto): InventoryGroup => ({
           inventoryId: inv.inventoryId,
           inventoryName: inv.name,
           acquiredDate: inv.acquiredDate,
           specimens: inv.specimens
-            .filter((s: InventorySpecimenDto) => s.status === 'Available')
+            .filter((s: InventorySpecimenDto) => s.status !== 'Depleted')
             .map((s: InventorySpecimenDto): AvailableInventorySpecimen => ({
               inventorySpecimenId: s.inventorySpecimenId,
               inventoryId: inv.inventoryId,

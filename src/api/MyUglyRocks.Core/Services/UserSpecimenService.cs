@@ -61,7 +61,9 @@ public class UserSpecimenService : IUserSpecimenService
             us.MaterialType.ToString(),
             us.TumblingDifficulty?.ToString(),
             us.IsPublic,
-            us.DateCreated
+            us.DateCreated,
+            us.AiConfidenceScore,
+            us.AiIsKnownSpecimen
         )).ToList();
     }
 
@@ -92,7 +94,9 @@ public class UserSpecimenService : IUserSpecimenService
             SpecialConsiderations = request.SpecialConsiderations,
             Notes = request.Notes,
             IsPublic = request.IsPublic,
-            BasedOnSpecimenId = request.BasedOnSpecimenId
+            BasedOnSpecimenId = request.BasedOnSpecimenId,
+            AiConfidenceScore = request.AiConfidenceScore,
+            AiIsKnownSpecimen = request.AiIsKnownSpecimen
         };
 
         UserSpecimens.Add(specimen);
@@ -123,6 +127,8 @@ public class UserSpecimenService : IUserSpecimenService
         specimen.SpecialConsiderations = request.SpecialConsiderations;
         specimen.Notes = request.Notes;
         specimen.IsPublic = request.IsPublic;
+        specimen.AiConfidenceScore = request.AiConfidenceScore;
+        specimen.AiIsKnownSpecimen = request.AiIsKnownSpecimen;
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -265,7 +271,9 @@ public class UserSpecimenService : IUserSpecimenService
             specimen.Notes,
             specimen.IsPublic,
             specimen.BasedOnSpecimenId,
-            specimen.DateCreated
+            specimen.DateCreated,
+            specimen.AiConfidenceScore,
+            specimen.AiIsKnownSpecimen
         );
     }
 }

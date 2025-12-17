@@ -208,7 +208,7 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                           <button
                             onClick={() => removePhoto(photo.photoId)}
                             disabled={deletingPhotoId === photo.photoId}
-                            className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                            className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity disabled:opacity-50"
                           >
                             {deletingPhotoId === photo.photoId ? (
                               <Loader2 className="h-4 w-4 animate-spin" />

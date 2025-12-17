@@ -20,7 +20,9 @@ public record UserSpecimenDto(
     string? Notes,
     bool IsPublic,
     Guid? BasedOnSpecimenId,
-    DateTime DateCreated
+    DateTime DateCreated,
+    int? AiConfidenceScore,
+    bool? AiIsKnownSpecimen
 );
 
 public record UserSpecimenListDto(
@@ -30,7 +32,9 @@ public record UserSpecimenListDto(
     string MaterialType,
     string? TumblingDifficulty,
     bool IsPublic,
-    DateTime DateCreated
+    DateTime DateCreated,
+    int? AiConfidenceScore,
+    bool? AiIsKnownSpecimen
 );
 
 public record CreateUserSpecimenRequest(
@@ -72,7 +76,12 @@ public record CreateUserSpecimenRequest(
 
     bool IsPublic = false,
 
-    Guid? BasedOnSpecimenId = null
+    Guid? BasedOnSpecimenId = null,
+
+    [Range(0, 100, ErrorMessage = "AI confidence score must be between 0 and 100")]
+    int? AiConfidenceScore = null,
+
+    bool? AiIsKnownSpecimen = null
 );
 
 public record UpdateUserSpecimenRequest(
@@ -112,7 +121,12 @@ public record UpdateUserSpecimenRequest(
 
     string? Notes = null,
 
-    bool IsPublic = false
+    bool IsPublic = false,
+
+    [Range(0, 100, ErrorMessage = "AI confidence score must be between 0 and 100")]
+    int? AiConfidenceScore = null,
+
+    bool? AiIsKnownSpecimen = null
 );
 
 /// <summary>

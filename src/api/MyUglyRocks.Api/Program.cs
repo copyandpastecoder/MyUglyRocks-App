@@ -107,6 +107,10 @@ try
     builder.Services.AddTransient<IResend, ResendClient>();
     builder.Services.AddScoped<IEmailService, EmailService>();
 
+    // Configure Gemini AI Settings (for specimen lookup)
+    builder.Services.Configure<GeminiSettings>(builder.Configuration.GetSection(GeminiSettings.SectionName));
+    builder.Services.AddHttpClient<IGeminiService, GeminiService>();
+
     // Configure R2 Storage (required)
     builder.Services.Configure<R2Settings>(builder.Configuration.GetSection(R2Settings.SectionName));
     var r2Settings = builder.Configuration.GetSection(R2Settings.SectionName).Get<R2Settings>();
@@ -404,7 +408,7 @@ try
 
     // Configure Hangfire recurring jobs
     // Only configure if backup bucket is set (prevents failures in environments without backup config)
-    if (!string.IsNullOrEmpty(r2Settings?.BackupBucketName))
+    if (!string.IsNullOrEmpty(r2Settings.BackupBucketName))
     {
         // Use IRecurringJobManager from DI instead of static RecurringJob API
         // (static API requires JobStorage.Current which isn't set until server starts)
