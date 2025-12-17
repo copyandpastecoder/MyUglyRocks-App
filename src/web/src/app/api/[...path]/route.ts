@@ -7,7 +7,7 @@ export const fetchCache = 'force-no-store';
 
 // Proxy handler for all /api/* requests (except /api/config)
 async function proxyRequest(request: NextRequest) {
-  const apiUrl = process.env.API_URL;
+  const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
 
   if (!apiUrl) {
     return NextResponse.json(
@@ -22,7 +22,7 @@ async function proxyRequest(request: NextRequest) {
   const url = new URL(pathname + search, apiUrl);
 
   // Prepare headers - copy all but host and content-length
-  // (content-length will be recalculated by fetch for the streamed body)
+  // (content-length will be recalculated by fetch for the body)
   const headers = new Headers();
   request.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
@@ -31,6 +31,22 @@ async function proxyRequest(request: NextRequest) {
     }
   });
 
+  // Forward the original Host header so backend's AllowedHosts validation passes
+  // (the backend sees Host: myuglyrocks.com, not Host: api.railway.internal)
+  const originalHost = request.headers.get('host');
+  if (originalHost) {
+    headers.set('Host', originalHost);
+    headers.set('X-Forwarded-Host', originalHost);
+  }
+  headers.set('X-Forwarded-Proto', 'https');
+
+  // Forward client IP if available
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const clientIp = forwardedFor?.split(',')[0]?.trim() || request.headers.get('x-real-ip');
+  if (clientIp) {
+    headers.set('X-Forwarded-For', clientIp);
+  }
+
   try {
     // Forward the request to the backend API
     const fetchOptions: RequestInit = {
@@ -38,11 +54,13 @@ async function proxyRequest(request: NextRequest) {
       headers,
     };
 
-    // Stream the body directly to avoid encoding issues
+    // Forward body for methods that support it
     if (request.method !== 'GET' && request.method !== 'HEAD') {
-      fetchOptions.body = request.body;
-      // Required for streaming bodies in Node.js
-      (fetchOptions as Record<string, unknown>).duplex = 'half';
+      // Use arrayBuffer to preserve exact bytes
+      const buffer = await request.arrayBuffer();
+      if (buffer.byteLength > 0) {
+        fetchOptions.body = buffer;
+      }
     }
 
     const response = await fetch(url, fetchOptions);
