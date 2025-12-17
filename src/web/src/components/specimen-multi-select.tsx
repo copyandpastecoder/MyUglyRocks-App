@@ -36,7 +36,7 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSpecimenSearch } from '@/hooks/use-user-specimens';
-import { useAvailableInventorySpecimens, type AvailableInventorySpecimen, type InventoryGroup } from '@/hooks/use-available-inventory-specimens';
+import { useAvailableInventorySpecimens, type AvailableInventorySpecimen } from '@/hooks/use-available-inventory-specimens';
 import type { SpecimenOptionDto } from '@/types/user-specimen';
 
 // Column visibility configuration
@@ -157,8 +157,11 @@ export function SpecimenMultiSelect({
   }, [specimens]);
 
   const selectedSpecimens = React.useMemo(() => {
+    // Only show specimens that are NOT inventory specimens (those are shown separately)
     return specimens.filter((s) =>
-      selectedItems.some((item) => item.id === s.id && item.source === s.source)
+      selectedItems.some((item) =>
+        item.id === s.id && item.source === s.source && !item.inventorySpecimenId
+      )
     );
   }, [specimens, selectedItems]);
 
@@ -188,13 +191,17 @@ export function SpecimenMultiSelect({
 
   const handleToggle = (specimen: SpecimenOptionDto) => {
     const selection: SpecimenSelection = { id: specimen.id, source: specimen.source };
+    // Only check non-inventory specimens (inventory specimens are handled separately)
     const isSelected = selectedItems.some(
-      (item) => item.id === specimen.id && item.source === specimen.source
+      (item) => item.id === specimen.id && item.source === specimen.source && !item.inventorySpecimenId
     );
 
     if (isSelected) {
+      // Only remove non-inventory specimens with this id/source
       onSelectionChange(
-        selectedItems.filter((item) => !(item.id === specimen.id && item.source === specimen.source))
+        selectedItems.filter((item) =>
+          !(!item.inventorySpecimenId && item.id === specimen.id && item.source === specimen.source)
+        )
       );
     } else {
       onSelectionChange([...selectedItems, selection]);
@@ -202,8 +209,11 @@ export function SpecimenMultiSelect({
   };
 
   const handleRemove = (id: string, source: 'system' | 'user') => {
+    // Only remove non-inventory specimens (inventory specimens have their own removal logic)
     onSelectionChange(
-      selectedItems.filter((item) => !(item.id === id && item.source === source))
+      selectedItems.filter((item) =>
+        !(!item.inventorySpecimenId && item.id === id && item.source === source)
+      )
     );
   };
 
@@ -212,8 +222,9 @@ export function SpecimenMultiSelect({
   };
 
   const isSelected = (specimen: SpecimenOptionDto) => {
+    // Only check non-inventory specimens (inventory specimens are shown separately)
     return selectedItems.some(
-      (item) => item.id === specimen.id && item.source === specimen.source
+      (item) => item.id === specimen.id && item.source === specimen.source && !item.inventorySpecimenId
     );
   };
 
