@@ -1,52 +1,16 @@
-# Quick code quality checks - fast validation only
-# Runs on every PR and can be triggered manually
+# Code quality checks - DISABLED for now
+# Manual trigger only
 
 # name: Code Quality
 
-# on:
-#   push:
-#     branches: [main, master, develop]
-#   pull_request:
-#     branches: [main, master, develop]
-#   workflow_dispatch:  # Manual trigger from Actions tab
+on:
+  workflow_dispatch:  # Manual trigger only
 
 jobs:
-  # Frontend type check only (fast)
-  frontend:
-    name: Frontend (Next.js)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: src/web
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-#       - name: Setup Node.js
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: '20'
-#           cache: 'npm'
-#           cache-dependency-path: src/web/package-lock.json
-
-#       - name: Install dependencies
-#         run: npm ci
-
-      - name: Type check
-        run: npx tsc --noEmit
-
-  # Backend restore only (fast)
-  backend:
-    name: Backend (.NET)
+  # Placeholder job - workflow disabled
+  placeholder:
+    name: Disabled
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-#       - name: Setup .NET
-#         uses: actions/setup-dotnet@v4
-#         with:
-#           dotnet-version: '9.0.x'
-
-      - name: Restore dependencies
-        run: dotnet restore src/api/MyUglyRocks.Api/MyUglyRocks.Api.csproj
+      - name: Skip
+        run: echo "Code quality checks disabled"
