@@ -21,12 +21,14 @@ async function proxyRequest(request: NextRequest) {
   const search = request.nextUrl.search;
   const url = new URL(pathname + search, apiUrl);
 
-  // Prepare headers - copy all but host and content-length
-  // (content-length will be recalculated by fetch for the body)
+  // Prepare headers - copy all but problematic headers
+  // - host: let fetch use target URL's host
+  // - content-length: recalculated by fetch for the body
+  // - expect: Node.js undici fetch doesn't support Expect header
   const headers = new Headers();
   request.headers.forEach((value, key) => {
     const lowerKey = key.toLowerCase();
-    if (lowerKey !== 'host' && lowerKey !== 'content-length') {
+    if (lowerKey !== 'host' && lowerKey !== 'content-length' && lowerKey !== 'expect') {
       headers.set(key, value);
     }
   });
