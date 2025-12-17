@@ -119,7 +119,6 @@ export {
   useUpdateInventory,
   useDeleteInventory,
   useUpdateInventoryStatus,
-  useUpdateInventorySpecimens,
 } from './use-inventory';
 
 // User Specimen hooks

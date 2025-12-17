@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo, startTransition } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -50,14 +50,31 @@ export function InventoryPhotoUploadModal({
   specimens,
   onUploadComplete,
 }: InventoryPhotoUploadModalProps) {
+  // Auto-select specimen if there's only one
+  const defaultSpecimenId = specimens.length === 1 ? specimens[0].inventorySpecimenId : '__none__';
+
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
-  const [selectedSpecimenId, setSelectedSpecimenId] = useState<string>('__none__');
+  const [selectedSpecimenId, setSelectedSpecimenId] = useState<string>(defaultSpecimenId);
   const [caption, setCaption] = useState('');
   const [errors, setErrors] = useState<{ specimen?: string }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useUploadInventoryPhoto();
+
+  // Sort specimens alphabetically by name
+  const sortedSpecimens = useMemo(() => {
+    return [...specimens].sort((a, b) => a.commonName.localeCompare(b.commonName));
+  }, [specimens]);
+
+  // Update default selection when modal opens or specimens change
+  useEffect(() => {
+    if (open) {
+      startTransition(() => {
+        setSelectedSpecimenId(defaultSpecimenId);
+      });
+    }
+  }, [open, defaultSpecimenId]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -91,7 +108,7 @@ export function InventoryPhotoUploadModal({
 
   const resetForm = () => {
     clearFile();
-    setSelectedSpecimenId('__none__');
+    setSelectedSpecimenId(defaultSpecimenId);
     setCaption('');
     setErrors({});
   };
@@ -184,7 +201,7 @@ export function InventoryPhotoUploadModal({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">None (general photo)</SelectItem>
-                  {specimens.map((specimen) => (
+                  {sortedSpecimens.map((specimen) => (
                     <SelectItem key={specimen.inventorySpecimenId} value={specimen.inventorySpecimenId}>
                       {specimen.commonName}
                       {specimen.scientificName && (

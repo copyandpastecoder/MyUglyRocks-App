@@ -300,59 +300,6 @@ public class InventoryService : IInventoryService
         return await GetInventoryAsync(inventoryId, userId, cancellationToken);
     }
 
-    public async Task<InventoryDto?> UpdateInventorySpecimensAsync(Guid inventoryId, Guid userId, UpdateInventorySpecimensRequest request, CancellationToken cancellationToken = default)
-    {
-        var inventory = await Inventories
-            .Include(i => i.InventorySpecimens)
-            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId && i.UserId == userId, cancellationToken);
-
-        if (inventory == null)
-            return null;
-
-        // Remove existing specimens
-        InventorySpecimens.RemoveRange(inventory.InventorySpecimens);
-
-        // Add new specimens
-        foreach (var specimenRequest in request.Specimens)
-        {
-            var inventorySpecimen = new InventorySpecimen
-            {
-                InventoryId = inventoryId,
-                SpecimenId = specimenRequest.SpecimenId,
-                UserSpecimenId = specimenRequest.UserSpecimenId,
-                WeightGrams = specimenRequest.WeightGrams,
-                Cost = specimenRequest.Cost,
-                Condition = string.IsNullOrEmpty(specimenRequest.Condition)
-                    ? InventoryCondition.Raw
-                    : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
-                QualityRating = specimenRequest.QualityRating,
-                SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
-                    ? string.Join(",", specimenRequest.SizeCategories)
-                    : null,
-                Notes = specimenRequest.Notes,
-                Status = string.IsNullOrEmpty(specimenRequest.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(specimenRequest.Status, true),
-                StorageLocation = specimenRequest.StorageLocation,
-                Url = specimenRequest.Url
-            };
-            InventorySpecimens.Add(inventorySpecimen);
-        }
-
-        await _context.SaveChangesAsync(cancellationToken);
-
-        // Reload inventory with new specimens to recalculate aggregates
-        inventory = await Inventories
-            .Include(i => i.InventorySpecimens)
-            .FirstOrDefaultAsync(i => i.InventoryId == inventoryId, cancellationToken);
-
-        if (inventory != null)
-        {
-            RecalculateAggregatesFromSpecimens(inventory);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
-
-        return await GetInventoryAsync(inventoryId, userId, cancellationToken);
-    }
-
     public async Task<InventoryStatsDto> GetInventoryStatsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var inventories = await Inventories

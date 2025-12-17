@@ -1,24 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Allowlist of known public domains that should use same-origin API URLs (K8s with ingress)
+// All public domains use same-origin API URLs
+// Dev: K8s nginx-ingress routes /api to API service
+// Prod: Next.js rewrites proxy /api to Railway API service (see next.config.ts)
+// This enables SameSite=Lax cookies to work without cross-subdomain issues
 const SAME_ORIGIN_HOSTS = [
   'dev.myuglyrocks.com',
-];
-
-// Production domains that use a separate API subdomain (Railway)
-const PRODUCTION_HOSTS = [
   'www.myuglyrocks.com',
   'myuglyrocks.com',
 ];
 
-const PRODUCTION_API_URL = 'https://api.myuglyrocks.com';
-
 // Runtime config endpoint - reads environment variables at runtime
 // This allows changing API_URL without rebuilding the Docker image
 //
-// IMPORTANT: When accessed via Cloudflare Tunnel (e.g., dev.myuglyrocks.com),
-// we return the same origin as the API URL to ensure cookies work correctly.
-// The nginx-ingress handles routing /api to the API service.
+// IMPORTANT: All public domains return same-origin API URLs.
+// - Dev: nginx-ingress handles routing /api to the API service
+// - Prod: Next.js rewrites proxy /api to the Railway API service
 export async function GET(request: NextRequest) {
   // Get the host from request headers (strip port if present)
   const hostHeader = request.headers.get('host');
@@ -35,15 +32,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Production domains use separate API subdomain (Railway)
-  if ((host && PRODUCTION_HOSTS.includes(host)) ||
-      (originHost && PRODUCTION_HOSTS.includes(originHost))) {
-    return NextResponse.json({
-      apiUrl: PRODUCTION_API_URL,
-    });
-  }
-
-  // Dev domain uses same-origin API URLs (K8s with ingress)
+  // Public domains use same-origin API URLs (for SameSite cookie support)
   if ((host && SAME_ORIGIN_HOSTS.includes(host)) ||
       (originHost && SAME_ORIGIN_HOSTS.includes(originHost))) {
     // If host is in the list, use it; otherwise originHost must be (per the condition above)
