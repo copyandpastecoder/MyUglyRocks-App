@@ -108,6 +108,7 @@ const STATUSES: { value: InventoryStatus; label: string }[] = [
 
 export interface SpecimenRowItem {
   id: string; // unique row id
+  inventorySpecimenId?: string; // existing specimen ID - preserves photo tags on update
   specimenId?: string;
   userSpecimenId?: string;
   selectedId: string; // the id in the dropdown

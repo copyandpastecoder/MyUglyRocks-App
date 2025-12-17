@@ -71,6 +71,9 @@ spec:
         - name: demo-photos
           mountPath: /demo-photos
           readOnly: true
+        # Mount logs volume for persistent log storage
+        - name: logs-volume
+          mountPath: /var/log/myuglyrocks
         resources:
           requests:
             memory: "512Mi"
@@ -135,6 +138,10 @@ spec:
         hostPath:
           path: /run/desktop/mnt/host/d/DemoRockPhotos
           type: Directory
+      # Persistent volume for logs
+      - name: logs-volume
+        persistentVolumeClaim:
+          claimName: api-logs-pvc
 ---
 apiVersion: v1
 kind: Service

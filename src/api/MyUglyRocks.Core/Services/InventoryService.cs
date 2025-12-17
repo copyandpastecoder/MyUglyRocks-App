@@ -188,33 +188,72 @@ public class InventoryService : IInventoryService
         inventory.Status = string.IsNullOrEmpty(request.Status) ? inventory.Status : Enum.Parse<InventoryStatus>(request.Status, true);
         inventory.IsFavorite = request.IsFavorite ?? inventory.IsFavorite;
 
-        // Update specimens if provided
+        // Update specimens if provided - preserve IDs to maintain photo tag links
         if (request.Specimens != null)
         {
-            // Remove existing specimens
-            InventorySpecimens.RemoveRange(inventory.InventorySpecimens);
+            var existingSpecimens = inventory.InventorySpecimens.ToDictionary(s => s.InventorySpecimenId);
+            var requestSpecimenIds = request.Specimens
+                .Where(s => s.InventorySpecimenId.HasValue)
+                .Select(s => s.InventorySpecimenId!.Value)
+                .ToHashSet();
 
-            // Add new specimens using Select for cleaner mapping
-            var newSpecimens = request.Specimens.Select(specimenRequest => new InventorySpecimen
+            // Delete specimens that are no longer in the request
+            var specimensToDelete = inventory.InventorySpecimens
+                .Where(s => !requestSpecimenIds.Contains(s.InventorySpecimenId))
+                .ToList();
+            InventorySpecimens.RemoveRange(specimensToDelete);
+
+            foreach (var specimenRequest in request.Specimens)
             {
-                InventoryId = inventoryId,
-                SpecimenId = specimenRequest.SpecimenId,
-                UserSpecimenId = specimenRequest.UserSpecimenId,
-                WeightGrams = specimenRequest.WeightGrams,
-                Cost = specimenRequest.Cost,
-                Condition = string.IsNullOrEmpty(specimenRequest.Condition)
-                    ? InventoryCondition.Raw
-                    : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
-                QualityRating = specimenRequest.QualityRating,
-                SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
-                    ? string.Join(",", specimenRequest.SizeCategories)
-                    : null,
-                Notes = specimenRequest.Notes,
-                Status = string.IsNullOrEmpty(specimenRequest.Status) ? InventoryStatus.Available : Enum.Parse<InventoryStatus>(specimenRequest.Status, true),
-                StorageLocation = specimenRequest.StorageLocation,
-                Url = specimenRequest.Url
-            });
-            InventorySpecimens.AddRange(newSpecimens);
+                if (specimenRequest.InventorySpecimenId.HasValue &&
+                    existingSpecimens.TryGetValue(specimenRequest.InventorySpecimenId.Value, out var existingSpecimen))
+                {
+                    // Update existing specimen - preserves ID and photo tags
+                    existingSpecimen.SpecimenId = specimenRequest.SpecimenId;
+                    existingSpecimen.UserSpecimenId = specimenRequest.UserSpecimenId;
+                    existingSpecimen.WeightGrams = specimenRequest.WeightGrams;
+                    existingSpecimen.Cost = specimenRequest.Cost;
+                    existingSpecimen.Condition = string.IsNullOrEmpty(specimenRequest.Condition)
+                        ? InventoryCondition.Raw
+                        : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true);
+                    existingSpecimen.QualityRating = specimenRequest.QualityRating;
+                    existingSpecimen.SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
+                        ? string.Join(",", specimenRequest.SizeCategories)
+                        : null;
+                    existingSpecimen.Notes = specimenRequest.Notes;
+                    existingSpecimen.Status = string.IsNullOrEmpty(specimenRequest.Status)
+                        ? InventoryStatus.Available
+                        : Enum.Parse<InventoryStatus>(specimenRequest.Status, true);
+                    existingSpecimen.StorageLocation = specimenRequest.StorageLocation;
+                    existingSpecimen.Url = specimenRequest.Url;
+                }
+                else
+                {
+                    // Create new specimen
+                    var newSpecimen = new InventorySpecimen
+                    {
+                        InventoryId = inventoryId,
+                        SpecimenId = specimenRequest.SpecimenId,
+                        UserSpecimenId = specimenRequest.UserSpecimenId,
+                        WeightGrams = specimenRequest.WeightGrams,
+                        Cost = specimenRequest.Cost,
+                        Condition = string.IsNullOrEmpty(specimenRequest.Condition)
+                            ? InventoryCondition.Raw
+                            : Enum.Parse<InventoryCondition>(specimenRequest.Condition, true),
+                        QualityRating = specimenRequest.QualityRating,
+                        SizeCategories = specimenRequest.SizeCategories != null && specimenRequest.SizeCategories.Length > 0
+                            ? string.Join(",", specimenRequest.SizeCategories)
+                            : null,
+                        Notes = specimenRequest.Notes,
+                        Status = string.IsNullOrEmpty(specimenRequest.Status)
+                            ? InventoryStatus.Available
+                            : Enum.Parse<InventoryStatus>(specimenRequest.Status, true),
+                        StorageLocation = specimenRequest.StorageLocation,
+                        Url = specimenRequest.Url
+                    };
+                    InventorySpecimens.Add(newSpecimen);
+                }
+            }
         }
 
         await _context.SaveChangesAsync(cancellationToken);

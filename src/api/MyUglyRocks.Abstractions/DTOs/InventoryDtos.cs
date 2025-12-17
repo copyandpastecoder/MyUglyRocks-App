@@ -163,6 +163,7 @@ public record InventorySpecimenDto(
 );
 
 public record CreateInventorySpecimenRequest(
+    Guid? InventorySpecimenId,  // Include when updating existing specimens to preserve photo tags
     Guid? SpecimenId,
     Guid? UserSpecimenId,
 
