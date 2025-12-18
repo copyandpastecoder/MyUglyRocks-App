@@ -71,10 +71,22 @@ async function proxyRequest(request: NextRequest) {
     // Read response body fully (streaming can cause issues)
     const responseBody = await response.arrayBuffer();
 
-    // Copy response headers
+    // Headers that must not be forwarded (hop-by-hop or body-encoding related)
+    // These become invalid when we convert chunked/compressed response to ArrayBuffer
+    const skipHeaders = new Set([
+      'transfer-encoding',
+      'content-encoding',
+      'content-length', // Let NextResponse calculate correct length for our buffer
+      'connection',
+      'keep-alive',
+    ]);
+
+    // Copy response headers (except problematic ones)
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
-      responseHeaders.append(key, value);
+      if (!skipHeaders.has(key.toLowerCase())) {
+        responseHeaders.append(key, value);
+      }
     });
 
     // Return proxied response with fully read body
