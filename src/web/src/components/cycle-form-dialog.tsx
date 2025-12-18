@@ -30,7 +30,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
+import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-select';
 import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import Link from 'next/link';
 import type { CycleDto, CycleListDto } from '@/types/cycle';
