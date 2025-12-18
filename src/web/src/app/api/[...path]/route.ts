@@ -68,14 +68,17 @@ async function proxyRequest(request: NextRequest) {
 
     const response = await fetch(url, fetchOptions);
 
+    // Read response body fully (streaming can cause issues)
+    const responseBody = await response.arrayBuffer();
+
     // Copy response headers
     const responseHeaders = new Headers();
     response.headers.forEach((value, key) => {
       responseHeaders.append(key, value);
     });
 
-    // Return proxied response
-    return new NextResponse(response.body, {
+    // Return proxied response with fully read body
+    return new NextResponse(responseBody, {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders,
