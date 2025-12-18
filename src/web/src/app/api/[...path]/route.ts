@@ -73,12 +73,17 @@ async function proxyRequest(request: NextRequest) {
 
     // Headers that must not be forwarded (hop-by-hop or body-encoding related)
     // These become invalid when we convert chunked/compressed response to ArrayBuffer
+    // See RFC 7230 Section 6.1 for hop-by-hop headers
     const skipHeaders = new Set([
       'transfer-encoding',
       'content-encoding',
       'content-length', // Let NextResponse calculate correct length for our buffer
       'connection',
       'keep-alive',
+      'upgrade',           // Protocol upgrades (e.g., WebSocket)
+      'proxy-connection',  // Deprecated but still used by some proxies
+      'trailer',           // Chunked message trailer headers
+      'te',                // Transfer encoding preferences
     ]);
 
     // Copy response headers (except problematic ones)
