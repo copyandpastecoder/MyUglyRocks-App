@@ -2,51 +2,116 @@
 
 ## Overview
 
-Create dedicated mobile components/pages for all major features. Desktop components remain **completely untouched**. Mobile detection determines which component tree to render.
+Create dedicated mobile components for all major features. Desktop components remain **completely untouched**. Mobile detection determines which component to render.
+
+**Target devices:**
+- **Mobile UI**: Phones only (portrait AND landscape)
+- **Desktop UI**: Tablets and desktop computers
+
+---
 
 ## Architecture
+
+### Directory Structure (Pattern C: Feature Folders)
 
 ```
 src/web/src/
 ├── hooks/
-│   └── use-is-mobile.ts          # New: viewport detection hook
+│   └── use-is-mobile.ts                    # Phone detection hook
 ├── components/
-│   ├── [existing desktop components]
-│   └── mobile/                    # New: all mobile components
-│       ├── tumblers/
-│       ├── cycles/
-│       ├── stages/
-│       ├── inventory/
-│       └── gallery/
+│   ├── specimen-select/                    # Feature folder
+│   │   ├── index.tsx                       # Smart export (handles detection)
+│   │   ├── specimen-select.desktop.tsx     # Desktop version (current code)
+│   │   ├── specimen-select.mobile.tsx      # Mobile version (new)
+│   │   ├── use-specimen-select.ts          # Shared logic hook
+│   │   └── types.ts                        # Shared types
+│   ├── stage-form/
+│   │   ├── index.tsx
+│   │   ├── stage-form.desktop.tsx
+│   │   ├── stage-form.mobile.tsx
+│   │   └── use-stage-form.ts
+│   └── ... (other feature folders)
 ```
 
 ### Mobile Detection Hook
 
+Detects **phones only** by checking the smaller screen dimension. This ensures:
+- Phone in portrait → Mobile UI
+- Phone in landscape → Mobile UI (still a phone!)
+- Tablet in any orientation → Desktop UI
+- Desktop → Desktop UI
+
 ```tsx
 // hooks/use-is-mobile.ts
-export function useIsMobile(breakpoint = 640) {
+'use client';
+
+import { useState, useEffect } from 'react';
+
+const PHONE_MAX_DIMENSION = 500; // Phones always have one dimension < 500px
+
+export function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < breakpoint);
+    const check = () => {
+      const smallerDimension = Math.min(window.innerWidth, window.innerHeight);
+      setIsMobile(smallerDimension < PHONE_MAX_DIMENSION);
+    };
+
     check();
     window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, [breakpoint]);
+    window.addEventListener('orientationchange', check);
+
+    return () => {
+      window.removeEventListener('resize', check);
+      window.removeEventListener('orientationchange', check);
+    };
+  }, []);
 
   return isMobile;
 }
 ```
 
-### Usage Pattern
+### Smart Index Pattern
+
+Each feature folder has an `index.tsx` that handles platform detection:
 
 ```tsx
-// In parent component or page
-const isMobile = useIsMobile();
+// components/specimen-select/index.tsx
+'use client';
 
-return isMobile
-  ? <MobileTumblerForm {...props} />
-  : <TumblerForm {...props} />;
+import { useIsMobile } from '@/hooks/use-is-mobile';
+import { SpecimenSelectDesktop } from './specimen-select.desktop';
+import { SpecimenSelectMobile } from './specimen-select.mobile';
+import type { SpecimenSelectProps } from './types';
+
+export function SpecimenSelect(props: SpecimenSelectProps) {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return <SpecimenSelectMobile {...props} />;
+  }
+
+  return <SpecimenSelectDesktop {...props} />;
+}
+
+// Re-export for consumers
+export type { SpecimenSelectProps, SpecimenSelection } from './types';
+```
+
+### Consumer Usage
+
+Pages and parent components simply import - they don't know about platform:
+
+```tsx
+// app/(protected)/cycles/new/page.tsx
+import { SpecimenSelect } from '@/components/specimen-select';
+
+// Just use it - platform detection is automatic
+<SpecimenSelect
+  selectedItems={items}
+  onSelectionChange={setItems}
+/>
 ```
 
 ---
@@ -55,88 +120,84 @@ return isMobile
 
 ### 1. TUMBLERS
 
-| Desktop Component | Mobile Component | Type |
-|-------------------|------------------|------|
-| `tumblers/page.tsx` | `mobile/tumblers/tumbler-list-mobile.tsx` | Page content |
-| `tumblers/new/page.tsx` | `mobile/tumblers/tumbler-form-mobile.tsx` | Full-page form |
-| Barrel management dialog | `mobile/tumblers/barrel-sheet-mobile.tsx` | Bottom sheet |
+| Feature Folder | Desktop File | Mobile File | Shared Logic |
+|----------------|--------------|-------------|--------------|
+| `tumbler-list/` | `tumbler-list.desktop.tsx` | `tumbler-list.mobile.tsx` | `use-tumbler-list.ts` |
+| `tumbler-form/` | `tumbler-form.desktop.tsx` | `tumbler-form.mobile.tsx` | `use-tumbler-form.ts` |
+| `barrel-manager/` | `barrel-manager.desktop.tsx` | `barrel-manager.mobile.tsx` | `use-barrel-manager.ts` |
 
 **Mobile UX:**
-- Full-page forms instead of inline cards
-- Bottom sheets for barrel management
-- Larger touch targets
+- Full-screen forms with large touch targets
+- Bottom sheet for barrel management
 - Stacked form fields
 
 ---
 
 ### 2. CYCLES
 
-| Desktop Component | Mobile Component | Type |
-|-------------------|------------------|------|
-| `cycles/page.tsx` | `mobile/cycles/cycle-list-mobile.tsx` | Page content |
-| `cycles/new/page.tsx` | `mobile/cycles/cycle-form-mobile.tsx` | Full-page form |
-| `cycle-form-dialog.tsx` | `mobile/cycles/cycle-edit-sheet-mobile.tsx` | Bottom sheet |
-| `specimen-multi-select.tsx` | `mobile/cycles/specimen-select-sheet-mobile.tsx` | Full-screen sheet |
-| Cycle completion UI | `mobile/cycles/cycle-complete-sheet-mobile.tsx` | Bottom sheet |
+| Feature Folder | Desktop File | Mobile File | Shared Logic |
+|----------------|--------------|-------------|--------------|
+| `cycle-list/` | `cycle-list.desktop.tsx` | `cycle-list.mobile.tsx` | `use-cycle-list.ts` |
+| `cycle-form/` | `cycle-form.desktop.tsx` | `cycle-form.mobile.tsx` | `use-cycle-form.ts` |
+| `specimen-select/` | `specimen-select.desktop.tsx` | `specimen-select.mobile.tsx` | `use-specimen-select.ts` |
+| `cycle-complete/` | `cycle-complete.desktop.tsx` | `cycle-complete.mobile.tsx` | - |
 
 **Mobile UX:**
 - Specimen selection as full-screen sheet with large checkboxes
 - Cycle list as stacked cards
-- Bottom sheet for edit/complete actions
+- Full-screen forms
 
 ---
 
 ### 3. STAGE RUNS
 
-| Desktop Component | Mobile Component | Type |
-|-------------------|------------------|------|
-| `stage/stage-form-modal.tsx` | `mobile/stages/stage-form-sheet-mobile.tsx` | Full-screen sheet |
-| `stage/stage-materials-section.tsx` | `mobile/stages/stage-materials-mobile.tsx` | Inline section |
-| `stage/cleaning-run-section.tsx` | `mobile/stages/cleaning-run-mobile.tsx` | Expandable section |
-| `cleaning-run-modal.tsx` | `mobile/stages/cleaning-run-sheet-mobile.tsx` | Bottom sheet |
-| Stage completion UI | `mobile/stages/stage-complete-sheet-mobile.tsx` | Bottom sheet |
+| Feature Folder | Desktop File | Mobile File | Shared Logic |
+|----------------|--------------|-------------|--------------|
+| `stage-form/` | `stage-form.desktop.tsx` | `stage-form.mobile.tsx` | `use-stage-form.ts` |
+| `stage-materials/` | `stage-materials.desktop.tsx` | `stage-materials.mobile.tsx` | - |
+| `stage-complete/` | `stage-complete.desktop.tsx` | `stage-complete.mobile.tsx` | - |
+| `cleaning-run/` | `cleaning-run.desktop.tsx` | `cleaning-run.mobile.tsx` | `use-cleaning-run.ts` |
 
 **Mobile UX:**
-- Full-screen sheet for stage creation/edit (lots of fields)
-- Barrel selection as scrollable list with large checkboxes
-- Duration picker optimized for touch
-- Material selection as separate sub-sheet
+- Full-screen sheet for stage creation/edit
+- Large barrel checkboxes
+- Touch-friendly duration picker
+- Material selection as sub-sheet
 
 ---
 
 ### 4. INVENTORY
 
-| Desktop Component | Mobile Component | Type |
-|-------------------|------------------|------|
-| `inventory/page.tsx` | `mobile/inventory/inventory-list-mobile.tsx` | Page content |
-| `inventory/new/page.tsx` | `mobile/inventory/inventory-form-mobile.tsx` | Full-page form |
-| `inventory-photos.tsx` | `mobile/inventory/inventory-photos-mobile.tsx` | Photo grid |
-| `inventory-photo-upload-modal.tsx` | `mobile/inventory/photo-upload-sheet-mobile.tsx` | Bottom sheet |
-| `inventory-photo-edit-dialog.tsx` | `mobile/inventory/photo-edit-sheet-mobile.tsx` | Bottom sheet |
-| `inventory-source-picker.tsx` | `mobile/inventory/source-picker-sheet-mobile.tsx` | Bottom sheet |
-| `specimen-row-list.tsx` | `mobile/inventory/specimen-rows-mobile.tsx` | Stacked cards |
+| Feature Folder | Desktop File | Mobile File | Shared Logic |
+|----------------|--------------|-------------|--------------|
+| `inventory-list/` | `inventory-list.desktop.tsx` | `inventory-list.mobile.tsx` | `use-inventory-list.ts` |
+| `inventory-form/` | `inventory-form.desktop.tsx` | `inventory-form.mobile.tsx` | `use-inventory-form.ts` |
+| `inventory-photos/` | `inventory-photos.desktop.tsx` | `inventory-photos.mobile.tsx` | - |
+| `photo-upload/` | `photo-upload.desktop.tsx` | `photo-upload.mobile.tsx` | `use-photo-upload.ts` |
+| `photo-edit/` | `photo-edit.desktop.tsx` | `photo-edit.mobile.tsx` | - |
+| `source-picker/` | `source-picker.desktop.tsx` | `source-picker.mobile.tsx` | - |
+| `specimen-rows/` | `specimen-rows.desktop.tsx` | `specimen-rows.mobile.tsx` | - |
 
 **Mobile UX:**
-- Single-column inventory list with larger thumbnails
-- Filters as collapsible drawer
-- Photo grid 2 columns max
-- Specimen rows as individual cards with swipe actions
+- Single-column inventory list
+- Collapsible filters drawer
+- 2-column photo grid max
+- Swipeable specimen row cards
 
 ---
 
 ### 5. PHOTO GALLERY
 
-| Desktop Component | Mobile Component | Type |
-|-------------------|------------------|------|
-| `gallery/page.tsx` | `mobile/gallery/gallery-list-mobile.tsx` | Page content |
-| `gallery/[id]/page.tsx` | `mobile/gallery/post-detail-mobile.tsx` | Page content |
-| `photo-lightbox.tsx` | `mobile/gallery/photo-lightbox-mobile.tsx` | Full-screen |
-| `cycle-photos.tsx` | `mobile/cycles/cycle-photos-mobile.tsx` | Photo grid |
-| `photo-upload-modal.tsx` | `mobile/cycles/photo-upload-sheet-mobile.tsx` | Bottom sheet |
+| Feature Folder | Desktop File | Mobile File | Shared Logic |
+|----------------|--------------|-------------|--------------|
+| `gallery-list/` | `gallery-list.desktop.tsx` | `gallery-list.mobile.tsx` | `use-gallery-list.ts` |
+| `post-detail/` | `post-detail.desktop.tsx` | `post-detail.mobile.tsx` | - |
+| `photo-lightbox/` | `photo-lightbox.desktop.tsx` | `photo-lightbox.mobile.tsx` | `use-photo-lightbox.ts` |
+| `cycle-photos/` | `cycle-photos.desktop.tsx` | `cycle-photos.mobile.tsx` | - |
 
 **Mobile UX:**
 - Swipe gestures in lightbox
-- Pinch-to-zoom support
+- Pinch-to-zoom
 - Bottom toolbar for actions
 - Single column post list
 
@@ -146,84 +207,116 @@ return isMobile
 
 ### Phase 1: Foundation
 1. Create `use-is-mobile.ts` hook
-2. Create `src/web/src/components/mobile/` directory structure
-3. Create base mobile Sheet component (if not using shadcn Sheet)
+2. Set up folder structure for first component
+3. Create shared mobile UI primitives (optional)
 
-### Phase 2: Most Used Features (Cycles & Stages)
-1. `specimen-select-sheet-mobile.tsx` - Most impactful fix
-2. `stage-form-sheet-mobile.tsx` - Complex form
-3. `cycle-form-mobile.tsx` - Create cycle
-4. `cycle-list-mobile.tsx` - Cycle listing
+### Phase 2: Cycles & Specimens (Original Issue)
+1. `specimen-select/` - The dropdown that started this
+2. `cycle-form/` - Create cycle page
+3. `cycle-list/` - Cycles listing
 
-### Phase 3: Inventory
-1. `inventory-list-mobile.tsx`
-2. `inventory-form-mobile.tsx`
-3. `inventory-photos-mobile.tsx`
-4. Photo upload/edit sheets
+### Phase 3: Stage Runs
+1. `stage-form/` - Complex form, high value
+2. `stage-materials/`
+3. `stage-complete/`
+4. `cleaning-run/`
 
-### Phase 4: Tumblers
-1. `tumbler-list-mobile.tsx`
-2. `tumbler-form-mobile.tsx`
-3. `barrel-sheet-mobile.tsx`
+### Phase 4: Inventory
+1. `inventory-list/`
+2. `inventory-form/`
+3. `inventory-photos/`
+4. `photo-upload/`, `photo-edit/`
+5. `source-picker/`, `specimen-rows/`
 
-### Phase 5: Gallery & Polish
-1. `gallery-list-mobile.tsx`
-2. `photo-lightbox-mobile.tsx`
-3. Final testing and refinements
+### Phase 5: Tumblers
+1. `tumbler-list/`
+2. `tumbler-form/`
+3. `barrel-manager/`
 
----
-
-## Shared Mobile Components
-
-These will be reused across features:
-
-```
-mobile/shared/
-├── mobile-sheet.tsx          # Base full-screen/bottom sheet
-├── mobile-form-field.tsx     # Larger inputs for touch
-├── mobile-select-sheet.tsx   # Generic selection sheet
-├── mobile-photo-grid.tsx     # 2-column photo grid
-├── mobile-action-bar.tsx     # Bottom fixed action buttons
-```
+### Phase 6: Gallery & Polish
+1. `gallery-list/`
+2. `post-detail/`
+3. `photo-lightbox/`
+4. `cycle-photos/`
 
 ---
 
-## File Naming Convention
+## Migration Strategy
 
-- `*-mobile.tsx` - Mobile-specific component
-- `*-sheet-mobile.tsx` - Mobile bottom/full-screen sheet
+For each component:
+
+1. **Create feature folder** with `index.tsx`, `types.ts`
+2. **Move existing code** to `.desktop.tsx` (rename, no changes)
+3. **Extract shared logic** into `use-*.ts` hook
+4. **Create `.mobile.tsx`** using shared hook
+5. **Update imports** in consuming files to use new path
+6. **Test both platforms**
+
+Example for `specimen-multi-select.tsx`:
+
+```
+Before:
+  components/specimen-multi-select.tsx
+
+After:
+  components/specimen-select/
+  ├── index.tsx                       # Smart export
+  ├── specimen-select.desktop.tsx     # Moved from specimen-multi-select.tsx
+  ├── specimen-select.mobile.tsx      # New mobile version
+  ├── use-specimen-select.ts          # Extracted logic
+  └── types.ts                        # Shared types
+```
+
+---
+
+## Device Detection Reference
+
+| Device | Dimensions (Portrait) | Smaller Dim | Result |
+|--------|----------------------|-------------|--------|
+| iPhone SE | 375 × 667 | 375 | Mobile ✓ |
+| iPhone 14 | 393 × 852 | 393 | Mobile ✓ |
+| iPhone 14 Pro Max | 430 × 932 | 430 | Mobile ✓ |
+| iPhone 14 Plus | 428 × 926 | 428 | Mobile ✓ |
+| Pixel 7 | 412 × 915 | 412 | Mobile ✓ |
+| Galaxy S23 | 360 × 780 | 360 | Mobile ✓ |
+| iPad Mini | 768 × 1024 | 768 | Desktop ✓ |
+| iPad Air | 820 × 1180 | 820 | Desktop ✓ |
+| iPad Pro 11" | 834 × 1194 | 834 | Desktop ✓ |
+| iPad Pro 12.9" | 1024 × 1366 | 1024 | Desktop ✓ |
+| Desktop | 1920 × 1080 | 1080 | Desktop ✓ |
+
+Threshold: `smallerDimension < 500` catches all phones, excludes all tablets.
 
 ---
 
 ## Testing Checklist
 
 For each mobile component:
-- [ ] Works on 320px viewport (iPhone SE)
-- [ ] Works on 375px viewport (iPhone 12/13)
-- [ ] Works on 414px viewport (iPhone Plus sizes)
-- [ ] Touch targets are at least 44px
-- [ ] Forms are usable with on-screen keyboard
-- [ ] Scrolling works correctly in sheets
-- [ ] Desktop components remain unchanged
+- [ ] iPhone SE (375px) - smallest phone
+- [ ] iPhone 14 Pro Max (430px) - largest phone
+- [ ] Portrait orientation
+- [ ] Landscape orientation
+- [ ] Touch targets ≥ 44px
+- [ ] Forms usable with on-screen keyboard
+- [ ] Scrolling works in sheets/modals
+- [ ] Desktop version unchanged
 
 ---
 
 ## Estimated Component Count
 
-| Feature | New Mobile Components |
-|---------|----------------------|
-| Shared | 5 |
-| Tumblers | 3 |
-| Cycles | 5 |
-| Stages | 5 |
-| Inventory | 7 |
-| Gallery | 4 |
-| **Total** | **~29 components** |
+| Feature | Folders | Files (Desktop + Mobile + Shared) |
+|---------|---------|-----------------------------------|
+| Hook | - | 1 |
+| Tumblers | 3 | ~9 |
+| Cycles | 4 | ~12 |
+| Stages | 4 | ~12 |
+| Inventory | 7 | ~21 |
+| Gallery | 4 | ~12 |
+| **Total** | **22** | **~67 files** |
 
 ---
 
-## Questions for User
+## Ready to Proceed?
 
-1. **Breakpoint**: Use 640px (Tailwind `sm`) as the mobile cutoff?
-2. **Priority**: Start with Cycles/Stages (Phase 2) since that's where the specimen dropdown issue is?
-3. **Sheet style**: Full-screen sheets that slide up, or partial bottom sheets?
+Phase 1 (Foundation) and Phase 2 (Cycles & Specimens) will address the original issue. Approve to begin implementation.
