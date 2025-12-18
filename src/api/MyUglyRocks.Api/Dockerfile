@@ -1,5 +1,5 @@
 # Build stage
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Copy all project files first (for better layer caching)
@@ -20,7 +20,7 @@ WORKDIR /src/src/api/MyUglyRocks.Api
 RUN dotnet publish -c Release -o /app/publish
 
 # Runtime stage
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # Install PostgreSQL client tools for database backup/restore
