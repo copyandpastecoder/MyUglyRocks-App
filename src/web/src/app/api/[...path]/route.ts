@@ -73,7 +73,7 @@ async function proxyRequest(request: NextRequest) {
 
     // Headers that must not be forwarded (hop-by-hop or body-encoding related)
     // These become invalid when we convert chunked/compressed response to ArrayBuffer
-    // See RFC 7230 Section 6.1 for hop-by-hop headers
+    // See RFC 9110 Section 7.6.1 for hop-by-hop headers (obsoletes RFC 7230)
     const skipHeaders = new Set([
       'transfer-encoding',
       'content-encoding',
