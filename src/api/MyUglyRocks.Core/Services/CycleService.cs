@@ -155,16 +155,7 @@ public class CycleService : ICycleService
 
             if (earliestPlannedStage != null)
             {
-                var now = DateTime.UtcNow;
-                var originalDuration = earliestPlannedStage.DurationEstimateEndDate.HasValue
-                    ? earliestPlannedStage.DurationEstimateEndDate.Value - earliestPlannedStage.StartDateTime
-                    : TimeSpan.FromDays(earliestPlannedStage.DurationDays) + TimeSpan.FromHours(earliestPlannedStage.DurationHours);
-
-                earliestPlannedStage.StartDateTime = now;
-                earliestPlannedStage.DurationEstimateEndDate = now + originalDuration;
-                earliestPlannedStage.Status = StageRunStatus.Active;
-                earliestPlannedStage.DateUpdated = now;
-
+                PromoteStageToActive(earliestPlannedStage);
                 await _context.SaveChangesAsync(cancellationToken);
             }
         }
@@ -206,6 +197,23 @@ public class CycleService : ICycleService
         }
 
         return (runNumbers, totalRuns);
+    }
+
+    /// <summary>
+    /// Promotes a planned stage to active, updating start time to now and recalculating end date.
+    /// Does not save changes - caller must call SaveChangesAsync.
+    /// </summary>
+    private static void PromoteStageToActive(StageRun stageRun)
+    {
+        var now = DateTime.UtcNow;
+        var originalDuration = stageRun.DurationEstimateEndDate.HasValue
+            ? stageRun.DurationEstimateEndDate.Value - stageRun.StartDateTime
+            : TimeSpan.FromDays(stageRun.DurationDays) + TimeSpan.FromHours(stageRun.DurationHours);
+
+        stageRun.StartDateTime = now;
+        stageRun.DurationEstimateEndDate = now + originalDuration;
+        stageRun.Status = StageRunStatus.Active;
+        stageRun.DateUpdated = now;
     }
 
     private static CycleDto MapCycleToDto(Cycle cycle, (Dictionary<Guid, int> RunNumbers, Dictionary<string, int> TotalRuns) runInfo, Guid? postId = null, int galleryLikes = 0)
@@ -1213,17 +1221,7 @@ public class CycleService : ICycleService
         if (hasActiveStage)
             throw new InvalidOperationException("Cannot start stage while another stage is active. Complete the active stage first.");
 
-        // Update start time to now and recalculate estimated end
-        var now = DateTime.UtcNow;
-        var originalDuration = stageRun.DurationEstimateEndDate.HasValue
-            ? stageRun.DurationEstimateEndDate.Value - stageRun.StartDateTime
-            : TimeSpan.FromDays(stageRun.DurationDays) + TimeSpan.FromHours(stageRun.DurationHours);
-
-        stageRun.StartDateTime = now;
-        stageRun.DurationEstimateEndDate = now + originalDuration;
-        stageRun.Status = StageRunStatus.Active;
-        stageRun.DateUpdated = now;
-
+        PromoteStageToActive(stageRun);
         await _context.SaveChangesAsync(cancellationToken);
 
         return await GetStageRunAsync(stageRunId, userId, cancellationToken);
