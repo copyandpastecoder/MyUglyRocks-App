@@ -143,6 +143,32 @@ public class CycleService : ICycleService
         if (cycle == null)
             return null;
 
+        // Auto-promote: if no active stage, promote the earliest planned stage to active
+        var hasActiveStage = cycle.StageRuns.Any(s => !s.IsDeleted && s.Status == StageRunStatus.Active);
+        if (!hasActiveStage)
+        {
+            var earliestPlannedStage = cycle.StageRuns
+                .Where(s => !s.IsDeleted && s.Status == StageRunStatus.Planned)
+                .OrderBy(s => s.StartDateTime)
+                .ThenBy(s => s.DateCreated)
+                .FirstOrDefault();
+
+            if (earliestPlannedStage != null)
+            {
+                var now = DateTime.UtcNow;
+                var originalDuration = earliestPlannedStage.DurationEstimateEndDate.HasValue
+                    ? earliestPlannedStage.DurationEstimateEndDate.Value - earliestPlannedStage.StartDateTime
+                    : TimeSpan.FromDays(earliestPlannedStage.DurationDays) + TimeSpan.FromHours(earliestPlannedStage.DurationHours);
+
+                earliestPlannedStage.StartDateTime = now;
+                earliestPlannedStage.DurationEstimateEndDate = now + originalDuration;
+                earliestPlannedStage.Status = StageRunStatus.Active;
+                earliestPlannedStage.DateUpdated = now;
+
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+        }
+
         // Check if there's a post for this cycle and get likes count
         var postInfo = await _context.Set<Post>()
             .Where(p => p.CycleId == cycleId && !p.IsDeleted)
@@ -1160,6 +1186,43 @@ public class CycleService : ICycleService
             }
             nextPlannedStage.DateUpdated = DateTime.UtcNow;
         }
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return await GetStageRunAsync(stageRunId, userId, cancellationToken);
+    }
+
+    public async Task<StageRunDto?> StartStageRunAsync(Guid stageRunId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var stageRun = await StageRuns
+            .Include(s => s.Cycle)
+                .ThenInclude(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+            .FirstOrDefaultAsync(s => s.StageRunId == stageRunId && s.Cycle.UserId == userId, cancellationToken);
+
+        if (stageRun == null)
+            return null;
+
+        // Can only start a Planned stage
+        if (stageRun.Status != StageRunStatus.Planned)
+            throw new InvalidOperationException("Only planned stages can be started");
+
+        // Check if there's already an active stage
+        var hasActiveStage = stageRun.Cycle.StageRuns
+            .Any(s => !s.IsDeleted && s.StageRunId != stageRunId && s.Status == StageRunStatus.Active);
+
+        if (hasActiveStage)
+            throw new InvalidOperationException("Cannot start stage while another stage is active. Complete the active stage first.");
+
+        // Update start time to now and recalculate estimated end
+        var now = DateTime.UtcNow;
+        var originalDuration = stageRun.DurationEstimateEndDate.HasValue
+            ? stageRun.DurationEstimateEndDate.Value - stageRun.StartDateTime
+            : TimeSpan.FromDays(stageRun.DurationDays) + TimeSpan.FromHours(stageRun.DurationHours);
+
+        stageRun.StartDateTime = now;
+        stageRun.DurationEstimateEndDate = now + originalDuration;
+        stageRun.Status = StageRunStatus.Active;
+        stageRun.DateUpdated = now;
 
         await _context.SaveChangesAsync(cancellationToken);
 

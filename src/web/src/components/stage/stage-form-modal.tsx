@@ -652,13 +652,14 @@ export function StageFormModal({
                             htmlFor={`barrel-${barrel.barrelId}`}
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
                           >
-                            {barrel.tumblerName} - Barrel #{barrel.barrelNumber}
-                            {barrel.nickname && ` (${barrel.nickname})`}
+                            {barrel.tumblerName}
                             {barrel.capacityLbs && (
-                              <span className="text-muted-foreground ml-1">
-                                - {barrel.capacityLbs} lbs
+                              <span className="text-muted-foreground">
+                                {' '}- {barrel.capacityLbs} lbs
                               </span>
                             )}
+                            {' '}#{barrel.barrelNumber}
+                            {barrel.nickname && ` (${barrel.nickname})`}
                           </label>
                         </div>
                       ))
