@@ -33,7 +33,7 @@ interface PhotoUploadModalProps {
   defaultStageId?: string;
 }
 
-type PhotoType = 'before' | 'during' | 'after';
+type PhotoType = 'before' | 'during' | 'after' | 'inventory';
 
 // Safe image MIME types - excludes SVG which can contain scripts
 const ALLOWED_IMAGE_TYPES = [
@@ -253,14 +253,14 @@ export function PhotoUploadModal({
             <Label>
               Photo Type <span className="text-destructive">*</span>
             </Label>
-            <div className="flex gap-2">
-              {(['before', 'during', 'after'] as const).map((type) => (
+            <div className="flex flex-wrap gap-2">
+              {(['before', 'during', 'after', 'inventory'] as const).map((type) => (
                 <Button
                   key={type}
                   type="button"
                   variant={photoType === type ? 'default' : 'outline'}
                   size="sm"
-                  className="flex-1 capitalize"
+                  className="flex-1 min-w-[80px] capitalize"
                   onClick={() => setPhotoType(type)}
                 >
                   {type}
