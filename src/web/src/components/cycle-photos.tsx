@@ -101,10 +101,19 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
     refetchPhotos();
   };
 
+  const mapPhotoTypeFromApi = (photoType: string | undefined | null): PhotoType => {
+    if (!photoType) return 'during';
+    const normalized = photoType.toLowerCase();
+    if (normalized === 'before' || normalized === 'during' || normalized === 'after' || normalized === 'inventory') {
+      return normalized;
+    }
+    return 'during';
+  };
+
   const openEditDialog = (photo: CyclePhotoDto) => {
     setEditingPhoto(photo);
     setEditCaption(photo.caption || '');
-    setEditPhotoType((photo.photoType?.toLowerCase() as PhotoType) || 'during');
+    setEditPhotoType(mapPhotoTypeFromApi(photo.photoType));
     setEditDialogOpen(true);
   };
 
@@ -252,17 +261,21 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                           )}
                           <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                             <button
+                              type="button"
                               onClick={() => openEditDialog(photo)}
                               className="p-1 bg-black/50 rounded-full text-white hover:bg-black/70"
                               title="Edit photo"
+                              aria-label="Edit photo"
                             >
                               <Pencil className="h-4 w-4" />
                             </button>
                             <button
+                              type="button"
                               onClick={() => removePhoto(photo.photoId)}
                               disabled={deletingPhotoId === photo.photoId}
                               className="p-1 bg-black/50 rounded-full text-white hover:bg-black/70 disabled:opacity-50"
                               title="Delete photo"
+                              aria-label="Delete photo"
                             >
                               {deletingPhotoId === photo.photoId ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -339,7 +352,17 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
       />
 
       {/* Edit Photo Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog
+        open={editDialogOpen}
+        onOpenChange={(open) => {
+          setEditDialogOpen(open);
+          if (!open) {
+            setEditingPhoto(null);
+            setEditCaption('');
+            setEditPhotoType('during');
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Photo</DialogTitle>
@@ -399,7 +422,7 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleSaveEdit} disabled={isSaving}>
+                <Button type="button" onClick={handleSaveEdit} disabled={isSaving}>
                   {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save Changes
                 </Button>
