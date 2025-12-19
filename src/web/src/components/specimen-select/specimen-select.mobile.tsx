@@ -377,9 +377,9 @@ export function SpecimenSelectMobile({
         <Plus className="ml-2 h-5 w-5 shrink-0 opacity-50" />
       </Button>
 
-      {/* Full-screen Sheet */}
+      {/* Full-screen Sheet - z-[60] to appear above other sheets */}
       <Sheet open={open} onOpenChange={setOpen}>
-        <SheetContent side="bottom" className="h-[100dvh] p-0 flex flex-col">
+        <SheetContent side="bottom" className="h-[100dvh] p-0 flex flex-col z-[60]" overlayClassName="z-[60]">
           {/* Header */}
           <SheetHeader className="p-4 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
