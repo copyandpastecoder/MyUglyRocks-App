@@ -47,16 +47,9 @@ import type { MaterialFormItem } from '@/lib/material-utils';
 import { convertMinutesToDaysHoursMinutes } from '@/lib/duration-utils';
 import { invalidateCycleQueries } from '@/lib/query-invalidation';
 import type { CreateCleaningMaterialRequest } from '@/types/cycle';
+import type { CleaningRunModalProps } from './types';
 
-interface CleaningRunModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  stageId: string;
-  stageName: string;
-  cycleId: string;
-}
-
-export function CleaningRunModal({
+export function CleaningRunModalDesktop({
   open,
   onOpenChange,
   stageId,

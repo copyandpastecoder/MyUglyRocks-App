@@ -13,14 +13,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2, ChevronDown } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import {
   Form,
   FormControl,
@@ -30,10 +31,16 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-select';
 import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import Link from 'next/link';
-import type { CycleDto, CycleListDto } from '@/types/cycle';
+import { cn } from '@/lib/utils';
+import type { CycleFormDialogProps } from './types';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -44,18 +51,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface CycleFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** When provided, dialog is in edit mode */
-  cycle?: CycleDto | CycleListDto | null;
-  /** Called after successful create (with new cycle ID) */
-  onCreated?: (cycleId: string) => void;
-  /** Called after successful update */
-  onUpdated?: () => void;
-}
-
-export function CycleFormDialog({
+export function CycleFormDialogMobile({
   open,
   onOpenChange,
   cycle,
@@ -69,6 +65,10 @@ export function CycleFormDialog({
   const [specimenError, setSpecimenError] = useState<string | null>(null);
   const [isAddSpecimenDialogOpen, setIsAddSpecimenDialogOpen] = useState(false);
 
+  // Mobile-specific state
+  const [additionalExpanded, setAdditionalExpanded] = useState(false);
+  const [notesExpanded, setNotesExpanded] = useState(false);
+
   const createMutation = useCreateCycle();
   const updateMutation = useUpdateCycle();
 
@@ -81,10 +81,9 @@ export function CycleFormDialog({
   const { data: tumblers } = useQuery({
     queryKey: ['tumblers'],
     queryFn: tumblerApi.getAll,
-    enabled: open && !isEditMode, // Only need tumblers check for new cycles
+    enabled: open && !isEditMode,
   });
 
-  // Use specimen search to get both system and user specimens for name generation
   const { data: allSpecimens = [] } = useSpecimenSearch();
 
   const { data: userSettings } = useQuery({
@@ -108,14 +107,12 @@ export function CycleFormDialog({
   useEffect(() => {
     if (open) {
       if (cycle) {
-        // Edit mode - populate with existing values
         form.reset({
           name: cycle.name,
           startDate: cycle.startDate.split('T')[0],
           additionalSpecimens: 'additionalSpecimens' in cycle ? (cycle.additionalSpecimens || '') : '',
           notes: 'notes' in cycle ? (cycle.notes || '') : '',
         });
-        // In edit mode, show current specimens
         if ('specimens' in cycle && cycle.specimens) {
           const specimenSelections: SpecimenSelection[] = cycle.specimens.map(s => ({
             id: s.specimenId,
@@ -123,13 +120,15 @@ export function CycleFormDialog({
             inventorySpecimenId: s.inventorySpecimenId ?? undefined,
           }));
           setSelectedSpecimenItems(specimenSelections);
-          setOriginalSpecimenItems(specimenSelections); // Track original for removal detection
+          setOriginalSpecimenItems(specimenSelections);
         } else {
           setSelectedSpecimenItems([]);
           setOriginalSpecimenItems([]);
         }
+        // Expand sections if they have content
+        setAdditionalExpanded(!!('additionalSpecimens' in cycle && cycle.additionalSpecimens));
+        setNotesExpanded(!!('notes' in cycle && cycle.notes));
       } else {
-        // Create mode - reset to defaults
         form.reset({
           name: '',
           startDate: new Date().toISOString().split('T')[0],
@@ -138,26 +137,25 @@ export function CycleFormDialog({
         });
         setSelectedSpecimenItems([]);
         setOriginalSpecimenItems([]);
+        setAdditionalExpanded(false);
+        setNotesExpanded(false);
       }
       setSpecimenError(null);
     }
   }, [open, cycle, form]);
 
-  // Get selected specimens for cycle name generation (only in create mode)
   const selectedSpecimens = useMemo(() => {
     if (isEditMode) return [];
     const selectedIds = new Set(selectedSpecimenItems.map(s => s.id));
     return allSpecimens.filter((s) => selectedIds.has(s.id));
   }, [allSpecimens, selectedSpecimenItems, isEditMode]);
 
-  // Watch start date for cycle name auto-population (only in create mode)
   const watchedStartDate = form.watch('startDate');
 
-  // Auto-populate cycle name based on selected specimens and start date (only in create mode)
+  // Auto-populate cycle name
   useEffect(() => {
     if (isEditMode || !watchedStartDate) return;
 
-    // Format date based on user settings
     const formatDate = (dateStr: string, format: string) => {
       const date = new Date(dateStr);
       const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -178,9 +176,8 @@ export function CycleFormDialog({
     const dateFormat = userSettings?.dateFormat || 'MMDDYYYY';
     const formattedDate = formatDate(watchedStartDate, dateFormat);
 
-    // Build cycle name from selected specimens
     const specimenNames = selectedSpecimens
-      .slice(0, 3) // Limit to first 3 specimens to keep name reasonable
+      .slice(0, 3)
       .map((s) => s.commonName)
       .join(', ');
 
@@ -192,20 +189,16 @@ export function CycleFormDialog({
 
   const onSubmit = (data: FormValues) => {
     if (isEditMode && cycle) {
-      // Update existing cycle
       const cycleId = 'cycleId' in cycle ? cycle.cycleId : '';
 
-      // Build a set of currently selected items for comparison
       const currentSelectionKey = (item: SpecimenSelection) =>
         item.inventorySpecimenId || `${item.source}-${item.id}`;
       const currentSelectionKeys = new Set(selectedSpecimenItems.map(currentSelectionKey));
 
-      // Find REMOVED specimens (in original but not in current)
       const removedItems = originalSpecimenItems.filter(
         orig => !currentSelectionKeys.has(currentSelectionKey(orig))
       );
 
-      // Separate removed items by type
       const removedInventorySpecimenIds = removedItems
         .filter(s => s.inventorySpecimenId)
         .map(s => s.inventorySpecimenId!);
@@ -216,13 +209,11 @@ export function CycleFormDialog({
         .filter(s => !s.inventorySpecimenId && s.source === 'user')
         .map(s => s.id);
 
-      // Find NEW specimens (in current but not in original)
       const originalSelectionKeys = new Set(originalSpecimenItems.map(currentSelectionKey));
       const newItems = selectedSpecimenItems.filter(
         item => !originalSelectionKeys.has(currentSelectionKey(item))
       );
 
-      // Separate new specimens by type
       const newRegularSpecimens = newItems.filter(s => !s.inventorySpecimenId);
       const newInventorySpecimens = newItems.filter(s => s.inventorySpecimenId);
 
@@ -263,8 +254,6 @@ export function CycleFormDialog({
         }
       );
     } else {
-      // Create new cycle
-      // Validate that at least one specimen source is provided
       const hasSelectedSpecimens = selectedSpecimenItems.length > 0;
       const hasAdditionalSpecimens = data.additionalSpecimens && data.additionalSpecimens.trim().length > 0;
 
@@ -273,11 +262,9 @@ export function CycleFormDialog({
         return;
       }
 
-      // Separate regular specimens from inventory specimens
       const regularSpecimens = selectedSpecimenItems.filter(s => !s.inventorySpecimenId);
       const inventorySpecimensData = selectedSpecimenItems.filter(s => s.inventorySpecimenId);
 
-      // Separate system and user specimen IDs (for regular specimens only)
       const systemSpecimenIds = regularSpecimens
         .filter(s => s.source === 'system')
         .map(s => s.id);
@@ -285,7 +272,6 @@ export function CycleFormDialog({
         .filter(s => s.source === 'user')
         .map(s => s.id);
 
-      // Build inventory specimens array
       const inventorySpecimens = inventorySpecimensData.map(s => ({
         inventorySpecimenId: s.inventorySpecimenId!,
         markDepletedOnComplete: s.markDepletedOnComplete || false,
@@ -306,7 +292,6 @@ export function CycleFormDialog({
         {
           onSuccess: (newCycle) => {
             onOpenChange(false);
-            // Navigate to the new cycle with addStage=true to open stage dialog
             router.push(`/cycles/${newCycle.cycleId}?addStage=true`);
             onCreated?.(newCycle.cycleId);
           },
@@ -317,153 +302,194 @@ export function CycleFormDialog({
 
   const hasTumblers = !isEditMode ? (tumblers && tumblers.length > 0) : true;
   const isPending = createMutation.isPending || updateMutation.isPending;
+  const watchedAdditionalSpecimens = form.watch('additionalSpecimens');
+  const watchedNotes = form.watch('notes');
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Edit Cycle' : 'Start New Cycle'}</DialogTitle>
-            <DialogDescription>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[95vh] flex flex-col p-0">
+          <SheetHeader className="p-4 pb-2 border-b">
+            <SheetTitle>{isEditMode ? 'Edit Cycle' : 'Start New Cycle'}</SheetTitle>
+            <SheetDescription>
               {isEditMode
                 ? 'Update cycle details'
                 : 'Begin tracking a new tumbling cycle'}
-            </DialogDescription>
-          </DialogHeader>
+            </SheetDescription>
+          </SheetHeader>
 
-          {!isEditMode && !hasTumblers && (
-            <Alert variant="warning">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                You need to add a tumbler before starting a cycle.{' '}
-                <Link href="/tumblers/new" className="font-medium underline hover:text-amber-100">
-                  Add a tumbler first
-                </Link>
-              </AlertDescription>
-            </Alert>
-          )}
+          <div className="flex-1 overflow-y-auto p-4">
+            {!isEditMode && !hasTumblers && (
+              <Alert variant="warning" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  You need to add a tumbler before starting a cycle.{' '}
+                  <Link href="/tumblers/new" className="font-medium underline">
+                    Add a tumbler first
+                  </Link>
+                </AlertDescription>
+              </Alert>
+            )}
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Date *</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} />
-                    </FormControl>
-                    <FormDescription className="text-helpful-tip">
-                      The date your first tumbling stage begins
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormItem>
-                <FormLabel>Rocks/Specimens *</FormLabel>
-                <SpecimenMultiSelect
-                  selectedItems={selectedSpecimenItems}
-                  onSelectionChange={(items) => {
-                    setSelectedSpecimenItems(items);
-                    if (items.length > 0) setSpecimenError(null);
-                  }}
-                  placeholder="Select specimens from the list..."
-                  onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
-                  enableInventoryMode={true}
+            <Form {...form}>
+              <form id="cycle-form-mobile" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="startDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold">Start Date *</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} className="h-12 text-base" />
+                      </FormControl>
+                      <FormDescription className="text-helpful-tip">
+                        The date your first tumbling stage begins
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <FormDescription className="text-helpful-tip">
-                  Select the types of rocks you&apos;re tumbling. Click the package icon to select from your inventory.
-                </FormDescription>
-                {specimenError && (
-                  <p className="text-sm font-medium text-destructive">{specimenError}</p>
-                )}
-              </FormItem>
 
-              <FormField
-                control={form.control}
-                name="additionalSpecimens"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Other Specimens *</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Any specimens not in the list above..."
-                        className="min-h-[60px]"
-                        {...field}
-                        onChange={(e) => {
-                          field.onChange(e);
-                          if (e.target.value.trim()) setSpecimenError(null);
-                        }}
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Add any additional rocks not found in the dropdown
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormItem>
+                  <FormLabel className="text-base font-semibold">Rocks/Specimens *</FormLabel>
+                  <SpecimenMultiSelect
+                    selectedItems={selectedSpecimenItems}
+                    onSelectionChange={(items) => {
+                      setSelectedSpecimenItems(items);
+                      if (items.length > 0) setSpecimenError(null);
+                    }}
+                    placeholder="Select specimens..."
+                    onAddCustom={() => setIsAddSpecimenDialogOpen(true)}
+                    enableInventoryMode={true}
+                  />
+                  <FormDescription className="text-helpful-tip">
+                    Select the types of rocks you&apos;re tumbling
+                  </FormDescription>
+                  {specimenError && (
+                    <p className="text-sm font-medium text-destructive">{specimenError}</p>
+                  )}
+                </FormItem>
 
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cycle Name *</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., Beach Agates Batch 1" {...field} />
-                    </FormControl>
-                    <FormDescription className="text-helpful-tip">
-                      A descriptive name to identify this batch
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                {/* Other Specimens - Collapsible */}
+                <Collapsible open={additionalExpanded} onOpenChange={setAdditionalExpanded}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="p-0 h-auto hover:bg-transparent w-full justify-start">
+                      <FormLabel className="text-base font-semibold cursor-pointer">
+                        Other Specimens {watchedAdditionalSpecimens && "(1)"}
+                      </FormLabel>
+                      <ChevronDown className={cn(
+                        "h-4 w-4 ml-2 transition-transform",
+                        additionalExpanded && "rotate-180"
+                      )} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <FormField
+                      control={form.control}
+                      name="additionalSpecimens"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Any specimens not in the list above..."
+                              className="min-h-[80px] text-base"
+                              {...field}
+                              onChange={(e) => {
+                                field.onChange(e);
+                                if (e.target.value.trim()) setSpecimenError(null);
+                              }}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Add any additional rocks not found in the dropdown
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
 
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Any additional notes about this cycle..."
-                        className="min-h-[80px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-semibold">Cycle Name *</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Beach Agates Batch 1"
+                          {...field}
+                          className="h-12 text-base"
+                        />
+                      </FormControl>
+                      <FormDescription className="text-helpful-tip">
+                        A descriptive name to identify this batch
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="flex gap-3 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => onOpenChange(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isPending || (!isEditMode && !hasTumblers)}
-                  className="flex-1"
-                >
-                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isEditMode ? 'Save Changes' : 'Start Cycle'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
+                {/* Notes - Collapsible */}
+                <Collapsible open={notesExpanded} onOpenChange={setNotesExpanded}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" className="p-0 h-auto hover:bg-transparent w-full justify-start">
+                      <FormLabel className="text-base font-semibold cursor-pointer">
+                        Notes {watchedNotes && "(1)"}
+                      </FormLabel>
+                      <ChevronDown className={cn(
+                        "h-4 w-4 ml-2 transition-transform",
+                        notesExpanded && "rotate-180"
+                      )} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-3">
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Any additional notes about this cycle..."
+                              className="min-h-[100px] text-base"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              </form>
+            </Form>
+          </div>
+
+          <SheetFooter className="p-4 border-t bg-background">
+            <div className="flex gap-3 w-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                className="flex-1 h-12 text-base"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form="cycle-form-mobile"
+                disabled={isPending || (!isEditMode && !hasTumblers)}
+                className="flex-1 h-12 text-base"
+              >
+                {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                {isEditMode ? 'Save' : 'Start Cycle'}
+              </Button>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Add Custom Specimen Dialog */}
       <AddCustomSpecimenDialog
