@@ -726,19 +726,28 @@ public class PhotosController : ControllerBase
             return NotFound();
         }
 
-        if (photo.StageRun.Cycle.UserId != userId)
+        if (photo.StageRun?.Cycle == null || photo.StageRun.Cycle.UserId != userId)
         {
             return Forbid();
         }
 
-        // Update caption if provided
-        if (request.Caption != null)
+        // Validate that at least one field is being updated
+        var hasCaption = request.Caption != null;
+        var hasPhotoType = !string.IsNullOrEmpty(request.PhotoType);
+
+        if (!hasCaption && !hasPhotoType)
         {
-            photo.Caption = request.Caption;
+            return BadRequest(new { error = "At least one field (caption or photoType) must be provided." });
+        }
+
+        // Update caption (allow clearing by setting to null or empty string)
+        if (hasCaption)
+        {
+            photo.Caption = string.IsNullOrEmpty(request.Caption) ? null : request.Caption;
         }
 
         // Update photo type if provided
-        if (!string.IsNullOrEmpty(request.PhotoType))
+        if (hasPhotoType)
         {
             if (Enum.TryParse<PhotoType>(request.PhotoType, true, out var parsedPhotoType))
             {
