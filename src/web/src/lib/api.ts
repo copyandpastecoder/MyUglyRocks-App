@@ -772,6 +772,14 @@ export const photosApi = {
     await api.delete(`/photos/${photoId}`);
   },
 
+  updatePhoto: async (
+    photoId: string,
+    data: { caption?: string | null; photoType?: string }
+  ): Promise<PhotoDto> => {
+    const response = await api.put<PhotoDto>(`/photos/${photoId}`, data);
+    return response.data;
+  },
+
   reorderPhotos: async (stageRunId: string, photoIds: string[]): Promise<void> => {
     await api.put(`/photos/stage/${stageRunId}/reorder`, { photoIds });
   },
