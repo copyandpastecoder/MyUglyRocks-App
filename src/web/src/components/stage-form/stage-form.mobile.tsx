@@ -27,6 +27,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Card, CardContent } from '@/components/ui/card';
 import { StageMaterialsSection } from '@/components/stage/stage-materials-section';
 import { CleaningRunSection } from '@/components/stage/cleaning-run-section';
 import { toast } from 'sonner';
@@ -43,6 +44,7 @@ import {
   Bell,
   FileText,
   Sparkles,
+  Cylinder,
 } from 'lucide-react';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
@@ -69,6 +71,7 @@ export function StageFormMobile({
   const isEditMode = !!stageRunId;
 
   // Collapsible sections
+  const [barrelsOpen, setBarrelsOpen] = useState(!isEditMode);
   const [durationOpen, setDurationOpen] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [cleaningOpen, setCleaningOpen] = useState(false);
@@ -215,6 +218,9 @@ export function StageFormMobile({
 
   useEffect(() => {
     if (open) {
+      // Set barrels collapsed for edit, expanded for create
+      setBarrelsOpen(!isEditMode);
+
       if (isEditMode && stageRunId) {
         loadStageData(stageRunId);
       } else {
@@ -510,8 +516,8 @@ export function StageFormMobile({
         ) : (
           <>
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-4 space-y-6">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <div className="p-4 space-y-6 min-w-0">
                 {/* Stage Name Selection */}
                 <div className="space-y-3">
                   <Label className="text-base font-medium">Stage Name</Label>
@@ -574,60 +580,82 @@ export function StageFormMobile({
                 </div>
 
                 {/* Barrel Selection */}
-                <div className="space-y-3">
-                  <Label className="text-base font-medium">
-                    Select Barrel(s) {selectedBarrelIds.length > 0 && `(${selectedBarrelIds.length})`}
-                  </Label>
-                  <div className="space-y-2">
-                    {allBarrels.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No active barrels available
-                      </p>
-                    ) : (
-                      [...allBarrels].sort((a, b) => {
-                        const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
-                        if (tumblerCompare !== 0) return tumblerCompare;
-                        return a.barrelNumber - b.barrelNumber;
-                      }).map(barrel => {
-                        const isSelected = selectedBarrelIds.includes(barrel.barrelId);
-                        return (
-                          <button
-                            key={barrel.barrelId}
-                            type="button"
-                            onClick={() => toggleBarrel(barrel.barrelId)}
-                            className={cn(
-                              "w-full flex items-center gap-3 p-4 rounded-lg border text-left active:bg-accent transition-colors",
-                              isSelected && "bg-primary/10 border-primary"
+                <Collapsible open={barrelsOpen} onOpenChange={setBarrelsOpen}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-4 rounded-t-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Cylinder className="h-5 w-5" />
+                          <span className="font-medium">
+                            Select Barrel(s)
+                            {selectedBarrelIds.length > 0 && (
+                              <span className="text-muted-foreground font-normal ml-2">
+                                ({selectedBarrelIds.length} selected)
+                              </span>
                             )}
-                          >
-                            <div className={cn(
-                              "w-7 h-7 rounded-md border-2 flex items-center justify-center flex-shrink-0",
-                              isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
-                            )}>
-                              {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium">
-                                {barrel.tumblerName}
-                                {barrel.capacityLbs && (
-                                  <span className="text-muted-foreground font-normal">
-                                    {' '}- {barrel.capacityLbs} lbs
-                                  </span>
-                                )}
-                                {' '}#{barrel.barrelNumber}
-                              </div>
-                              {barrel.nickname && (
-                                <div className="text-sm text-muted-foreground">
-                                  {barrel.nickname}
-                                </div>
-                              )}
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
+                          </span>
+                        </div>
+                        {barrelsOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 pb-4 px-4">
+                        <div className="space-y-2">
+                          {allBarrels.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              No active barrels available
+                            </p>
+                          ) : (
+                            [...allBarrels].sort((a, b) => {
+                              const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
+                              if (tumblerCompare !== 0) return tumblerCompare;
+                              return a.barrelNumber - b.barrelNumber;
+                            }).map(barrel => {
+                              const isSelected = selectedBarrelIds.includes(barrel.barrelId);
+                              return (
+                                <button
+                                  key={barrel.barrelId}
+                                  type="button"
+                                  onClick={() => toggleBarrel(barrel.barrelId)}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 p-4 rounded-lg border text-left active:bg-accent transition-colors",
+                                    isSelected && "bg-primary/10 border-primary"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-7 h-7 rounded-md border-2 flex items-center justify-center flex-shrink-0",
+                                    isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
+                                  )}>
+                                    {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium">
+                                      {barrel.tumblerName}
+                                      {barrel.capacityLbs && (
+                                        <span className="text-muted-foreground font-normal">
+                                          {' '}- {barrel.capacityLbs} lbs
+                                        </span>
+                                      )}
+                                      {' '}#{barrel.barrelNumber}
+                                    </div>
+                                    {barrel.nickname && (
+                                      <div className="text-sm text-muted-foreground">
+                                        {barrel.nickname}
+                                      </div>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
                 {/* Start Date/Time */}
                 <div className="space-y-3">
