@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Camera } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Camera, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { cycleApi, photosApi } from '@/lib/api';
 import { formatStageDisplayName } from '@/lib/cycle-utils';
@@ -17,16 +19,31 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface CyclePhotosProps {
   cycleId: string;
   stages: StageRunSummaryDto[];
 }
 
+type PhotoType = 'before' | 'during' | 'after' | 'inventory';
+
 export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
   const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingPhoto, setEditingPhoto] = useState<CyclePhotoDto | null>(null);
+  const [editCaption, setEditCaption] = useState('');
+  const [editPhotoType, setEditPhotoType] = useState<PhotoType>('during');
+  const [isSaving, setIsSaving] = useState(false);
   const lightbox = useLightbox();
 
   // Fetch all photos for the cycle in a single request
@@ -82,6 +99,34 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
 
   const handleUploadComplete = () => {
     refetchPhotos();
+  };
+
+  const openEditDialog = (photo: CyclePhotoDto) => {
+    setEditingPhoto(photo);
+    setEditCaption(photo.caption || '');
+    setEditPhotoType((photo.photoType?.toLowerCase() as PhotoType) || 'during');
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPhoto) return;
+
+    setIsSaving(true);
+    try {
+      await photosApi.updatePhoto(editingPhoto.photoId, {
+        caption: editCaption || null,
+        photoType: editPhotoType,
+      });
+      toast.success('Photo updated');
+      refetchPhotos();
+      setEditDialogOpen(false);
+      setEditingPhoto(null);
+    } catch (err) {
+      console.error('Update error:', err);
+      toast.error('Failed to update photo');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const canUpload = stages.length > 0;
@@ -205,17 +250,27 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
                               }}
                             />
                           )}
-                          <button
-                            onClick={() => removePhoto(photo.photoId)}
-                            disabled={deletingPhotoId === photo.photoId}
-                            className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                          >
-                            {deletingPhotoId === photo.photoId ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <X className="h-4 w-4" />
-                            )}
-                          </button>
+                          <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => openEditDialog(photo)}
+                              className="p-1 bg-black/50 rounded-full text-white hover:bg-black/70"
+                              title="Edit photo"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => removePhoto(photo.photoId)}
+                              disabled={deletingPhotoId === photo.photoId}
+                              className="p-1 bg-black/50 rounded-full text-white hover:bg-black/70 disabled:opacity-50"
+                              title="Delete photo"
+                            >
+                              {deletingPhotoId === photo.photoId ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <X className="h-4 w-4" />
+                              )}
+                            </button>
+                          </div>
                           <div className="absolute bottom-2 left-2 flex gap-1">
                             <span className="px-2 py-1 bg-black/50 rounded text-white text-xs capitalize">
                               {photo.photoType}
@@ -282,6 +337,77 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
         isOpen={lightbox.isOpen}
         onClose={lightbox.close}
       />
+
+      {/* Edit Photo Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Photo</DialogTitle>
+            <DialogDescription>
+              Update the photo type or caption.
+            </DialogDescription>
+          </DialogHeader>
+
+          {editingPhoto && (
+            <>
+              {/* Photo preview */}
+              <div className="relative aspect-video overflow-hidden rounded-lg bg-muted">
+                <img
+                  src={editingPhoto.thumbnailUrl || editingPhoto.url}
+                  alt={editingPhoto.caption || 'Photo'}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Photo Type</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(['before', 'during', 'after', 'inventory'] as const).map((type) => (
+                      <Button
+                        key={type}
+                        type="button"
+                        variant={editPhotoType === type ? 'default' : 'outline'}
+                        size="sm"
+                        className="flex-1 min-w-[70px] capitalize"
+                        onClick={() => setEditPhotoType(type)}
+                      >
+                        {type}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="edit-caption">Caption</Label>
+                  <Input
+                    id="edit-caption"
+                    placeholder="Add a caption (optional)"
+                    value={editCaption}
+                    onChange={(e) => setEditCaption(e.target.value)}
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditDialogOpen(false)}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveEdit} disabled={isSaving}>
+                  {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

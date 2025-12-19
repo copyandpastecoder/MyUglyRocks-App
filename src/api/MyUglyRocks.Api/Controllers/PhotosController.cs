@@ -702,6 +702,81 @@ public class PhotosController : ControllerBase
     }
 
     /// <summary>
+    /// Update a stage photo's caption and/or photo type
+    /// </summary>
+    [HttpPut("{photoId}")]
+    [ProducesResponseType(typeof(PhotoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateStagePhoto(
+        Guid photoId,
+        [FromBody] UpdateStagePhotoRequest request,
+        CancellationToken cancellationToken)
+    {
+        var userId = GetUserId();
+        if (userId == null) return Unauthorized();
+
+        var photo = await Photos
+            .Include(p => p.StageRun)
+                .ThenInclude(s => s.Cycle)
+            .FirstOrDefaultAsync(p => p.PhotoId == photoId && !p.IsDeleted, cancellationToken);
+
+        if (photo == null)
+        {
+            return NotFound();
+        }
+
+        if (photo.StageRun.Cycle.UserId != userId)
+        {
+            return Forbid();
+        }
+
+        // Update caption if provided
+        if (request.Caption != null)
+        {
+            photo.Caption = request.Caption;
+        }
+
+        // Update photo type if provided
+        if (!string.IsNullOrEmpty(request.PhotoType))
+        {
+            if (Enum.TryParse<PhotoType>(request.PhotoType, true, out var parsedPhotoType))
+            {
+                photo.PhotoType = parsedPhotoType;
+            }
+            else
+            {
+                return BadRequest(new { error = "Invalid photo type. Must be 'before', 'during', 'after', or 'inventory'." });
+            }
+        }
+
+        photo.DateUpdated = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        var dto = new PhotoDto(
+            photo.PhotoId,
+            photo.Url,
+            photo.FileName,
+            photo.PhotoType.ToString(),
+            photo.Caption,
+            photo.SortOrder,
+            photo.DateCreated,
+            photo.ThumbnailUrl,
+            photo.MediumUrl,
+            photo.LargeUrl,
+            photo.BlurHash,
+            photo.Width,
+            photo.Height,
+            photo.ProcessingStatus.ToString(),
+            photo.ProcessingError
+        );
+
+        _logger.LogInformation("Stage photo {PhotoId} updated", photoId);
+
+        return Ok(dto);
+    }
+
+    /// <summary>
     /// Reorder photos for a stage run
     /// </summary>
     [HttpPut("stage/{stageRunId}/reorder")]

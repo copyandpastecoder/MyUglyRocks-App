@@ -400,14 +400,19 @@ export function SpecimenMultiSelect({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] sm:max-w-[32rem] p-0"
+          className="w-[var(--radix-popover-trigger-width)] sm:max-w-[32rem] p-0 max-h-[80vh] sm:max-h-[70vh] overflow-auto overscroll-contain"
           align="start"
           sideOffset={6}
           collisionPadding={10}
+          onWheelCapture={stopWheelPropagation}
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+          }}
         >
           <Command
             shouldFilter={false}
-            className="overflow-hidden"
+            className="max-h-[80vh] sm:max-h-[70vh] overflow-hidden"
           >
             <div className="flex items-center border-b px-3">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
