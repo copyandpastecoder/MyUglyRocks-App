@@ -608,13 +608,17 @@ export function StageFormMobile({
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="font-medium">
-                                {barrel.tumblerName} - Barrel #{barrel.barrelNumber}
+                                {barrel.tumblerName}
+                                {barrel.capacityLbs && (
+                                  <span className="text-muted-foreground font-normal">
+                                    {' '}- {barrel.capacityLbs} lbs
+                                  </span>
+                                )}
+                                {' '}#{barrel.barrelNumber}
                               </div>
-                              {(barrel.nickname || barrel.capacityLbs) && (
+                              {barrel.nickname && (
                                 <div className="text-sm text-muted-foreground">
-                                  {barrel.nickname && barrel.nickname}
-                                  {barrel.nickname && barrel.capacityLbs && ' • '}
-                                  {barrel.capacityLbs && `${barrel.capacityLbs} lbs`}
+                                  {barrel.nickname}
                                 </div>
                               )}
                             </div>
