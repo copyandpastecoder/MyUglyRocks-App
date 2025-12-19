@@ -4,7 +4,8 @@ public enum PhotoType
 {
     Before = 0,
     During = 1,
-    After = 2
+    After = 2,
+    Inventory = 3
 }
 
 public enum PhotoProcessingStatus
