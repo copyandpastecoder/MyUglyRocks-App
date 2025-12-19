@@ -422,7 +422,7 @@ export function SpecimenSelectDesktop({
               )}
             </div>
 
-            <CommandList>
+            <CommandList className="max-h-[300px] overflow-y-auto">
               {inventoryMode ? (
                 /* Inventory Mode View */
                 <>
@@ -454,7 +454,6 @@ export function SpecimenSelectDesktop({
                               <span>{group.inventoryName}</span>
                             </div>
                           }
-                          className="max-h-[180px] overflow-auto"
                         >
                           {group.specimens.map((invSpecimen) => {
                             const selected = isInventorySpecimenSelected(invSpecimen);
@@ -592,7 +591,7 @@ export function SpecimenSelectDesktop({
                     <>
                       {/* Your Specimens Section */}
                       {groupedSpecimens.userSpecimens.length > 0 && (
-                        <CommandGroup heading="Your Specimens" className="max-h-[120px] overflow-auto">
+                        <CommandGroup heading="Your Specimens">
                           {groupedSpecimens.userSpecimens.map(renderSpecimenItem)}
                         </CommandGroup>
                       )}
@@ -602,7 +601,7 @@ export function SpecimenSelectDesktop({
 
                       {/* Reference Specimens Section */}
                       {groupedSpecimens.systemSpecimens.length > 0 && (
-                        <CommandGroup heading="Reference Specimens" className="max-h-[200px] overflow-auto">
+                        <CommandGroup heading="Reference Specimens">
                           {groupedSpecimens.systemSpecimens.map(renderSpecimenItem)}
                         </CommandGroup>
                       )}
