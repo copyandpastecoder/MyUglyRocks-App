@@ -38,7 +38,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { Loader2, AlertTriangle, Download, ChevronDown, FileArchive, LogOut } from 'lucide-react';
+import { Loader2, AlertTriangle, Download, ChevronDown, FileArchive } from 'lucide-react';
 
 export default function AccountSettingsPage() {
   const router = useRouter();
@@ -230,36 +230,8 @@ export default function AccountSettingsPage() {
     });
   };
 
-  const handleSignOut = async () => {
-    try {
-      await authApi.logout();
-      logout();
-      router.push('/');
-    } catch {
-      toast.error('Failed to sign out');
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* Sign Out - visible on mobile where header is hidden */}
-      <Card className="md:hidden">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Sign Out</Label>
-              <p className="text-sm text-muted-foreground">
-                Sign out of your account
-              </p>
-            </div>
-            <Button variant="outline" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Security */}
       <Card>
         <CardHeader>

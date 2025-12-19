@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/auth-provider';
 import { AppShell } from '@/components/layout/app-shell';
 import { CommandPalette } from '@/components/ui/command-palette';
-import { MobileBottomNav, MobileNavSpacer } from '@/components/ui/mobile-nav';
 
 export default function ProtectedLayout({
   children,
@@ -36,11 +35,7 @@ export default function ProtectedLayout({
   return (
     <>
       <CommandPalette />
-      <AppShell>
-        {children}
-        <MobileNavSpacer />
-      </AppShell>
-      <MobileBottomNav />
+      <AppShell>{children}</AppShell>
     </>
   );
 }
