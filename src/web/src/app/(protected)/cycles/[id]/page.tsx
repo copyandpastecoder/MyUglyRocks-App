@@ -74,7 +74,7 @@ import { PhotoUploadModal } from '@/components/photo-upload-modal';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
-import { StageFormModal, type BarrelInfo } from '@/components/stage/stage-form-modal';
+import { StageFormModal, type BarrelInfo } from '@/components/stage-form';
 import { CycleFormDialog } from '@/components/cycle-form-dialog';
 import {
   CleaningRunSection,
