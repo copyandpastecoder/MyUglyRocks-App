@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown, Check, Plus, Store, Globe, Mountain, Users, Sparkles, MoreHorizontal, X } from 'lucide-react';
+import { ChevronsUpDown, Check, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -20,26 +20,10 @@ import {
 import { useInventorySources } from '@/hooks/use-inventory-sources';
 import type { InventorySourceListDto, InventorySourceType } from '@/types/inventory-source';
 import { sourceTypeDisplayNames } from '@/types/inventory-source';
+import type { InventorySourcePickerProps } from './types';
+import { SOURCE_TYPE_ICONS } from './types';
 
-const SOURCE_TYPE_ICONS: Record<InventorySourceType, React.ComponentType<{ className?: string }>> = {
-  Store: Store,
-  Online: Globe,
-  Found: Mountain,
-  Contact: Users,
-  GemShow: Sparkles,
-  Other: MoreHorizontal,
-};
-
-interface InventorySourcePickerProps {
-  value?: string | null;
-  onChange: (sourceId: string | null) => void;
-  onAddNew?: () => void;
-  placeholder?: string;
-  disabled?: boolean;
-  allowClear?: boolean;
-}
-
-export function InventorySourcePicker({
+export function InventorySourcePickerDesktop({
   value,
   onChange,
   onAddNew,
@@ -61,7 +45,6 @@ export function InventorySourcePicker({
     return sources.find((s) => s.inventorySourceId === value) || null;
   }, [sources, value]);
 
-  // Group sources by type
   const groupedSources = React.useMemo(() => {
     const groups: Record<InventorySourceType, InventorySourceListDto[]> = {
       Store: [],
@@ -169,7 +152,6 @@ export function InventorySourcePicker({
             onValueChange={setSearchQuery}
           />
           <CommandList>
-            {/* Add New Source Button */}
             {onAddNew && (
               <>
                 <CommandGroup>
@@ -214,7 +196,6 @@ export function InventorySourcePicker({
               </CommandEmpty>
             ) : (
               <>
-                {/* Render groups with sources */}
                 {(Object.keys(groupedSources) as InventorySourceType[]).map((type) => {
                   const typeSources = groupedSources[type];
                   if (typeSources.length === 0) return null;
