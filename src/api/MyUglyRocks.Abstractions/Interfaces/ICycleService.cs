@@ -17,6 +17,7 @@ public interface ICycleService
     Task<StageRunDto?> UpdateStageRunAsync(Guid stageRunId, Guid userId, UpdateStageRunRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteStageRunAsync(Guid stageRunId, Guid userId, CancellationToken cancellationToken = default);
     Task<StageRunDto?> CompleteStageRunAsync(Guid stageRunId, Guid userId, CompleteStageRunRequest request, CancellationToken cancellationToken = default);
+    Task<StageRunDto?> StartStageRunAsync(Guid stageRunId, Guid userId, CancellationToken cancellationToken = default);
 
     // Cleaning Run operations
     Task<CleaningRunDto?> AddCleaningRunAsync(Guid stageRunId, Guid userId, CreateCleaningRunRequest request, CancellationToken cancellationToken = default);

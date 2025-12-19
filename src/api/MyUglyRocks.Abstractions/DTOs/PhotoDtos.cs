@@ -35,3 +35,8 @@ public record UpdateInventoryPhotoRequest(
     Guid? InventorySpecimenId,
     string? Caption
 );
+
+public record UpdateStagePhotoRequest(
+    string? Caption,
+    string? PhotoType // "before", "during", "after", "inventory"
+);

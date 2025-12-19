@@ -94,6 +94,7 @@ export function SpecimenMultiSelect({
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [inventoryMode, setInventoryMode] = React.useState(false);
+  const stopWheelPropagation = (e: React.WheelEvent) => e.stopPropagation();
 
   // Column visibility state - load from localStorage
   const [visibleColumns, setVisibleColumns] = React.useState<Record<ColumnKey, boolean>>(() => {
@@ -398,8 +399,21 @@ export function SpecimenMultiSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-          <Command shouldFilter={false}>
+        <PopoverContent
+          className="w-[var(--radix-popover-trigger-width)] sm:max-w-[32rem] p-0 max-h-[80vh] sm:max-h-[70vh] overflow-auto overscroll-contain"
+          align="start"
+          sideOffset={6}
+          collisionPadding={10}
+          onWheelCapture={stopWheelPropagation}
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+          }}
+        >
+          <Command
+            shouldFilter={false}
+            className="max-h-[80vh] sm:max-h-[70vh] overflow-hidden"
+          >
             <div className="flex items-center border-b px-3">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
               <input
@@ -458,7 +472,11 @@ export function SpecimenMultiSelect({
               )}
             </div>
 
-            <CommandList>
+            <CommandList
+              className="max-h-[65vh] sm:max-h-[60vh] overflow-y-auto overscroll-contain"
+              onWheelCapture={stopWheelPropagation}
+              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
+            >
               {inventoryMode ? (
                 /* Inventory Mode View */
                 <>

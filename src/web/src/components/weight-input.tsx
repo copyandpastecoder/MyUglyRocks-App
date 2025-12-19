@@ -85,6 +85,12 @@ export function WeightInput({
 }: WeightInputProps) {
   const { data: settings } = useSettings();
 
+  // Track whether user has made an explicit choice (to avoid overriding with settings)
+  const [hasUserChoice, setHasUserChoice] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem(METRIC_STATE_KEY) !== null;
+  });
+
   // Local state for unit system - defaults to user's preference
   // Use lazy initialization to read from sessionStorage on mount
   const [isMetric, setIsMetric] = useState(() => {
@@ -106,32 +112,18 @@ export function WeightInput({
     return savedExpanded === 'true';
   });
 
-  // Compute effective metric setting: sessionStorage > initialDisplayUnit > settings > false
-  // This avoids needing to sync settings to state via effect
-  const effectiveIsMetric = useMemo(() => {
-    // Check sessionStorage first (user's explicit choice persists)
-    if (typeof window !== 'undefined') {
-      const savedMetric = sessionStorage.getItem(METRIC_STATE_KEY);
-      if (savedMetric !== null) {
-        return savedMetric === 'true';
-      }
+  // Sync with user settings when they load (only if user hasn't made an explicit choice)
+  useEffect(() => {
+    if (!hasUserChoice && settings?.measurementSystem) {
+      const settingIsMetric = settings.measurementSystem === 'Metric';
+      setIsMetric(settingIsMetric);
     }
-    // Then check initialDisplayUnit prop
-    if (initialDisplayUnit) {
-      return initialDisplayUnit === 'g' || initialDisplayUnit === 'kg';
-    }
-    // Then check user settings
-    if (settings?.measurementSystem) {
-      return settings.measurementSystem === 'Metric';
-    }
-    // Fallback to local state (which may have been set by toggle)
-    return isMetric;
-  }, [initialDisplayUnit, settings?.measurementSystem, isMetric]);
+  }, [hasUserChoice, settings?.measurementSystem]);
 
   // Derive display values directly from props - no local state needed
   const derivedDisplay = useMemo(
-    () => gramsToDisplay(valueGrams, effectiveIsMetric, showLargeUnit),
-    [valueGrams, effectiveIsMetric, showLargeUnit]
+    () => gramsToDisplay(valueGrams, isMetric, showLargeUnit),
+    [valueGrams, isMetric, showLargeUnit]
   );
 
   // Calculate validation state
@@ -195,14 +187,14 @@ export function WeightInput({
   };
 
   const handleLargeUnitChange = useCallback((value: string) => {
-    const newGrams = calculateGrams(value, derivedDisplay.small, effectiveIsMetric, showLargeUnit);
-    onValueChange(newGrams, getDisplayUnit(effectiveIsMetric));
-  }, [derivedDisplay.small, effectiveIsMetric, showLargeUnit, onValueChange, calculateGrams]);
+    const newGrams = calculateGrams(value, derivedDisplay.small, isMetric, showLargeUnit);
+    onValueChange(newGrams, getDisplayUnit(isMetric));
+  }, [derivedDisplay.small, isMetric, showLargeUnit, onValueChange, calculateGrams]);
 
   const handleSmallUnitChange = useCallback((value: string) => {
-    const newGrams = calculateGrams(derivedDisplay.large, value, effectiveIsMetric, showLargeUnit);
-    onValueChange(newGrams, getDisplayUnit(effectiveIsMetric));
-  }, [derivedDisplay.large, effectiveIsMetric, showLargeUnit, onValueChange, calculateGrams]);
+    const newGrams = calculateGrams(derivedDisplay.large, value, isMetric, showLargeUnit);
+    onValueChange(newGrams, getDisplayUnit(isMetric));
+  }, [derivedDisplay.large, isMetric, showLargeUnit, onValueChange, calculateGrams]);
 
   // Toggle expanded state and save to session storage
   const handleToggleExpanded = useCallback(() => {
@@ -213,19 +205,20 @@ export function WeightInput({
 
   // Toggle metric/imperial and save to session storage
   const handleToggleMetric = useCallback(() => {
-    const newMetric = !effectiveIsMetric;
+    const newMetric = !isMetric;
     setIsMetric(newMetric);
+    setHasUserChoice(true);
     sessionStorage.setItem(METRIC_STATE_KEY, String(newMetric));
     // Notify parent of display unit change
     if (valueGrams !== null) {
       onValueChange(valueGrams, getDisplayUnit(newMetric));
     }
-  }, [effectiveIsMetric, valueGrams, onValueChange]);
+  }, [isMetric, valueGrams, onValueChange]);
 
   // Get total display text
   const getTotalDisplay = (): string => {
     if (!valueGrams || !showLargeUnit) return '';
-    if (effectiveIsMetric) {
+    if (isMetric) {
       return `(${valueGrams} g total)`;
     } else {
       const totalOz = Math.round((valueGrams / OZ_TO_GRAMS) * 10) / 10;
@@ -241,8 +234,8 @@ export function WeightInput({
 
   const toggleButtonClassName = 'h-8 px-2 text-xs font-medium rounded border transition-colors bg-primary text-primary-foreground hover:bg-primary/90';
 
-  const largeUnitLabel = effectiveIsMetric ? 'kg' : 'lbs';
-  const smallUnitLabel = effectiveIsMetric ? 'g' : 'oz';
+  const largeUnitLabel = isMetric ? 'kg' : 'lbs';
+  const smallUnitLabel = isMetric ? 'g' : 'oz';
 
   return (
     <div className="space-y-2">
@@ -273,7 +266,7 @@ export function WeightInput({
         <Input
           type="number"
           min="0"
-          step={effectiveIsMetric ? '1' : '0.1'}
+          step={isMetric ? '1' : '0.1'}
           placeholder={placeholder || '0'}
           value={derivedDisplay.small}
           onChange={(e) => handleSmallUnitChange(e.target.value)}
@@ -303,10 +296,10 @@ export function WeightInput({
             type="button"
             onClick={handleToggleMetric}
             className={cn(toggleButtonClassName, 'flex items-center gap-1')}
-            title={`Switch to ${effectiveIsMetric ? 'Imperial (lbs/oz)' : 'Metric (kg/g)'}`}
+            title={`Switch to ${isMetric ? 'Imperial (lbs/oz)' : 'Metric (kg/g)'}`}
           >
             <Scale className="h-3 w-3" />
-            <span>{effectiveIsMetric ? 'g' : 'lb'}</span>
+            <span>{isMetric ? 'g' : 'lb'}</span>
           </button>
         </div>
 

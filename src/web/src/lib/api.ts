@@ -293,6 +293,11 @@ export const cycleApi = {
     return response.data;
   },
 
+  startStageRun: async (id: string): Promise<StageRunDto> => {
+    const response = await api.post<StageRunDto>(`/cycles/stages/${id}/start`);
+    return response.data;
+  },
+
   deleteStageRun: async (id: string): Promise<void> => {
     await api.delete(`/cycles/stages/${id}`);
   },
@@ -746,7 +751,7 @@ export const photosApi = {
   uploadStagePhoto: async (
     stageRunId: string,
     file: File,
-    photoType: 'before' | 'during' | 'after' = 'during',
+    photoType: 'before' | 'during' | 'after' | 'inventory' = 'during',
     caption?: string
   ): Promise<UploadPhotoResponse> => {
     const formData = new FormData();
@@ -765,6 +770,14 @@ export const photosApi = {
 
   deletePhoto: async (photoId: string): Promise<void> => {
     await api.delete(`/photos/${photoId}`);
+  },
+
+  updatePhoto: async (
+    photoId: string,
+    data: { caption?: string | null; photoType?: string }
+  ): Promise<PhotoDto> => {
+    const response = await api.put<PhotoDto>(`/photos/${photoId}`, data);
+    return response.data;
   },
 
   reorderPhotos: async (stageRunId: string, photoIds: string[]): Promise<void> => {

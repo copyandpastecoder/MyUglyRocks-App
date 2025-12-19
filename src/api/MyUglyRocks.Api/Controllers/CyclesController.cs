@@ -187,6 +187,29 @@ public class CyclesController : ControllerBase
     }
 
     /// <summary>
+    /// Start a planned stage run (change status from Planned to Active)
+    /// </summary>
+    [HttpPost("stages/{stageRunId:guid}/start")]
+    [ProducesResponseType(typeof(StageRunDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> StartStageRun(Guid stageRunId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var stageRun = await _cycleService.StartStageRunAsync(stageRunId, GetUserId(), cancellationToken);
+            if (stageRun == null)
+                return NotFound();
+
+            return Ok(stageRun);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Add a cleaning run to a stage
     /// </summary>
     [HttpPost("stages/{stageId:guid}/cleaning")]
