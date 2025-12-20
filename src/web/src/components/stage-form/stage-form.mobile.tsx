@@ -37,10 +37,8 @@ import {
   ChevronDown,
   ChevronRight,
   Copy,
-  X,
   Check,
   Droplets,
-  Scale,
   Bell,
   FileText,
   Sparkles,
@@ -73,7 +71,6 @@ export function StageFormMobile({
   // Collapsible sections
   const [barrelsOpen, setBarrelsOpen] = useState(!isEditMode);
   const [durationOpen, setDurationOpen] = useState(true);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   // Form state
   const [isLoading, setIsLoading] = useState(false);
@@ -767,74 +764,60 @@ export function StageFormMobile({
                   />
                 </div>
 
-                {/* Advanced Options */}
-                <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between p-4 rounded-lg border bg-muted/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Scale className="h-5 w-5" />
-                        <span className="font-medium">Advanced Options</span>
-                      </div>
-                      {advancedOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4 space-y-4">
-                    <WeightInput
-                      label="Load Weight Before"
-                      valueGrams={loadWeightBeforeGrams}
-                      onValueChange={setLoadWeightBeforeGrams}
-                      barrelCapacityLbs={selectedBarrelCapacityLbs > 0 ? selectedBarrelCapacityLbs : undefined}
-                      onValidationChange={(isValid) => setWeightBeforeValidationError(!isValid)}
+                {/* Load Weight Before */}
+                <WeightInput
+                  label="Load Weight Before"
+                  valueGrams={loadWeightBeforeGrams}
+                  onValueChange={setLoadWeightBeforeGrams}
+                  barrelCapacityLbs={selectedBarrelCapacityLbs > 0 ? selectedBarrelCapacityLbs : undefined}
+                  onValidationChange={(isValid) => setWeightBeforeValidationError(!isValid)}
+                />
+
+                {/* Water Amount */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Droplets className="h-4 w-4" />
+                    Water Amount
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="e.g., 250"
+                      value={waterAmount}
+                      onChange={(e) => setWaterAmount(e.target.value)}
+                      className="flex-1 h-12"
                     />
+                    <Select value={waterUnit} onValueChange={setWaterUnit}>
+                      <SelectTrigger className="w-24 h-12">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {WATER_UNITS.map(unit => (
+                          <SelectItem key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <Droplets className="h-4 w-4" />
-                        Water Amount
-                      </Label>
-                      <div className="flex gap-2">
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.1"
-                          placeholder="e.g., 250"
-                          value={waterAmount}
-                          onChange={(e) => setWaterAmount(e.target.value)}
-                          className="flex-1 h-12"
-                        />
-                        <Select value={waterUnit} onValueChange={setWaterUnit}>
-                          <SelectTrigger className="w-24 h-12">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {WATER_UNITS.map(unit => (
-                              <SelectItem key={unit.value} value={unit.value}>
-                                {unit.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        <FileText className="h-4 w-4" />
-                        Notes
-                      </Label>
-                      <Textarea
-                        placeholder="Any notes about this stage..."
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        rows={3}
-                        className="text-base"
-                      />
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                {/* Notes */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Notes
+                  </Label>
+                  <Textarea
+                    placeholder="Any notes about this stage..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={3}
+                    className="text-base"
+                  />
+                </div>
 
                 {/* Cleaning Run */}
                 <CleaningRunSection
