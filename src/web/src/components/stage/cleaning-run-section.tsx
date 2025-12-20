@@ -87,19 +87,16 @@ export function CleaningRunSection({
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
             <span>Cleaning Run</span>
-            {durationSummary ? (
+            {durationSummary && (
               <span className="text-muted-foreground text-sm">{durationSummary}</span>
-            ) : (
-              <span className="text-muted-foreground text-sm">(optional)</span>
             )}
           </div>
           <ChevronDown className="h-4 w-4" />
         </Button>
       </CollapsibleTrigger>
         <CollapsibleContent className="mt-3 space-y-4">
-          {/* Cleaning Duration */}
+          {/* Duration */}
           <div className="space-y-2">
-            <Label>Cleaning Duration</Label>
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs text-muted-foreground">Days</Label>

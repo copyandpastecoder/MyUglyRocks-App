@@ -24,28 +24,10 @@ import { toast } from 'sonner';
 import { photosApi } from '@/lib/api';
 import type { StageRunSummaryDto } from '@/types/cycle';
 import { cn } from '@/lib/utils';
+import type { PhotoUploadModalProps, PhotoType } from './types';
+import { ALLOWED_IMAGE_TYPES } from './types';
 
-interface PhotoUploadModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  stages: StageRunSummaryDto[];
-  onUploadComplete: () => void;
-  defaultStageId?: string;
-}
-
-type PhotoType = 'before' | 'during' | 'after' | 'inventory';
-
-// Safe image MIME types - excludes SVG which can contain scripts
-const ALLOWED_IMAGE_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-];
-
-export function PhotoUploadModal({
+export function PhotoUploadModalDesktop({
   open,
   onOpenChange,
   stages,
@@ -61,7 +43,6 @@ export function PhotoUploadModal({
   const [errors, setErrors] = useState<{ stage?: string; photoType?: string }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync selectedStageId with defaultStageId when modal opens
   useEffect(() => {
     if (open && defaultStageId) {
       setSelectedStageId(defaultStageId);
@@ -81,7 +62,6 @@ export function PhotoUploadModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate against allowlist of safe image types (excludes SVG to prevent XSS)
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       toast.error('Please select a valid image file (JPG, PNG, GIF, WebP, HEIC, HEIF)');
       return;
@@ -164,7 +144,6 @@ export function PhotoUploadModal({
       }
     } catch (err: unknown) {
       console.error('Upload error:', err);
-      // Try to extract error message from axios error response
       let errorMessage = 'Failed to upload photo';
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosError = err as { response?: { data?: { error?: string } } };
