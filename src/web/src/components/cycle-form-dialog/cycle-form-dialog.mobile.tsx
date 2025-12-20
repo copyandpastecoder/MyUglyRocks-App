@@ -308,7 +308,11 @@ export function CycleFormDialogMobile({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[95vh] flex flex-col p-0">
+        <SheetContent
+          side="bottom"
+          className="h-[95vh] flex flex-col p-0"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <SheetHeader className="p-4 pb-2 border-b">
             <SheetTitle>{isEditMode ? 'Edit Cycle' : 'Start New Cycle'}</SheetTitle>
             <SheetDescription>
