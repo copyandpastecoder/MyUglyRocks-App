@@ -17,7 +17,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, Shield, Menu, Home, RotateCcw, Cylinder, Package, X } from 'lucide-react';
+import { LogOut, Settings, Shield, Menu, Home, RotateCcw, Cylinder, Package } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -117,17 +117,7 @@ export function Header() {
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
         <SheetContent side="left" className="w-[280px] p-0">
           <SheetHeader className="p-4 border-b">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="text-lg font-semibold">Menu</SheetTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileNavOpen(false)}
-                className="h-10 w-10"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
+            <SheetTitle className="text-lg font-semibold">Menu</SheetTitle>
           </SheetHeader>
           <nav className="flex flex-col p-4 space-y-1">
             {navItems.map((item) => {
