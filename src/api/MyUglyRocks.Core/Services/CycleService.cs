@@ -879,7 +879,6 @@ public class CycleService : ICycleService
                     ? Enum.Parse<CleaningPurpose>(request.CleaningRun.Purpose, true)
                     : null,
                 ReminderEnabled = request.CleaningRun.ReminderEnabled,
-                Notes = request.CleaningRun.Notes,
                 Status = CleaningRunStatus.Active,
                 DateCreated = DateTime.UtcNow,
                 DateUpdated = DateTime.UtcNow
@@ -1043,7 +1042,6 @@ public class CycleService : ICycleService
                     ? Enum.Parse<CleaningPurpose>(request.CleaningRun.Purpose, true)
                     : null;
                 stageRun.CleaningRun.ReminderEnabled = request.CleaningRun.ReminderEnabled;
-                stageRun.CleaningRun.Notes = request.CleaningRun.Notes;
                 stageRun.CleaningRun.DateUpdated = DateTime.UtcNow;
 
                 // Update cleaning materials
@@ -1079,7 +1077,6 @@ public class CycleService : ICycleService
                         ? Enum.Parse<CleaningPurpose>(request.CleaningRun.Purpose, true)
                         : null,
                     ReminderEnabled = request.CleaningRun.ReminderEnabled,
-                    Notes = request.CleaningRun.Notes,
                     Status = CleaningRunStatus.Active,
                     DateCreated = DateTime.UtcNow,
                     DateUpdated = DateTime.UtcNow

@@ -24,7 +24,6 @@ public class CleaningRun : BaseEntity
     public bool ReminderEnabled { get; set; }
     public DateTime? DateReminderSent { get; set; }
     public string? ResultNotes { get; set; }
-    public string? Notes { get; set; }
 
     // Navigation properties
     public virtual StageRun StageRun { get; set; } = null!;
