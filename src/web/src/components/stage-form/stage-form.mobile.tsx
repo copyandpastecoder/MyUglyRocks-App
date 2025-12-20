@@ -183,7 +183,6 @@ export function StageFormMobile({
           ? (fullStage.waterAmountMl / 29.5735).toFixed(1)
           : fullStage.waterAmountMl.toString();
         setWaterAmount(displayValue);
-        setAdvancedOpen(true);
       }
 
       if (fullStage.cleaningRun) {
