@@ -267,9 +267,6 @@ public class CleaningRunConfiguration : IEntityTypeConfiguration<CleaningRun>
         builder.Property(cr => cr.ResultNotes)
             .HasColumnName("result_notes");
 
-        builder.Property(cr => cr.Notes)
-            .HasColumnName("notes");
-
         builder.Property(cr => cr.DateCreated)
             .HasColumnName("date_created")
             .HasDefaultValueSql("now()");
