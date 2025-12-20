@@ -22,28 +22,11 @@ import {
 import { ImagePlus, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useUploadInventoryPhoto } from '@/hooks/use-inventory';
-import type { InventorySpecimenDto } from '@/types/inventory';
 import { cn } from '@/lib/utils';
+import type { InventoryPhotoUploadModalProps } from './types';
+import { ALLOWED_IMAGE_TYPES } from './types';
 
-interface InventoryPhotoUploadModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  inventoryId: string;
-  specimens: InventorySpecimenDto[];
-  onUploadComplete: () => void;
-}
-
-// Safe image MIME types - excludes SVG which can contain scripts
-const ALLOWED_IMAGE_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/gif',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-];
-
-export function InventoryPhotoUploadModal({
+export function InventoryPhotoUploadModalDesktop({
   open,
   onOpenChange,
   inventoryId,
@@ -80,7 +63,6 @@ export function InventoryPhotoUploadModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate against allowlist of safe image types (excludes SVG to prevent XSS)
     if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
       toast.error('Please select a valid image file (JPG, PNG, GIF, WebP, HEIC, HEIF)');
       return;
@@ -124,7 +106,6 @@ export function InventoryPhotoUploadModal({
       return;
     }
 
-    // Specimen selection is optional
     setErrors({});
 
     try {

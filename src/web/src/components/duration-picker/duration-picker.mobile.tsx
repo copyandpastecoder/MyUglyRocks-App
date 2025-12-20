@@ -4,23 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { formatDateTimeLocal, calculateDurationFromDates } from '@/lib/date-utils';
+import type { DurationPickerProps } from './types';
+import { DURATION_PRESETS } from './types';
 
-const DURATION_PRESETS = [1, 2, 3, 5, 7, 10];
-
-interface DurationPickerProps {
-  durationDays: string;
-  durationHours: string;
-  durationMinutes?: string;
-  onDaysChange: (value: string) => void;
-  onHoursChange: (value: string) => void;
-  onMinutesChange?: (value: string) => void;
-  startDateTime?: string;
-  label?: string;
-  helperText?: string;
-  hideLabel?: boolean;
-}
-
-export function DurationPicker({
+export function DurationPickerMobile({
   durationDays,
   durationHours,
   durationMinutes = '0',
@@ -44,14 +31,12 @@ export function DurationPicker({
     return new Date(start.getTime() + ((days * 24 + hours) * 60 + minutes) * 60 * 1000);
   };
 
-  // When user picks an end date, calculate and update duration
   const handleEndDateChange = (endDateStr: string) => {
     if (!startDateTime || !endDateStr) return;
 
     const start = new Date(startDateTime);
     const end = new Date(endDateStr);
 
-    // Don't allow end date before start date
     if (end <= start) {
       onDaysChange('0');
       onHoursChange('1');
@@ -68,48 +53,54 @@ export function DurationPicker({
   const endDate = calculateEndDate();
 
   return (
-    <div className="space-y-2">
-      {!hideLabel && <Label>{label}</Label>}
-      <div className={`grid gap-4 ${showMinutes ? 'grid-cols-3' : 'grid-cols-2'}`}>
+    <div className="space-y-3">
+      {!hideLabel && <Label className="text-base font-semibold">{label}</Label>}
+      <div className={`grid gap-3 ${showMinutes ? 'grid-cols-3' : 'grid-cols-2'}`}>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Days</Label>
+          <Label className="text-sm text-muted-foreground">Days</Label>
           <Input
             type="number"
+            inputMode="numeric"
             min="0"
             value={durationDays}
             onChange={(e) => onDaysChange(e.target.value)}
+            className="h-12 text-base text-center"
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Hours</Label>
+          <Label className="text-sm text-muted-foreground">Hours</Label>
           <Input
             type="number"
+            inputMode="numeric"
             min="0"
             max="23"
             value={durationHours}
             onChange={(e) => onHoursChange(e.target.value)}
+            className="h-12 text-base text-center"
           />
         </div>
         {showMinutes && (
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Minutes</Label>
+            <Label className="text-sm text-muted-foreground">Minutes</Label>
             <Input
               type="number"
+              inputMode="numeric"
               min="0"
               max="59"
               value={durationMinutes}
               onChange={(e) => onMinutesChange?.(e.target.value)}
+              className="h-12 text-base text-center"
             />
           </div>
         )}
       </div>
-      <div className="flex flex-wrap gap-1 mt-2">
+      <div className="flex flex-wrap gap-2">
         {DURATION_PRESETS.map(days => (
           <Button
             key={days}
             type="button"
             variant={durationDays === String(days) && durationHours === '0' && (!showMinutes || durationMinutes === '0') ? 'default' : 'outline'}
-            size="sm"
+            className="min-h-[44px] min-w-[44px] text-base"
             onClick={() => {
               onDaysChange(String(days));
               onHoursChange('0');
@@ -121,18 +112,19 @@ export function DurationPicker({
         ))}
       </div>
       {showEndDatePicker && (
-        <div className="mt-3 p-3 bg-muted rounded-lg space-y-2">
-          <Label className="text-xs text-muted-foreground">End Date</Label>
+        <div className="p-4 bg-muted rounded-lg space-y-2">
+          <Label className="text-sm text-muted-foreground">End Date</Label>
           <Input
             type="datetime-local"
             value={formatDateTimeLocal(endDate)}
             onChange={(e) => handleEndDateChange(e.target.value)}
             min={startDateTime}
+            className="h-12 text-base"
           />
         </div>
       )}
       {helperText && (
-        <p className="text-xs text-muted-foreground">{helperText}</p>
+        <p className="text-sm text-muted-foreground">{helperText}</p>
       )}
     </div>
   );

@@ -74,7 +74,7 @@ import { PhotoUploadModal } from '@/components/photo-upload-modal';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
-import { StageFormModal, type BarrelInfo } from '@/components/stage/stage-form-modal';
+import { StageFormModal, type BarrelInfo } from '@/components/stage-form';
 import { CycleFormDialog } from '@/components/cycle-form-dialog';
 import {
   CleaningRunSection,
@@ -642,29 +642,29 @@ export default function CycleDetailPage() {
 
       {/* Collapsible Cycle Overview Card */}
       <Collapsible open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
-        <Card className={cycle.status === 'Completed' ? 'border-green-500/50 bg-gradient-to-br from-green-500/5 to-transparent dark:from-green-500/10' : ''}>
+        <Card className={`overflow-hidden ${cycle.status === 'Completed' ? 'border-green-500/50 bg-gradient-to-br from-green-500/5 to-transparent dark:from-green-500/10' : ''}`}>
           <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-4">
-              <div className="flex items-center justify-between gap-3">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3 px-3 sm:px-4">
+              <div className="flex items-center justify-between gap-2 sm:gap-3">
                 {/* Left: Title and metadata */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
                     {cycle.status === 'Completed' ? (
                       <Badge className="text-xs shrink-0 bg-green-600 hover:bg-green-600 text-white gap-1">
                         <Trophy className="h-3 w-3" />
-                        Completed
+                        <span className="hidden sm:inline">Completed</span>
                       </Badge>
                     ) : (
                       <Badge variant="default" className="text-xs shrink-0">
                         {cycle.status}
                       </Badge>
                     )}
-                    <CardTitle className="text-base sm:text-lg leading-tight truncate">{cycle.name}</CardTitle>
+                    <CardTitle className="text-sm sm:text-lg leading-tight truncate">{cycle.name}</CardTitle>
                     {cycle.status === 'Completed' && (
-                      <PartyPopper className="h-4 w-4 text-green-500 shrink-0" />
+                      <PartyPopper className="h-4 w-4 text-green-500 shrink-0 hidden sm:block" />
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                  <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                     <span>Day {cycle.elapsedDays}</span>
                     <span>•</span>
                     <span>{cycle.completedStagesCount} stage{cycle.completedStagesCount !== 1 ? 's' : ''}</span>
@@ -684,20 +684,20 @@ export default function CycleDetailPage() {
                 </div>
 
                 {/* Right: Actions and chevron */}
-                <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
                   {cycle.status === 'Active' && (
                     <>
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditCycleOpen(true)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="default" size="sm" className="h-8" onClick={() => setIsCompleteCycleOpen(true)}>
+                      <Button variant="default" size="icon" className="h-8 w-8 sm:w-auto sm:px-3" onClick={() => setIsCompleteCycleOpen(true)}>
                         <CheckCircle2 className="h-4 w-4 sm:mr-1" />
                         <span className="hidden sm:inline">Complete</span>
                       </Button>
                     </>
                   )}
                   {cycle.status === 'Completed' && (
-                    <Button variant="outline" size="sm" className="h-8" asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8 sm:w-auto sm:px-3" asChild>
                       {cycle.postId ? (
                         <Link href={`/gallery/${cycle.postId}`}>
                           <Eye className="h-4 w-4 sm:mr-1" />

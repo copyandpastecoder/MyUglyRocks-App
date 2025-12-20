@@ -7,16 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetFooter,
+} from '@/components/ui/sheet';
 import {
   Select,
   SelectContent,
@@ -29,6 +27,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Card, CardContent } from '@/components/ui/card';
 import { StageMaterialsSection } from '@/components/stage/stage-materials-section';
 import { CleaningRunSection } from '@/components/stage/cleaning-run-section';
 import { toast } from 'sonner';
@@ -36,42 +35,24 @@ import {
   Clock,
   Loader2,
   ChevronDown,
+  ChevronRight,
   Copy,
-  Lightbulb,
+  Check,
+  Droplets,
+  Bell,
+  FileText,
+  Sparkles,
+  Cylinder,
 } from 'lucide-react';
-import Link from 'next/link';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { useSettings, useTimezone } from '@/hooks/use-user';
 import { formatDateTimeLocal, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes } from '@/lib/duration-utils';
-import type { CycleDto, StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest } from '@/types/cycle';
-import type { BarrelDto } from '@/types/tumbler';
-import type { MaterialListDto } from '@/types/reference';
+import type { StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest } from '@/types/cycle';
+import { type StageFormProps, STAGE_NAMES, WATER_UNITS } from './types';
 
-const STAGE_NAMES = ['Coarse', 'Medium', 'Fine', 'Pre-Polish', 'Polish', 'Burnish', 'Custom'];
-const WATER_UNITS = [
-  { value: 'ml', label: 'ml' },
-  { value: 'floz', label: 'fl oz' },
-];
-
-export interface BarrelInfo extends BarrelDto {
-  tumblerName: string;
-  tumblerId: string;
-}
-
-interface StageFormModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  cycleId: string;
-  cycle: CycleDto;
-  stageRunId?: string; // If provided, we're in edit mode
-  allBarrels: BarrelInfo[];
-  materials: MaterialListDto[];
-  onSuccess?: () => void;
-}
-
-export function StageFormModal({
+export function StageFormMobile({
   open,
   onOpenChange,
   cycleId,
@@ -80,12 +61,16 @@ export function StageFormModal({
   allBarrels,
   materials,
   onSuccess,
-}: StageFormModalProps) {
+}: StageFormProps) {
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
   const { toUserTz, now: getNow, formatForInput } = useTimezone();
 
   const isEditMode = !!stageRunId;
+
+  // Collapsible sections
+  const [barrelsOpen, setBarrelsOpen] = useState(!isEditMode);
+  const [durationOpen, setDurationOpen] = useState(true);
 
   // Form state
   const [isLoading, setIsLoading] = useState(false);
@@ -119,7 +104,7 @@ export function StageFormModal({
   const [cleaningNotes, setCleaningNotes] = useState<string>('');
   const [cleaningMaterials, setCleaningMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
 
-  // Calculate total barrel capacity from selected barrels (for weight validation)
+  // Calculate total barrel capacity
   const selectedBarrelCapacityLbs = selectedBarrelIds.reduce((total, id) => {
     const barrel = allBarrels.find(b => b.barrelId === id);
     return total + (barrel?.capacityLbs || 0);
@@ -157,15 +142,12 @@ export function StageFormModal({
     try {
       const fullStage: StageRunDto = await cycleApi.getStageRun(stageId);
 
-      // Stage name
       const standardNames = STAGE_NAMES.slice(0, -1);
       setStageName(standardNames.includes(fullStage.stageName) ? fullStage.stageName : 'Custom');
       setCustomStageName(!standardNames.includes(fullStage.stageName) ? fullStage.stageName : '');
 
-      // Start date/time - convert UTC to user's timezone for input
       setStageStartDateTime(formatForInput(fullStage.startDateTime));
 
-      // Duration - calculate from dates if available (use timezone-aware dates)
       const startDateInTz = toUserTz(fullStage.startDateTime);
       const endDateString = fullStage.endDateTime ?? fullStage.durationEstimateEndDate;
       const endDateInTz = endDateString ? toUserTz(endDateString) : getNow();
@@ -173,15 +155,12 @@ export function StageFormModal({
       setDurationDays(String(days));
       setDurationHours(String(hours));
 
-      // Notes
       setNotes(fullStage.notes || '');
 
-      // Barrels
       if (fullStage.barrels && fullStage.barrels.length > 0) {
         setSelectedBarrelIds(fullStage.barrels.map(b => b.barrelId));
       }
 
-      // Materials
       if (fullStage.materials && fullStage.materials.length > 0) {
         setSelectedMaterials(fullStage.materials.map(m => ({
           materialId: m.materialId,
@@ -190,7 +169,6 @@ export function StageFormModal({
         })));
       }
 
-      // Reminder settings
       setReminderEnabled(fullStage.reminderEnabled);
       if (fullStage.remindAfterDays) {
         setReminderType('afterDays');
@@ -199,22 +177,17 @@ export function StageFormModal({
         setReminderType('atEnd');
       }
 
-      // Advanced options
       setLoadWeightBeforeGrams(fullStage.loadWeightBeforeGrams);
-      // Set water amount and unit based on user's measurement system
       const preferredWaterUnit = settings?.measurementSystem === 'Imperial' ? 'floz' : 'ml';
       setWaterUnit(preferredWaterUnit);
       if (fullStage.waterAmountMl) {
-        // Convert from ml to user's preferred unit
         const displayValue = preferredWaterUnit === 'floz'
           ? (fullStage.waterAmountMl / 29.5735).toFixed(1)
           : fullStage.waterAmountMl.toString();
         setWaterAmount(displayValue);
-      } else {
-        setWaterAmount('');
+        setAdvancedOpen(true);
       }
 
-      // Cleaning run
       if (fullStage.cleaningRun) {
         setAddCleaningRun(true);
         const { days, hours, mins } = convertMinutesToDaysHoursMinutes(fullStage.cleaningRun.durationMinutes);
@@ -238,32 +211,29 @@ export function StageFormModal({
     }
   }, [formatForInput, getNow, settings?.measurementSystem, toUserTz]);
 
-  // Initialize form when modal opens
   useEffect(() => {
     if (open) {
+      // Set barrels collapsed for edit, expanded for create
+      setBarrelsOpen(!isEditMode);
+
       if (isEditMode && stageRunId) {
         loadStageData(stageRunId);
       } else {
         resetForm();
-        // Set initial start datetime for new stages (use user's timezone)
         if (cycle.stageRuns.length === 0) {
-          // For first stage, use cycle start date with current time in user's timezone
           const [year, month, day] = cycle.startDate.split('-').map(Number);
           const nowInTz = getNow();
           const startDate = new Date(year, month - 1, day, nowInTz.getHours(), nowInTz.getMinutes());
           setStageStartDateTime(formatDateTimeLocal(startDate));
         } else {
-          // For subsequent stages, use current time in user's timezone
           setStageStartDateTime(formatDateTimeLocal(getNow()));
         }
-        // Check for auto-populate from repeat
         autoPopulateFromRepeat();
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, isEditMode, stageRunId]);
 
-  // Auto-populate from repeat action
   const autoPopulateFromRepeat = async () => {
     if (cycle.stageRuns.length === 0) return;
 
@@ -278,7 +248,6 @@ export function StageFormModal({
       if (fullStage.nextAction === 'Repeat') {
         setStageName(fullStage.stageName);
 
-        // Use timezone-aware date conversion
         const endDateString = fullStage.endDateTime ?? fullStage.durationEstimateEndDate;
         if (endDateString) {
           setStageStartDateTime(formatForInput(endDateString));
@@ -323,14 +292,13 @@ export function StageFormModal({
           }
         }
 
-        toast.info(`Auto-filled from previous "${fullStage.stageName}" stage (marked for repeat)`);
+        toast.info(`Auto-filled from previous "${fullStage.stageName}" stage`);
       }
     } catch {
-      // Ignore - just don't auto-populate
+      // Ignore
     }
   };
 
-  // Copy from previous stage
   const copyFromPreviousStage = async () => {
     if (cycle.stageRuns.length === 0) return;
 
@@ -340,7 +308,6 @@ export function StageFormModal({
     try {
       const previousStage: StageRunDto = await cycleApi.getStageRun(previousStageSummary.stageRunId);
 
-      // Use timezone-aware date conversion
       const endDateString = previousStage.endDateTime ?? previousStage.durationEstimateEndDate;
       if (endDateString) {
         setStageStartDateTime(formatForInput(endDateString));
@@ -353,7 +320,6 @@ export function StageFormModal({
         setSelectedBarrelIds(activeBarrelIds);
       }
 
-      // Copy materials if same stage type
       const currentStageName = stageName === 'Custom' ? customStageName : stageName;
       if (currentStageName === previousStage.stageName && previousStage.materials && previousStage.materials.length > 0) {
         setSelectedMaterials(previousStage.materials.map(m => ({
@@ -383,15 +349,14 @@ export function StageFormModal({
         }
       }
 
-      toast.success(`Copied settings from previous ${previousStage.stageName} stage`);
+      toast.success(`Copied from ${previousStage.stageName}`);
     } catch {
-      toast.error('Failed to copy from previous stage');
+      toast.error('Failed to copy');
     } finally {
       setIsCopyingFromPrevious(false);
     }
   };
 
-  // Barrel toggle
   const toggleBarrel = (barrelId: string) => {
     setSelectedBarrelIds(prev =>
       prev.includes(barrelId)
@@ -400,14 +365,13 @@ export function StageFormModal({
     );
   };
 
-  // Create stage mutation
   const addStageMutation = useMutation({
     mutationFn: (data: Parameters<typeof cycleApi.addStageRun>[1]) =>
       cycleApi.addStageRun(cycleId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cycle', cycleId] });
       queryClient.invalidateQueries({ queryKey: ['cycles'] });
-      toast.success('Stage added successfully');
+      toast.success('Stage added');
       onOpenChange(false);
       resetForm();
       onSuccess?.();
@@ -417,7 +381,6 @@ export function StageFormModal({
     },
   });
 
-  // Update stage mutation
   const updateStageMutation = useMutation({
     mutationFn: (data: Parameters<typeof cycleApi.updateStageRun>[1]) =>
       cycleApi.updateStageRun(stageRunId!, data),
@@ -437,7 +400,6 @@ export function StageFormModal({
   const handleSubmit = () => {
     const finalStageName = stageName === 'Custom' ? customStageName : stageName;
 
-    // Validation
     if (selectedBarrelIds.length === 0) {
       toast.error('Please select at least one barrel');
       return;
@@ -451,19 +413,18 @@ export function StageFormModal({
       return;
     }
     if (cycle && isStageStartBeforeCycleStart(cycle.startDate, stageStartDateTime)) {
-      toast.error('Stage start date cannot be before the cycle start date');
+      toast.error('Stage start cannot be before cycle start');
       return;
     }
     if (weightBeforeValidationError) {
-      toast.error('Weight exceeds 150% of barrel capacity. Please correct before saving.');
+      toast.error('Weight exceeds capacity');
       return;
     }
 
-    // Validate cleaning run if enabled
     if (addCleaningRun) {
       const cleaningTotalMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
       if (cleaningTotalMinutes <= 0) {
-        toast.error('Cleaning run duration must be at least 1 minute');
+        toast.error('Cleaning run needs duration');
         return;
       }
     }
@@ -476,7 +437,6 @@ export function StageFormModal({
         displayUnit: m.displayUnit || undefined,
       }));
 
-    // Build cleaning run request if enabled
     let cleaningRunRequest = undefined;
     if (addCleaningRun) {
       const cleaningTotalMinutes = (parseInt(cleaningDurationDays) || 0) * 1440 + (parseInt(cleaningDurationHours) || 0) * 60 + (parseInt(cleaningDurationMinutes) || 0);
@@ -497,267 +457,311 @@ export function StageFormModal({
       };
     }
 
+    const payload = {
+      barrelIds: selectedBarrelIds,
+      stageName: finalStageName,
+      startDateTime: new Date(stageStartDateTime).toISOString(),
+      durationDays: parseInt(durationDays) || 0,
+      durationHours: parseInt(durationHours) || 0,
+      notes: notes || undefined,
+      reminderEnabled,
+      remindAfterDays: reminderType === 'afterDays' ? parseInt(remindAfterDays) : undefined,
+      remindAtEndOfStage: reminderType === 'atEnd' ? true : undefined,
+      loadWeightBeforeGrams: loadWeightBeforeGrams || undefined,
+      waterAmountMl: waterAmount ? Math.round(parseFloat(waterAmount) * (waterUnit === 'floz' ? 29.5735 : 1)) : undefined,
+      materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
+      cleaningRun: cleaningRunRequest,
+    };
+
     if (isEditMode) {
-      updateStageMutation.mutate({
-        barrelIds: selectedBarrelIds.length > 0 ? selectedBarrelIds : undefined,
-        stageName: finalStageName,
-        startDateTime: new Date(stageStartDateTime).toISOString(),
-        durationDays: parseInt(durationDays) || 0,
-        durationHours: parseInt(durationHours) || 0,
-        notes: notes || undefined,
-        reminderEnabled,
-        remindAfterDays: reminderType === 'afterDays' ? parseInt(remindAfterDays) : undefined,
-        remindAtEndOfStage: reminderType === 'atEnd' ? true : undefined,
-        loadWeightBeforeGrams: loadWeightBeforeGrams || undefined,
-        waterAmountMl: waterAmount ? Math.round(parseFloat(waterAmount) * (waterUnit === 'floz' ? 29.5735 : 1)) : undefined,
-        materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
-        cleaningRun: cleaningRunRequest,
-      });
+      updateStageMutation.mutate(payload);
     } else {
-      addStageMutation.mutate({
-        barrelIds: selectedBarrelIds,
-        stageName: finalStageName,
-        startDateTime: new Date(stageStartDateTime).toISOString(),
-        durationDays: parseInt(durationDays) || 0,
-        durationHours: parseInt(durationHours) || 0,
-        notes: notes || undefined,
-        reminderEnabled,
-        remindAfterDays: reminderType === 'afterDays' ? parseInt(remindAfterDays) : undefined,
-        remindAtEndOfStage: reminderType === 'atEnd' ? true : undefined,
-        loadWeightBeforeGrams: loadWeightBeforeGrams || undefined,
-        waterAmountMl: waterAmount ? Math.round(parseFloat(waterAmount) * (waterUnit === 'floz' ? 29.5735 : 1)) : undefined,
-        materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
-        cleaningRun: cleaningRunRequest,
-      });
+      addStageMutation.mutate(payload);
     }
   };
 
   const isPending = addStageMutation.isPending || updateStageMutation.isPending;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="flex-shrink-0">
-          <div className="flex items-start justify-between pr-8">
-            <div>
-              <DialogTitle>{isEditMode ? 'Edit Stage' : 'New Stage'}</DialogTitle>
-              <DialogDescription>
-                {isEditMode
-                  ? 'Update the stage details'
-                  : 'Start a new tumbling stage for this cycle'}
-              </DialogDescription>
-            </div>
-            <Link
-              href="/learn/faq/stages"
-              target="_blank"
-              className="p-1 hover:bg-muted rounded-md transition-colors"
-              title="Stage Tips"
-            >
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
-            </Link>
-          </div>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[100dvh] p-0 flex flex-col z-[60]" overlayClassName="z-[60]">
+        {/* Header */}
+        <SheetHeader className="p-4 border-b flex-shrink-0">
+          <SheetTitle className="text-lg">
+            {isEditMode ? 'Edit Stage' : 'New Stage'}
+          </SheetTitle>
+        </SheetHeader>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-8">
+          <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
           <>
-            {/* Scrollable content area */}
-            <div className="flex-1 overflow-y-auto min-h-0 pr-2">
-              <div className="space-y-4 py-4">
-                {/* Stage Name */}
-                <div className="space-y-2">
-                  <Label>Stage Name</Label>
-                  <div className="flex flex-wrap gap-1">
-                    {STAGE_NAMES.map(name => (
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden">
+              <div className="p-4 space-y-6 min-w-0">
+                {/* Stage Name Selection */}
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Stage Name</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {STAGE_NAMES.slice(0, -1).map(name => (
                       <Button
                         key={name}
                         type="button"
-                        variant={stageName === name || (name === 'Custom' && !STAGE_NAMES.slice(0, -1).includes(stageName)) ? 'default' : 'outline'}
-                        size="sm"
+                        variant={stageName === name ? 'default' : 'outline'}
+                        className="h-12"
                         onClick={() => {
-                          if (name === 'Custom') {
-                            setStageName('Custom');
-                            setCustomStageName('');
-                          } else {
-                            setStageName(name);
-                            setCustomStageName('');
-                          }
+                          setStageName(name);
+                          setCustomStageName('');
                         }}
                       >
                         {name}
                       </Button>
                     ))}
+                    <Button
+                      type="button"
+                      variant={stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName) ? 'default' : 'outline'}
+                      className="h-12"
+                      onClick={() => {
+                        setStageName('Custom');
+                        setCustomStageName('');
+                      }}
+                    >
+                      Custom
+                    </Button>
                   </div>
                   {(stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName)) && (
                     <Input
                       placeholder="Enter custom stage name..."
-                      aria-label="Custom stage name"
                       value={stageName === 'Custom' ? customStageName : stageName}
                       onChange={(e) => {
                         const value = e.target.value;
                         setCustomStageName(value);
-                        if (value) {
-                          setStageName(value);
-                        } else {
-                          setStageName('Custom');
-                        }
+                        if (value) setStageName(value);
+                        else setStageName('Custom');
                       }}
-                      className="mt-2"
+                      className="h-12 text-base"
                     />
                   )}
-                  {/* Copy from Previous button - only show in new mode when there are previous stages */}
                   {!isEditMode && cycle.stageRuns.length > 0 && (
                     <Button
                       type="button"
                       variant="outline"
-                      size="sm"
                       onClick={copyFromPreviousStage}
                       disabled={isCopyingFromPrevious}
-                      className="mt-2"
+                      className="w-full h-12"
                     >
                       {isCopyingFromPrevious ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                       ) : (
-                        <Copy className="mr-2 h-4 w-4" />
+                        <Copy className="mr-2 h-5 w-5" />
                       )}
-                      Copy from Previous Stage
+                      Copy from Previous
                     </Button>
                   )}
                 </div>
 
                 {/* Barrel Selection */}
-                <div className="space-y-2">
-                  <Label>Select Barrel(s)</Label>
-                  <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                    {allBarrels.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-2">
-                        No active barrels available
-                      </p>
-                    ) : (
-                      [...allBarrels].sort((a, b) => {
-                        const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
-                        if (tumblerCompare !== 0) return tumblerCompare;
-                        return a.barrelNumber - b.barrelNumber;
-                      }).map(barrel => (
-                        <div key={barrel.barrelId} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`barrel-${barrel.barrelId}`}
-                            checked={selectedBarrelIds.includes(barrel.barrelId)}
-                            onCheckedChange={() => toggleBarrel(barrel.barrelId)}
-                          />
-                          <label
-                            htmlFor={`barrel-${barrel.barrelId}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {barrel.tumblerName}
-                            {barrel.capacityLbs && (
-                              <span className="text-muted-foreground">
-                                {' '}- {barrel.capacityLbs} lbs
+                <Collapsible open={barrelsOpen} onOpenChange={setBarrelsOpen}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-4 rounded-t-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <Cylinder className="h-5 w-5" />
+                          <span className="font-medium">
+                            Select Barrel(s)
+                            {selectedBarrelIds.length > 0 && (
+                              <span className="text-muted-foreground font-normal ml-2">
+                                ({selectedBarrelIds.length} selected)
                               </span>
                             )}
-                            {' '}#{barrel.barrelNumber}
-                            {barrel.nickname && ` (${barrel.nickname})`}
-                          </label>
+                          </span>
                         </div>
-                      ))
-                    )}
-                  </div>
-                  {selectedBarrelIds.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {selectedBarrelIds.length} barrel(s) selected
-                    </p>
-                  )}
-                </div>
+                        {barrelsOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 pb-4 px-4">
+                        <div className="space-y-2">
+                          {allBarrels.length === 0 ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">
+                              No active barrels available
+                            </p>
+                          ) : (
+                            [...allBarrels].sort((a, b) => {
+                              const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
+                              if (tumblerCompare !== 0) return tumblerCompare;
+                              return a.barrelNumber - b.barrelNumber;
+                            }).map(barrel => {
+                              const isSelected = selectedBarrelIds.includes(barrel.barrelId);
+                              return (
+                                <button
+                                  key={barrel.barrelId}
+                                  type="button"
+                                  onClick={() => toggleBarrel(barrel.barrelId)}
+                                  className={cn(
+                                    "w-full flex items-center gap-3 p-4 rounded-lg border text-left active:bg-accent transition-colors",
+                                    isSelected && "bg-primary/10 border-primary"
+                                  )}
+                                >
+                                  <div className={cn(
+                                    "w-7 h-7 rounded-md border-2 flex items-center justify-center flex-shrink-0",
+                                    isSelected ? "bg-primary border-primary" : "border-muted-foreground/30"
+                                  )}>
+                                    {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium">
+                                      {barrel.tumblerName}
+                                      {barrel.capacityLbs && (
+                                        <span className="text-muted-foreground font-normal">
+                                          {' '}- {barrel.capacityLbs} lbs
+                                        </span>
+                                      )}
+                                      {' '}#{barrel.barrelNumber}
+                                    </div>
+                                    {barrel.nickname && (
+                                      <div className="text-sm text-muted-foreground">
+                                        {barrel.nickname}
+                                      </div>
+                                    )}
+                                  </div>
+                                </button>
+                              );
+                            })
+                          )}
+                        </div>
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
                 {/* Start Date/Time */}
-                <div className="space-y-2">
-                  <Label>Start Date/Time</Label>
+                <div className="space-y-3">
+                  <Label className="text-base font-medium">Start Date/Time</Label>
                   <Input
                     type="datetime-local"
                     value={stageStartDateTime}
                     onChange={(e) => setStageStartDateTime(e.target.value)}
+                    className="h-12 text-base"
                   />
-                  {!isEditMode && (
-                    <p className="text-xs text-muted-foreground">
-                      {cycle.stageRuns.length === 0
-                        ? 'First stage defaults to cycle start date'
-                        : 'Defaults to current date/time'}
-                    </p>
-                  )}
                 </div>
 
-                {/* Duration - Collapsible */}
-                <div className="border rounded-lg p-3 space-y-3">
-                  <Collapsible defaultOpen>
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="w-full justify-between h-auto p-0 hover:bg-transparent"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          <span className="font-medium">Duration</span>
-                          {(parseInt(durationDays) > 0 || parseInt(durationHours) > 0) && (
-                            <span className="text-muted-foreground text-sm">
-                              ({durationDays}d {durationHours}h)
-                            </span>
-                          )}
-                        </div>
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="mt-3 space-y-4">
-                      <DurationPicker
-                        durationDays={durationDays}
-                        durationHours={durationHours}
-                        onDaysChange={setDurationDays}
-                        onHoursChange={setDurationHours}
-                        startDateTime={stageStartDateTime}
-                        hideLabel
-                      />
-
-                      {/* Reminder Settings */}
-                      <div className="space-y-2 pt-2 border-t">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="reminderEnabled"
-                            checked={reminderEnabled}
-                            onCheckedChange={(checked) => setReminderEnabled(checked as boolean)}
-                          />
-                          <Label htmlFor="reminderEnabled">Set a reminder to check this stage</Label>
-                        </div>
-                        {reminderEnabled && (
-                          <div className="ml-6 space-y-2">
-                            <RadioGroup value={reminderType} onValueChange={(v) => setReminderType(v as 'afterDays' | 'atEnd')}>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="afterDays" id="afterDays" />
-                                <Label htmlFor="afterDays" className="flex items-center gap-2">
-                                  Remind after
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    className="w-16 h-8"
-                                    value={remindAfterDays}
-                                    onChange={(e) => setRemindAfterDays(e.target.value)}
-                                    disabled={reminderType !== 'afterDays'}
-                                  />
-                                  days from start
-                                </Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="atEnd" id="atEnd" />
-                                <Label htmlFor="atEnd">Remind at end of stage</Label>
-                              </div>
-                            </RadioGroup>
-                          </div>
+                {/* Duration Section */}
+                <Collapsible open={durationOpen} onOpenChange={setDurationOpen}>
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-4 rounded-lg border bg-muted/30"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-5 w-5" />
+                        <span className="font-medium">Duration</span>
+                        {(parseInt(durationDays) > 0 || parseInt(durationHours) > 0) && (
+                          <span className="text-muted-foreground">
+                            {durationDays}d {durationHours}h
+                          </span>
                         )}
                       </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                      {durationOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4 space-y-4">
+                    <DurationPicker
+                      durationDays={durationDays}
+                      durationHours={durationHours}
+                      onDaysChange={setDurationDays}
+                      onHoursChange={setDurationHours}
+                      startDateTime={stageStartDateTime}
+                      hideLabel
+                    />
+
+                    {/* Reminder */}
+                    <div className="space-y-3 pt-3 border-t">
+                      <button
+                        type="button"
+                        onClick={() => setReminderEnabled(!reminderEnabled)}
+                        className={cn(
+                          "w-full flex items-center gap-3 p-4 rounded-lg border text-left",
+                          reminderEnabled && "bg-primary/10 border-primary"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-7 h-7 rounded-md border-2 flex items-center justify-center",
+                          reminderEnabled ? "bg-primary border-primary" : "border-muted-foreground/30"
+                        )}>
+                          {reminderEnabled && <Check className="h-5 w-5 text-primary-foreground" />}
+                        </div>
+                        <Bell className="h-5 w-5" />
+                        <span>Set reminder</span>
+                      </button>
+
+                      {reminderEnabled && (
+                        <div className="space-y-2 ml-10">
+                          <button
+                            type="button"
+                            onClick={() => setReminderType('atEnd')}
+                            className={cn(
+                              "w-full flex items-center gap-3 p-3 rounded-lg border text-left",
+                              reminderType === 'atEnd' && "bg-primary/10 border-primary"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                              reminderType === 'atEnd' ? "border-primary" : "border-muted-foreground/30"
+                            )}>
+                              {reminderType === 'atEnd' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                            </div>
+                            <span>At end of stage</span>
+                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setReminderType('afterDays')}
+                              className={cn(
+                                "flex items-center gap-3 p-3 rounded-lg border text-left flex-1",
+                                reminderType === 'afterDays' && "bg-primary/10 border-primary"
+                              )}
+                            >
+                              <div className={cn(
+                                "w-5 h-5 rounded-full border-2 flex items-center justify-center",
+                                reminderType === 'afterDays' ? "border-primary" : "border-muted-foreground/30"
+                              )}>
+                                {reminderType === 'afterDays' && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                              </div>
+                              <span>After</span>
+                            </button>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={remindAfterDays}
+                              onChange={(e) => setRemindAfterDays(e.target.value)}
+                              disabled={reminderType !== 'afterDays'}
+                              className="w-20 h-12"
+                            />
+                            <span>days</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Materials Section */}
+                <div className="space-y-3">
+                  <Label className="text-base font-medium flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    Materials
+                  </Label>
+                  <StageMaterialsSection
+                    materials={selectedMaterials}
+                    availableMaterials={materials || []}
+                    onMaterialsChange={setSelectedMaterials}
+                  />
                 </div>
 
                 {/* Load Weight Before */}
@@ -771,7 +775,10 @@ export function StageFormModal({
 
                 {/* Water Amount */}
                 <div className="space-y-2">
-                  <Label>Water Amount</Label>
+                  <Label className="flex items-center gap-2">
+                    <Droplets className="h-4 w-4" />
+                    Water Amount
+                  </Label>
                   <div className="flex gap-2">
                     <Input
                       type="number"
@@ -780,10 +787,10 @@ export function StageFormModal({
                       placeholder="e.g., 250"
                       value={waterAmount}
                       onChange={(e) => setWaterAmount(e.target.value)}
-                      className="flex-1"
+                      className="flex-1 h-12"
                     />
                     <Select value={waterUnit} onValueChange={setWaterUnit}>
-                      <SelectTrigger className="w-24">
+                      <SelectTrigger className="w-24 h-12">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -797,25 +804,22 @@ export function StageFormModal({
                   </div>
                 </div>
 
-                {/* Materials Section */}
-                <StageMaterialsSection
-                  materials={selectedMaterials}
-                  availableMaterials={materials || []}
-                  onMaterialsChange={setSelectedMaterials}
-                />
-
-                {/* Material Notes */}
+                {/* Notes */}
                 <div className="space-y-2">
-                  <Label>Material Notes (optional)</Label>
+                  <Label className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Notes
+                  </Label>
                   <Textarea
-                    placeholder="Any notes about materials or this stage..."
+                    placeholder="Any notes about this stage..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    rows={2}
+                    rows={3}
+                    className="text-base"
                   />
                 </div>
 
-                {/* Cleaning Run Section */}
+                {/* Cleaning Run */}
                 <CleaningRunSection
                   data={{
                     enabled: addCleaningRun,
@@ -837,24 +841,32 @@ export function StageFormModal({
                     setCleaningMaterials(data.materials);
                   }}
                 />
-
               </div>
             </div>
 
-            <DialogFooter className="flex-shrink-0">
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmit} disabled={isPending || isLoading}>
-                {isPending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {isEditMode ? 'Save Changes' : 'Create Stage'}
-              </Button>
-            </DialogFooter>
+            {/* Footer */}
+            <SheetFooter className="border-t p-4 flex-shrink-0">
+              <div className="flex gap-3 w-full">
+                <Button
+                  variant="outline"
+                  onClick={() => onOpenChange(false)}
+                  className="flex-1 h-12"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  disabled={isPending || isLoading}
+                  className="flex-1 h-12"
+                >
+                  {isPending && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
+                  {isEditMode ? 'Save' : 'Create Stage'}
+                </Button>
+              </div>
+            </SheetFooter>
           </>
         )}
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

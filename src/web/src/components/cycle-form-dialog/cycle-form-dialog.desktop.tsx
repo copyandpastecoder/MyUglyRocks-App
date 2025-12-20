@@ -30,10 +30,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-multi-select';
+import { SpecimenMultiSelect, type SpecimenSelection } from '@/components/specimen-select';
 import { AddCustomSpecimenDialog, type CustomSpecimenCreatedData } from '@/components/add-custom-specimen-dialog';
 import Link from 'next/link';
-import type { CycleDto, CycleListDto } from '@/types/cycle';
+import type { CycleFormDialogProps } from './types';
 
 const formSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
@@ -44,18 +44,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface CycleFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  /** When provided, dialog is in edit mode */
-  cycle?: CycleDto | CycleListDto | null;
-  /** Called after successful create (with new cycle ID) */
-  onCreated?: (cycleId: string) => void;
-  /** Called after successful update */
-  onUpdated?: () => void;
-}
-
-export function CycleFormDialog({
+export function CycleFormDialogDesktop({
   open,
   onOpenChange,
   cycle,

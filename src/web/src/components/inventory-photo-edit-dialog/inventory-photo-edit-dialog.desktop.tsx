@@ -31,7 +31,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useUpdateInventoryPhoto } from '@/hooks/use-inventory';
-import type { InventoryPhotoDto, InventorySpecimenDto } from '@/types/inventory';
+import type { InventorySpecimenDto } from '@/types/inventory';
+import type { InventoryPhotoEditDialogProps } from './types';
 
 const formSchema = z.object({
   inventorySpecimenId: z.string().optional(),
@@ -40,16 +41,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface InventoryPhotoEditDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  inventoryId: string;
-  photo: InventoryPhotoDto | null;
-  specimens: InventorySpecimenDto[];
-  onSuccess?: () => void;
-}
-
-export function InventoryPhotoEditDialog({
+export function InventoryPhotoEditDialogDesktop({
   open,
   onOpenChange,
   inventoryId,
@@ -67,7 +59,6 @@ export function InventoryPhotoEditDialog({
     },
   });
 
-  // Reset form when dialog opens or photo changes
   useEffect(() => {
     if (open && photo) {
       form.reset({

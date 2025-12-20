@@ -34,10 +34,9 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useCreateUserSpecimen } from '@/hooks/use-user-specimens';
 import { userSpecimenApi } from '@/lib/api';
-import type { CreateUserSpecimenRequest, SpecimenLookupData } from '@/types/user-specimen';
-
-const materialTypes = ['Rock', 'Mineral', 'Glass', 'Fossil', 'Other'];
-const difficulties = ['Easy', 'Medium', 'Hard'];
+import type { AddCustomSpecimenDialogProps, CustomSpecimenCreatedData } from './types';
+import { MATERIAL_TYPES, DIFFICULTIES } from './types';
+import type { CreateUserSpecimenRequest } from '@/types/user-specimen';
 
 const specimenSchema = z.object({
   commonName: z.string().min(1, 'Name is required').max(100),
@@ -58,23 +57,7 @@ const specimenSchema = z.object({
 
 type SpecimenFormData = z.infer<typeof specimenSchema>;
 
-// Data passed to onSuccess callback
-export interface CustomSpecimenCreatedData {
-  userSpecimenId: string;
-  commonName: string;
-  scientificName: string | null;
-  tumblingDifficulty: string | null;
-  materialType: string;
-}
-
-interface AddCustomSpecimenDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSuccess?: (data: CustomSpecimenCreatedData) => void;
-  initialName?: string;
-}
-
-export function AddCustomSpecimenDialog({
+export function AddCustomSpecimenDialogDesktop({
   open,
   onOpenChange,
   onSuccess,
@@ -82,7 +65,22 @@ export function AddCustomSpecimenDialog({
 }: AddCustomSpecimenDialogProps) {
   const createMutation = useCreateUserSpecimen();
   const [isLookingUp, setIsLookingUp] = useState(false);
-  const [lookupResult, setLookupResult] = useState<SpecimenLookupData | null>(null);
+  const [lookupResult, setLookupResult] = useState<{
+    confidenceScore: number;
+    confidenceReason?: string | null;
+    isKnownSpecimen: boolean;
+    scientificName?: string | null;
+    alias?: string | null;
+    rockFamily?: string | null;
+    species?: string | null;
+    variety?: string | null;
+    materialType?: string | null;
+    mohsHardnessMin?: number | null;
+    mohsHardnessMax?: number | null;
+    tumblingDifficulty?: string | null;
+    recommendedGritSequence?: string | null;
+    specialConsiderations?: string | null;
+  } | null>(null);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [sourceOpen, setSourceOpen] = useState(false);
   const [sourceUrl, setSourceUrl] = useState('');
@@ -110,7 +108,6 @@ export function AddCustomSpecimenDialog({
     },
   });
 
-  // Reset form when dialog opens/closes
   useEffect(() => {
     if (open) {
       form.reset({
@@ -159,7 +156,6 @@ export function AddCustomSpecimenDialog({
 
       if (response.success && response.data) {
         setLookupResult(response.data);
-        // Auto-populate form fields
         const data = response.data;
         form.setValue('scientificName', data.scientificName);
         form.setValue('alias', data.alias);
@@ -184,7 +180,6 @@ export function AddCustomSpecimenDialog({
 
   const handleSubmit = async (data: SpecimenFormData) => {
     try {
-      // Include AI lookup data if available
       const requestData: CreateUserSpecimenRequest = {
         ...data,
         aiConfidenceScore: lookupResult?.confidenceScore ?? null,
@@ -297,7 +292,6 @@ export function AddCustomSpecimenDialog({
               </CollapsibleContent>
             </Collapsible>
 
-            {/* Lookup Error */}
             {lookupError && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -305,7 +299,6 @@ export function AddCustomSpecimenDialog({
               </Alert>
             )}
 
-            {/* Lookup Result Indicator */}
             {lookupResult && (
               <div className="flex items-center justify-between rounded-md border p-2 bg-background">
                 <div className="flex items-center gap-2">
@@ -336,7 +329,6 @@ export function AddCustomSpecimenDialog({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Scientific Name */}
             <div className="space-y-2">
               <Label htmlFor="scientificName">Scientific Name</Label>
               <Input
@@ -346,7 +338,6 @@ export function AddCustomSpecimenDialog({
               />
             </div>
 
-            {/* Material Type */}
             <div className="space-y-2">
               <Label htmlFor="materialType">Material Type</Label>
               <Select
@@ -357,7 +348,7 @@ export function AddCustomSpecimenDialog({
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {materialTypes.map((type) => (
+                  {MATERIAL_TYPES.map((type) => (
                     <SelectItem key={type} value={type}>
                       {type}
                     </SelectItem>
@@ -366,7 +357,6 @@ export function AddCustomSpecimenDialog({
               </Select>
             </div>
 
-            {/* Tumbling Difficulty */}
             <div className="space-y-2">
               <Label htmlFor="tumblingDifficulty">Tumbling Difficulty</Label>
               <Select
@@ -378,7 +368,7 @@ export function AddCustomSpecimenDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">Not specified</SelectItem>
-                  {difficulties.map((diff) => (
+                  {DIFFICULTIES.map((diff) => (
                     <SelectItem key={diff} value={diff}>
                       {diff}
                     </SelectItem>
@@ -387,7 +377,6 @@ export function AddCustomSpecimenDialog({
               </Select>
             </div>
 
-            {/* Mohs Hardness Min */}
             <div className="space-y-2">
               <Label htmlFor="mohsHardnessMin">Mohs Hardness (Min)</Label>
               <Input
@@ -401,7 +390,6 @@ export function AddCustomSpecimenDialog({
               />
             </div>
 
-            {/* Mohs Hardness Max */}
             <div className="space-y-2">
               <Label htmlFor="mohsHardnessMax">Mohs Hardness (Max)</Label>
               <Input
@@ -415,7 +403,6 @@ export function AddCustomSpecimenDialog({
               />
             </div>
 
-            {/* Rock Family */}
             <div className="space-y-2">
               <Label htmlFor="rockFamily">Rock Family</Label>
               <Input
@@ -425,7 +412,6 @@ export function AddCustomSpecimenDialog({
               />
             </div>
 
-            {/* Species */}
             <div className="space-y-2">
               <Label htmlFor="species">Species</Label>
               <Input
@@ -435,7 +421,6 @@ export function AddCustomSpecimenDialog({
               />
             </div>
 
-            {/* Variety */}
             <div className="space-y-2">
               <Label htmlFor="variety">Variety</Label>
               <Input
@@ -446,7 +431,6 @@ export function AddCustomSpecimenDialog({
             </div>
           </div>
 
-          {/* Alias */}
           <div className="space-y-2">
             <Label htmlFor="alias">Alias / Alternative Names</Label>
             <Input
@@ -456,7 +440,6 @@ export function AddCustomSpecimenDialog({
             />
           </div>
 
-          {/* Recommended Grit Sequence */}
           <div className="space-y-2">
             <Label htmlFor="recommendedGritSequence">Recommended Grit Sequence</Label>
             <Input
@@ -466,7 +449,6 @@ export function AddCustomSpecimenDialog({
             />
           </div>
 
-          {/* Special Considerations */}
           <div className="space-y-2">
             <Label htmlFor="specialConsiderations">Special Considerations</Label>
             <Textarea
@@ -477,7 +459,6 @@ export function AddCustomSpecimenDialog({
             />
           </div>
 
-          {/* Notes */}
           <div className="space-y-2">
             <Label htmlFor="notes">Personal Notes</Label>
             <Textarea
@@ -488,7 +469,6 @@ export function AddCustomSpecimenDialog({
             />
           </div>
 
-          {/* Public Toggle */}
           <div className="flex items-center justify-between rounded-lg border p-4">
             <div className="space-y-0.5">
               <Label htmlFor="isPublic">Make Public</Label>

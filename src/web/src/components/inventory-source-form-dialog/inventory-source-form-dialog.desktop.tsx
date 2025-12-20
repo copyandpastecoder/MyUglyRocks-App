@@ -40,8 +40,9 @@ import { Button } from '@/components/ui/button';
 import { UrlInput } from '@/components/ui/url-input';
 import { Switch } from '@/components/ui/switch';
 import { Loader2 } from 'lucide-react';
-import type { InventorySourceListDto, InventorySourceType } from '@/types/inventory-source';
+import type { InventorySourceType } from '@/types/inventory-source';
 import { sourceTypeDisplayNames, sourceTypeDescriptions } from '@/types/inventory-source';
+import type { InventorySourceFormDialogProps } from './types';
 
 const SOURCE_TYPES: InventorySourceType[] = ['Store', 'Online', 'Found', 'Contact', 'GemShow', 'Other'];
 
@@ -58,14 +59,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-interface InventorySourceFormDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  source?: InventorySourceListDto | null;
-  onSuccess?: (sourceId: string) => void;
-}
-
-export function InventorySourceFormDialog({
+export function InventorySourceFormDialogDesktop({
   open,
   onOpenChange,
   source,
@@ -126,7 +120,7 @@ export function InventorySourceFormDialog({
   }, [open, sourceDetails, isEditing, form]);
 
   const validateNameUniqueness = async (name: string, sourceType: string) => {
-    if (!name.trim()) return; // Skip if name is empty
+    if (!name.trim()) return;
 
     try {
       const result = await checkNameMutation.mutateAsync({
@@ -150,7 +144,6 @@ export function InventorySourceFormDialog({
     const name = form.getValues('name');
     const sourceType = form.getValues('sourceType');
 
-    // Only validate if name passes basic validation
     if (name && name.length >= 1 && name.length <= 100) {
       validateNameUniqueness(name, sourceType);
     }
@@ -159,10 +152,8 @@ export function InventorySourceFormDialog({
   const handleSourceTypeChange = (newType: string) => {
     const name = form.getValues('name');
 
-    // Clear any existing name error since we're changing the type
     form.clearErrors('name');
 
-    // Re-validate uniqueness if name is filled
     if (name && name.length >= 1 && name.length <= 100) {
       validateNameUniqueness(name, newType);
     }

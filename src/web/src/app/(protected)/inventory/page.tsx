@@ -199,19 +199,19 @@ export default function InventoryPage() {
   return (
     <PageTransition>
       <div className={PAGE_CONTAINER}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
             <p className="text-muted-foreground">Track your rock and specimen collection</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" asChild>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <Button variant="outline" size="sm" asChild className="h-9">
               <Link href="/inventory/sources">
                 <Store className="mr-2 h-4 w-4" />
-                Manage Sources
+                <span className="hidden sm:inline">Manage </span>Sources
               </Link>
             </Button>
-            <Button asChild>
+            <Button size="sm" asChild className="h-9">
               <Link href="/inventory/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Inventory

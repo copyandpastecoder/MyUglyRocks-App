@@ -9,7 +9,6 @@ import {
   Command,
   CommandEmpty,
   CommandGroup,
-  CommandInput,
   CommandItem,
   CommandList,
   CommandSeparator,
@@ -38,50 +37,15 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useSpecimenSearch } from '@/hooks/use-user-specimens';
 import { useAvailableInventorySpecimens, type AvailableInventorySpecimen } from '@/hooks/use-available-inventory-specimens';
 import type { SpecimenOptionDto } from '@/types/user-specimen';
+import {
+  type SpecimenSelection,
+  type SpecimenSelectProps,
+  type ColumnKey,
+  AVAILABLE_COLUMNS,
+  STORAGE_KEY,
+} from './types';
 
-// Column visibility configuration
-type ColumnKey = 'scientificName' | 'alias' | 'hardness' | 'difficulty' | 'materialType';
-
-interface ColumnConfig {
-  key: ColumnKey;
-  label: string;
-  defaultVisible: boolean;
-}
-
-const AVAILABLE_COLUMNS: ColumnConfig[] = [
-  { key: 'scientificName', label: 'Scientific Name', defaultVisible: true },
-  { key: 'alias', label: 'Alias', defaultVisible: true },
-  { key: 'hardness', label: 'Hardness', defaultVisible: true },
-  { key: 'difficulty', label: 'Tumbling Difficulty', defaultVisible: true },
-  { key: 'materialType', label: 'Material Type', defaultVisible: false },
-];
-
-const STORAGE_KEY = 'specimen-dropdown-columns';
-
-// Selection item that tracks both ID and source
-export interface SpecimenSelection {
-  id: string;
-  source: 'system' | 'user';
-  /** For inventory specimens - the inventory specimen ID for linking to the cycle */
-  inventorySpecimenId?: string;
-  /** For inventory specimens - whether to mark as depleted when cycle completes */
-  markDepletedOnComplete?: boolean;
-  /** For inventory specimens - whether to copy tagged photos from inventory to cycle */
-  addPhotosFromInventory?: boolean;
-}
-
-interface SpecimenMultiSelectProps {
-  selectedItems: SpecimenSelection[];
-  onSelectionChange: (items: SpecimenSelection[]) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  onAddCustom?: () => void;  // Callback to open add custom specimen modal
-  includePublicSpecimens?: boolean;
-  /** Enable the inventory mode toggle - allows selecting from user's inventory */
-  enableInventoryMode?: boolean;
-}
-
-export function SpecimenMultiSelect({
+export function SpecimenSelectDesktop({
   selectedItems,
   onSelectionChange,
   placeholder = 'Select specimens...',
@@ -89,12 +53,11 @@ export function SpecimenMultiSelect({
   onAddCustom,
   includePublicSpecimens = true,
   enableInventoryMode = false,
-}: SpecimenMultiSelectProps) {
+}: SpecimenSelectProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [debouncedSearch, setDebouncedSearch] = React.useState('');
   const [inventoryMode, setInventoryMode] = React.useState(false);
-  const stopWheelPropagation = (e: React.WheelEvent) => e.stopPropagation();
 
   // Column visibility state - load from localStorage
   const [visibleColumns, setVisibleColumns] = React.useState<Record<ColumnKey, boolean>>(() => {
@@ -399,21 +362,8 @@ export function SpecimenMultiSelect({
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] sm:max-w-[32rem] p-0 max-h-[80vh] sm:max-h-[70vh] overflow-auto overscroll-contain"
-          align="start"
-          sideOffset={6}
-          collisionPadding={10}
-          onWheelCapture={stopWheelPropagation}
-          style={{
-            WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-y',
-          }}
-        >
-          <Command
-            shouldFilter={false}
-            className="max-h-[80vh] sm:max-h-[70vh] overflow-hidden"
-          >
+        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+          <Command shouldFilter={false}>
             <div className="flex items-center border-b px-3">
               <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
               <input
@@ -472,11 +422,7 @@ export function SpecimenMultiSelect({
               )}
             </div>
 
-            <CommandList
-              className="max-h-[65vh] sm:max-h-[60vh] overflow-y-auto overscroll-contain"
-              onWheelCapture={stopWheelPropagation}
-              style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y' }}
-            >
+            <CommandList className="max-h-[300px] overflow-y-auto">
               {inventoryMode ? (
                 /* Inventory Mode View */
                 <>
@@ -508,7 +454,6 @@ export function SpecimenMultiSelect({
                               <span>{group.inventoryName}</span>
                             </div>
                           }
-                          className="max-h-[180px] overflow-auto"
                         >
                           {group.specimens.map((invSpecimen) => {
                             const selected = isInventorySpecimenSelected(invSpecimen);
@@ -646,7 +591,7 @@ export function SpecimenMultiSelect({
                     <>
                       {/* Your Specimens Section */}
                       {groupedSpecimens.userSpecimens.length > 0 && (
-                        <CommandGroup heading="Your Specimens" className="max-h-[120px] overflow-auto">
+                        <CommandGroup heading="Your Specimens">
                           {groupedSpecimens.userSpecimens.map(renderSpecimenItem)}
                         </CommandGroup>
                       )}
@@ -656,7 +601,7 @@ export function SpecimenMultiSelect({
 
                       {/* Reference Specimens Section */}
                       {groupedSpecimens.systemSpecimens.length > 0 && (
-                        <CommandGroup heading="Reference Specimens" className="max-h-[200px] overflow-auto">
+                        <CommandGroup heading="Reference Specimens">
                           {groupedSpecimens.systemSpecimens.map(renderSpecimenItem)}
                         </CommandGroup>
                       )}
@@ -782,116 +727,6 @@ export function SpecimenMultiSelect({
             Tumbling rocks with more than 1 point difference may damage softer specimens.
           </AlertDescription>
         </Alert>
-      )}
-    </div>
-  );
-}
-
-// Legacy prop interface for backward compatibility
-interface LegacySpecimenMultiSelectProps {
-  specimens: Array<{ specimenId: string; commonName: string; mohsHardnessMax: number | null; alias: string | null; variety: string | null; rockFamily: string | null; }>;
-  selectedIds: string[];
-  onSelectionChange: (ids: string[]) => void;
-  placeholder?: string;
-  disabled?: boolean;
-  isLoading?: boolean;
-}
-
-// Export a legacy wrapper for backward compatibility with existing code
-export function LegacySpecimenMultiSelect({
-  specimens,
-  selectedIds,
-  onSelectionChange,
-  placeholder = 'Select specimens...',
-  disabled = false,
-  isLoading = false,
-}: LegacySpecimenMultiSelectProps) {
-
-  // This component doesn't use the new search API, it uses the passed specimens directly
-  // For full functionality, update the parent component to use the new SpecimenMultiSelect
-  return (
-    <div className="space-y-2">
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            className="w-full justify-between min-h-[40px] h-auto"
-            disabled={disabled || isLoading}
-          >
-            <span className="text-muted-foreground">
-              {isLoading
-                ? 'Loading specimens...'
-                : selectedIds.length > 0
-                ? `${selectedIds.length} selected`
-                : placeholder}
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-          <Command>
-            <CommandInput placeholder="Search specimens..." />
-            <CommandList>
-              <CommandEmpty>No specimens found.</CommandEmpty>
-              <CommandGroup className="max-h-[250px] overflow-auto">
-                {specimens.map((specimen) => {
-                  const isSelected = selectedIds.includes(specimen.specimenId);
-                  return (
-                    <CommandItem
-                      key={specimen.specimenId}
-                      value={specimen.commonName}
-                      onSelect={() => {
-                        const newSelection = isSelected
-                          ? selectedIds.filter((id) => id !== specimen.specimenId)
-                          : [...selectedIds, specimen.specimenId];
-                        onSelectionChange(newSelection);
-                      }}
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Checkbox checked={isSelected} className="pointer-events-none" />
-                      <span className="flex-1 font-medium truncate">{specimen.commonName}</span>
-                      {specimen.mohsHardnessMax && (
-                        <span className="text-xs text-muted-foreground">
-                          {specimen.mohsHardnessMax}
-                        </span>
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-
-      {/* Selected chips */}
-      {selectedIds.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {selectedIds.map((id) => {
-            const specimen = specimens.find((s) => s.specimenId === id);
-            if (!specimen) return null;
-            return (
-              <Badge
-                key={id}
-                variant="secondary"
-                className="flex items-center gap-1 pr-1 bg-primary/25 text-foreground border border-primary/50"
-              >
-                <span className="truncate max-w-[150px]">{specimen.commonName}</span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectionChange(selectedIds.filter((sid) => sid !== id));
-                  }}
-                  className="ml-1 rounded-full p-0.5 hover:bg-muted-foreground/20"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            );
-          })}
-        </div>
       )}
     </div>
   );
