@@ -333,7 +333,6 @@ public record CleaningRunDto(
     string? Purpose,
     string Status,
     string? ResultNotes,
-    string? Notes,
     IEnumerable<CleaningMaterialDto> Materials
 );
 
@@ -345,9 +344,6 @@ public record CreateCleaningRunRequest(
     string? Purpose,
 
     bool ReminderEnabled,
-
-    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
-    string? Notes,
 
     IEnumerable<CreateCleaningMaterialRequest>? Materials
 );

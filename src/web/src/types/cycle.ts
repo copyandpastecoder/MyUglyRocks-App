@@ -172,7 +172,6 @@ export interface CleaningRunDto {
   purpose: string | null;
   status: string;
   resultNotes: string | null;
-  notes: string | null;
   materials: CleaningMaterialDto[];
 }
 
@@ -180,7 +179,6 @@ export interface CreateCleaningRunRequest {
   durationMinutes: number;
   purpose?: string;
   reminderEnabled?: boolean;
-  notes?: string;
   materials?: CreateCleaningMaterialRequest[];
 }
 

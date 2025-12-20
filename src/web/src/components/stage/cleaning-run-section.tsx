@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -27,7 +26,6 @@ export interface CleaningRunData {
   durationHours: string;
   durationMinutes: string;
   purpose: string;
-  notes: string;
   materials: StageMaterial[];
 }
 
@@ -168,17 +166,6 @@ export function CleaningRunSection({
             onMaterialsChange={(materials) => updateField('materials', materials)}
             excludeAbrasives
           />
-
-          {/* Cleaning Notes */}
-          <div className="space-y-2">
-            <Label>Cleaning Notes (optional)</Label>
-            <Textarea
-              placeholder="e.g., Extra rinse to remove all grit residue..."
-              value={data.notes}
-              onChange={(e) => updateField('notes', e.target.value)}
-              rows={2}
-            />
-          </div>
         </CollapsibleContent>
     </Collapsible>
   );

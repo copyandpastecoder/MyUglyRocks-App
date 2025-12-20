@@ -3,7 +3,7 @@
 import { useIsMobile } from '@/hooks/use-is-mobile';
 import { AddCustomSpecimenDialogDesktop } from './add-custom-specimen-dialog.desktop';
 import { AddCustomSpecimenDialogMobile } from './add-custom-specimen-dialog.mobile';
-import type { AddCustomSpecimenDialogProps, CustomSpecimenCreatedData } from './types';
+import type { AddCustomSpecimenDialogProps } from './types';
 
 /**
  * Smart add custom specimen dialog component that renders the appropriate version
