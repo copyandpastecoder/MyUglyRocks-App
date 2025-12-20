@@ -218,13 +218,12 @@ export function WeightInput({
   const handleToggleMetric = useCallback(() => {
     const newMetric = !isMetric;
     setIsMetric(newMetric);
-    setHasUserChoice(true);
     sessionStorage.setItem(METRIC_STATE_KEY, String(newMetric));
     // Notify parent of display unit change
     if (valueGrams !== null) {
       onValueChange(valueGrams, getDisplayUnit(newMetric));
     }
-  }, [isMetric, valueGrams, onValueChange]);
+  }, [isMetric, setIsMetric, valueGrams, onValueChange]);
 
   // Get total display text
   const getTotalDisplay = (): string => {
