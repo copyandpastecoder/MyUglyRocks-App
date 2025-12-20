@@ -74,7 +74,6 @@ export function StageFormMobile({
   const [barrelsOpen, setBarrelsOpen] = useState(!isEditMode);
   const [durationOpen, setDurationOpen] = useState(true);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [cleaningOpen, setCleaningOpen] = useState(false);
 
   // Form state
   const [isLoading, setIsLoading] = useState(false);
@@ -841,51 +840,27 @@ export function StageFormMobile({
                 </Collapsible>
 
                 {/* Cleaning Run */}
-                <Collapsible open={cleaningOpen} onOpenChange={setCleaningOpen}>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className={cn(
-                        "w-full flex items-center justify-between p-4 rounded-lg border",
-                        addCleaningRun ? "bg-blue-500/10 border-blue-500/50" : "bg-muted/30"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Droplets className="h-5 w-5" />
-                        <span className="font-medium">Cleaning Run</span>
-                        {addCleaningRun && (
-                          <span className="text-sm text-muted-foreground">
-                            {cleaningDurationDays}d {cleaningDurationHours}h {cleaningDurationMinutes}m
-                          </span>
-                        )}
-                      </div>
-                      {cleaningOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronRight className="h-5 w-5" />}
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-4">
-                    <CleaningRunSection
-                      data={{
-                        enabled: addCleaningRun,
-                        durationDays: cleaningDurationDays,
-                        durationHours: cleaningDurationHours,
-                        durationMinutes: cleaningDurationMinutes,
-                        purpose: cleaningPurpose,
-                        notes: cleaningNotes,
-                        materials: cleaningMaterials,
-                      }}
-                      availableMaterials={materials || []}
-                      onChange={(data) => {
-                        setAddCleaningRun(data.enabled);
-                        setCleaningDurationDays(data.durationDays);
-                        setCleaningDurationHours(data.durationHours);
-                        setCleaningDurationMinutes(data.durationMinutes);
-                        setCleaningPurpose(data.purpose);
-                        setCleaningNotes(data.notes);
-                        setCleaningMaterials(data.materials);
-                      }}
-                    />
-                  </CollapsibleContent>
-                </Collapsible>
+                <CleaningRunSection
+                  data={{
+                    enabled: addCleaningRun,
+                    durationDays: cleaningDurationDays,
+                    durationHours: cleaningDurationHours,
+                    durationMinutes: cleaningDurationMinutes,
+                    purpose: cleaningPurpose,
+                    notes: cleaningNotes,
+                    materials: cleaningMaterials,
+                  }}
+                  availableMaterials={materials || []}
+                  onChange={(data) => {
+                    setAddCleaningRun(data.enabled);
+                    setCleaningDurationDays(data.durationDays);
+                    setCleaningDurationHours(data.durationHours);
+                    setCleaningDurationMinutes(data.durationMinutes);
+                    setCleaningPurpose(data.purpose);
+                    setCleaningNotes(data.notes);
+                    setCleaningMaterials(data.materials);
+                  }}
+                />
               </div>
             </div>
 
