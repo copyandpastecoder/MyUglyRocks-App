@@ -490,7 +490,7 @@ export function StageFormMobile({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[100dvh] p-0 flex flex-col">
+      <SheetContent side="bottom" className="h-[100dvh] p-0 flex flex-col z-[60]" overlayClassName="z-[60]">
         {/* Header */}
         <SheetHeader className="p-4 border-b flex-shrink-0">
           <SheetTitle className="text-lg">
