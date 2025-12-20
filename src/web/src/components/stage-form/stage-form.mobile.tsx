@@ -193,7 +193,6 @@ export function StageFormMobile({
 
       if (fullStage.cleaningRun) {
         setAddCleaningRun(true);
-        setCleaningOpen(true);
         const { days, hours, mins } = convertMinutesToDaysHoursMinutes(fullStage.cleaningRun.durationMinutes);
         setCleaningDurationDays(String(days));
         setCleaningDurationHours(String(hours));
@@ -281,7 +280,6 @@ export function StageFormMobile({
 
         if (fullStage.cleaningRun) {
           setAddCleaningRun(true);
-          setCleaningOpen(true);
           const { days, hours, mins } = convertMinutesToDaysHoursMinutes(fullStage.cleaningRun.durationMinutes);
           setCleaningDurationDays(String(days));
           setCleaningDurationHours(String(hours));
@@ -339,7 +337,6 @@ export function StageFormMobile({
 
       if (previousStage.cleaningRun) {
         setAddCleaningRun(true);
-        setCleaningOpen(true);
         const { days, hours, mins } = convertMinutesToDaysHoursMinutes(previousStage.cleaningRun.durationMinutes);
         setCleaningDurationDays(String(days));
         setCleaningDurationHours(String(hours));
