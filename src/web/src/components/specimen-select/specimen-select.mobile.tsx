@@ -382,19 +382,9 @@ export function SpecimenSelectMobile({
         <SheetContent side="bottom" className="h-[100dvh] p-0 flex flex-col z-[60]" overlayClassName="z-[60]">
           {/* Header */}
           <SheetHeader className="p-4 border-b flex-shrink-0">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="text-lg">
-                {inventoryMode ? 'Select from Inventory' : 'Select Specimens'}
-              </SheetTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setOpen(false)}
-                className="h-10 w-10"
-              >
-                <X className="h-6 w-6" />
-              </Button>
-            </div>
+            <SheetTitle className="text-lg">
+              {inventoryMode ? 'Select from Inventory' : 'Select Specimens'}
+            </SheetTitle>
 
             {/* Search Input */}
             <div className="relative mt-3">

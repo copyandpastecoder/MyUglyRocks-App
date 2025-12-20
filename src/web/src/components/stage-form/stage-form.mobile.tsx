@@ -494,19 +494,9 @@ export function StageFormMobile({
       <SheetContent side="bottom" className="h-[100dvh] p-0 flex flex-col">
         {/* Header */}
         <SheetHeader className="p-4 border-b flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-lg">
-              {isEditMode ? 'Edit Stage' : 'New Stage'}
-            </SheetTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(false)}
-              className="h-10 w-10"
-            >
-              <X className="h-6 w-6" />
-            </Button>
-          </div>
+          <SheetTitle className="text-lg">
+            {isEditMode ? 'Edit Stage' : 'New Stage'}
+          </SheetTitle>
         </SheetHeader>
 
         {isLoading ? (
