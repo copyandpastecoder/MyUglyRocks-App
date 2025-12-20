@@ -64,7 +64,6 @@ export function CleaningRunModalDesktop({
   const [durationHours, setDurationHours] = useState<string>('1');
   const [durationMinutes, setDurationMinutes] = useState<string>('0');
   const [purpose, setPurpose] = useState<string>('PostStageClean');
-  const [notes, setNotes] = useState<string>('');
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [selectedMaterials, setSelectedMaterials] = useState<MaterialFormItem[]>([]);
 
@@ -73,7 +72,6 @@ export function CleaningRunModalDesktop({
     setDurationHours('1');
     setDurationMinutes('0');
     setPurpose('PostStageClean');
-    setNotes('');
     setReminderEnabled(false);
     setSelectedMaterials([]);
   };
@@ -89,7 +87,6 @@ export function CleaningRunModalDesktop({
         durationMinutes: totalMinutes,
         purpose: purpose || undefined,
         reminderEnabled,
-        notes: notes || undefined,
         materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
       });
     },
@@ -335,17 +332,6 @@ export function CleaningRunModalDesktop({
                 })}
               </div>
             )}
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label>Notes (optional)</Label>
-            <Textarea
-              placeholder="e.g., Extra rinse to remove all grit residue..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
           </div>
 
           {/* Reminder */}

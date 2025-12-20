@@ -56,7 +56,6 @@ export function CleaningRunModalMobile({
   const [durationHours, setDurationHours] = useState<string>('1');
   const [durationMinutes, setDurationMinutes] = useState<string>('0');
   const [purpose, setPurpose] = useState<string>('PostStageClean');
-  const [notes, setNotes] = useState<string>('');
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [selectedMaterials, setSelectedMaterials] = useState<MaterialFormItem[]>([]);
 
@@ -65,18 +64,15 @@ export function CleaningRunModalMobile({
   const [selectingMaterialIndex, setSelectingMaterialIndex] = useState<number | null>(null);
   const [materialSearch, setMaterialSearch] = useState('');
   const [materialsExpanded, setMaterialsExpanded] = useState(false);
-  const [notesExpanded, setNotesExpanded] = useState(false);
 
   const resetForm = () => {
     setDurationDays('0');
     setDurationHours('1');
     setDurationMinutes('0');
     setPurpose('PostStageClean');
-    setNotes('');
     setReminderEnabled(false);
     setSelectedMaterials([]);
     setMaterialsExpanded(false);
-    setNotesExpanded(false);
   };
 
   const addCleaningRunMutation = useMutation({
@@ -88,7 +84,6 @@ export function CleaningRunModalMobile({
         durationMinutes: totalMinutes,
         purpose: purpose || undefined,
         reminderEnabled,
-        notes: notes || undefined,
         materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
       });
     },
@@ -390,30 +385,6 @@ export function CleaningRunModalMobile({
                     })}
                   </div>
                 )}
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Notes - Collapsible */}
-            <Collapsible open={notesExpanded} onOpenChange={setNotesExpanded}>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" className="p-0 h-auto hover:bg-transparent">
-                  <Label className="text-base font-semibold cursor-pointer">
-                    Notes {notes && "(1)"}
-                  </Label>
-                  <ChevronDown className={cn(
-                    "h-4 w-4 ml-2 transition-transform",
-                    notesExpanded && "rotate-180"
-                  )} />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-3">
-                <Textarea
-                  placeholder="e.g., Extra rinse to remove all grit residue..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  className="text-base"
-                />
               </CollapsibleContent>
             </Collapsible>
 
