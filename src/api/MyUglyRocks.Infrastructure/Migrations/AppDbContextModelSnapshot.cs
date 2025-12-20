@@ -258,10 +258,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("duration_minutes");
 
-                    b.Property<string>("Notes")
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
-
                     b.Property<int?>("Purpose")
                         .HasColumnType("integer")
                         .HasColumnName("purpose");

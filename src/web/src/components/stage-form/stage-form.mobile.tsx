@@ -101,7 +101,6 @@ export function StageFormMobile({
   const [cleaningDurationHours, setCleaningDurationHours] = useState<string>('0');
   const [cleaningDurationMinutes, setCleaningDurationMinutes] = useState<string>('0');
   const [cleaningPurpose, setCleaningPurpose] = useState<string>('');
-  const [cleaningNotes, setCleaningNotes] = useState<string>('');
   const [cleaningMaterials, setCleaningMaterials] = useState<Array<{ materialId: string; displayAmount: string; displayUnit: string }>>([]);
 
   // Calculate total barrel capacity
@@ -131,7 +130,6 @@ export function StageFormMobile({
     setCleaningDurationHours('0');
     setCleaningDurationMinutes('0');
     setCleaningPurpose('');
-    setCleaningNotes('');
     setCleaningMaterials([]);
     setIsLoading(false);
   }, [settings?.measurementSystem]);
@@ -195,7 +193,6 @@ export function StageFormMobile({
         setCleaningDurationHours(String(hours));
         setCleaningDurationMinutes(String(mins));
         setCleaningPurpose(fullStage.cleaningRun.purpose || '');
-        setCleaningNotes(fullStage.cleaningRun.notes || '');
         if (fullStage.cleaningRun.materials && fullStage.cleaningRun.materials.length > 0) {
           setCleaningMaterials(fullStage.cleaningRun.materials.map(m => ({
             materialId: m.materialId,
@@ -282,7 +279,6 @@ export function StageFormMobile({
           setCleaningDurationHours(String(hours));
           setCleaningDurationMinutes(String(mins));
           setCleaningPurpose(fullStage.cleaningRun.purpose || 'PostStageClean');
-          setCleaningNotes(fullStage.cleaningRun.notes || '');
           if (fullStage.cleaningRun.materials && fullStage.cleaningRun.materials.length > 0) {
             setCleaningMaterials(fullStage.cleaningRun.materials.map(m => ({
               materialId: m.materialId,
@@ -339,7 +335,6 @@ export function StageFormMobile({
         setCleaningDurationHours(String(hours));
         setCleaningDurationMinutes(String(mins));
         setCleaningPurpose(previousStage.cleaningRun.purpose || 'PostStageClean');
-        setCleaningNotes(previousStage.cleaningRun.notes || '');
         if (previousStage.cleaningRun.materials && previousStage.cleaningRun.materials.length > 0) {
           setCleaningMaterials(previousStage.cleaningRun.materials.map(m => ({
             materialId: m.materialId,
@@ -452,7 +447,6 @@ export function StageFormMobile({
         durationMinutes: cleaningTotalMinutes,
         purpose: cleaningPurpose || undefined,
         reminderEnabled: false,
-        notes: cleaningNotes || undefined,
         materials: cleaningMaterialsToSubmit.length > 0 ? cleaningMaterialsToSubmit : undefined,
       };
     }
@@ -827,7 +821,6 @@ export function StageFormMobile({
                     durationHours: cleaningDurationHours,
                     durationMinutes: cleaningDurationMinutes,
                     purpose: cleaningPurpose,
-                    notes: cleaningNotes,
                     materials: cleaningMaterials,
                   }}
                   availableMaterials={materials || []}
@@ -837,7 +830,6 @@ export function StageFormMobile({
                     setCleaningDurationHours(data.durationHours);
                     setCleaningDurationMinutes(data.durationMinutes);
                     setCleaningPurpose(data.purpose);
-                    setCleaningNotes(data.notes);
                     setCleaningMaterials(data.materials);
                   }}
                 />

@@ -140,7 +140,6 @@ export default function CycleDetailPage() {
     durationHours: string;
     durationMinutes: string;
     purpose: string;
-    notes: string;
     materials: Array<{ materialId: string; displayAmount: string; displayUnit: string }>;
   }>({
     enabled: false,
@@ -148,7 +147,6 @@ export default function CycleDetailPage() {
     durationHours: '0',
     durationMinutes: '0',
     purpose: '',
-    notes: '',
     materials: [],
   });
   // Weight before (from when stage was started)
@@ -290,7 +288,6 @@ export default function CycleDetailPage() {
           const cleaningRun = completedStage.cleaningRun ? {
             durationMinutes: completedStage.cleaningRun.durationMinutes,
             purpose: completedStage.cleaningRun.purpose ?? undefined,
-            notes: completedStage.cleaningRun.notes ?? undefined,
             materials: completedStage.cleaningRun.materials?.map(m => ({
               materialId: m.materialId,
               displayAmount: m.displayAmount ?? undefined,
@@ -435,7 +432,6 @@ export default function CycleDetailPage() {
         durationHours: String(hours),
         durationMinutes: String(mins),
         purpose: stage.cleaningRun.purpose || '',
-        notes: stage.cleaningRun.notes || '',
         materials: stage.cleaningRun.materials?.map(m => ({
           materialId: m.materialId,
           displayAmount: m.displayAmount?.toString() || '',
@@ -449,7 +445,6 @@ export default function CycleDetailPage() {
         durationHours: '0',
         durationMinutes: '0',
         purpose: '',
-        notes: '',
         materials: [],
       });
     }
@@ -518,7 +513,6 @@ export default function CycleDetailPage() {
           await cycleApi.addCleaningRun(completeStageId, {
             durationMinutes: totalMinutes,
             purpose: completeStageEditableCleaningRun.purpose || undefined,
-            notes: completeStageEditableCleaningRun.notes || undefined,
             materials: cleaningMaterials.length > 0 ? cleaningMaterials : undefined,
           });
         } catch {
@@ -1017,7 +1011,6 @@ export default function CycleDetailPage() {
                 durationHours: completeStageEditableCleaningRun.durationHours,
                 durationMinutes: completeStageEditableCleaningRun.durationMinutes,
                 purpose: completeStageEditableCleaningRun.purpose,
-                notes: completeStageEditableCleaningRun.notes,
                 materials: completeStageEditableCleaningRun.materials,
               }}
               availableMaterials={materials || []}
@@ -1028,7 +1021,6 @@ export default function CycleDetailPage() {
                 durationHours: data.durationHours,
                 durationMinutes: data.durationMinutes,
                 purpose: data.purpose,
-                notes: data.notes,
                 materials: data.materials,
               })}
             />
@@ -1246,12 +1238,6 @@ export default function CycleDetailPage() {
                           </li>
                         ))}
                       </ul>
-                    </div>
-                  )}
-                  {completeStageCleaningRun.notes && (
-                    <div>
-                      <span className="text-muted-foreground">Notes:</span>
-                      <p className="mt-1 text-xs">{completeStageCleaningRun.notes}</p>
                     </div>
                   )}
                 </div>
@@ -1529,12 +1515,6 @@ export default function CycleDetailPage() {
                             </li>
                           ))}
                         </ul>
-                      </div>
-                    )}
-                    {viewStageData.cleaningRun.notes && (
-                      <div>
-                        <span className="text-muted-foreground">Notes:</span>
-                        <p className="mt-1 text-xs">{viewStageData.cleaningRun.notes}</p>
                       </div>
                     )}
                   </div>
@@ -1986,12 +1966,6 @@ function StageCard({
                                   </li>
                                 ))}
                               </ul>
-                            </div>
-                          )}
-                          {stage.cleaningRun.notes && (
-                            <div>
-                              <span className="text-muted-foreground">Notes:</span>
-                              <p className="mt-1 text-xs">{stage.cleaningRun.notes}</p>
                             </div>
                           )}
                         </div>
