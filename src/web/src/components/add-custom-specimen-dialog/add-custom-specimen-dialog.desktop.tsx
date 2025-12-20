@@ -34,7 +34,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, Sparkles, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useCreateUserSpecimen } from '@/hooks/use-user-specimens';
 import { userSpecimenApi } from '@/lib/api';
-import type { AddCustomSpecimenDialogProps, CustomSpecimenCreatedData } from './types';
+import type { AddCustomSpecimenDialogProps } from './types';
 import { MATERIAL_TYPES, DIFFICULTIES } from './types';
 import type { CreateUserSpecimenRequest } from '@/types/user-specimen';
 
