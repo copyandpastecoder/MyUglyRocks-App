@@ -35,7 +35,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { AmountInput } from '@/components/amount-input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { Check, ChevronsUpDown, Loader2, Plus, X } from 'lucide-react';

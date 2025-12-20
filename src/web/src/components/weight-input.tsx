@@ -91,9 +91,8 @@ export function WeightInput({
     return sessionStorage.getItem(METRIC_STATE_KEY) !== null;
   });
 
-  // Local state for unit system - defaults to user's preference
-  // Use lazy initialization to read from sessionStorage on mount
-  const [isMetric, setIsMetric] = useState(() => {
+  // Local state for user's explicit unit choice - only used when hasUserChoice is true
+  const [userSelectedMetric, setUserSelectedMetric] = useState(() => {
     if (typeof window === 'undefined') return false;
     const savedMetric = sessionStorage.getItem(METRIC_STATE_KEY);
     if (savedMetric !== null) {
@@ -105,20 +104,32 @@ export function WeightInput({
     return false;
   });
 
+  // Derive effective isMetric value based on user choice or settings
+  const isMetric = useMemo(() => {
+    // User's explicit choice takes priority
+    if (hasUserChoice) {
+      return userSelectedMetric;
+    }
+    // Fall back to user settings
+    if (settings?.measurementSystem) {
+      return settings.measurementSystem === 'Metric';
+    }
+    // Default based on initialDisplayUnit or false
+    return userSelectedMetric;
+  }, [hasUserChoice, userSelectedMetric, settings?.measurementSystem]);
+
+  // Setter that marks user as having made an explicit choice
+  const setIsMetric = useCallback((value: boolean) => {
+    setHasUserChoice(true);
+    setUserSelectedMetric(value);
+  }, []);
+
   // State for showing the large unit (lbs/kg) - remembers last choice
   const [showLargeUnit, setShowLargeUnit] = useState(() => {
     if (typeof window === 'undefined') return false;
     const savedExpanded = sessionStorage.getItem(EXPANDED_STATE_KEY);
     return savedExpanded === 'true';
   });
-
-  // Sync with user settings when they load (only if user hasn't made an explicit choice)
-  useEffect(() => {
-    if (!hasUserChoice && settings?.measurementSystem) {
-      const settingIsMetric = settings.measurementSystem === 'Metric';
-      setIsMetric(settingIsMetric);
-    }
-  }, [hasUserChoice, settings?.measurementSystem]);
 
   // Derive display values directly from props - no local state needed
   const derivedDisplay = useMemo(
