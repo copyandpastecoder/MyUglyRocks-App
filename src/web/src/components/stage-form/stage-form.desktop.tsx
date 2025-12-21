@@ -41,6 +41,7 @@ import {
   Star,
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { useSettings, useTimezone } from '@/hooks/use-user';
@@ -659,28 +660,40 @@ export function StageFormDesktop({
                         const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
                         if (tumblerCompare !== 0) return tumblerCompare;
                         return a.barrelNumber - b.barrelNumber;
-                      }).map(barrel => (
-                        <div key={barrel.barrelId} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`barrel-${barrel.barrelId}`}
-                            checked={selectedBarrelIds.includes(barrel.barrelId)}
-                            onCheckedChange={() => toggleBarrel(barrel.barrelId)}
-                          />
-                          <label
-                            htmlFor={`barrel-${barrel.barrelId}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {barrel.tumblerName}
-                            {barrel.capacityLbs && (
-                              <span className="text-muted-foreground">
-                                {' '}- {barrel.capacityLbs} lbs
-                              </span>
-                            )}
-                            {' '}#{barrel.barrelNumber}
-                            {barrel.nickname && ` (${barrel.nickname})`}
-                          </label>
-                        </div>
-                      ))
+                      }).map(barrel => {
+                        const isInOtherCycle = barrel.isInActiveCycle && barrel.activeCycleId !== cycleId;
+                        return (
+                          <div key={barrel.barrelId} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`barrel-${barrel.barrelId}`}
+                              checked={selectedBarrelIds.includes(barrel.barrelId)}
+                              onCheckedChange={() => toggleBarrel(barrel.barrelId)}
+                            />
+                            <span className={cn(
+                              "w-2 h-2 rounded-full flex-shrink-0",
+                              isInOtherCycle ? "bg-yellow-500" : "bg-green-500"
+                            )} />
+                            <label
+                              htmlFor={`barrel-${barrel.barrelId}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {barrel.tumblerName}
+                              {barrel.capacityLbs && (
+                                <span className="text-muted-foreground">
+                                  {' '}- {barrel.capacityLbs} lbs
+                                </span>
+                              )}
+                              {' '}#{barrel.barrelNumber}
+                              {barrel.nickname && ` (${barrel.nickname})`}
+                              {isInOtherCycle && barrel.activeCycleName && (
+                                <span className="text-yellow-600 dark:text-yellow-400 ml-1">
+                                  (In use: {barrel.activeCycleName})
+                                </span>
+                              )}
+                            </label>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                   {selectedBarrelIds.length > 0 && (

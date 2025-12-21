@@ -49,6 +49,9 @@ export interface BarrelDto {
   dedicatedStages: string[] | null;
   isActive: boolean;
   isMounted: boolean;
+  isInActiveCycle: boolean;
+  activeCycleId: string | null;
+  activeCycleName: string | null;
 }
 
 export interface CreateBarrelRequest {

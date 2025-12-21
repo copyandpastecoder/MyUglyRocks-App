@@ -670,6 +670,7 @@ export function StageFormMobile({
                               return a.barrelNumber - b.barrelNumber;
                             }).map(barrel => {
                               const isSelected = selectedBarrelIds.includes(barrel.barrelId);
+                              const isInOtherCycle = barrel.isInActiveCycle && barrel.activeCycleId !== cycleId;
                               return (
                                 <button
                                   key={barrel.barrelId}
@@ -687,7 +688,11 @@ export function StageFormMobile({
                                     {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium">
+                                    <div className="font-medium flex items-center gap-2">
+                                      <span className={cn(
+                                        "w-2 h-2 rounded-full flex-shrink-0",
+                                        isInOtherCycle ? "bg-yellow-500" : "bg-green-500"
+                                      )} />
                                       {barrel.tumblerName}
                                       {barrel.capacityLbs && (
                                         <span className="text-muted-foreground font-normal">
@@ -696,11 +701,14 @@ export function StageFormMobile({
                                       )}
                                       {' '}#{barrel.barrelNumber}
                                     </div>
-                                    {barrel.nickname && (
-                                      <div className="text-sm text-muted-foreground">
-                                        {barrel.nickname}
-                                      </div>
-                                    )}
+                                    <div className="text-sm text-muted-foreground">
+                                      {barrel.nickname && <span>{barrel.nickname}</span>}
+                                      {isInOtherCycle && barrel.activeCycleName && (
+                                        <span className="text-yellow-600 dark:text-yellow-400">
+                                          {barrel.nickname ? ' · ' : ''}In use: {barrel.activeCycleName}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </button>
                               );
