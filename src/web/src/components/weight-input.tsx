@@ -259,6 +259,7 @@ export function WeightInput({
           <>
             <Input
               type="number"
+              inputMode="numeric"
               min="0"
               step="1"
               placeholder="0"
@@ -275,6 +276,7 @@ export function WeightInput({
         {/* Small unit input (oz/g) - always shown */}
         <Input
           type="number"
+          inputMode="decimal"
           min="0"
           step={isMetric ? '1' : '0.1'}
           placeholder={placeholder || '0'}

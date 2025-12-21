@@ -730,6 +730,7 @@ export function StageFormMobile({
                             </button>
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min="1"
                               value={remindAfterDays}
                               onChange={(e) => setRemindAfterDays(e.target.value)}
@@ -775,6 +776,7 @@ export function StageFormMobile({
                   <div className="flex gap-2">
                     <Input
                       type="number"
+                      inputMode="decimal"
                       min="0"
                       step="0.1"
                       placeholder="e.g., 250"
@@ -786,7 +788,7 @@ export function StageFormMobile({
                       <SelectTrigger className="w-24 h-12">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="z-[70]">
                         {WATER_UNITS.map(unit => (
                           <SelectItem key={unit.value} value={unit.value}>
                             {unit.label}

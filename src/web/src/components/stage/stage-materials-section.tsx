@@ -141,7 +141,7 @@ function MaterialRow({ material, sortedMaterials, onMaterialChange, onRemove }: 
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[400px] p-0"
+          className="w-[400px] p-0 z-[70]"
           align="start"
           onWheelCapture={(e) => e.stopPropagation()}
         >
@@ -191,7 +191,7 @@ function MaterialRow({ material, sortedMaterials, onMaterialChange, onRemove }: 
         <SelectTrigger className="w-24">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="z-[70]">
           {UNIT_OPTIONS.map(unit => (
             <SelectItem key={unit.value} value={unit.value}>
               {unit.label}

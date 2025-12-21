@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, MoreVertical, Pencil, CheckCircle, Trash2, AlertCircle, RotateCcw, Cylinder, Eye, Gem, Loader2 } from 'lucide-react';
@@ -27,14 +27,15 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
   const [shouldFetchDetails, setShouldFetchDetails] = useState(false);
 
   // Lazy load cycle details (including specimens) when expanded
-  const { data: cycleDetails, isLoading: isLoadingDetails } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
+  const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
 
-  // Trigger fetch when first expanded
-  useEffect(() => {
-    if (isExpanded && !shouldFetchDetails) {
+  // Handle expand/collapse - trigger fetch on first expand
+  const handleOpenChange = (open: boolean) => {
+    setIsExpanded(open);
+    if (open && !shouldFetchDetails) {
       setShouldFetchDetails(true);
     }
-  }, [isExpanded, shouldFetchDetails]);
+  };
 
   const progressText = cycle.activeStageCount > 0 && cycle.activeStageStartDateTime && cycle.activeStageDurationEstimateEndDate
     ? getStageProgressText(
@@ -54,8 +55,8 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
           ? `Barrel #${cycle.activeBarrelNumber}`
           : null;
 
-  // Always show expand button - we have specimens to display (lazy loaded)
-  const hasExpandableContent = true;
+  // Show expand button when we can lazy-load details (specimens)
+  const hasExpandableContent = !!cycle.cycleId;
   const isActive = cycle.status === 'Active';
 
   // Use plain style for completed cycles, colored style for active
@@ -64,7 +65,7 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
     : getCycleStatusClass(cycle);
 
   return (
-    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+    <Collapsible open={isExpanded} onOpenChange={handleOpenChange}>
       <div
         className={`rounded-lg border transition-all duration-200 ${cardClassName} ${isExpanded ? 'shadow-md' : 'hover:shadow-sm hover:-translate-y-0.5'}`}
       >
@@ -180,12 +181,20 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                   <span>Loading specimens...</span>
                 </div>
+              ) : isDetailsError ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                  <span className="text-red-500">Failed to load specimens</span>
+                </div>
               ) : cycleDetails?.specimens && cycleDetails.specimens.length > 0 ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Gem className="h-4 w-4 shrink-0" />
                   <span className="font-medium text-foreground">Specimens:</span>
                   <span className="truncate">
-                    {cycleDetails.specimens.map(s => s.commonName).join(', ')}
+                    {cycleDetails.specimens
+                      .map(s => s.commonName?.trim())
+                      .filter(Boolean)
+                      .join(', ')}
                   </span>
                 </div>
               ) : cycleDetails && (

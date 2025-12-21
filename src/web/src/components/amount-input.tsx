@@ -51,6 +51,7 @@ export const AmountInput = forwardRef<HTMLInputElement, AmountInputProps>(
       <Input
         ref={ref}
         type="number"
+        inputMode="decimal"
         step="any"
         onChange={onChange}
         onKeyDown={handleKeyDown}
