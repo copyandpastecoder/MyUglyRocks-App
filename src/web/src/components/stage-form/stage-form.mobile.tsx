@@ -421,8 +421,9 @@ export function StageFormMobile({
       resetForm();
       onSuccess?.();
     },
-    onError: () => {
-      toast.error('Failed to update stage');
+    onError: (error: Error) => {
+      console.error('Failed to update stage:', error);
+      toast.error(`Failed to update stage: ${error.message || 'Unknown error'}`);
     },
   });
 
