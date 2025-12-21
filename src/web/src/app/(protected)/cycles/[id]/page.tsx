@@ -883,6 +883,7 @@ export default function CycleDetailPage() {
                     stage={stage}
                     cycleId={cycleId}
                     onView={() => openViewStageModal(stage)}
+                    onEdit={() => openEditStageModal(stage)}
                     onDelete={() => deleteStageRunMutation.mutate(stage.stageRunId)}
                   />
                 ))}
@@ -1769,6 +1770,12 @@ function StageCard({
                   <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onView(); }}>
                     <Eye className="mr-2 h-4 w-4" />
                     View Details
+                  </DropdownMenuItem>
+                )}
+                {!isActive && !isPlanned && onEdit && (
+                  <DropdownMenuItem onSelect={(e) => { e.preventDefault(); onEdit(); }}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
                   </DropdownMenuItem>
                 )}
                 {onDelete && (
