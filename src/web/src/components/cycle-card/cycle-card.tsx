@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, MoreVertical, Pencil, CheckCircle, Trash2, AlertCircle, RotateCcw, Cylinder, Eye } from 'lucide-react';
+import { ChevronDown, MoreVertical, Pencil, CheckCircle, Trash2, AlertCircle, RotateCcw, Cylinder, Eye, Gem, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -18,11 +18,23 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
+import { useCycle } from '@/hooks';
 import type { CycleCardProps } from './types';
 
 export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false }: CycleCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [shouldFetchDetails, setShouldFetchDetails] = useState(false);
+
+  // Lazy load cycle details (including specimens) when expanded
+  const { data: cycleDetails, isLoading: isLoadingDetails } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
+
+  // Trigger fetch when first expanded
+  useEffect(() => {
+    if (isExpanded && !shouldFetchDetails) {
+      setShouldFetchDetails(true);
+    }
+  }, [isExpanded, shouldFetchDetails]);
 
   const progressText = cycle.activeStageCount > 0 && cycle.activeStageStartDateTime && cycle.activeStageDurationEstimateEndDate
     ? getStageProgressText(
@@ -42,7 +54,8 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
           ? `Barrel #${cycle.activeBarrelNumber}`
           : null;
 
-  const hasTumblerInfo = cycle.activeTumblerName || barrelDisplay;
+  // Always show expand button - we have specimens to display (lazy loaded)
+  const hasExpandableContent = true;
   const isActive = cycle.status === 'Active';
 
   // Use plain style for completed cycles, colored style for active
@@ -58,7 +71,7 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
         {/* Main row - always visible */}
         <div className="flex items-center p-3 gap-2">
           {/* Expand/collapse chevron */}
-          {hasTumblerInfo && (
+          {hasExpandableContent && (
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
@@ -74,7 +87,7 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
             </CollapsibleTrigger>
           )}
           {/* Spacer when no expand button */}
-          {!hasTumblerInfo && <div className="w-6 shrink-0" />}
+          {!hasExpandableContent && <div className="w-6 shrink-0" />}
 
           {/* Cycle info - navigates to cycle */}
           <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
@@ -161,7 +174,27 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
                   <span className="truncate">{barrelDisplay}</span>
                 </div>
               )}
-              {/* Specimens will go here when API returns them */}
+              {/* Specimens - lazy loaded */}
+              {isLoadingDetails ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                  <span>Loading specimens...</span>
+                </div>
+              ) : cycleDetails?.specimens && cycleDetails.specimens.length > 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Gem className="h-4 w-4 shrink-0" />
+                  <span className="font-medium text-foreground">Specimens:</span>
+                  <span className="truncate">
+                    {cycleDetails.specimens.map(s => s.commonName).join(', ')}
+                  </span>
+                </div>
+              ) : cycleDetails && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Gem className="h-4 w-4 shrink-0" />
+                  <span className="font-medium text-foreground">Specimens:</span>
+                  <span className="text-muted-foreground/70 italic">None assigned</span>
+                </div>
+              )}
             </div>
           </div>
         </CollapsibleContent>
