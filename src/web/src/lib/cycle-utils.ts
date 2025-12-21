@@ -26,6 +26,55 @@ export function formatStageDisplayName(stageName: string, runNumber: number, tot
 }
 
 /**
+ * Timing information for a stage run.
+ */
+export interface StageTiming {
+  /** Days until end date (negative if overdue) */
+  daysUntilEnd: number;
+  /** Total duration in days */
+  totalDays: number;
+  /** Current day number (1-indexed) */
+  currentDay: number;
+  /** Progress percentage (0-100, can exceed 100 if overdue) */
+  progressPercent: number;
+  /** Whether the stage is overdue */
+  isOverdue: boolean;
+}
+
+/**
+ * Calculate timing information for a stage run.
+ * Uses calendar days in local timezone for day calculations.
+ * Uses precise milliseconds for progress percentage.
+ */
+export function getStageTiming(startDateTime: Date, estimateEndDate: Date): StageTiming {
+  const now = new Date();
+
+  // Calendar dates (in local timezone) for day-based calculations
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endDay = new Date(estimateEndDate.getFullYear(), estimateEndDate.getMonth(), estimateEndDate.getDate());
+  const startDay = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), startDateTime.getDate());
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntilEnd = Math.round((endDay.getTime() - today.getTime()) / msPerDay);
+  const totalDays = Math.max(1, Math.round((endDay.getTime() - startDay.getTime()) / msPerDay));
+  const daysSinceStart = Math.round((today.getTime() - startDay.getTime()) / msPerDay);
+  const currentDay = Math.max(1, Math.min(daysSinceStart + 1, totalDays));
+
+  // Precise progress percentage using actual timestamps
+  const totalDuration = estimateEndDate.getTime() - startDateTime.getTime();
+  const elapsed = now.getTime() - startDateTime.getTime();
+  const progressPercent = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 0;
+
+  return {
+    daysUntilEnd,
+    totalDays,
+    currentDay,
+    progressPercent,
+    isOverdue: daysUntilEnd < 0,
+  };
+}
+
+/**
  * Get progress text for an active stage based on timing.
  * Returns: "Day X of Y", "Due Today", "Due Tomorrow", or "X days overdue"
  *
@@ -40,36 +89,24 @@ export function getStageProgressText(
   estimateEndDate: Date,
   daysOverdue?: number | null
 ): string {
-  const now = new Date();
-
-  // Compare calendar dates (in local timezone)
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endDay = new Date(estimateEndDate.getFullYear(), estimateEndDate.getMonth(), estimateEndDate.getDate());
-  const startDay = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), startDateTime.getDate());
-
-  const msPerDay = 1000 * 60 * 60 * 24;
-  const daysUntilEnd = Math.round((endDay.getTime() - today.getTime()) / msPerDay);
-  const totalDays = Math.max(1, Math.round((endDay.getTime() - startDay.getTime()) / msPerDay));
+  const timing = getStageTiming(startDateTime, estimateEndDate);
 
   // Check overdue (end date is in the past)
-  if (daysUntilEnd < 0) {
-    const actualDaysOverdue = daysOverdue ?? Math.abs(daysUntilEnd);
+  if (timing.isOverdue) {
+    const actualDaysOverdue = daysOverdue ?? Math.abs(timing.daysUntilEnd);
     return `${actualDaysOverdue} day${actualDaysOverdue === 1 ? '' : 's'} overdue`;
   }
 
   // Due today
-  if (daysUntilEnd === 0) {
+  if (timing.daysUntilEnd === 0) {
     return 'Due Today';
   }
 
   // Due tomorrow
-  if (daysUntilEnd === 1) {
+  if (timing.daysUntilEnd === 1) {
     return 'Due Tomorrow';
   }
 
-  // Still in progress - calculate current day
-  const daysSinceStart = Math.round((today.getTime() - startDay.getTime()) / msPerDay);
-  const currentDay = Math.max(1, Math.min(daysSinceStart + 1, totalDays));
-
-  return `Day ${currentDay} of ${totalDays}`;
+  // Still in progress
+  return `Day ${timing.currentDay} of ${timing.totalDays}`;
 }
