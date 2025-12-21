@@ -27,12 +27,13 @@ export function formatStageDisplayName(stageName: string, runNumber: number, tot
 
 /**
  * Get progress text for an active stage based on timing.
- * Returns: "Day X of Y", "Due Today", or "X days overdue"
+ * Returns: "Day X of Y", "Due Today", "Due Tomorrow", or "X days overdue"
  *
  * Timeline logic:
- * - "Day X of Y": Currently in progress (currentDay < totalDays)
- * - "Due Today": On the last day (currentDay === totalDays) OR slightly past end but same calendar day
- * - "X days overdue": Past the end date by 1+ full days
+ * - "Day X of Y": Currently in progress, end date is 2+ days away
+ * - "Due Tomorrow": End date is tomorrow (calendar day)
+ * - "Due Today": End date is today (calendar day)
+ * - "X days overdue": Past the end date by 1+ full calendar days
  */
 export function getStageProgressText(
   startDateTime: Date,
@@ -41,27 +42,34 @@ export function getStageProgressText(
 ): string {
   const now = new Date();
 
-  // Calculate total days and current day
-  const totalDuration = estimateEndDate.getTime() - startDateTime.getTime();
-  const elapsed = now.getTime() - startDateTime.getTime();
-  const totalDays = Math.max(1, Math.ceil(totalDuration / (1000 * 60 * 60 * 24)));
-  const currentDay = Math.ceil(elapsed / (1000 * 60 * 60 * 24));
+  // Compare calendar dates (in local timezone)
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const endDay = new Date(estimateEndDate.getFullYear(), estimateEndDate.getMonth(), estimateEndDate.getDate());
+  const startDay = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), startDateTime.getDate());
 
-  // Check if overdue (past the estimate end date)
-  if (estimateEndDate < now) {
-    const actualDaysOverdue = daysOverdue ?? Math.floor((now.getTime() - estimateEndDate.getTime()) / (1000 * 60 * 60 * 24));
-    if (actualDaysOverdue === 0) {
-      return 'Due Today';
-    }
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntilEnd = Math.round((endDay.getTime() - today.getTime()) / msPerDay);
+  const totalDays = Math.max(1, Math.round((endDay.getTime() - startDay.getTime()) / msPerDay));
+
+  // Check overdue (end date is in the past)
+  if (daysUntilEnd < 0) {
+    const actualDaysOverdue = daysOverdue ?? Math.abs(daysUntilEnd);
     return `${actualDaysOverdue} day${actualDaysOverdue === 1 ? '' : 's'} overdue`;
   }
 
-  // Check if this is the last day of the duration (due today)
-  const clampedDay = Math.max(1, Math.min(currentDay, totalDays));
-  if (clampedDay === totalDays) {
+  // Due today
+  if (daysUntilEnd === 0) {
     return 'Due Today';
   }
 
-  // Still in progress
-  return `Day ${clampedDay} of ${totalDays}`;
+  // Due tomorrow
+  if (daysUntilEnd === 1) {
+    return 'Due Tomorrow';
+  }
+
+  // Still in progress - calculate current day
+  const daysSinceStart = Math.round((today.getTime() - startDay.getTime()) / msPerDay);
+  const currentDay = Math.max(1, Math.min(daysSinceStart + 1, totalDays));
+
+  return `Day ${currentDay} of ${totalDays}`;
 }
