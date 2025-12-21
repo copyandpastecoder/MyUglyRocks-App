@@ -1713,7 +1713,7 @@ function StageCard({
               ) : isActive && effectiveEndDate ? (
                 (() => {
                   const progressText = getStageProgressText(startDate, effectiveEndDate, null, getNow());
-                  const isOverdueText = progressText.includes('overdue') || progressText === 'Due Today';
+                  const isOverdueText = progressText.includes('overdue');
                   return isOverdueText ? (
                     <span className="text-yellow-600">Started {formatDate(stage.startDateTime, 'MMM d, yyyy')} · {progressText}</span>
                   ) : (
