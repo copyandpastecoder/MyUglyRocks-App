@@ -124,92 +124,95 @@ function MaterialRow({ material, sortedMaterials, onMaterialChange, onRemove }: 
   const selectedMaterial = sortedMaterials.find(m => m.materialId === material.materialId);
 
   return (
-    <div className="flex items-center gap-2">
-      {/* Searchable Material Combobox */}
-      <Popover open={open} onOpenChange={setOpen} modal={false}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            role="combobox"
-            aria-expanded={open}
-            className="flex-1 justify-between font-normal"
+    <div className="space-y-2">
+      {/* First row: Material selector with remove button */}
+      <div className="flex items-center gap-2">
+        <Popover open={open} onOpenChange={setOpen} modal={false}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="flex-1 justify-between font-normal"
+            >
+              <span className={cn(!selectedMaterial && "text-muted-foreground")}>
+                {selectedMaterial?.commonName || "Select material..."}
+              </span>
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            className="w-[min(400px,calc(100vw-2rem))] p-0 z-[70]"
+            align="start"
+            onWheelCapture={(e) => e.stopPropagation()}
           >
-            <span className={cn(!selectedMaterial && "text-muted-foreground")}>
-              {selectedMaterial?.commonName || "Select material..."}
-            </span>
-            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[400px] p-0 z-[70]"
-          align="start"
-          onWheelCapture={(e) => e.stopPropagation()}
+            <Command>
+              <CommandInput placeholder="Search materials..." />
+              <CommandList>
+                <CommandEmpty>No material found.</CommandEmpty>
+                <CommandGroup>
+                  {sortedMaterials.map((m) => (
+                    <CommandItem
+                      key={m.materialId}
+                      value={m.commonName}
+                      onSelect={() => {
+                        onMaterialChange('materialId', m.materialId);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          material.materialId === m.materialId ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {m.commonName}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {/* Remove Button */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={onRemove}
         >
-          <Command>
-            <CommandInput placeholder="Search materials..." />
-            <CommandList>
-              <CommandEmpty>No material found.</CommandEmpty>
-              <CommandGroup>
-                {sortedMaterials.map((m) => (
-                  <CommandItem
-                    key={m.materialId}
-                    value={m.commonName}
-                    onSelect={() => {
-                      onMaterialChange('materialId', m.materialId);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        material.materialId === m.materialId ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {m.commonName}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
 
-      {/* Amount Input */}
-      <AmountInput
-        min={0}
-        placeholder="Amt"
-        className="w-20"
-        value={material.displayAmount}
-        onChange={(e) => onMaterialChange('displayAmount', e.target.value)}
-      />
+      {/* Second row: Amount and Unit */}
+      <div className="flex items-center gap-2 pl-2">
+        <AmountInput
+          min={0}
+          placeholder="Amount"
+          className="flex-1"
+          value={material.displayAmount}
+          onChange={(e) => onMaterialChange('displayAmount', e.target.value)}
+        />
 
-      {/* Unit Selector */}
-      <Select
-        value={material.displayUnit}
-        onValueChange={(value) => onMaterialChange('displayUnit', value)}
-      >
-        <SelectTrigger className="w-24">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="z-[70]">
-          {UNIT_OPTIONS.map(unit => (
-            <SelectItem key={unit.value} value={unit.value}>
-              {unit.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* Remove Button */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8"
-        onClick={onRemove}
-      >
-        <X className="h-4 w-4" />
-      </Button>
+        <Select
+          value={material.displayUnit}
+          onValueChange={(value) => onMaterialChange('displayUnit', value)}
+        >
+          <SelectTrigger className="w-24 shrink-0">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="z-[70]">
+            {UNIT_OPTIONS.map(unit => (
+              <SelectItem key={unit.value} value={unit.value}>
+                {unit.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
     </div>
   );
 }

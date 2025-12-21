@@ -38,8 +38,10 @@ import {
   ChevronDown,
   Copy,
   Lightbulb,
+  Star,
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { useSettings, useTimezone } from '@/hooks/use-user';
@@ -87,6 +89,16 @@ export function StageFormDesktop({
   // Copy from previous state
   const [isCopyingFromPrevious, setIsCopyingFromPrevious] = useState(false);
 
+  // Completion fields (for editing completed stages)
+  const [stageStatus, setStageStatus] = useState<string>('');
+  const [resultRating, setResultRating] = useState<number>(0);
+  const [lessonsLearned, setLessonsLearned] = useState<string>('');
+  const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
+  const [issueScratches, setIssueScratches] = useState(false);
+  const [issueChips, setIssueChips] = useState(false);
+  const [issueUnderRounded, setIssueUnderRounded] = useState(false);
+  const [issueContamination, setIssueContamination] = useState(false);
+
   // Cleaning run state
   const [addCleaningRun, setAddCleaningRun] = useState(false);
   const [cleaningDurationDays, setCleaningDurationDays] = useState<string>('0');
@@ -123,6 +135,15 @@ export function StageFormDesktop({
     setCleaningDurationMinutes('0');
     setCleaningPurpose('');
     setCleaningMaterials([]);
+    // Completion fields
+    setStageStatus('');
+    setResultRating(0);
+    setLessonsLearned('');
+    setLoadWeightAfterGrams(null);
+    setIssueScratches(false);
+    setIssueChips(false);
+    setIssueUnderRounded(false);
+    setIssueContamination(false);
     setIsLoading(false);
   }, [settings?.measurementSystem]);
 
@@ -204,6 +225,18 @@ export function StageFormDesktop({
             displayUnit: m.displayUnit || 'tbsp',
           })));
         }
+      }
+
+      // Completion fields (for completed stages)
+      setStageStatus(fullStage.status);
+      if (fullStage.status === 'Completed') {
+        setResultRating(fullStage.resultRating || 0);
+        setLessonsLearned(fullStage.lessonsLearned || '');
+        setLoadWeightAfterGrams(fullStage.loadWeightAfterGrams);
+        setIssueScratches(fullStage.issueScratches || false);
+        setIssueChips(fullStage.issueChips || false);
+        setIssueUnderRounded(fullStage.issueUnderRounded || false);
+        setIssueContamination(fullStage.issueContamination || false);
       }
     } catch {
       toast.error('Failed to load stage data');
@@ -469,7 +502,7 @@ export function StageFormDesktop({
     }
 
     if (isEditMode) {
-      updateStageMutation.mutate({
+      const updateData: Parameters<typeof cycleApi.updateStageRun>[1] = {
         barrelIds: selectedBarrelIds.length > 0 ? selectedBarrelIds : undefined,
         stageName: finalStageName,
         startDateTime: new Date(stageStartDateTime).toISOString(),
@@ -483,7 +516,21 @@ export function StageFormDesktop({
         waterAmountMl: waterAmount ? Math.round(parseFloat(waterAmount) * (waterUnit === 'floz' ? 29.5735 : 1)) : undefined,
         materials: materialsToSubmit.length > 0 ? materialsToSubmit : undefined,
         cleaningRun: cleaningRunRequest,
-      });
+      };
+
+      // Include completion fields when editing completed stages
+      if (stageStatus === 'Completed') {
+        updateData.resultRating = resultRating > 0 ? resultRating : undefined;
+        updateData.lessonsLearned = lessonsLearned || undefined;
+        updateData.loadWeightAfterGrams = loadWeightAfterGrams || undefined;
+        // Send actual boolean values for issue fields (not || undefined, which converts false to undefined)
+        updateData.issueScratches = issueScratches;
+        updateData.issueChips = issueChips;
+        updateData.issueUnderRounded = issueUnderRounded;
+        updateData.issueContamination = issueContamination;
+      }
+
+      updateStageMutation.mutate(updateData);
     } else {
       addStageMutation.mutate({
         barrelIds: selectedBarrelIds,
@@ -612,28 +659,40 @@ export function StageFormDesktop({
                         const tumblerCompare = (a.tumblerName || '').localeCompare(b.tumblerName || '');
                         if (tumblerCompare !== 0) return tumblerCompare;
                         return a.barrelNumber - b.barrelNumber;
-                      }).map(barrel => (
-                        <div key={barrel.barrelId} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`barrel-${barrel.barrelId}`}
-                            checked={selectedBarrelIds.includes(barrel.barrelId)}
-                            onCheckedChange={() => toggleBarrel(barrel.barrelId)}
-                          />
-                          <label
-                            htmlFor={`barrel-${barrel.barrelId}`}
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                          >
-                            {barrel.tumblerName}
-                            {barrel.capacityLbs && (
-                              <span className="text-muted-foreground">
-                                {' '}- {barrel.capacityLbs} lbs
-                              </span>
-                            )}
-                            {' '}#{barrel.barrelNumber}
-                            {barrel.nickname && ` (${barrel.nickname})`}
-                          </label>
-                        </div>
-                      ))
+                      }).map(barrel => {
+                        const isInOtherCycle = barrel.isInActiveCycle && barrel.activeCycleId !== cycleId;
+                        return (
+                          <div key={barrel.barrelId} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`barrel-${barrel.barrelId}`}
+                              checked={selectedBarrelIds.includes(barrel.barrelId)}
+                              onCheckedChange={() => toggleBarrel(barrel.barrelId)}
+                            />
+                            <span className={cn(
+                              "w-2 h-2 rounded-full flex-shrink-0",
+                              isInOtherCycle ? "bg-yellow-500" : "bg-green-500"
+                            )} />
+                            <label
+                              htmlFor={`barrel-${barrel.barrelId}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {barrel.tumblerName}
+                              {barrel.capacityLbs && (
+                                <span className="text-muted-foreground">
+                                  {' '}- {barrel.capacityLbs} lbs
+                                </span>
+                              )}
+                              {' '}#{barrel.barrelNumber}
+                              {barrel.nickname && ` (${barrel.nickname})`}
+                              {isInOtherCycle && barrel.activeCycleName && (
+                                <span className="text-yellow-600 dark:text-yellow-400 ml-1">
+                                  (In use: {barrel.activeCycleName})
+                                </span>
+                              )}
+                            </label>
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                   {selectedBarrelIds.length > 0 && (
@@ -806,6 +865,103 @@ export function StageFormDesktop({
                     setCleaningMaterials(data.materials);
                   }}
                 />
+
+                {/* Completion Fields - Only shown when editing completed stages */}
+                {stageStatus === 'Completed' && (
+                  <Collapsible defaultOpen>
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full justify-between group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Star className="h-4 w-4" />
+                          <span>Completion Details</span>
+                        </div>
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-4 border rounded-lg p-4">
+                      {/* Result Rating */}
+                      <div className="space-y-2">
+                        <Label id="desktop-stage-result-rating-label">Stage Result Rating</Label>
+                        <div
+                          className="flex gap-1"
+                          role="radiogroup"
+                          aria-labelledby="desktop-stage-result-rating-label"
+                        >
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setResultRating(star)}
+                              className="p-1 hover:scale-110 transition-transform"
+                              role="radio"
+                              aria-checked={star === resultRating}
+                              aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                            >
+                              <Star
+                                className={`h-6 w-6 ${star <= resultRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                              />
+                            </button>
+                          ))}
+                          <span className="ml-2 self-center text-sm text-muted-foreground">
+                            {resultRating > 0 ? `${resultRating}/5` : 'Click to rate'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Weight After */}
+                      <WeightInput
+                        label={
+                          loadWeightBeforeGrams
+                            ? `Weight After (Before: ${settings?.measurementSystem === 'Metric'
+                                ? `${(loadWeightBeforeGrams / 1000).toFixed(2)} kg`
+                                : `${(loadWeightBeforeGrams / 453.592).toFixed(1)} lbs`})`
+                            : "Weight After (optional)"
+                        }
+                        valueGrams={loadWeightAfterGrams}
+                        onValueChange={setLoadWeightAfterGrams}
+                        barrelCapacityLbs={selectedBarrelCapacityLbs || undefined}
+                      />
+
+                      {/* Issues */}
+                      <div className="space-y-2">
+                        <Label>Any issues? (check all that apply)</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="edit-issueScratches" checked={issueScratches} onCheckedChange={(c) => setIssueScratches(c as boolean)} />
+                            <Label htmlFor="edit-issueScratches" className="text-sm">Scratches</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="edit-issueChips" checked={issueChips} onCheckedChange={(c) => setIssueChips(c as boolean)} />
+                            <Label htmlFor="edit-issueChips" className="text-sm">Chips/Bruises</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="edit-issueUnderRounded" checked={issueUnderRounded} onCheckedChange={(c) => setIssueUnderRounded(c as boolean)} />
+                            <Label htmlFor="edit-issueUnderRounded" className="text-sm">Under-rounded</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Checkbox id="edit-issueContamination" checked={issueContamination} onCheckedChange={(c) => setIssueContamination(c as boolean)} />
+                            <Label htmlFor="edit-issueContamination" className="text-sm">Grit contamination</Label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lessons Learned */}
+                      <div className="space-y-2">
+                        <Label>Lessons Learned</Label>
+                        <Textarea
+                          placeholder="What would you do differently next time?"
+                          value={lessonsLearned}
+                          onChange={(e) => setLessonsLearned(e.target.value)}
+                          rows={2}
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
 
               </div>
             </div>

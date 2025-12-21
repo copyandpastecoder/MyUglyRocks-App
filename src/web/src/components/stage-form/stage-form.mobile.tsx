@@ -43,7 +43,9 @@ import {
   FileText,
   Sparkles,
   Cylinder,
+  Star,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { useSettings, useTimezone } from '@/hooks/use-user';
@@ -69,6 +71,7 @@ export function StageFormMobile({
   const isEditMode = !!stageRunId;
 
   // Collapsible sections
+  const [stageNameOpen, setStageNameOpen] = useState(!isEditMode);
   const [barrelsOpen, setBarrelsOpen] = useState(!isEditMode);
   const [durationOpen, setDurationOpen] = useState(true);
 
@@ -94,6 +97,16 @@ export function StageFormMobile({
 
   // Copy from previous state
   const [isCopyingFromPrevious, setIsCopyingFromPrevious] = useState(false);
+
+  // Completion fields (for editing completed stages)
+  const [stageStatus, setStageStatus] = useState<string>('');
+  const [resultRating, setResultRating] = useState<number>(0);
+  const [lessonsLearned, setLessonsLearned] = useState<string>('');
+  const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
+  const [issueScratches, setIssueScratches] = useState(false);
+  const [issueChips, setIssueChips] = useState(false);
+  const [issueUnderRounded, setIssueUnderRounded] = useState(false);
+  const [issueContamination, setIssueContamination] = useState(false);
 
   // Cleaning run state
   const [addCleaningRun, setAddCleaningRun] = useState(false);
@@ -131,6 +144,15 @@ export function StageFormMobile({
     setCleaningDurationMinutes('0');
     setCleaningPurpose('');
     setCleaningMaterials([]);
+    // Completion fields
+    setStageStatus('');
+    setResultRating(0);
+    setLessonsLearned('');
+    setLoadWeightAfterGrams(null);
+    setIssueScratches(false);
+    setIssueChips(false);
+    setIssueUnderRounded(false);
+    setIssueContamination(false);
     setIsLoading(false);
   }, [settings?.measurementSystem]);
 
@@ -200,6 +222,18 @@ export function StageFormMobile({
           })));
         }
       }
+
+      // Completion fields (for completed stages)
+      setStageStatus(fullStage.status);
+      if (fullStage.status === 'Completed') {
+        setResultRating(fullStage.resultRating || 0);
+        setLessonsLearned(fullStage.lessonsLearned || '');
+        setLoadWeightAfterGrams(fullStage.loadWeightAfterGrams);
+        setIssueScratches(fullStage.issueScratches || false);
+        setIssueChips(fullStage.issueChips || false);
+        setIssueUnderRounded(fullStage.issueUnderRounded || false);
+        setIssueContamination(fullStage.issueContamination || false);
+      }
     } catch {
       toast.error('Failed to load stage data');
     } finally {
@@ -209,7 +243,8 @@ export function StageFormMobile({
 
   useEffect(() => {
     if (open) {
-      // Set barrels collapsed for edit, expanded for create
+      // Set sections collapsed for edit, expanded for create
+      setStageNameOpen(!isEditMode);
       setBarrelsOpen(!isEditMode);
 
       if (isEditMode && stageRunId) {
@@ -450,7 +485,7 @@ export function StageFormMobile({
       };
     }
 
-    const payload = {
+    const payload: Parameters<typeof cycleApi.updateStageRun>[1] = {
       barrelIds: selectedBarrelIds,
       stageName: finalStageName,
       startDateTime: new Date(stageStartDateTime).toISOString(),
@@ -466,10 +501,26 @@ export function StageFormMobile({
       cleaningRun: cleaningRunRequest,
     };
 
+    // Include completion fields when editing completed stages
+    if (isEditMode && stageStatus === 'Completed') {
+      payload.resultRating = resultRating > 0 ? resultRating : undefined;
+      payload.lessonsLearned = lessonsLearned || undefined;
+      payload.loadWeightAfterGrams = loadWeightAfterGrams || undefined;
+      // Send actual boolean values for issue fields (not || undefined, which converts false to undefined)
+      payload.issueScratches = issueScratches;
+      payload.issueChips = issueChips;
+      payload.issueUnderRounded = issueUnderRounded;
+      payload.issueContamination = issueContamination;
+    }
+
     if (isEditMode) {
       updateStageMutation.mutate(payload);
     } else {
-      addStageMutation.mutate(payload);
+      // For create, barrelIds is required
+      addStageMutation.mutate({
+        ...payload,
+        barrelIds: selectedBarrelIds,
+      });
     }
   };
 
@@ -495,65 +546,92 @@ export function StageFormMobile({
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
               <div className="p-4 space-y-6 min-w-0">
                 {/* Stage Name Selection */}
-                <div className="space-y-3">
-                  <Label className="text-base font-medium">Stage Name</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {STAGE_NAMES.slice(0, -1).map(name => (
-                      <Button
-                        key={name}
+                <Collapsible open={stageNameOpen} onOpenChange={setStageNameOpen}>
+                  <Card>
+                    <CollapsibleTrigger asChild>
+                      <button
                         type="button"
-                        variant={stageName === name ? 'default' : 'outline'}
-                        className="h-12"
-                        onClick={() => {
-                          setStageName(name);
-                          setCustomStageName('');
-                        }}
+                        className="w-full flex items-center justify-between p-4 rounded-t-lg"
                       >
-                        {name}
-                      </Button>
-                    ))}
-                    <Button
-                      type="button"
-                      variant={stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName) ? 'default' : 'outline'}
-                      className="h-12"
-                      onClick={() => {
-                        setStageName('Custom');
-                        setCustomStageName('');
-                      }}
-                    >
-                      Custom
-                    </Button>
-                  </div>
-                  {(stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName)) && (
-                    <Input
-                      placeholder="Enter custom stage name..."
-                      value={stageName === 'Custom' ? customStageName : stageName}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        setCustomStageName(value);
-                        if (value) setStageName(value);
-                        else setStageName('Custom');
-                      }}
-                      className="h-12 text-base"
-                    />
-                  )}
-                  {!isEditMode && cycle.stageRuns.length > 0 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={copyFromPreviousStage}
-                      disabled={isCopyingFromPrevious}
-                      className="w-full h-12"
-                    >
-                      {isCopyingFromPrevious ? (
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      ) : (
-                        <Copy className="mr-2 h-5 w-5" />
-                      )}
-                      Copy from Previous
-                    </Button>
-                  )}
-                </div>
+                        <div className="flex items-center gap-3">
+                          <Sparkles className="h-5 w-5" />
+                          <span className="font-medium">
+                            {stageName === 'Custom' && customStageName
+                              ? customStageName
+                              : stageName === 'Custom'
+                              ? 'Custom Stage'
+                              : stageName}
+                          </span>
+                        </div>
+                        {stageNameOpen ? (
+                          <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                        )}
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0 space-y-3">
+                        <div className="grid grid-cols-3 gap-2">
+                          {STAGE_NAMES.slice(0, -1).map(name => (
+                            <Button
+                              key={name}
+                              type="button"
+                              variant={stageName === name ? 'default' : 'outline'}
+                              className="h-12"
+                              onClick={() => {
+                                setStageName(name);
+                                setCustomStageName('');
+                              }}
+                            >
+                              {name}
+                            </Button>
+                          ))}
+                          <Button
+                            type="button"
+                            variant={stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName) ? 'default' : 'outline'}
+                            className="h-12"
+                            onClick={() => {
+                              setStageName('Custom');
+                              setCustomStageName('');
+                            }}
+                          >
+                            Custom
+                          </Button>
+                        </div>
+                        {(stageName === 'Custom' || !STAGE_NAMES.slice(0, -1).includes(stageName)) && (
+                          <Input
+                            placeholder="Enter custom stage name..."
+                            value={stageName === 'Custom' ? customStageName : stageName}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              setCustomStageName(value);
+                              if (value) setStageName(value);
+                              else setStageName('Custom');
+                            }}
+                            className="h-12 text-base"
+                          />
+                        )}
+                        {!isEditMode && cycle.stageRuns.length > 0 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={copyFromPreviousStage}
+                            disabled={isCopyingFromPrevious}
+                            className="w-full h-12"
+                          >
+                            {isCopyingFromPrevious ? (
+                              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                            ) : (
+                              <Copy className="mr-2 h-5 w-5" />
+                            )}
+                            Copy from Previous
+                          </Button>
+                        )}
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
 
                 {/* Barrel Selection */}
                 <Collapsible open={barrelsOpen} onOpenChange={setBarrelsOpen}>
@@ -591,6 +669,7 @@ export function StageFormMobile({
                               return a.barrelNumber - b.barrelNumber;
                             }).map(barrel => {
                               const isSelected = selectedBarrelIds.includes(barrel.barrelId);
+                              const isInOtherCycle = barrel.isInActiveCycle && barrel.activeCycleId !== cycleId;
                               return (
                                 <button
                                   key={barrel.barrelId}
@@ -608,7 +687,11 @@ export function StageFormMobile({
                                     {isSelected && <Check className="h-5 w-5 text-primary-foreground" />}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <div className="font-medium">
+                                    <div className="font-medium flex items-center gap-2">
+                                      <span className={cn(
+                                        "w-2 h-2 rounded-full flex-shrink-0",
+                                        isInOtherCycle ? "bg-yellow-500" : "bg-green-500"
+                                      )} />
                                       {barrel.tumblerName}
                                       {barrel.capacityLbs && (
                                         <span className="text-muted-foreground font-normal">
@@ -617,11 +700,14 @@ export function StageFormMobile({
                                       )}
                                       {' '}#{barrel.barrelNumber}
                                     </div>
-                                    {barrel.nickname && (
-                                      <div className="text-sm text-muted-foreground">
-                                        {barrel.nickname}
-                                      </div>
-                                    )}
+                                    <div className="text-sm text-muted-foreground">
+                                      {barrel.nickname && <span>{barrel.nickname}</span>}
+                                      {isInOtherCycle && barrel.activeCycleName && (
+                                        <span className="text-yellow-600 dark:text-yellow-400">
+                                          {barrel.nickname ? ' · ' : ''}In use: {barrel.activeCycleName}
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </button>
                               );
@@ -834,6 +920,104 @@ export function StageFormMobile({
                     setCleaningMaterials(data.materials);
                   }}
                 />
+
+                {/* Completion Fields - Only shown when editing completed stages */}
+                {stageStatus === 'Completed' && (
+                  <Collapsible defaultOpen>
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg [&[data-state=open]>svg:last-child]:rotate-180"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Star className="h-4 w-4" />
+                          <span className="font-medium">Completion Details</span>
+                        </div>
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-3 space-y-4 border rounded-lg p-4">
+                      {/* Result Rating */}
+                      <div className="space-y-2">
+                        <Label id="mobile-stage-result-rating-label">Stage Result Rating</Label>
+                        <div
+                          className="flex gap-1"
+                          role="radiogroup"
+                          aria-labelledby="mobile-stage-result-rating-label"
+                        >
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setResultRating(star)}
+                              className="p-1.5 hover:scale-110 transition-transform"
+                              role="radio"
+                              aria-checked={star === resultRating}
+                              aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
+                            >
+                              <Star
+                                className={`h-7 w-7 ${star <= resultRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                              />
+                            </button>
+                          ))}
+                          <span className="ml-2 self-center text-sm text-muted-foreground">
+                            {resultRating > 0 ? `${resultRating}/5` : 'Tap to rate'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Weight After */}
+                      <WeightInput
+                        label={
+                          loadWeightBeforeGrams
+                            ? `Weight After (Before: ${settings?.measurementSystem === 'Metric'
+                                ? `${(loadWeightBeforeGrams / 1000).toFixed(2)} kg`
+                                : `${(loadWeightBeforeGrams / 453.592).toFixed(1)} lbs`})`
+                            : "Weight After (optional)"
+                        }
+                        valueGrams={loadWeightAfterGrams}
+                        onValueChange={setLoadWeightAfterGrams}
+                        barrelCapacityLbs={selectedBarrelCapacityLbs || undefined}
+                      />
+
+                      {/* Issues */}
+                      <div className="space-y-3">
+                        <Label>Any issues? (check all that apply)</Label>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="flex items-center space-x-3">
+                            <Checkbox id="mobile-issueScratches" checked={issueScratches} onCheckedChange={(c) => setIssueScratches(c as boolean)} />
+                            <Label htmlFor="mobile-issueScratches" className="text-sm">Scratches</Label>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Checkbox id="mobile-issueChips" checked={issueChips} onCheckedChange={(c) => setIssueChips(c as boolean)} />
+                            <Label htmlFor="mobile-issueChips" className="text-sm">Chips/Bruises</Label>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Checkbox id="mobile-issueUnderRounded" checked={issueUnderRounded} onCheckedChange={(c) => setIssueUnderRounded(c as boolean)} />
+                            <Label htmlFor="mobile-issueUnderRounded" className="text-sm">Under-rounded</Label>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Checkbox id="mobile-issueContamination" checked={issueContamination} onCheckedChange={(c) => setIssueContamination(c as boolean)} />
+                            <Label htmlFor="mobile-issueContamination" className="text-sm">Grit contamination</Label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lessons Learned */}
+                      <div className="space-y-2">
+                        <Label>Lessons Learned</Label>
+                        <Textarea
+                          placeholder="What would you do differently next time?"
+                          value={lessonsLearned}
+                          onChange={(e) => setLessonsLearned(e.target.value)}
+                          rows={3}
+                          className="h-24"
+                        />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
               </div>
             </div>
 
