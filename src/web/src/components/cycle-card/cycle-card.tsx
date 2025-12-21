@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, MoreVertical, Pencil, CheckCircle, Trash2, AlertCircle, RotateCcw, Cylinder, Eye, Gem, Loader2 } from 'lucide-react';
@@ -29,12 +29,13 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
   // Lazy load cycle details (including specimens) when expanded
   const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
 
-  // Trigger fetch when first expanded
-  useEffect(() => {
-    if (isExpanded && !shouldFetchDetails) {
+  // Handle expand/collapse - trigger fetch on first expand
+  const handleOpenChange = (open: boolean) => {
+    setIsExpanded(open);
+    if (open && !shouldFetchDetails) {
       setShouldFetchDetails(true);
     }
-  }, [isExpanded, shouldFetchDetails]);
+  };
 
   const progressText = cycle.activeStageCount > 0 && cycle.activeStageStartDateTime && cycle.activeStageDurationEstimateEndDate
     ? getStageProgressText(
@@ -64,7 +65,7 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
     : getCycleStatusClass(cycle);
 
   return (
-    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+    <Collapsible open={isExpanded} onOpenChange={handleOpenChange}>
       <div
         className={`rounded-lg border transition-all duration-200 ${cardClassName} ${isExpanded ? 'shadow-md' : 'hover:shadow-sm hover:-translate-y-0.5'}`}
       >
