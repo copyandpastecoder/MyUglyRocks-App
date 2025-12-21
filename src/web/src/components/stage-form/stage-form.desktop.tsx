@@ -94,7 +94,6 @@ export function StageFormDesktop({
   const [resultRating, setResultRating] = useState<number>(0);
   const [lessonsLearned, setLessonsLearned] = useState<string>('');
   const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
-  const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
   const [issueScratches, setIssueScratches] = useState(false);
   const [issueChips, setIssueChips] = useState(false);
   const [issueUnderRounded, setIssueUnderRounded] = useState(false);
@@ -141,7 +140,6 @@ export function StageFormDesktop({
     setResultRating(0);
     setLessonsLearned('');
     setLoadWeightAfterGrams(null);
-    setWeightAfterValidationError(false);
     setIssueScratches(false);
     setIssueChips(false);
     setIssueUnderRounded(false);
@@ -525,10 +523,11 @@ export function StageFormDesktop({
         updateData.resultRating = resultRating > 0 ? resultRating : undefined;
         updateData.lessonsLearned = lessonsLearned || undefined;
         updateData.loadWeightAfterGrams = loadWeightAfterGrams || undefined;
-        updateData.issueScratches = issueScratches || undefined;
-        updateData.issueChips = issueChips || undefined;
-        updateData.issueUnderRounded = issueUnderRounded || undefined;
-        updateData.issueContamination = issueContamination || undefined;
+        // Send actual boolean values for issue fields (not || undefined, which converts false to undefined)
+        updateData.issueScratches = issueScratches;
+        updateData.issueChips = issueChips;
+        updateData.issueUnderRounded = issueUnderRounded;
+        updateData.issueContamination = issueContamination;
       }
 
       updateStageMutation.mutate(updateData);
@@ -874,26 +873,33 @@ export function StageFormDesktop({
                       <Button
                         type="button"
                         variant="outline"
-                        className="w-full justify-between"
+                        className="w-full justify-between group"
                       >
                         <div className="flex items-center gap-2">
                           <Star className="h-4 w-4" />
                           <span>Completion Details</span>
                         </div>
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]:rotate-180" />
                       </Button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-3 space-y-4 border rounded-lg p-4">
                       {/* Result Rating */}
                       <div className="space-y-2">
-                        <Label>Stage Result Rating</Label>
-                        <div className="flex gap-1">
+                        <Label id="desktop-stage-result-rating-label">Stage Result Rating</Label>
+                        <div
+                          className="flex gap-1"
+                          role="radiogroup"
+                          aria-labelledby="desktop-stage-result-rating-label"
+                        >
                           {[1, 2, 3, 4, 5].map(star => (
                             <button
                               key={star}
                               type="button"
                               onClick={() => setResultRating(star)}
                               className="p-1 hover:scale-110 transition-transform"
+                              role="radio"
+                              aria-checked={star === resultRating}
+                              aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
                             >
                               <Star
                                 className={`h-6 w-6 ${star <= resultRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
@@ -918,7 +924,6 @@ export function StageFormDesktop({
                         valueGrams={loadWeightAfterGrams}
                         onValueChange={setLoadWeightAfterGrams}
                         barrelCapacityLbs={selectedBarrelCapacityLbs || undefined}
-                        onValidationChange={(isValid) => setWeightAfterValidationError(!isValid)}
                       />
 
                       {/* Issues */}
