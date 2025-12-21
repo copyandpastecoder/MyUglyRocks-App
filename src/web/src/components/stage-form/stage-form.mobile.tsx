@@ -103,7 +103,6 @@ export function StageFormMobile({
   const [resultRating, setResultRating] = useState<number>(0);
   const [lessonsLearned, setLessonsLearned] = useState<string>('');
   const [loadWeightAfterGrams, setLoadWeightAfterGrams] = useState<number | null>(null);
-  const [weightAfterValidationError, setWeightAfterValidationError] = useState(false);
   const [issueScratches, setIssueScratches] = useState(false);
   const [issueChips, setIssueChips] = useState(false);
   const [issueUnderRounded, setIssueUnderRounded] = useState(false);
@@ -150,7 +149,6 @@ export function StageFormMobile({
     setResultRating(0);
     setLessonsLearned('');
     setLoadWeightAfterGrams(null);
-    setWeightAfterValidationError(false);
     setIssueScratches(false);
     setIssueChips(false);
     setIssueUnderRounded(false);
@@ -508,10 +506,11 @@ export function StageFormMobile({
       payload.resultRating = resultRating > 0 ? resultRating : undefined;
       payload.lessonsLearned = lessonsLearned || undefined;
       payload.loadWeightAfterGrams = loadWeightAfterGrams || undefined;
-      payload.issueScratches = issueScratches || undefined;
-      payload.issueChips = issueChips || undefined;
-      payload.issueUnderRounded = issueUnderRounded || undefined;
-      payload.issueContamination = issueContamination || undefined;
+      // Send actual boolean values for issue fields (not || undefined, which converts false to undefined)
+      payload.issueScratches = issueScratches;
+      payload.issueChips = issueChips;
+      payload.issueUnderRounded = issueUnderRounded;
+      payload.issueContamination = issueContamination;
     }
 
     if (isEditMode) {
@@ -928,26 +927,33 @@ export function StageFormMobile({
                     <CollapsibleTrigger asChild>
                       <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                        className="w-full flex items-center justify-between p-3 bg-muted/50 rounded-lg [&[data-state=open]>svg:last-child]:rotate-180"
                       >
                         <div className="flex items-center gap-2">
                           <Star className="h-4 w-4" />
                           <span className="font-medium">Completion Details</span>
                         </div>
-                        <ChevronDown className="h-4 w-4" />
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200" />
                       </button>
                     </CollapsibleTrigger>
                     <CollapsibleContent className="mt-3 space-y-4 border rounded-lg p-4">
                       {/* Result Rating */}
                       <div className="space-y-2">
-                        <Label>Stage Result Rating</Label>
-                        <div className="flex gap-1">
+                        <Label id="mobile-stage-result-rating-label">Stage Result Rating</Label>
+                        <div
+                          className="flex gap-1"
+                          role="radiogroup"
+                          aria-labelledby="mobile-stage-result-rating-label"
+                        >
                           {[1, 2, 3, 4, 5].map(star => (
                             <button
                               key={star}
                               type="button"
                               onClick={() => setResultRating(star)}
                               className="p-1.5 hover:scale-110 transition-transform"
+                              role="radio"
+                              aria-checked={star === resultRating}
+                              aria-label={`Rate ${star} ${star === 1 ? 'star' : 'stars'}`}
                             >
                               <Star
                                 className={`h-7 w-7 ${star <= resultRating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
@@ -972,7 +978,6 @@ export function StageFormMobile({
                         valueGrams={loadWeightAfterGrams}
                         onValueChange={setLoadWeightAfterGrams}
                         barrelCapacityLbs={selectedBarrelCapacityLbs || undefined}
-                        onValidationChange={(isValid) => setWeightAfterValidationError(!isValid)}
                       />
 
                       {/* Issues */}
