@@ -100,6 +100,7 @@ export function CleaningRunSection({
                 <Label className="text-xs text-muted-foreground">Days</Label>
                 <Input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   value={data.durationDays}
                   onChange={(e) => handleDurationChange('durationDays')(e.target.value)}
@@ -109,6 +110,7 @@ export function CleaningRunSection({
                 <Label className="text-xs text-muted-foreground">Hours</Label>
                 <Input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   max="23"
                   value={data.durationHours}
@@ -119,6 +121,7 @@ export function CleaningRunSection({
                 <Label className="text-xs text-muted-foreground">Minutes</Label>
                 <Input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   max="59"
                   value={data.durationMinutes}
@@ -149,7 +152,7 @@ export function CleaningRunSection({
               <SelectTrigger>
                 <SelectValue placeholder="Select purpose..." />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[70]">
                 {CLEANING_PURPOSES.map((p) => (
                   <SelectItem key={p.value} value={p.value}>
                     {p.label}
