@@ -1602,7 +1602,7 @@ function StageCard({
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { toUserTz, now: getNow, formatDate } = useTimezone();
+  const { toUserTz, formatDate } = useTimezone();
 
   const isActive = stage.status === 'Active';
   // Convert UTC dates to user's timezone
