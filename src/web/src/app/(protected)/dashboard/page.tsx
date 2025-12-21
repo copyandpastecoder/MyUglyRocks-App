@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useTumblers, useCycles, useDeleteCycle } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { PAGE_CONTAINER_LOOSE } from '@/lib/layout';
@@ -13,13 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,14 +25,12 @@ import {
 import { DashboardSkeleton } from '@/components/skeletons';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
-import { CheckCircle2, Cylinder, RotateCcw, Clock, Plus, AlertCircle, MoreVertical, Pencil, Trash2, CheckCircle } from 'lucide-react';
+import { CheckCircle2, Cylinder, RotateCcw, Clock, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
-import type { CycleListDto } from '@/types/cycle';
+import { CycleCard } from '@/components/cycle-card';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: tumblers, isLoading: tumblersLoading } = useTumblers();
@@ -60,89 +50,6 @@ export default function DashboardPage() {
         onSuccess: () => setDeleteId(null),
       });
     }
-  };
-
-  const formatTumblerBarrel = (cycle: CycleListDto) => {
-    if (!cycle.activeTumblerName) return null;
-
-    const barrelPart = cycle.activeBarrelNumber != null
-      ? cycle.activeBarrelNickname
-        ? `#${cycle.activeBarrelNumber} ${cycle.activeBarrelNickname}`
-        : `#${cycle.activeBarrelNumber}`
-      : cycle.activeBarrelNickname || null;
-
-    return barrelPart
-      ? `${cycle.activeTumblerName} · ${barrelPart}`
-      : cycle.activeTumblerName;
-  };
-
-  const renderCycleRow = (cycle: CycleListDto) => {
-    const progressText = cycle.activeStageCount > 0 && cycle.activeStageStartDateTime && cycle.activeStageDurationEstimateEndDate
-      ? getStageProgressText(
-          new Date(cycle.activeStageStartDateTime),
-          new Date(cycle.activeStageDurationEstimateEndDate),
-          cycle.activeStageDaysOverdue
-        )
-      : null;
-
-    const tumblerBarrelText = formatTumblerBarrel(cycle);
-
-    return (
-      <div
-        key={cycle.cycleId}
-        className={`flex items-center justify-between p-3 rounded-lg border hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200 ${getCycleStatusClass(cycle)}`}
-      >
-        <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
-          <p className="font-medium truncate">{cycle.name}</p>
-          <p className="text-sm text-muted-foreground truncate">
-            {cycle.stageCount} stage{cycle.stageCount !== 1 ? 's' : ''}
-            {progressText && (
-              cycle.isOverdue ? (
-                <span className="text-yellow-600"> · {progressText}</span>
-              ) : (
-                <span> · {progressText}</span>
-              )
-            )}
-            {tumblerBarrelText && (
-              <span className="text-muted-foreground/70"> · {tumblerBarrelText}</span>
-            )}
-          </p>
-        </Link>
-        <div className="flex items-center gap-2">
-          {cycle.isOverdue ? (
-            <AlertCircle className="h-4 w-4 text-yellow-600" />
-          ) : (
-            <RotateCcw className="h-4 w-4 text-muted-foreground" />
-          )}
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}`)}>
-                <Pencil className="mr-2 h-4 w-4" />
-                View/Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => router.push(`/cycles/${cycle.cycleId}/complete`)}>
-                <CheckCircle className="mr-2 h-4 w-4" />
-                Complete Cycle
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-600 focus:text-red-600"
-                onSelect={() => handleDelete(cycle.cycleId)}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
-    );
   };
 
   if (isLoading) {
@@ -229,7 +136,13 @@ export default function DashboardPage() {
           <CardContent>
             {activeCycles && activeCycles.length > 0 ? (
               <div className="space-y-2">
-                {activeCycles.slice(0, 6).map(cycle => renderCycleRow(cycle))}
+                {activeCycles.slice(0, 6).map(cycle => (
+                  <CycleCard
+                    key={cycle.cycleId}
+                    cycle={cycle}
+                    onDelete={handleDelete}
+                  />
+                ))}
                 {activeCycles.length > 6 && (
                   <Link
                     href="/cycles"

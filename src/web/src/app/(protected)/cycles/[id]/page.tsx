@@ -84,7 +84,7 @@ import { useMaterials } from '@/hooks/use-materials';
 import { calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes, formatDurationMinutes } from '@/lib/duration-utils';
 import { formatCleaningPurpose } from '@/lib/cleaning-constants';
-import { formatStageDisplayName, getStageProgressText } from '@/lib/cycle-utils';
+import { formatStageDisplayName, getStageProgressText, getStageTiming } from '@/lib/cycle-utils';
 import type { StageRunSummaryDto, StageRunDto, CompleteStageRunRequest, CleaningRunDto, CompleteCycleRequest } from '@/types/cycle';
 import { PageTransition } from '@/components/ui/page-transition';
 import { useConfetti } from '@/components/ui/confetti';
@@ -1602,7 +1602,7 @@ function StageCard({
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { toUserTz, now: getNow, formatDate } = useTimezone();
+  const { toUserTz, formatDate } = useTimezone();
 
   const isActive = stage.status === 'Active';
   // Convert UTC dates to user's timezone
@@ -1613,16 +1613,13 @@ function StageCard({
     : stage.durationEstimateEndDate
       ? toUserTz(stage.durationEstimateEndDate)
       : null;
-  const now = getNow();
-  const isOverdue = isActive && effectiveEndDate && effectiveEndDate < now;
   const displayName = formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns);
 
-  // Calculate progress (only if we have an end date)
-  const totalDuration = effectiveEndDate ? effectiveEndDate.getTime() - startDate.getTime() : 0;
-  const elapsed = now.getTime() - startDate.getTime();
-  const progressPercent = isActive && totalDuration > 0 ? Math.min(100, Math.max(0, (elapsed / totalDuration) * 100)) : (stage.status === 'Completed' ? 100 : 0);
-
-  const totalDays = totalDuration > 0 ? Math.ceil(totalDuration / (1000 * 60 * 60 * 24)) : 0;
+  // Calculate timing using shared function
+  const timing = effectiveEndDate ? getStageTiming(startDate, effectiveEndDate) : null;
+  const isOverdue = isActive && timing?.isOverdue;
+  const progressPercent = isActive && timing ? Math.min(100, Math.max(0, timing.progressPercent)) : (stage.status === 'Completed' ? 100 : 0);
+  const totalDays = timing?.totalDays ?? 0;
 
   // Load stage details when collapsible is opened
   const loadStageDetails = async () => {
