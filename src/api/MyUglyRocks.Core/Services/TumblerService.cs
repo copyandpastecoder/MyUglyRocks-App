@@ -38,6 +38,7 @@ public class TumblerService : ITumblerService
             .Include(t => t.Barrels.Where(b => b.IsActive))
                 .ThenInclude(b => b.StageRunBarrels)
                     .ThenInclude(srb => srb.StageRun)
+                        .ThenInclude(sr => sr!.Cycle)
             .FirstOrDefaultAsync(t => t.TumblerId == tumblerId && t.UserId == userId, cancellationToken);
 
         return tumbler?.Adapt<TumblerDto>();

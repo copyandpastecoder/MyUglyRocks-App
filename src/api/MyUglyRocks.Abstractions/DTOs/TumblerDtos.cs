@@ -76,7 +76,10 @@ public record BarrelDto(
     bool IsDedicated,
     string[]? DedicatedStages,
     bool IsActive,
-    bool IsMounted
+    bool IsMounted,
+    bool IsInActiveCycle,
+    Guid? ActiveCycleId,
+    string? ActiveCycleName
 );
 
 public record CreateBarrelRequest(

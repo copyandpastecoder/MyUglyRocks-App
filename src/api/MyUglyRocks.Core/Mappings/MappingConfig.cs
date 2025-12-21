@@ -34,7 +34,19 @@ public static class MappingConfig
 
         // Barrel mappings
         TypeAdapterConfig<Barrel, BarrelDto>.NewConfig()
-            .Map(dest => dest.IsMounted, src => src.StageRunBarrels.Any(srb => srb.StageRun != null && srb.StageRun.Status == StageRunStatus.Active));
+            .Map(dest => dest.IsMounted, src => src.StageRunBarrels.Any(srb => srb.StageRun != null && srb.StageRun.Status == StageRunStatus.Active))
+            .Map(dest => dest.IsInActiveCycle, src => src.StageRunBarrels.Any(srb =>
+                srb.StageRun != null &&
+                srb.StageRun.Cycle != null &&
+                srb.StageRun.Cycle.Status == CycleStatus.Active))
+            .Map(dest => dest.ActiveCycleId, src => src.StageRunBarrels
+                .Where(srb => srb.StageRun != null && srb.StageRun.Cycle != null && srb.StageRun.Cycle.Status == CycleStatus.Active)
+                .Select(srb => (Guid?)srb.StageRun!.Cycle!.CycleId)
+                .FirstOrDefault())
+            .Map(dest => dest.ActiveCycleName, src => src.StageRunBarrels
+                .Where(srb => srb.StageRun != null && srb.StageRun.Cycle != null && srb.StageRun.Cycle.Status == CycleStatus.Active)
+                .Select(srb => srb.StageRun!.Cycle!.Name)
+                .FirstOrDefault());
 
         TypeAdapterConfig<CreateBarrelRequest, Barrel>.NewConfig()
             .Ignore(dest => dest.BarrelId)
