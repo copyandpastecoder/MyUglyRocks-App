@@ -2,7 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { cycleApi } from '@/lib/api';
+
+// Helper to extract error message from Axios or generic errors
+function getErrorMessage(error: unknown): string {
+  if (error instanceof AxiosError) {
+    const data = error.response?.data as { message?: string; details?: string } | undefined;
+    return data?.details || data?.message || error.message || 'Unknown error';
+  }
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return 'Unknown error';
+}
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,6 +58,7 @@ import { cn } from '@/lib/utils';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { useSettings, useTimezone } from '@/hooks/use-user';
+import { useAuth } from '@/providers/auth-provider';
 import { formatDateTimeLocal, isStageStartBeforeCycleStart, calculateDurationFromDates } from '@/lib/date-utils';
 import { convertMinutesToDaysHoursMinutes } from '@/lib/duration-utils';
 import type { StageRunDto, CreateStageMaterialRequest, CreateCleaningMaterialRequest } from '@/types/cycle';
@@ -63,6 +77,8 @@ export function StageFormDesktop({
   const queryClient = useQueryClient();
   const { data: settings } = useSettings();
   const { toUserTz, now: getNow, formatForInput } = useTimezone();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'Admin';
 
   const isEditMode = !!stageRunId;
 
@@ -417,8 +433,13 @@ export function StageFormDesktop({
       resetForm();
       onSuccess?.();
     },
-    onError: () => {
-      toast.error('Failed to add stage');
+    onError: (error: unknown) => {
+      console.error('Failed to add stage:', error);
+      if (isAdmin) {
+        toast.error(`Failed to add stage: ${getErrorMessage(error)}`);
+      } else {
+        toast.error('Failed to save changes');
+      }
     },
   });
 
@@ -434,9 +455,13 @@ export function StageFormDesktop({
       resetForm();
       onSuccess?.();
     },
-    onError: (error: Error) => {
+    onError: (error: unknown) => {
       console.error('Failed to update stage:', error);
-      toast.error(`Failed to update stage: ${error.message || 'Unknown error'}`);
+      if (isAdmin) {
+        toast.error(`Failed to update stage: ${getErrorMessage(error)}`);
+      } else {
+        toast.error('Failed to save changes');
+      }
     },
   });
 
@@ -915,12 +940,13 @@ export function StageFormDesktop({
 
                       {/* Weight After */}
                       <WeightInput
-                        label={
+                        label="Weight After"
+                        helperText={
                           loadWeightBeforeGrams
-                            ? `Weight After (Before: ${settings?.measurementSystem === 'Metric'
+                            ? `(Before: ${settings?.measurementSystem === 'Metric'
                                 ? `${(loadWeightBeforeGrams / 1000).toFixed(2)} kg`
                                 : `${(loadWeightBeforeGrams / 453.592).toFixed(1)} lbs`})`
-                            : "Weight After (optional)"
+                            : "(optional)"
                         }
                         valueGrams={loadWeightAfterGrams}
                         onValueChange={setLoadWeightAfterGrams}

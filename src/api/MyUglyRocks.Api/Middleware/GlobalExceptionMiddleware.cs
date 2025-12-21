@@ -66,10 +66,15 @@ public class GlobalExceptionMiddleware
             CorrelationId = correlationId
         };
 
-        // Only include details in development environment
-        if (_environment.IsDevelopment())
+        // Include details in development environment or for Admin users
+        var isAdmin = context.User?.IsInRole("Admin") == true;
+        if (_environment.IsDevelopment() || isAdmin)
         {
             response.Details = exception.Message;
+            if (exception.InnerException != null)
+            {
+                response.Details += $" Inner: {exception.InnerException.Message}";
+            }
         }
 
         var jsonOptions = new JsonSerializerOptions
