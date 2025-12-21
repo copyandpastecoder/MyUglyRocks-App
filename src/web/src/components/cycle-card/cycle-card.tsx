@@ -27,7 +27,7 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
   const [shouldFetchDetails, setShouldFetchDetails] = useState(false);
 
   // Lazy load cycle details (including specimens) when expanded
-  const { data: cycleDetails, isLoading: isLoadingDetails } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
+  const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
 
   // Trigger fetch when first expanded
   useEffect(() => {
@@ -54,8 +54,8 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
           ? `Barrel #${cycle.activeBarrelNumber}`
           : null;
 
-  // Always show expand button - we have specimens to display (lazy loaded)
-  const hasExpandableContent = true;
+  // Show expand button when we can lazy-load details (specimens)
+  const hasExpandableContent = !!cycle.cycleId;
   const isActive = cycle.status === 'Active';
 
   // Use plain style for completed cycles, colored style for active
@@ -180,12 +180,20 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
                   <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
                   <span>Loading specimens...</span>
                 </div>
+              ) : isDetailsError ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+                  <span className="text-red-500">Failed to load specimens</span>
+                </div>
               ) : cycleDetails?.specimens && cycleDetails.specimens.length > 0 ? (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Gem className="h-4 w-4 shrink-0" />
                   <span className="font-medium text-foreground">Specimens:</span>
                   <span className="truncate">
-                    {cycleDetails.specimens.map(s => s.commonName).join(', ')}
+                    {cycleDetails.specimens
+                      .map(s => s.commonName?.trim())
+                      .filter(Boolean)
+                      .join(', ')}
                   </span>
                 </div>
               ) : cycleDetails && (
