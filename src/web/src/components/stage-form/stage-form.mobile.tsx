@@ -2,20 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { AxiosError } from 'axios';
 import { cycleApi } from '@/lib/api';
-
-// Helper to extract error message from Axios or generic errors
-function getErrorMessage(error: unknown): string {
-  if (error instanceof AxiosError) {
-    const data = error.response?.data as { message?: string; details?: string } | undefined;
-    return data?.details || data?.message || error.message || 'Unknown error';
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return 'Unknown error';
-}
+import { getErrorMessage } from '@/lib/error-utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -426,7 +414,7 @@ export function StageFormMobile({
       if (isAdmin) {
         toast.error(`Failed to add stage: ${getErrorMessage(error)}`);
       } else {
-        toast.error('Failed to save changes');
+        toast.error('Failed to add stage');
       }
     },
   });
@@ -447,7 +435,7 @@ export function StageFormMobile({
       if (isAdmin) {
         toast.error(`Failed to update stage: ${getErrorMessage(error)}`);
       } else {
-        toast.error('Failed to save changes');
+        toast.error('Failed to update stage');
       }
     },
   });
