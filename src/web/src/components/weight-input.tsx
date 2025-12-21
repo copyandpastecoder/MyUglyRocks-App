@@ -9,6 +9,8 @@ import { cn } from '@/lib/utils';
 
 interface WeightInputProps {
   label: string;
+  /** Helper text shown below the label (e.g., "Before: 0.86 kg") */
+  helperText?: string;
   /** Value in grams (stored internally) */
   valueGrams: number | null;
   /** Called with new value in grams and display unit */
@@ -76,6 +78,7 @@ function gramsToDisplay(
  */
 export function WeightInput({
   label,
+  helperText,
   valueGrams,
   onValueChange,
   placeholder,
@@ -237,7 +240,7 @@ export function WeightInput({
   };
 
   const inputClassName = cn(
-    'w-16 h-8 text-sm',
+    'w-16 sm:w-24 h-8 text-sm',
     validation.status === 'error' && 'border-destructive focus-visible:ring-destructive',
     validation.status === 'warning' && 'border-amber-500 focus-visible:ring-amber-500'
   );
@@ -249,8 +252,13 @@ export function WeightInput({
 
   return (
     <div className="space-y-2">
-      {/* Label */}
-      <Label>{label}</Label>
+      {/* Label with optional helper text */}
+      <div className="flex items-baseline gap-2 flex-wrap">
+        <Label>{label}</Label>
+        {helperText && (
+          <span className="text-xs text-muted-foreground">{helperText}</span>
+        )}
+      </div>
 
       {/* Single-line input row with all controls */}
       <div className="flex items-center gap-1.5 flex-wrap">
