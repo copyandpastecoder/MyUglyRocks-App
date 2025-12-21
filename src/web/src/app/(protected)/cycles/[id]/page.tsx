@@ -1537,6 +1537,14 @@ export default function CycleDetailPage() {
                 </div>
               )}
 
+              {/* Lessons Learned */}
+              {viewStageData.lessonsLearned && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Lessons Learned</p>
+                  <p className="text-sm p-3 bg-muted/50 rounded-lg whitespace-pre-wrap">{viewStageData.lessonsLearned}</p>
+                </div>
+              )}
+
               {/* Photos */}
               {viewStageData.photos && viewStageData.photos.length > 0 && (
                 <div className="space-y-2">
@@ -1888,6 +1896,14 @@ function StageCard({
                       <div>
                         <span className="text-muted-foreground">Notes:</span>
                         <p className="mt-1 text-xs">{stageDetails.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Lessons Learned */}
+                    {stageDetails.lessonsLearned && (
+                      <div>
+                        <span className="text-muted-foreground">Lessons Learned:</span>
+                        <p className="mt-1 text-xs">{stageDetails.lessonsLearned}</p>
                       </div>
                     )}
 
