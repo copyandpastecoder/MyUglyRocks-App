@@ -1602,7 +1602,7 @@ function StageCard({
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { toUserTz, formatDate } = useTimezone();
+  const { toUserTz, now: getNow, formatDate } = useTimezone();
 
   const isActive = stage.status === 'Active';
   // Convert UTC dates to user's timezone
@@ -1615,8 +1615,8 @@ function StageCard({
       : null;
   const displayName = formatStageDisplayName(stage.stageName, stage.runNumber, stage.totalRuns);
 
-  // Calculate timing using shared function
-  const timing = effectiveEndDate ? getStageTiming(startDate, effectiveEndDate) : null;
+  // Calculate timing using shared function (pass timezone-aware now)
+  const timing = effectiveEndDate ? getStageTiming(startDate, effectiveEndDate, getNow()) : null;
   const isOverdue = isActive && timing?.isOverdue;
   const progressPercent = isActive && timing ? Math.min(100, Math.max(0, timing.progressPercent)) : (stage.status === 'Completed' ? 100 : 0);
   const totalDays = timing?.totalDays ?? 0;
@@ -1712,7 +1712,7 @@ function StageCard({
                 <>Scheduled for {formatDate(stage.startDateTime, 'MMM d, yyyy')}{effectiveEndDate && <> · ~{totalDays}d duration</>}</>
               ) : isActive && effectiveEndDate ? (
                 (() => {
-                  const progressText = getStageProgressText(startDate, effectiveEndDate);
+                  const progressText = getStageProgressText(startDate, effectiveEndDate, null, getNow());
                   const isOverdueText = progressText.includes('overdue') || progressText === 'Due Today';
                   return isOverdueText ? (
                     <span className="text-yellow-600">Started {formatDate(stage.startDateTime, 'MMM d, yyyy')} · {progressText}</span>

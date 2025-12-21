@@ -43,14 +43,18 @@ export interface StageTiming {
 
 /**
  * Calculate timing information for a stage run.
- * Uses calendar days in local timezone for day calculations.
+ * Uses calendar days for day calculations.
  * Uses precise milliseconds for progress percentage.
+ *
+ * @param startDateTime - Stage start date (should be in user's timezone)
+ * @param estimateEndDate - Stage end date (should be in user's timezone)
+ * @param now - Current time in user's timezone (defaults to browser local time)
  */
-export function getStageTiming(startDateTime: Date, estimateEndDate: Date): StageTiming {
-  const now = new Date();
+export function getStageTiming(startDateTime: Date, estimateEndDate: Date, now?: Date): StageTiming {
+  const currentTime = now ?? new Date();
 
-  // Calendar dates (in local timezone) for day-based calculations
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  // Calendar dates for day-based calculations
+  const today = new Date(currentTime.getFullYear(), currentTime.getMonth(), currentTime.getDate());
   const endDay = new Date(estimateEndDate.getFullYear(), estimateEndDate.getMonth(), estimateEndDate.getDate());
   const startDay = new Date(startDateTime.getFullYear(), startDateTime.getMonth(), startDateTime.getDate());
 
@@ -62,7 +66,7 @@ export function getStageTiming(startDateTime: Date, estimateEndDate: Date): Stag
 
   // Precise progress percentage using actual timestamps
   const totalDuration = estimateEndDate.getTime() - startDateTime.getTime();
-  const elapsed = now.getTime() - startDateTime.getTime();
+  const elapsed = currentTime.getTime() - startDateTime.getTime();
   const progressPercent = totalDuration > 0 ? (elapsed / totalDuration) * 100 : 0;
 
   return {
@@ -83,13 +87,19 @@ export function getStageTiming(startDateTime: Date, estimateEndDate: Date): Stag
  * - "Due Tomorrow": End date is tomorrow (calendar day)
  * - "Due Today": End date is today (calendar day)
  * - "X days overdue": Past the end date by 1+ full calendar days
+ *
+ * @param startDateTime - Stage start date (should be in user's timezone)
+ * @param estimateEndDate - Stage end date (should be in user's timezone)
+ * @param daysOverdue - Optional pre-calculated days overdue from API
+ * @param now - Current time in user's timezone (defaults to browser local time)
  */
 export function getStageProgressText(
   startDateTime: Date,
   estimateEndDate: Date,
-  daysOverdue?: number | null
+  daysOverdue?: number | null,
+  now?: Date
 ): string {
-  const timing = getStageTiming(startDateTime, estimateEndDate);
+  const timing = getStageTiming(startDateTime, estimateEndDate, now);
 
   // Check overdue (end date is in the past)
   if (timing.isOverdue) {
