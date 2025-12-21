@@ -32,12 +32,15 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
       )
     : null;
 
-  // Format barrel display
-  const barrelDisplay = cycle.activeBarrelNickname
-    ? cycle.activeBarrelNickname
-    : cycle.activeBarrelNumber
-      ? `Barrel #${cycle.activeBarrelNumber}`
-      : null;
+  // Format barrel display - show both number and nickname when available
+  const barrelDisplay =
+    cycle.activeBarrelNickname && cycle.activeBarrelNumber
+      ? `#${cycle.activeBarrelNumber} ${cycle.activeBarrelNickname}`
+      : cycle.activeBarrelNickname
+        ? cycle.activeBarrelNickname
+        : cycle.activeBarrelNumber
+          ? `Barrel #${cycle.activeBarrelNumber}`
+          : null;
 
   const hasTumblerInfo = cycle.activeTumblerName || barrelDisplay;
   const isActive = cycle.status === 'Active';
