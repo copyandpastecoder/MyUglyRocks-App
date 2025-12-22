@@ -19,7 +19,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 defaultValue: 1);
 
             // Backfill existing tumblers: assign sequential numbers within brand/model groups
-            // Ordered by date_created so older tumblers get lower numbers
+            // Ordered by date_created so older tumblers get lower numbers.
+            // Note: Only active tumblers are numbered because:
+            // - Only active tumblers are displayed to users
+            // - Inactive tumblers keep the default value (1) which is acceptable since
+            //   they won't be shown and can be renumbered if reactivated
             migrationBuilder.Sql(@"
                 WITH numbered AS (
                     SELECT
