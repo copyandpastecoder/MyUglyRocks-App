@@ -69,8 +69,8 @@ export function WeightByHardnessChart({ data }: WeightByHardnessChartProps) {
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
-                formatter={(value: number, _, props) => [
-                  `${value.toFixed(1)}% (${props.payload.count} cycles)`,
+                formatter={(value, _, props) => [
+                  `${(value as number).toFixed(1)}% (${props.payload.count} cycles)`,
                   'Avg Loss',
                 ]}
               />

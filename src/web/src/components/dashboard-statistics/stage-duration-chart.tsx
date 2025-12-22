@@ -112,7 +112,7 @@ export function StageDurationChart({ overallStats, tumblerStats }: StageDuration
                     borderRadius: '8px',
                     fontSize: '12px',
                   }}
-                  formatter={(value: number) => [`${value.toFixed(2)} weeks`, '']}
+                  formatter={(value) => [`${(value as number).toFixed(2)} weeks`, '']}
                 />
                 <Legend wrapperStyle={{ fontSize: '12px' }} />
                 {tumblerStats.map((tumbler, index) => (
@@ -172,7 +172,7 @@ export function StageDurationChart({ overallStats, tumblerStats }: StageDuration
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
-                formatter={(value: number) => [`${value.toFixed(2)} weeks`, 'Duration']}
+                formatter={(value) => [`${(value as number).toFixed(2)} weeks`, 'Duration']}
               />
               <Bar dataKey="weeks" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
             </BarChart>

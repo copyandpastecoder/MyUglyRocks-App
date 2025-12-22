@@ -78,7 +78,7 @@ export function TumblerUtilizationChart({ stats }: TumblerUtilizationChartProps)
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
-                formatter={(value: number) => [`${value} cycles`, 'Count']}
+                formatter={(value) => [`${value} cycles`, 'Count']}
               />
               <Legend
                 wrapperStyle={{ fontSize: '12px' }}

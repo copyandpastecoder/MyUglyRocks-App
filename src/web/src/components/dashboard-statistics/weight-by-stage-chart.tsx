@@ -75,7 +75,7 @@ export function WeightByStageChart({ stats }: WeightByStageChartProps) {
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
-                formatter={(value: number) => [`${value.toFixed(1)}%`, 'Weight Loss']}
+                formatter={(value) => [`${(value as number).toFixed(1)}%`, 'Weight Loss']}
               />
               <Bar dataKey="value" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} />
             </BarChart>
