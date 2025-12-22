@@ -47,6 +47,17 @@ public class CyclesController : ControllerBase
     }
 
     /// <summary>
+    /// Get cycle statistics for the current user
+    /// </summary>
+    [HttpGet("statistics")]
+    [ProducesResponseType(typeof(CycleStatisticsDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetStatistics(CancellationToken cancellationToken)
+    {
+        var statistics = await _cycleService.GetCycleStatisticsAsync(GetUserId(), cancellationToken);
+        return Ok(statistics);
+    }
+
+    /// <summary>
     /// Create a new cycle
     /// </summary>
     [HttpPost]
