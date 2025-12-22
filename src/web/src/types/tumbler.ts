@@ -3,6 +3,8 @@ export interface TumblerDto {
   brand: string;
   model: string | null;
   tumblerType: string;
+  tumblerNumber: number;
+  hasDuplicateBrandModel: boolean;
   motorCapacityLbs: number | null;
   isMotorCapacityEditable: boolean;
   isActive: boolean;
@@ -16,6 +18,8 @@ export interface TumblerListDto {
   brand: string;
   model: string | null;
   tumblerType: string;
+  tumblerNumber: number;
+  hasDuplicateBrandModel: boolean;
   isActive: boolean;
   barrelCount: number;
   dateCreated: string;

@@ -29,6 +29,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { TumblerListDto } from '@/types/tumbler';
 
+// Helper to format tumbler display name - only show # when duplicates exist
+function getTumblerDisplayName(tumbler: TumblerListDto): string {
+  const baseName = `${tumbler.brand} ${tumbler.model || ''}`.trim();
+  return tumbler.hasDuplicateBrandModel
+    ? `${baseName} #${tumbler.tumblerNumber}`
+    : baseName;
+}
+
 export default function TumblersPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const router = useRouter();
@@ -95,7 +103,7 @@ export default function TumblersPage() {
               <StaggerItem key={tumbler.tumblerId}>
                 <div className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-accent hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200">
                   <Link href={`/tumblers/${tumbler.tumblerId}`} className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{tumbler.brand} {tumbler.model}</p>
+                    <p className="font-medium truncate">{getTumblerDisplayName(tumbler)}</p>
                     <p className="text-sm text-muted-foreground">
                       {tumbler.tumblerType} · {tumbler.barrelCount} barrel{tumbler.barrelCount !== 1 ? 's' : ''}
                     </p>

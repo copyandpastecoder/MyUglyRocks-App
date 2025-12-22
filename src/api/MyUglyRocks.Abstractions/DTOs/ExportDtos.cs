@@ -56,7 +56,6 @@ public record StageCsvRow(
     string? BarrelName,
     decimal? LoadWeightBeforeGrams,
     decimal? LoadWeightAfterGrams,
-    decimal? BarrelRpm,
     int? ResultRating,
     string? NextAction,
     string? Notes

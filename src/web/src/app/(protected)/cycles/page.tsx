@@ -8,7 +8,7 @@ import { FullPageSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
 import { NoCyclesEmpty } from '@/components/ui/empty-state';
-import { Plus } from 'lucide-react';
+import { Plus, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,6 +27,8 @@ export default function CyclesPage() {
   const [activeTab, setActiveTab] = useState('Active');
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
+  // Expand/collapse all: undefined = individual control, true = all expanded, false = all collapsed
+  const [expandAllState, setExpandAllState] = useState<boolean | undefined>(undefined);
 
   // Active cycles: oldest first (ASC), Completed: newest first (DESC)
   const sortOrder = activeTab === 'Active' ? 'asc' : 'desc';
@@ -85,10 +87,31 @@ export default function CyclesPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="Active">Active</TabsTrigger>
-            <TabsTrigger value="Completed">Completed</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between gap-2">
+            <TabsList>
+              <TabsTrigger value="Active">Active</TabsTrigger>
+              <TabsTrigger value="Completed">Completed</TabsTrigger>
+            </TabsList>
+            {/* Expand/Collapse All toggle */}
+            {cycles && cycles.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setExpandAllState(prev => prev === true ? false : true)}
+                className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                title={expandAllState === true ? 'Collapse all' : 'Expand all'}
+              >
+                {expandAllState === true ? (
+                  <ChevronsDownUp className="h-4 w-4" />
+                ) : (
+                  <ChevronsUpDown className="h-4 w-4" />
+                )}
+                <span className="sr-only md:not-sr-only md:ml-1 text-xs">
+                  {expandAllState === true ? 'Collapse' : 'Expand'}
+                </span>
+              </Button>
+            )}
+          </div>
 
           <TabsContent value={activeTab} className="mt-4">
             {cycles?.length === 0 ? (
@@ -106,6 +129,7 @@ export default function CyclesPage() {
                       onDelete={handleDelete}
                       onEdit={handleEdit}
                       plainStyle={activeTab === 'Completed'}
+                      expandedOverride={expandAllState}
                     />
                   </StaggerItem>
                 ))}

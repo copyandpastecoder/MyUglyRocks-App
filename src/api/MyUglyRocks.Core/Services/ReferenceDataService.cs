@@ -49,12 +49,20 @@ public class ReferenceDataService : IReferenceDataService
         {
             if (!string.IsNullOrWhiteSpace(search.Query))
             {
-                var searchTerm = search.Query.ToLower();
-                query = query.Where(s =>
-                    s.CommonName.ToLower().Contains(searchTerm) ||
-                    (s.Alias != null && s.Alias.ToLower().Contains(searchTerm)) ||
-                    (s.RockFamily != null && s.RockFamily.ToLower().Contains(searchTerm)) ||
-                    (s.Variety != null && s.Variety.ToLower().Contains(searchTerm)));
+                // Split query into individual words and require ALL words to match (AND logic)
+                // Each word is searched as a wildcard (%word%) in any searchable field
+                var searchTerms = search.Query.ToLower()
+                    .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                foreach (var term in searchTerms)
+                {
+                    var searchTerm = term; // Capture for closure
+                    query = query.Where(s =>
+                        s.CommonName.ToLower().Contains(searchTerm) ||
+                        (s.Alias != null && s.Alias.ToLower().Contains(searchTerm)) ||
+                        (s.RockFamily != null && s.RockFamily.ToLower().Contains(searchTerm)) ||
+                        (s.Variety != null && s.Variety.ToLower().Contains(searchTerm)));
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(search.MaterialType) &&
@@ -204,11 +212,18 @@ public class ReferenceDataService : IReferenceDataService
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchTerm = search.ToLower();
-            query = query.Where(s =>
-                s.CommonName.ToLower().Contains(searchTerm) ||
-                (s.Alias != null && s.Alias.ToLower().Contains(searchTerm)) ||
-                (s.RockFamily != null && s.RockFamily.ToLower().Contains(searchTerm)));
+            // Split query into words and require ALL words to match (AND logic)
+            var searchTerms = search.ToLower()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var term in searchTerms)
+            {
+                var searchTerm = term; // Capture for closure
+                query = query.Where(s =>
+                    s.CommonName.ToLower().Contains(searchTerm) ||
+                    (s.Alias != null && s.Alias.ToLower().Contains(searchTerm)) ||
+                    (s.RockFamily != null && s.RockFamily.ToLower().Contains(searchTerm)));
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(materialType) &&

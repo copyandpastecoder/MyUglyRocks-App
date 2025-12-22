@@ -34,6 +34,10 @@ public class TumblerConfiguration : IEntityTypeConfiguration<Tumbler>
         builder.Property(t => t.TumblerType)
             .HasColumnName("tumbler_type");
 
+        builder.Property(t => t.TumblerNumber)
+            .HasColumnName("tumbler_number")
+            .HasDefaultValue(1);
+
         builder.Property(t => t.MotorCapacityLbs)
             .HasColumnName("motor_capacity_lbs")
             .HasPrecision(6, 2);
@@ -77,6 +81,11 @@ public class TumblerConfiguration : IEntityTypeConfiguration<Tumbler>
 
         builder.HasIndex(t => t.IsGeneric)
             .HasDatabaseName("ix_tumblers_is_generic");
+
+        // Index for tumbler number lookups within brand/model groups
+        builder.HasIndex(t => new { t.UserId, t.Brand, t.Model, t.TumblerNumber })
+            .HasDatabaseName("ix_tumblers_user_brand_model_number")
+            .HasFilter("is_active = true");
     }
 }
 
@@ -185,12 +194,6 @@ public class BarrelConfiguration : IEntityTypeConfiguration<Barrel>
         builder.Property(b => b.DedicatedStages)
             .HasColumnName("dedicated_stages")
             .HasColumnType("varchar(100)[]");
-
-        builder.Property(b => b.DateLastDeepClean)
-            .HasColumnName("date_last_deep_clean");
-
-        builder.Property(b => b.ContaminationNotes)
-            .HasColumnName("contamination_notes");
 
         builder.Property(b => b.IsActive)
             .HasColumnName("is_active")

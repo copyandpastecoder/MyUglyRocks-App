@@ -7,6 +7,8 @@ public record TumblerDto(
     string Brand,
     string? Model,
     string TumblerType,
+    int TumblerNumber,
+    bool HasDuplicateBrandModel,
     decimal? MotorCapacityLbs,
     bool IsMotorCapacityEditable,
     bool IsActive,
@@ -20,6 +22,8 @@ public record TumblerListDto(
     string Brand,
     string? Model,
     string TumblerType,
+    int TumblerNumber,
+    bool HasDuplicateBrandModel,
     bool IsActive,
     int BarrelCount,
     DateTime DateCreated

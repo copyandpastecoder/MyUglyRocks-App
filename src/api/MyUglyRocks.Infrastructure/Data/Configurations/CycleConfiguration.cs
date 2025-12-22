@@ -151,13 +151,6 @@ public class StageRunConfiguration : IEntityTypeConfiguration<StageRun>
             .HasColumnName("load_weight_after_grams")
             .HasPrecision(10, 2);
 
-        builder.Property(s => s.BarrelRpm)
-            .HasColumnName("barrel_rpm")
-            .HasPrecision(6, 2);
-
-        builder.Property(s => s.IsRpmEstimated)
-            .HasColumnName("is_rpm_estimated");
-
         builder.Property(s => s.WaterAmountMl)
             .HasColumnName("water_amount_ml");
 

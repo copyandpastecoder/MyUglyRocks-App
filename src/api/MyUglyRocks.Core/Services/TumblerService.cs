@@ -29,7 +29,22 @@ public class TumblerService : ITumblerService
             .OrderByDescending(t => t.DateCreated)
             .ToListAsync(cancellationToken);
 
-        return tumblers.Adapt<IEnumerable<TumblerListDto>>();
+        // Calculate duplicate counts for each brand/model combination
+        var duplicateCounts = tumblers
+            .GroupBy(t => (Brand: t.Brand.ToLower(), Model: (t.Model ?? "").ToLower()))
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        return tumblers.Select(t => new TumblerListDto(
+            t.TumblerId,
+            t.Brand,
+            t.Model,
+            t.TumblerType.ToString(),
+            t.TumblerNumber,
+            duplicateCounts[(t.Brand.ToLower(), (t.Model ?? "").ToLower())] > 1,
+            t.IsActive,
+            t.Barrels.Count(b => b.IsActive),
+            t.DateCreated
+        ));
     }
 
     public async Task<TumblerDto?> GetTumblerAsync(Guid tumblerId, Guid userId, CancellationToken cancellationToken = default)
@@ -41,7 +56,19 @@ public class TumblerService : ITumblerService
                         .ThenInclude(sr => sr!.Cycle)
             .FirstOrDefaultAsync(t => t.TumblerId == tumblerId && t.UserId == userId, cancellationToken);
 
-        return tumbler?.Adapt<TumblerDto>();
+        if (tumbler == null) return null;
+
+        // Check if there are other tumblers with the same brand/model
+        var hasDuplicate = await Tumblers.AnyAsync(t =>
+            t.UserId == userId &&
+            t.IsActive &&
+            t.TumblerId != tumblerId &&
+            t.Brand.ToLower() == tumbler.Brand.ToLower() &&
+            (t.Model ?? "").ToLower() == (tumbler.Model ?? "").ToLower(),
+            cancellationToken);
+
+        var dto = tumbler.Adapt<TumblerDto>();
+        return dto with { HasDuplicateBrandModel = hasDuplicate };
     }
 
     public async Task<TumblerDto> CreateTumblerAsync(Guid userId, CreateTumblerRequest request, CancellationToken cancellationToken = default)
@@ -51,6 +78,21 @@ public class TumblerService : ITumblerService
         tumbler.UserId = userId;
         tumbler.DateCreated = DateTime.UtcNow;
         tumbler.DateUpdated = DateTime.UtcNow;
+
+        // Auto-assign tumbler number for this brand/model combination.
+        // Note: Only active tumblers are considered for numbering because:
+        // 1. Only active tumblers are displayed to users
+        // 2. Inactive tumblers may have stale numbers from before deactivation
+        // 3. If reactivated, tumbler numbers can be manually adjusted if needed
+        var existingMaxNumber = await Tumblers
+            .Where(t => t.UserId == userId
+                && t.Brand.ToLower() == request.Brand.ToLower()
+                && (t.Model ?? "").ToLower() == (request.Model ?? "").ToLower()
+                && t.IsActive)
+            .Select(t => (int?)t.TumblerNumber)
+            .MaxAsync(cancellationToken) ?? 0;
+
+        tumbler.TumblerNumber = existingMaxNumber + 1;
 
         // Create barrels if provided
         if (request.Barrels?.Any() == true)
@@ -95,7 +137,9 @@ public class TumblerService : ITumblerService
         await Tumblers.AddAsync(tumbler, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return tumbler.Adapt<TumblerDto>();
+        // HasDuplicateBrandModel is true if this is not the first tumbler of this brand/model
+        var dto = tumbler.Adapt<TumblerDto>();
+        return dto with { HasDuplicateBrandModel = tumbler.TumblerNumber > 1 };
     }
 
     public async Task<TumblerDto?> UpdateTumblerAsync(Guid tumblerId, Guid userId, UpdateTumblerRequest request, CancellationToken cancellationToken = default)
@@ -107,6 +151,26 @@ public class TumblerService : ITumblerService
         if (tumbler == null)
             return null;
 
+        // Check if brand/model is changing - if so, recalculate tumbler number
+        var brandModelChanged = !string.Equals(tumbler.Brand, request.Brand, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(tumbler.Model ?? "", request.Model ?? "", StringComparison.OrdinalIgnoreCase);
+
+        if (brandModelChanged)
+        {
+            // Assign next available number in the new brand/model group
+            // (only considers active tumblers - see CreateTumblerAsync for rationale)
+            var existingMaxNumber = await Tumblers
+                .Where(t => t.UserId == userId
+                    && t.TumblerId != tumblerId
+                    && t.Brand.ToLower() == request.Brand.ToLower()
+                    && (t.Model ?? "").ToLower() == (request.Model ?? "").ToLower()
+                    && t.IsActive)
+                .Select(t => (int?)t.TumblerNumber)
+                .MaxAsync(cancellationToken) ?? 0;
+
+            tumbler.TumblerNumber = existingMaxNumber + 1;
+        }
+
         tumbler.Brand = request.Brand;
         tumbler.Model = request.Model;
         tumbler.TumblerType = Enum.Parse<TumblerType>(request.TumblerType, true);
@@ -117,7 +181,17 @@ public class TumblerService : ITumblerService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return tumbler.Adapt<TumblerDto>();
+        // Check if there are other tumblers with the same brand/model
+        var hasDuplicate = await Tumblers.AnyAsync(t =>
+            t.UserId == userId &&
+            t.IsActive &&
+            t.TumblerId != tumblerId &&
+            t.Brand.ToLower() == tumbler.Brand.ToLower() &&
+            (t.Model ?? "").ToLower() == (tumbler.Model ?? "").ToLower(),
+            cancellationToken);
+
+        var dto = tumbler.Adapt<TumblerDto>();
+        return dto with { HasDuplicateBrandModel = hasDuplicate };
     }
 
     public async Task<bool> DeleteTumblerAsync(Guid tumblerId, Guid userId, CancellationToken cancellationToken = default)

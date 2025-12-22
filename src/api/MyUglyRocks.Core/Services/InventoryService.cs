@@ -35,6 +35,9 @@ public class InventoryService : IInventoryService
         var query = Inventories
             .Include(i => i.InventorySource)
             .Include(i => i.InventorySpecimens)
+                .ThenInclude(s => s.Specimen)
+            .Include(i => i.InventorySpecimens)
+                .ThenInclude(s => s.UserSpecimen)
             .Include(i => i.InventoryPhotos)
             .Where(i => i.UserId == userId);
 
@@ -61,8 +64,22 @@ public class InventoryService : IInventoryService
 
         if (!string.IsNullOrEmpty(search))
         {
-            var searchLower = search.ToLower();
-            query = query.Where(i => i.Name.ToLower().Contains(searchLower));
+            // Split query into words and require ALL words to match (AND logic)
+            // Search in inventory name OR any specimen name within the inventory
+            var searchTerms = search.ToLower()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var term in searchTerms)
+            {
+                var searchTerm = term; // Capture for closure
+                query = query.Where(i =>
+                    i.Name.ToLower().Contains(searchTerm) ||
+                    i.InventorySpecimens.Any(s =>
+                        (s.Specimen != null && s.Specimen.CommonName.ToLower().Contains(searchTerm)) ||
+                        (s.Specimen != null && s.Specimen.Alias != null && s.Specimen.Alias.ToLower().Contains(searchTerm)) ||
+                        (s.UserSpecimen != null && s.UserSpecimen.CommonName.ToLower().Contains(searchTerm)) ||
+                        (s.UserSpecimen != null && s.UserSpecimen.Alias != null && s.UserSpecimen.Alias.ToLower().Contains(searchTerm))));
+            }
         }
 
         // Apply sorting
