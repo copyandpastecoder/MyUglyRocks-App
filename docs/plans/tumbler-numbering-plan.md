@@ -239,19 +239,26 @@ export interface Barrel {
 
 **File:** `src/web/src/app/(protected)/tumblers/page.tsx`
 
-Display tumbler number when there are multiple of same brand/model:
+Display tumbler number ONLY when there are multiple tumblers with the same brand AND model:
 
 ```tsx
-// Show: "Lortone 3A #2" instead of just "Lortone 3A"
-const displayName = tumbler.tumblerNumber > 1 || hasDuplicateBrandModel
+// Count tumblers with same brand/model (case-insensitive)
+const sameModelCount = tumblers.filter(t =>
+  t.brand.toLowerCase() === tumbler.brand.toLowerCase() &&
+  (t.model || '').toLowerCase() === (tumbler.model || '').toLowerCase()
+).length;
+
+// Only show tumbler number if there's more than one of this brand/model
+const displayName = sameModelCount > 1
   ? `${tumbler.brand} ${tumbler.model || ''} #${tumbler.tumblerNumber}`
   : `${tumbler.brand} ${tumbler.model || ''}`;
 ```
 
 **Tasks:**
-- [ ] Update tumbler list to show tumbler number when duplicates exist
-- [ ] Update tumbler detail page header to include number
+- [ ] Update tumbler list to show tumbler number ONLY when duplicates exist (count > 1)
+- [ ] Update tumbler detail page header to include number (only if duplicates)
 - [ ] Add ability to edit tumbler number (with validation)
+- [ ] API should return `hasDuplicates` or `sameModelCount` to avoid frontend recalculation
 
 #### 3.3 Update Barrel Display
 
@@ -273,24 +280,31 @@ Use global barrel number for display:
 **File:** `src/web/src/components/stage/barrel-selector.tsx`
 
 ```tsx
-// Update display to use global barrel number
-// "Lortone 3A #2 - 3 lbs #4 (Blue Boulder)"
-const displayText = `${tumblerName} #${tumbler.tumblerNumber} - ${barrel.capacityLbs} lbs #${barrel.globalBarrelNumber} (${barrel.nickname})`;
+// Only include tumbler number if there are duplicates of this brand/model
+// Example with duplicates: "Lortone 3A #2 - 3 lbs #4 (Blue Boulder)"
+// Example without duplicates: "Lortone 3A - 3 lbs #4 (Blue Boulder)"
+const tumblerLabel = hasDuplicateBrandModel
+  ? `${tumbler.brand} ${tumbler.model || ''} #${tumbler.tumblerNumber}`
+  : `${tumbler.brand} ${tumbler.model || ''}`;
+
+const displayText = `${tumblerLabel} - ${barrel.capacityLbs} lbs #${barrel.globalBarrelNumber} (${barrel.nickname})`;
 ```
 
 **Tasks:**
 - [ ] Update barrel selector dropdown to show global barrel numbers
-- [ ] Group by tumbler with tumbler number in group header
+- [ ] Group by tumbler, include tumbler number in group header ONLY if duplicates exist
 
 #### 3.5 Update Cycle Card
 
 **File:** `src/web/src/components/cycle-card/cycle-card.tsx`
 
 The CycleListDto already includes `activeBarrelNumber` - may need to update to use global number.
+Also include tumbler number ONLY when there are duplicates.
 
 **Tasks:**
 - [ ] Verify CycleListDto returns correct (global) barrel number
-- [ ] Update display logic if needed
+- [ ] Add `activeTumblerNumber` and `hasDuplicateTumbler` to CycleListDto
+- [ ] Update display to show tumbler number only when duplicates exist
 
 ---
 
@@ -386,13 +400,31 @@ The CycleListDto already includes `activeBarrelNumber` - may need to update to u
 
 ---
 
+## Design Decisions
+
+### Tumbler Number Display Rule
+**IMPORTANT:** Tumbler numbers should ONLY be displayed when there is more than one tumbler with the same brand AND model combination.
+
+- If user has 1 "Lortone 3A" → Display as "Lortone 3A" (no number)
+- If user has 2 "Lortone 3A" → Display as "Lortone 3A #1" and "Lortone 3A #2"
+- The count is per (brand, model) pair, case-insensitive
+
+This applies to:
+- Tumbler list page
+- Tumbler detail page header
+- Barrel selector dropdowns
+- Cycle cards
+- Any other place tumblers are displayed
+
+---
+
 ## Open Questions
 
 1. **Should tumbler numbers auto-compact when one is deleted?**
    - Recommendation: No, allow gaps for stability
 
-2. **Should we show tumbler number when only one tumbler of that type exists?**
-   - Recommendation: Only show when > 1 tumbler of same brand/model
+2. ~~**Should we show tumbler number when only one tumbler of that type exists?**~~
+   - **DECIDED:** Only show when > 1 tumbler of same brand/model (see Design Decisions above)
 
 3. **Should global barrel numbers recalculate when a barrel is deleted?**
    - Recommendation: No, keep stable for consistency
