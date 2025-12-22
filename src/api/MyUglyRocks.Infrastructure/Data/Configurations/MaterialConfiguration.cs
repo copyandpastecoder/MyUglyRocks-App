@@ -315,9 +315,6 @@ public class StageMaterialConfiguration : IEntityTypeConfiguration<StageMaterial
             .HasColumnName("sort_order")
             .HasDefaultValue(0);
 
-        builder.Property(sm => sm.Notes)
-            .HasColumnName("notes");
-
         builder.Property(sm => sm.DateCreated)
             .HasColumnName("date_created")
             .HasDefaultValueSql("now()");
@@ -385,9 +382,6 @@ public class CleaningMaterialConfiguration : IEntityTypeConfiguration<CleaningMa
         builder.Property(cm => cm.SortOrder)
             .HasColumnName("sort_order")
             .HasDefaultValue(0);
-
-        builder.Property(cm => cm.Notes)
-            .HasColumnName("notes");
 
         builder.Property(cm => cm.DateCreated)
             .HasColumnName("date_created")
