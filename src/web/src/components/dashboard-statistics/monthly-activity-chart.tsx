@@ -33,11 +33,16 @@ export function MonthlyActivityChart({ data }: MonthlyActivityChartProps) {
   }
 
   // Take last 12 months
-  const chartData = data.slice(-12).map((item) => ({
-    name: `${monthNames[item.month - 1]} ${item.year.toString().slice(-2)}`,
-    started: item.cyclesStarted,
-    completed: item.cyclesCompleted,
-  }));
+  const chartData = data.slice(-12).map((item) => {
+    const monthIndex = (item.month ?? 1) - 1;
+    const monthLabel = monthNames[monthIndex] ?? 'Unknown';
+
+    return {
+      name: `${monthLabel} ${item.year.toString().slice(-2)}`,
+      started: item.cyclesStarted,
+      completed: item.cyclesCompleted,
+    };
+  });
 
   return (
     <Card>

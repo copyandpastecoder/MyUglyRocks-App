@@ -26,7 +26,10 @@ export function DashboardStatistics() {
   if (error || !statistics) {
     return (
       <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-        Unable to load statistics
+        <p className="text-lg font-medium">Unable to load statistics</p>
+        <p className="text-sm mt-1">
+          Please try refreshing the page. If the problem persists, contact support.
+        </p>
       </div>
     );
   }
