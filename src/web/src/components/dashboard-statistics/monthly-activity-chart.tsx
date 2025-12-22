@@ -72,14 +72,14 @@ export function MonthlyActivityChart({ data }: MonthlyActivityChartProps) {
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'var(--card)',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
               />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Bar dataKey="started" name="Started" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="started" name="Started" fill="var(--primary)" radius={[4, 4, 0, 0]} />
               <Bar dataKey="completed" name="Completed" fill="hsl(142 76% 36%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>

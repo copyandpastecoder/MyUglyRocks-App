@@ -11,7 +11,7 @@ interface StageDurationChartProps {
 }
 
 const COLORS = [
-  'hsl(var(--primary))',
+  'var(--primary)',
   'hsl(142 76% 36%)',
   'hsl(262 83% 58%)',
   'hsl(38 92% 50%)',
@@ -107,8 +107,8 @@ export function StageDurationChart({ overallStats, tumblerStats }: StageDuration
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
+                    backgroundColor: 'var(--card)',
+                    border: '1px solid var(--border)',
                     borderRadius: '8px',
                     fontSize: '12px',
                   }}
@@ -167,14 +167,14 @@ export function StageDurationChart({ overallStats, tumblerStats }: StageDuration
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: 'hsl(var(--card))',
-                  border: '1px solid hsl(var(--border))',
+                  backgroundColor: 'var(--card)',
+                  border: '1px solid var(--border)',
                   borderRadius: '8px',
                   fontSize: '12px',
                 }}
                 formatter={(value) => [`${(value as number).toFixed(2)} weeks`, 'Duration']}
               />
-              <Bar dataKey="weeks" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="weeks" fill="var(--primary)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
