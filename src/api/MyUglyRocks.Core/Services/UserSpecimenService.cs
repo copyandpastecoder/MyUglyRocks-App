@@ -32,6 +32,7 @@ public class UserSpecimenService : IUserSpecimenService
         if (!string.IsNullOrEmpty(search))
         {
             // Split query into words and require ALL words to match (AND logic)
+            // Example: "red jasper" finds items containing BOTH "red" AND "jasper"
             var searchTerms = search.ToLower()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -178,6 +179,7 @@ public class UserSpecimenService : IUserSpecimenService
         if (!string.IsNullOrEmpty(search))
         {
             // Split query into words and require ALL words to match (AND logic)
+            // Example: "red jasper" finds items containing BOTH "red" AND "jasper"
             var searchTerms = search.ToLower()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 

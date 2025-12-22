@@ -47,9 +47,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
             migrationBuilder.AddColumn<decimal>(
                 name: "barrel_rpm",
                 table: "stage_runs",
-                type: "numeric(5,1)",
-                precision: 5,
-                scale: 1,
+                type: "numeric(6,2)",
+                precision: 6,
+                scale: 2,
                 nullable: true);
 
             migrationBuilder.AddColumn<bool>(
