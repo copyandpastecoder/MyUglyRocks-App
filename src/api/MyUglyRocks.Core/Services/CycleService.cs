@@ -1690,15 +1690,15 @@ public class CycleService : ICycleService
         var weightLossByHardness = CalculateWeightLossByHardness(cycles);
 
         return new WeightStatsDto(
-            stage1Weight?.WeightLossPercent,
-            stage2Weight?.WeightLossPercent,
-            stage3Weight?.WeightLossPercent,
-            stage4Weight?.WeightLossPercent,
+            stage1Weight.WeightLossPercent,
+            stage2Weight.WeightLossPercent,
+            stage3Weight.WeightLossPercent,
+            stage4Weight.WeightLossPercent,
             avgTotalWeightLoss,
-            stage1Weight?.StageWeight,
-            stage2Weight?.StageWeight,
-            stage3Weight?.StageWeight,
-            stage4Weight?.StageWeight,
+            stage1Weight.StageWeight,
+            stage2Weight.StageWeight,
+            stage3Weight.StageWeight,
+            stage4Weight.StageWeight,
             weightLossByHardness
         );
     }
@@ -2000,30 +2000,59 @@ public class CycleService : ICycleService
             .Select(kv => new MonthlyActivityDto(kv.Key.Year, kv.Key.Month, kv.Value.Started, kv.Value.Completed))
             .ToList();
 
-        // Calculate concurrent cycles
-        // For each day, count how many cycles were active
-        var allDates = cycles
-            .SelectMany(c => {
-                var end = c.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
-                var dates = new List<DateOnly>();
-                for (var d = c.StartDate; d <= end; d = d.AddDays(1))
-                    dates.Add(d);
-                return dates;
-            })
-            .Distinct()
-            .ToList();
+        // Calculate concurrent cycles using sweep-line algorithm
+        // More efficient than generating all dates: O(n log n) vs O(n*m)
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var events = new Dictionary<DateOnly, int>();
 
-        if (allDates.Count == 0)
+        foreach (var cycle in cycles)
+        {
+            var start = cycle.StartDate;
+            var endInclusive = cycle.EndDate ?? today;
+
+            if (!events.ContainsKey(start))
+                events[start] = 0;
+            events[start] += 1;
+
+            var endExclusive = endInclusive.AddDays(1);
+            if (!events.ContainsKey(endExclusive))
+                events[endExclusive] = 0;
+            events[endExclusive] -= 1;
+        }
+
+        if (events.Count == 0)
         {
             return new ActivityStatsDto(0, 0, monthlyActivity);
         }
 
-        var concurrentCounts = allDates.Select(date =>
-            cycles.Count(c => c.StartDate <= date && (c.EndDate == null || c.EndDate >= date))
-        ).ToList();
+        var sortedEventDates = events.Keys.OrderBy(d => d).ToList();
 
-        var maxConcurrent = concurrentCounts.Max();
-        var avgConcurrent = concurrentCounts.Average();
+        int currentActive = 0;
+        int maxConcurrent = 0;
+        double totalWeightedActive = 0;
+        int totalDays = 0;
+        DateOnly? previousDate = null;
+
+        foreach (var date in sortedEventDates)
+        {
+            if (previousDate.HasValue && currentActive > 0)
+            {
+                var spanDays = date.DayNumber - previousDate.Value.DayNumber;
+                if (spanDays > 0)
+                {
+                    totalDays += spanDays;
+                    totalWeightedActive += spanDays * currentActive;
+                }
+            }
+
+            currentActive += events[date];
+            if (currentActive > maxConcurrent)
+                maxConcurrent = currentActive;
+
+            previousDate = date;
+        }
+
+        var avgConcurrent = totalDays > 0 ? totalWeightedActive / totalDays : 0;
 
         return new ActivityStatsDto(
             maxConcurrent,
