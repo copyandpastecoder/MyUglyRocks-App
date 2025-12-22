@@ -1,56 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { useTumblers, useCycles, useDeleteCycle } from '@/hooks';
+import { useTumblers, useCycles } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { PAGE_CONTAINER_LOOSE } from '@/lib/layout';
-import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { DashboardSkeleton } from '@/components/skeletons';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
-import { CheckCircle2, Cylinder, RotateCcw, Clock, Plus } from 'lucide-react';
-import Link from 'next/link';
-import { CycleCard } from '@/components/cycle-card';
+import { CheckCircle2, Cylinder, RotateCcw, Clock } from 'lucide-react';
+import { DashboardStatistics } from '@/components/dashboard-statistics';
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: tumblers, isLoading: tumblersLoading } = useTumblers();
   const { data: activeCycles, isLoading: activeCyclesLoading } = useCycles('Active', 'asc');
   const { data: completedCycles, isLoading: completedCyclesLoading } = useCycles('Completed', 'desc');
-  const deleteMutation = useDeleteCycle();
 
   const isLoading = tumblersLoading || activeCyclesLoading || completedCyclesLoading;
-
-  const handleDelete = (id: string) => {
-    setDeleteId(id);
-  };
-
-  const confirmDelete = () => {
-    if (deleteId) {
-      deleteMutation.mutate(deleteId, {
-        onSuccess: () => setDeleteId(null),
-      });
-    }
-  };
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -117,72 +83,11 @@ export default function DashboardPage() {
           </StaggerItem>
         </StaggerContainer>
 
-      {/* Active Cycles Preview */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Active Cycles</CardTitle>
-            <CardDescription>
-              Your currently running cycles
-            </CardDescription>
-          </div>
-          <Button asChild>
-            <Link href="/cycles/new">
-              <Plus className="mr-2 h-4 w-4" />
-              New Cycle
-            </Link>
-          </Button>
-        </CardHeader>
-          <CardContent>
-            {activeCycles && activeCycles.length > 0 ? (
-              <div className="space-y-2">
-                {activeCycles.slice(0, 6).map(cycle => (
-                  <CycleCard
-                    key={cycle.cycleId}
-                    cycle={cycle}
-                    onDelete={handleDelete}
-                  />
-                ))}
-                {activeCycles.length > 6 && (
-                  <Link
-                    href="/cycles"
-                    className="block text-center text-sm text-primary hover:underline pt-2"
-                  >
-                    View all {activeCycles.length} active cycles
-                  </Link>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-6">
-                <p className="text-muted-foreground mb-3">No active cycles</p>
-                <Button asChild size="sm">
-                  <Link href="/cycles/new">Start a Cycle</Link>
-                </Button>
-              </div>
-            )}
-        </CardContent>
-      </Card>
-
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Cycle</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this cycle? All stage runs and photos
-              will also be deleted. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Cycle Statistics Section */}
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Cycle Statistics</h2>
+          <DashboardStatistics />
+        </div>
       </div>
     </PageTransition>
   );
