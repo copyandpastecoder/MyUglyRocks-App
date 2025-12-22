@@ -61,8 +61,15 @@ public class InventoryService : IInventoryService
 
         if (!string.IsNullOrEmpty(search))
         {
-            var searchLower = search.ToLower();
-            query = query.Where(i => i.Name.ToLower().Contains(searchLower));
+            // Split query into words and require ALL words to match (AND logic)
+            var searchTerms = search.ToLower()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var term in searchTerms)
+            {
+                var searchTerm = term; // Capture for closure
+                query = query.Where(i => i.Name.ToLower().Contains(searchTerm));
+            }
         }
 
         // Apply sorting
