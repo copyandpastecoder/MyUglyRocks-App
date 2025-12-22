@@ -986,7 +986,7 @@ public class CycleService : ICycleService
         if (request.BarrelIds != null)
         {
             // Remove existing barrel associations using explicit deletion
-            // This avoids EF Core concurrency issues with collection.Clear()
+            // This ensures EF Core properly tracks entity deletions instead of using collection.Clear()
             var existingBarrels = stageRun.StageRunBarrels.ToList();
             StageRunBarrels.RemoveRange(existingBarrels);
 
@@ -1005,6 +1005,7 @@ public class CycleService : ICycleService
         if (request.Materials != null)
         {
             // Remove existing materials using explicit deletion
+            // This ensures EF Core properly tracks entity deletions instead of using collection.Clear()
             var existingMaterials = stageRun.StageMaterials.ToList();
             StageMaterials.RemoveRange(existingMaterials);
 
@@ -1039,7 +1040,8 @@ public class CycleService : ICycleService
                 stageRun.CleaningRun.ReminderEnabled = request.CleaningRun.ReminderEnabled;
                 stageRun.CleaningRun.DateUpdated = DateTime.UtcNow;
 
-                // Update cleaning materials using explicit deletion
+                // Update cleaning materials using explicit deletion instead of Clear()
+                // to ensure EF Core correctly tracks and deletes removed entities.
                 var existingCleaningMaterials = stageRun.CleaningRun.CleaningMaterials.ToList();
                 CleaningMaterials.RemoveRange(existingCleaningMaterials);
                 if (request.CleaningRun.Materials?.Any() == true)
