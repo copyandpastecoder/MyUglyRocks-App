@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, MoreVertical, Pencil, CheckCircle, Trash2, AlertCircle, RotateCcw, Cylinder, Eye, Gem, Loader2 } from 'lucide-react';
@@ -21,10 +21,20 @@ import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
 import { useCycle } from '@/hooks';
 import type { CycleCardProps } from './types';
 
-export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false }: CycleCardProps) {
+export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false, expandedOverride }: CycleCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldFetchDetails, setShouldFetchDetails] = useState(false);
+
+  // Sync with parent's expand/collapse all override
+  useEffect(() => {
+    if (expandedOverride !== undefined) {
+      setIsExpanded(expandedOverride);
+      if (expandedOverride && !shouldFetchDetails) {
+        setShouldFetchDetails(true);
+      }
+    }
+  }, [expandedOverride, shouldFetchDetails]);
 
   // Lazy load cycle details (including specimens) when expanded
   const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
