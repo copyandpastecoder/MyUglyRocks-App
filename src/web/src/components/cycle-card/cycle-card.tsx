@@ -55,6 +55,13 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
       )
     : null;
 
+  // Format tumbler display - show number only when duplicates exist
+  const tumblerDisplay = cycle.activeTumblerName
+    ? cycle.hasDuplicateTumbler && cycle.activeTumblerNumber
+      ? `${cycle.activeTumblerName} #${cycle.activeTumblerNumber}`
+      : cycle.activeTumblerName
+    : null;
+
   // Format barrel display - show both number and nickname when available
   const barrelDisplay =
     cycle.activeBarrelNickname && cycle.activeBarrelNumber
@@ -171,11 +178,11 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
         <CollapsibleContent>
           <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
             <div className="pt-3 space-y-2 text-sm">
-              {cycle.activeTumblerName && (
+              {tumblerDisplay && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Cylinder className="h-4 w-4 shrink-0" />
                   <span className="font-medium text-foreground">Tumbler:</span>
-                  <span className="truncate">{cycle.activeTumblerName}</span>
+                  <span className="truncate">{tumblerDisplay}</span>
                 </div>
               )}
               {barrelDisplay && (

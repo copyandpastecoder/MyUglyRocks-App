@@ -27,6 +27,7 @@ public class CycleService : ICycleService
     private DbSet<InventorySpecimen> InventorySpecimens => _context.Set<InventorySpecimen>();
     private DbSet<InventoryPhoto> InventoryPhotos => _context.Set<InventoryPhoto>();
     private DbSet<Photo> Photos => _context.Set<Photo>();
+    private DbSet<Tumbler> Tumblers => _context.Set<Tumbler>();
 
     public async Task<IEnumerable<CycleListDto>> GetUserCyclesAsync(Guid userId, string? status = null, CancellationToken cancellationToken = default)
     {
@@ -46,10 +47,21 @@ public class CycleService : ICycleService
             .OrderByDescending(c => c.DateCreated)
             .ToListAsync(cancellationToken);
 
-        return cycles.Select(MapToCycleListDto).ToList();
+        // Get tumbler duplicate counts for this user
+        var tumblerDuplicates = await Tumblers
+            .Where(t => t.UserId == userId && t.IsActive)
+            .GroupBy(t => new { Brand = t.Brand.ToLower(), Model = (t.Model ?? "").ToLower() })
+            .Where(g => g.Count() > 1)
+            .Select(g => new { g.Key.Brand, g.Key.Model })
+            .ToDictionaryAsync(
+                x => (x.Brand, x.Model),
+                x => true,
+                cancellationToken);
+
+        return cycles.Select(c => MapToCycleListDto(c, tumblerDuplicates)).ToList();
     }
 
-    private static CycleListDto MapToCycleListDto(Cycle cycle)
+    private static CycleListDto MapToCycleListDto(Cycle cycle, Dictionary<(string Brand, string Model), bool> tumblerDuplicates)
     {
         var stageRuns = cycle.StageRuns.Where(s => !s.IsDeleted).ToList();
         var activeStages = stageRuns.Where(s => s.Status == StageRunStatus.Active).ToList();
@@ -66,6 +78,8 @@ public class CycleService : ICycleService
 
         // Get tumbler/barrel from the relevant stage
         string? tumblerName = null;
+        int? tumblerNumber = null;
+        bool hasDuplicateTumbler = false;
         int? barrelNumber = null;
         string? barrelNickname = null;
 
@@ -81,6 +95,11 @@ public class CycleService : ICycleService
                     tumblerName = !string.IsNullOrEmpty(barrel.Tumbler.Model)
                         ? $"{barrel.Tumbler.Brand} {barrel.Tumbler.Model}"
                         : barrel.Tumbler.Brand;
+                    tumblerNumber = barrel.Tumbler.TumblerNumber;
+
+                    // Check if this tumbler has duplicates
+                    var key = (barrel.Tumbler.Brand.ToLower(), (barrel.Tumbler.Model ?? "").ToLower());
+                    hasDuplicateTumbler = tumblerDuplicates.ContainsKey(key);
                 }
             }
         }
@@ -113,6 +132,8 @@ public class CycleService : ICycleService
             activeStageEnd,
             daysOverdue,
             tumblerName,
+            tumblerNumber,
+            hasDuplicateTumbler,
             barrelNumber,
             barrelNickname
         );
