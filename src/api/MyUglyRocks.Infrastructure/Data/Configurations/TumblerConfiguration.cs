@@ -195,12 +195,6 @@ public class BarrelConfiguration : IEntityTypeConfiguration<Barrel>
             .HasColumnName("dedicated_stages")
             .HasColumnType("varchar(100)[]");
 
-        builder.Property(b => b.DateLastDeepClean)
-            .HasColumnName("date_last_deep_clean");
-
-        builder.Property(b => b.ContaminationNotes)
-            .HasColumnName("contamination_notes");
-
         builder.Property(b => b.IsActive)
             .HasColumnName("is_active")
             .HasDefaultValue(true);
