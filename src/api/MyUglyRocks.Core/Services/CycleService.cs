@@ -22,6 +22,7 @@ public class CycleService : ICycleService
     private DbSet<CleaningRun> CleaningRuns => _context.Set<CleaningRun>();
     private DbSet<StageMaterial> StageMaterials => _context.Set<StageMaterial>();
     private DbSet<CleaningMaterial> CleaningMaterials => _context.Set<CleaningMaterial>();
+    private DbSet<StageRunBarrel> StageRunBarrels => _context.Set<StageRunBarrel>();
     private DbSet<CycleSpecimen> CycleSpecimens => _context.Set<CycleSpecimen>();
     private DbSet<InventorySpecimen> InventorySpecimens => _context.Set<InventorySpecimen>();
     private DbSet<InventoryPhoto> InventoryPhotos => _context.Set<InventoryPhoto>();
@@ -993,13 +994,15 @@ public class CycleService : ICycleService
         // Update barrels if provided
         if (request.BarrelIds != null)
         {
-            // Remove existing barrel associations
-            stageRun.StageRunBarrels.Clear();
+            // Remove existing barrel associations using explicit deletion
+            // This avoids EF Core concurrency issues with collection.Clear()
+            var existingBarrels = stageRun.StageRunBarrels.ToList();
+            StageRunBarrels.RemoveRange(existingBarrels);
 
             // Add new barrel associations
             foreach (var barrelId in request.BarrelIds)
             {
-                stageRun.StageRunBarrels.Add(new StageRunBarrel
+                StageRunBarrels.Add(new StageRunBarrel
                 {
                     StageRunId = stageRun.StageRunId,
                     BarrelId = barrelId
@@ -1010,14 +1013,15 @@ public class CycleService : ICycleService
         // Update materials if provided
         if (request.Materials != null)
         {
-            // Remove existing materials
-            stageRun.StageMaterials.Clear();
+            // Remove existing materials using explicit deletion
+            var existingMaterials = stageRun.StageMaterials.ToList();
+            StageMaterials.RemoveRange(existingMaterials);
 
             // Add new materials
             int sortOrder = 0;
             foreach (var materialRequest in request.Materials)
             {
-                stageRun.StageMaterials.Add(new StageMaterial
+                StageMaterials.Add(new StageMaterial
                 {
                     StageMaterialId = Guid.NewGuid(),
                     StageRunId = stageRun.StageRunId,
@@ -1044,14 +1048,15 @@ public class CycleService : ICycleService
                 stageRun.CleaningRun.ReminderEnabled = request.CleaningRun.ReminderEnabled;
                 stageRun.CleaningRun.DateUpdated = DateTime.UtcNow;
 
-                // Update cleaning materials
-                stageRun.CleaningRun.CleaningMaterials.Clear();
+                // Update cleaning materials using explicit deletion
+                var existingCleaningMaterials = stageRun.CleaningRun.CleaningMaterials.ToList();
+                CleaningMaterials.RemoveRange(existingCleaningMaterials);
                 if (request.CleaningRun.Materials?.Any() == true)
                 {
                     int cleaningSortOrder = 0;
                     foreach (var materialRequest in request.CleaningRun.Materials)
                     {
-                        stageRun.CleaningRun.CleaningMaterials.Add(new CleaningMaterial
+                        CleaningMaterials.Add(new CleaningMaterial
                         {
                             CleaningMaterialId = Guid.NewGuid(),
                             CleaningRunId = stageRun.CleaningRun.CleaningRunId,
