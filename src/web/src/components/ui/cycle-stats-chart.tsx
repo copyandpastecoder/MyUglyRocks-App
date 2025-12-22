@@ -18,15 +18,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 
 // Color palette matching our theme
 const CHART_COLORS = {
-  primary: 'hsl(var(--primary))',
-  secondary: 'hsl(var(--secondary))',
-  accent: 'hsl(var(--accent))',
-  muted: 'hsl(var(--muted))',
-  chart1: 'hsl(var(--chart-1))',
-  chart2: 'hsl(var(--chart-2))',
-  chart3: 'hsl(var(--chart-3))',
-  chart4: 'hsl(var(--chart-4))',
-  chart5: 'hsl(var(--chart-5))',
+  primary: 'var(--primary)',
+  secondary: 'var(--secondary)',
+  accent: 'var(--accent)',
+  muted: 'var(--muted)',
+  chart1: 'var(--chart-1)',
+  chart2: 'var(--chart-2)',
+  chart3: 'var(--chart-3)',
+  chart4: 'var(--chart-4)',
+  chart5: 'var(--chart-5)',
 };
 
 const PIE_COLORS = [
@@ -59,21 +59,21 @@ export function CycleProgressChart({ data, title = 'Stage Progress', description
       <CardContent>
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 30, left: 60, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+            <XAxis type="number" stroke="var(--muted-foreground)" fontSize={12} />
             <YAxis
               type="category"
               dataKey="stage"
-              stroke="hsl(var(--muted-foreground))"
+              stroke="var(--muted-foreground)"
               fontSize={12}
               width={50}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
+                backgroundColor: 'var(--card)',
+                border: '1px solid var(--border)',
                 borderRadius: '8px',
-                color: 'hsl(var(--foreground))',
+                color: 'var(--foreground)',
               }}
               formatter={(value) => [`${value ?? 0} hours`, 'Duration']}
             />
@@ -129,20 +129,20 @@ export function ActivityChart({ data, title = 'Activity Overview', description }
                 <stop offset="95%" stopColor={CHART_COLORS.chart2} stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
               dataKey="date"
-              stroke="hsl(var(--muted-foreground))"
+              stroke="var(--muted-foreground)"
               fontSize={12}
               tickLine={false}
             />
-            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} />
+            <YAxis stroke="var(--muted-foreground)" fontSize={12} tickLine={false} />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
+                backgroundColor: 'var(--card)',
+                border: '1px solid var(--border)',
                 borderRadius: '8px',
-                color: 'hsl(var(--foreground))',
+                color: 'var(--foreground)',
               }}
             />
             <Area
@@ -207,10 +207,10 @@ export function StageDistributionChart({ data, title = 'Stage Distribution', des
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: 'hsl(var(--card))',
-                border: '1px solid hsl(var(--border))',
+                backgroundColor: 'var(--card)',
+                border: '1px solid var(--border)',
                 borderRadius: '8px',
-                color: 'hsl(var(--foreground))',
+                color: 'var(--foreground)',
               }}
               formatter={(value, name) => {
                 const numValue = Number(value) || 0;
