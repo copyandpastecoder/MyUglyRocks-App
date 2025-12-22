@@ -95,12 +95,12 @@ export function StageDurationChart({ overallStats, tumblerStats }: StageDuration
               <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis
                   dataKey="stage"
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11 }}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(value) => `${value.toFixed(1)}w`}
@@ -155,12 +155,12 @@ export function StageDurationChart({ overallStats, tumblerStats }: StageDuration
             <BarChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <XAxis
                 dataKey="stage"
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11 }}
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `${value.toFixed(1)}w`}
