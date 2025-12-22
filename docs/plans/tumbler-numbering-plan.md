@@ -2,16 +2,16 @@
 
 ## Overview
 
-When a user has multiple tumblers of the same brand and model, we need to:
-1. Add a **Tumbler Number** to distinguish between them
-2. Make barrel numbers **sequential across all tumblers** of the same brand/model
+When a user has multiple tumblers of the same brand and model, we need to add a **Tumbler Number** to distinguish between them.
 
 ### Example
 
 If a user has three 2-barrel tumblers of the same brand/model:
 - **Tumbler #1**: Barrels 1, 2
-- **Tumbler #2**: Barrels 3, 4
-- **Tumbler #3**: Barrels 5, 6
+- **Tumbler #2**: Barrels 1, 2
+- **Tumbler #3**: Barrels 1, 2
+
+Display example: "Lortone 3A #2 - Barrel 2" clearly identifies which tumbler and barrel.
 
 ---
 
@@ -171,45 +171,6 @@ public async Task<TumblerDto> CreateTumblerAsync(Guid userId, CreateTumblerReque
 - [ ] Update mapping configuration to include TumblerNumber in DTOs
 - [ ] Add validation to prevent duplicate TumblerNumbers for same brand/model
 
-#### 2.3 Add Computed Barrel Display Number
-
-This is a **display-only calculation** - the actual `BarrelNumber` in the database remains the same (local to each tumbler), but we compute a **global barrel number** for display across tumblers of the same brand/model.
-
-**Option A: Compute in API (Recommended)**
-
-Add a computed property to BarrelDto:
-
-```csharp
-public record BarrelDto(
-    // ... existing properties
-    int BarrelNumber,           // Local number (1, 2, etc.)
-    int GlobalBarrelNumber      // NEW: Computed across tumblers (1, 2, 3, 4, 5, 6...)
-);
-```
-
-**Calculation logic:**
-```csharp
-// In mapping or service layer
-public int CalculateGlobalBarrelNumber(Barrel barrel, Tumbler tumbler, List<Tumbler> sameBrandModelTumblers)
-{
-    // Get all tumblers of same brand/model with lower TumblerNumber
-    var precedingTumblers = sameBrandModelTumblers
-        .Where(t => t.TumblerNumber < tumbler.TumblerNumber)
-        .OrderBy(t => t.TumblerNumber);
-
-    // Sum all barrels from preceding tumblers
-    var precedingBarrelCount = precedingTumblers
-        .Sum(t => t.Barrels.Count(b => b.IsActive));
-
-    return precedingBarrelCount + barrel.BarrelNumber;
-}
-```
-
-**Tasks:**
-- [ ] Add `GlobalBarrelNumber` computed property to BarrelDto
-- [ ] Implement calculation in TumblerService or mapping
-- [ ] Ensure barrels are sorted by GlobalBarrelNumber in responses
-
 ---
 
 ### Phase 3: Frontend Changes
@@ -221,19 +182,14 @@ public int CalculateGlobalBarrelNumber(Barrel barrel, Tumbler tumbler, List<Tumb
 ```typescript
 export interface Tumbler {
   // ... existing properties
-  tumblerNumber: number;       // NEW
-}
-
-export interface Barrel {
-  // ... existing properties
-  barrelNumber: number;        // Local number
-  globalBarrelNumber: number;  // NEW: Display number across tumblers
+  tumblerNumber: number;           // NEW
+  hasDuplicateBrandModel: boolean; // NEW: true if other tumblers share brand/model
 }
 ```
 
 **Tasks:**
 - [ ] Add `tumblerNumber` to Tumbler interface
-- [ ] Add `globalBarrelNumber` to Barrel interface
+- [ ] Add `hasDuplicateBrandModel` to Tumbler interface (from API)
 
 #### 3.2 Update Tumbler Display
 
@@ -264,16 +220,10 @@ const displayName = sameModelCount > 1
 
 **File:** `src/web/src/app/(protected)/tumblers/[id]/page.tsx`
 
-Use global barrel number for display:
-
-```tsx
-// Display global barrel number instead of local
-<Badge>{barrel.globalBarrelNumber}</Badge>
-```
+No changes needed - barrel numbers remain local to each tumbler. The tumbler number provides context when duplicates exist.
 
 **Tasks:**
-- [ ] Update barrel badges to show globalBarrelNumber
-- [ ] Update barrel tooltips/labels
+- [ ] No barrel display changes required (keep using local barrelNumber)
 
 #### 3.4 Update Barrel Selector
 
@@ -281,28 +231,27 @@ Use global barrel number for display:
 
 ```tsx
 // Only include tumbler number if there are duplicates of this brand/model
-// Example with duplicates: "Lortone 3A #2 - 3 lbs #4 (Blue Boulder)"
-// Example without duplicates: "Lortone 3A - 3 lbs #4 (Blue Boulder)"
-const tumblerLabel = hasDuplicateBrandModel
+// Example with duplicates: "Lortone 3A #2 - Barrel 2 (Blue Boulder)"
+// Example without duplicates: "Lortone 3A - Barrel 2 (Blue Boulder)"
+const tumblerLabel = tumbler.hasDuplicateBrandModel
   ? `${tumbler.brand} ${tumbler.model || ''} #${tumbler.tumblerNumber}`
   : `${tumbler.brand} ${tumbler.model || ''}`;
 
-const displayText = `${tumblerLabel} - ${barrel.capacityLbs} lbs #${barrel.globalBarrelNumber} (${barrel.nickname})`;
+const displayText = `${tumblerLabel} - Barrel ${barrel.barrelNumber} (${barrel.nickname})`;
 ```
 
 **Tasks:**
-- [ ] Update barrel selector dropdown to show global barrel numbers
+- [ ] Update barrel selector dropdown to include tumbler number when duplicates exist
 - [ ] Group by tumbler, include tumbler number in group header ONLY if duplicates exist
 
 #### 3.5 Update Cycle Card
 
 **File:** `src/web/src/components/cycle-card/cycle-card.tsx`
 
-The CycleListDto already includes `activeBarrelNumber` - may need to update to use global number.
-Also include tumbler number ONLY when there are duplicates.
+The CycleListDto already includes `activeBarrelNumber` (local to tumbler - no change needed).
+Add tumbler number display ONLY when there are duplicates.
 
 **Tasks:**
-- [ ] Verify CycleListDto returns correct (global) barrel number
 - [ ] Add `activeTumblerNumber` and `hasDuplicateTumbler` to CycleListDto
 - [ ] Update display to show tumbler number only when duplicates exist
 
@@ -416,6 +365,21 @@ This applies to:
 - Cycle cards
 - Any other place tumblers are displayed
 
+### No Global Barrel Numbering
+**DECIDED:** We will NOT implement global barrel numbering across tumblers.
+
+Instead of computing sequential barrel numbers across all tumblers of the same brand/model (e.g., Tumbler #1 has barrels 1,2; Tumbler #2 has barrels 3,4), we will simply display:
+- Tumbler number (when duplicates exist)
+- Local barrel number within that tumbler
+
+Example display: "Lortone 3A #2 - Barrel 2" (NOT "Barrel 4")
+
+**Rationale:**
+- Simpler implementation
+- No complex cross-tumbler calculations
+- Less confusion if barrels are added/removed
+- Barrel numbers stay stable
+
 ---
 
 ## Open Questions
@@ -426,8 +390,8 @@ This applies to:
 2. ~~**Should we show tumbler number when only one tumbler of that type exists?**~~
    - **DECIDED:** Only show when > 1 tumbler of same brand/model (see Design Decisions above)
 
-3. **Should global barrel numbers recalculate when a barrel is deleted?**
-   - Recommendation: No, keep stable for consistency
+3. ~~**Should global barrel numbers recalculate when a barrel is deleted?**~~
+   - **DECIDED:** No global barrel numbering - barrels keep local numbers (see Design Decisions above)
 
-4. **Do we need API endpoints to manually renumber tumblers/barrels?**
+4. **Do we need API endpoints to manually renumber tumblers?**
    - Can add later if users request it
