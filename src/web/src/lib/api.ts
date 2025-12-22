@@ -240,6 +240,7 @@ export const tumblerApi = {
 
 // Cycle API functions
 import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest, CleaningRunDto, CreateCleaningRunRequest, CyclePhotoDto } from '@/types/cycle';
+import type { CycleStatisticsDto } from '@/types/cycle-statistics';
 
 export const cycleApi = {
   getAll: async (status?: string): Promise<CycleListDto[]> => {
@@ -314,6 +315,12 @@ export const cycleApi = {
 
   deleteCleaningRun: async (id: string): Promise<void> => {
     await api.delete(`/cycles/cleaning/${id}`);
+  },
+
+  // Statistics
+  getStatistics: async (): Promise<CycleStatisticsDto> => {
+    const response = await api.get<CycleStatisticsDto>('/cycles/statistics');
+    return response.data;
   },
 
   // Photo operations

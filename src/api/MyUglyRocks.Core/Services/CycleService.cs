@@ -1526,4 +1526,509 @@ public class CycleService : ICycleService
 
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    // Statistics
+    public async Task<CycleStatisticsDto> GetCycleStatisticsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        // Load all cycles with their stage runs, barrels, and specimens
+        var cycles = await Cycles
+            .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.StageRunBarrels)
+                    .ThenInclude(srb => srb.Barrel)
+                        .ThenInclude(b => b.Tumbler)
+            .Include(c => c.CycleSpecimens)
+                .ThenInclude(cs => cs.Specimen)
+            .Include(c => c.CycleSpecimens)
+                .ThenInclude(cs => cs.UserSpecimen)
+            .Where(c => c.UserId == userId)
+            .ToListAsync(cancellationToken);
+
+        var completedCycles = cycles.Where(c => c.Status == CycleStatus.Completed).ToList();
+        var activeCycles = cycles.Where(c => c.Status == CycleStatus.Active).ToList();
+        var allStageRuns = cycles.SelectMany(c => c.StageRuns.Where(s => !s.IsDeleted)).ToList();
+        var completedStageRuns = allStageRuns.Where(s => s.Status == StageRunStatus.Completed).ToList();
+
+        // Calculate duration statistics
+        var durationStats = CalculateDurationStats(completedCycles, completedStageRuns);
+
+        // Calculate weight statistics
+        var weightStats = CalculateWeightStats(cycles, completedStageRuns);
+
+        // Calculate operational statistics
+        var operationalStats = CalculateOperationalStats(cycles, activeCycles, completedCycles, allStageRuns);
+
+        // Calculate tumbler statistics
+        var tumblerStats = CalculateTumblerStats(completedCycles, completedStageRuns);
+
+        // Calculate barrel statistics
+        var barrelStats = CalculateBarrelStats(completedStageRuns);
+
+        // Calculate specimen statistics
+        var specimenStats = CalculateSpecimenStats(cycles);
+
+        // Calculate overdue statistics
+        var overdueStats = CalculateOverdueStats(allStageRuns);
+
+        // Calculate activity statistics
+        var activityStats = CalculateActivityStats(cycles);
+
+        return new CycleStatisticsDto(
+            durationStats,
+            weightStats,
+            operationalStats,
+            tumblerStats,
+            barrelStats,
+            specimenStats,
+            overdueStats,
+            activityStats
+        );
+    }
+
+    private static DurationStatsDto CalculateDurationStats(List<Cycle> completedCycles, List<StageRun> completedStageRuns)
+    {
+        // Overall cycle duration
+        var cycleDurations = completedCycles
+            .Where(c => c.EndDate.HasValue)
+            .Select(c => (c.EndDate!.Value.DayNumber - c.StartDate.DayNumber))
+            .ToList();
+
+        double? avgCycleDuration = cycleDurations.Count > 0 ? cycleDurations.Average() : null;
+        int? fastestCycle = cycleDurations.Count > 0 ? cycleDurations.Min() : null;
+        int? longestCycle = cycleDurations.Count > 0 ? cycleDurations.Max() : null;
+
+        // Stage durations (Stage 1, Stage 2, etc.)
+        double? avgStage1 = CalculateAvgStageDuration(completedStageRuns, "Stage 1");
+        double? avgStage2 = CalculateAvgStageDuration(completedStageRuns, "Stage 2");
+        double? avgStage3 = CalculateAvgStageDuration(completedStageRuns, "Stage 3");
+        double? avgStage4 = CalculateAvgStageDuration(completedStageRuns, "Stage 4");
+
+        // Per-tumbler durations
+        var perTumblerDurations = CalculatePerTumblerDurations(completedStageRuns);
+
+        return new DurationStatsDto(
+            avgCycleDuration,
+            avgStage1,
+            avgStage2,
+            avgStage3,
+            avgStage4,
+            fastestCycle,
+            longestCycle,
+            perTumblerDurations
+        );
+    }
+
+    private static double? CalculateAvgStageDuration(List<StageRun> stageRuns, string stageName)
+    {
+        var stageDurations = stageRuns
+            .Where(s => s.StageName.Equals(stageName, StringComparison.OrdinalIgnoreCase))
+            .Select(s => s.DurationDays + (s.DurationHours / 24.0))
+            .ToList();
+
+        return stageDurations.Count > 0 ? stageDurations.Average() : null;
+    }
+
+    private static List<TumblerDurationStatsDto> CalculatePerTumblerDurations(List<StageRun> completedStageRuns)
+    {
+        // Group stage runs by tumbler
+        var stageRunsByTumbler = completedStageRuns
+            .Where(s => s.StageRunBarrels.Any(srb => srb.Barrel?.Tumbler != null))
+            .SelectMany(s => s.StageRunBarrels
+                .Where(srb => srb.Barrel?.Tumbler != null)
+                .Select(srb => new { StageRun = s, Tumbler = srb.Barrel!.Tumbler! }))
+            .GroupBy(x => x.Tumbler.TumblerId)
+            .ToList();
+
+        return stageRunsByTumbler.Select(g =>
+        {
+            var tumbler = g.First().Tumbler;
+            var stageRuns = g.Select(x => x.StageRun).Distinct().ToList();
+            var tumblerName = !string.IsNullOrEmpty(tumbler.Model)
+                ? $"{tumbler.Brand} {tumbler.Model}"
+                : tumbler.Brand;
+
+            // Calculate average cycle duration for this tumbler
+            var cycleIds = stageRuns.Select(s => s.CycleId).Distinct().ToList();
+
+            return new TumblerDurationStatsDto(
+                tumbler.TumblerId,
+                tumblerName,
+                null, // We'd need to calculate this from completed cycles using this tumbler
+                CalculateAvgStageDuration(stageRuns, "Stage 1"),
+                CalculateAvgStageDuration(stageRuns, "Stage 2"),
+                CalculateAvgStageDuration(stageRuns, "Stage 3"),
+                CalculateAvgStageDuration(stageRuns, "Stage 4")
+            );
+        }).ToList();
+    }
+
+    private static WeightStatsDto CalculateWeightStats(List<Cycle> cycles, List<StageRun> completedStageRuns)
+    {
+        // Weight loss per stage
+        var stage1Weight = CalculateStageWeight(completedStageRuns, "Stage 1");
+        var stage2Weight = CalculateStageWeight(completedStageRuns, "Stage 2");
+        var stage3Weight = CalculateStageWeight(completedStageRuns, "Stage 3");
+        var stage4Weight = CalculateStageWeight(completedStageRuns, "Stage 4");
+
+        // Overall weight loss percent (from first stage before to last stage after)
+        var totalWeightLossPercents = new List<double>();
+        foreach (var cycle in cycles.Where(c => c.Status == CycleStatus.Completed))
+        {
+            var stageRuns = cycle.StageRuns.Where(s => !s.IsDeleted).OrderBy(s => s.StartDateTime).ToList();
+            var firstWithBefore = stageRuns.FirstOrDefault(s => s.LoadWeightBeforeGrams.HasValue);
+            var lastWithAfter = stageRuns.LastOrDefault(s => s.LoadWeightAfterGrams.HasValue);
+
+            if (firstWithBefore?.LoadWeightBeforeGrams > 0 && lastWithAfter?.LoadWeightAfterGrams != null)
+            {
+                var lossPercent = (double)((firstWithBefore.LoadWeightBeforeGrams.Value - lastWithAfter.LoadWeightAfterGrams.Value)
+                    / firstWithBefore.LoadWeightBeforeGrams.Value * 100);
+                totalWeightLossPercents.Add(lossPercent);
+            }
+        }
+        double? avgTotalWeightLoss = totalWeightLossPercents.Count > 0 ? totalWeightLossPercents.Average() : null;
+
+        // Weight loss by hardness category
+        var weightLossByHardness = CalculateWeightLossByHardness(cycles);
+
+        return new WeightStatsDto(
+            stage1Weight?.WeightLossPercent,
+            stage2Weight?.WeightLossPercent,
+            stage3Weight?.WeightLossPercent,
+            stage4Weight?.WeightLossPercent,
+            avgTotalWeightLoss,
+            stage1Weight?.StageWeight,
+            stage2Weight?.StageWeight,
+            stage3Weight?.StageWeight,
+            stage4Weight?.StageWeight,
+            weightLossByHardness
+        );
+    }
+
+    private static (double? WeightLossPercent, StageWeightDto? StageWeight) CalculateStageWeight(List<StageRun> stageRuns, string stageName)
+    {
+        var stageData = stageRuns
+            .Where(s => s.StageName.Equals(stageName, StringComparison.OrdinalIgnoreCase)
+                && s.LoadWeightBeforeGrams.HasValue && s.LoadWeightAfterGrams.HasValue)
+            .ToList();
+
+        if (stageData.Count == 0)
+            return (null, null);
+
+        var avgBefore = stageData.Average(s => (double)s.LoadWeightBeforeGrams!.Value);
+        var avgAfter = stageData.Average(s => (double)s.LoadWeightAfterGrams!.Value);
+        var avgLoss = avgBefore - avgAfter;
+        var avgLossPercent = avgBefore > 0 ? (avgLoss / avgBefore) * 100 : 0;
+
+        return (avgLossPercent, new StageWeightDto(avgBefore, avgAfter, avgLoss));
+    }
+
+    private static List<HardnessWeightLossDto> CalculateWeightLossByHardness(List<Cycle> cycles)
+    {
+        var result = new List<HardnessWeightLossDto>();
+
+        // Categorize cycles by their specimens' hardness
+        var softCycles = new List<double>(); // Mohs 5-6
+        var mediumCycles = new List<double>(); // Mohs 6-7
+        var hardCycles = new List<double>(); // Mohs 7+
+
+        foreach (var cycle in cycles.Where(c => c.Status == CycleStatus.Completed))
+        {
+            // Get the max hardness from specimens in this cycle
+            var maxHardness = cycle.CycleSpecimens
+                .Select(cs => cs.Specimen?.MohsHardnessMax ?? cs.UserSpecimen?.MohsHardnessMax)
+                .Where(h => h.HasValue)
+                .Select(h => h!.Value)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            if (maxHardness == 0) continue;
+
+            // Calculate weight loss for this cycle
+            var stageRuns = cycle.StageRuns.Where(s => !s.IsDeleted).OrderBy(s => s.StartDateTime).ToList();
+            var firstWithBefore = stageRuns.FirstOrDefault(s => s.LoadWeightBeforeGrams.HasValue);
+            var lastWithAfter = stageRuns.LastOrDefault(s => s.LoadWeightAfterGrams.HasValue);
+
+            if (firstWithBefore?.LoadWeightBeforeGrams > 0 && lastWithAfter?.LoadWeightAfterGrams != null)
+            {
+                var lossPercent = (double)((firstWithBefore.LoadWeightBeforeGrams.Value - lastWithAfter.LoadWeightAfterGrams.Value)
+                    / firstWithBefore.LoadWeightBeforeGrams.Value * 100);
+
+                if (maxHardness < 6)
+                    softCycles.Add(lossPercent);
+                else if (maxHardness < 7)
+                    mediumCycles.Add(lossPercent);
+                else
+                    hardCycles.Add(lossPercent);
+            }
+        }
+
+        if (softCycles.Count > 0)
+            result.Add(new HardnessWeightLossDto("Soft (< 6)", softCycles.Average(), softCycles.Count));
+        if (mediumCycles.Count > 0)
+            result.Add(new HardnessWeightLossDto("Medium (6-7)", mediumCycles.Average(), mediumCycles.Count));
+        if (hardCycles.Count > 0)
+            result.Add(new HardnessWeightLossDto("Hard (7+)", hardCycles.Average(), hardCycles.Count));
+
+        return result;
+    }
+
+    private static OperationalStatsDto CalculateOperationalStats(
+        List<Cycle> allCycles,
+        List<Cycle> activeCycles,
+        List<Cycle> completedCycles,
+        List<StageRun> allStageRuns)
+    {
+        // Total runtime hours (from completed stages)
+        var completedStages = allStageRuns.Where(s => s.Status == StageRunStatus.Completed).ToList();
+        var totalRuntimeHours = completedStages.Sum(s => s.DurationDays * 24.0 + s.DurationHours);
+
+        // Average runtime per completed cycle
+        double? avgRuntimePerCycle = null;
+        if (completedCycles.Count > 0)
+        {
+            var runtimePerCycle = completedCycles.Select(c =>
+            {
+                var cycleStages = c.StageRuns.Where(s => !s.IsDeleted && s.Status == StageRunStatus.Completed);
+                return cycleStages.Sum(s => s.DurationDays * 24.0 + s.DurationHours);
+            }).ToList();
+            avgRuntimePerCycle = runtimePerCycle.Average();
+        }
+
+        // Completion rate
+        var totalCycles = allCycles.Count;
+        var completionRate = totalCycles > 0 ? (completedCycles.Count / (double)totalCycles) * 100 : 0;
+
+        // Currently overdue count
+        var now = DateTime.UtcNow;
+        var overdueCount = allStageRuns
+            .Count(s => s.Status == StageRunStatus.Active
+                && s.DurationEstimateEndDate.HasValue
+                && s.DurationEstimateEndDate < now);
+
+        return new OperationalStatsDto(
+            totalRuntimeHours,
+            avgRuntimePerCycle,
+            completionRate,
+            overdueCount
+        );
+    }
+
+    private static List<TumblerStatsDto> CalculateTumblerStats(List<Cycle> completedCycles, List<StageRun> completedStageRuns)
+    {
+        // Group by tumbler
+        var tumblerGroups = completedStageRuns
+            .Where(s => s.StageRunBarrels.Any(srb => srb.Barrel?.Tumbler != null))
+            .SelectMany(s => s.StageRunBarrels
+                .Where(srb => srb.Barrel?.Tumbler != null)
+                .Select(srb => new { StageRun = s, Tumbler = srb.Barrel!.Tumbler! }))
+            .GroupBy(x => x.Tumbler.TumblerId)
+            .ToList();
+
+        return tumblerGroups.Select(g =>
+        {
+            var tumbler = g.First().Tumbler;
+            var stageRuns = g.Select(x => x.StageRun).Distinct().ToList();
+            var cycleIds = stageRuns.Select(s => s.CycleId).Distinct().ToList();
+            var tumblerName = !string.IsNullOrEmpty(tumbler.Model)
+                ? $"{tumbler.Brand} {tumbler.Model}"
+                : tumbler.Brand;
+
+            var totalHours = stageRuns.Sum(s => s.DurationDays * 24.0 + s.DurationHours);
+            var avgCycleHours = cycleIds.Count > 0 ? totalHours / cycleIds.Count : 0;
+
+            // Calculate average idle time between cycles for this tumbler
+            double? avgIdleTime = null;
+            var tumblerCycles = completedCycles
+                .Where(c => cycleIds.Contains(c.CycleId) && c.EndDate.HasValue)
+                .OrderBy(c => c.EndDate)
+                .ToList();
+
+            if (tumblerCycles.Count > 1)
+            {
+                var idleTimes = new List<double>();
+                for (int i = 1; i < tumblerCycles.Count; i++)
+                {
+                    var prevEnd = tumblerCycles[i - 1].EndDate!.Value;
+                    var nextStart = tumblerCycles[i].StartDate;
+                    var idleDays = nextStart.DayNumber - prevEnd.DayNumber;
+                    if (idleDays >= 0) idleTimes.Add(idleDays);
+                }
+                if (idleTimes.Count > 0) avgIdleTime = idleTimes.Average();
+            }
+
+            return new TumblerStatsDto(
+                tumbler.TumblerId,
+                tumblerName,
+                cycleIds.Count,
+                avgCycleHours,
+                avgIdleTime
+            );
+        }).ToList();
+    }
+
+    private static List<BarrelStatsDto> CalculateBarrelStats(List<StageRun> completedStageRuns)
+    {
+        // Group by barrel
+        var barrelGroups = completedStageRuns
+            .SelectMany(s => s.StageRunBarrels
+                .Where(srb => srb.Barrel != null)
+                .Select(srb => new { StageRun = s, Barrel = srb.Barrel! }))
+            .GroupBy(x => x.Barrel.BarrelId)
+            .ToList();
+
+        return barrelGroups.Select(g =>
+        {
+            var barrel = g.First().Barrel;
+            var stageRuns = g.Select(x => x.StageRun).Distinct().ToList();
+            var cycleIds = stageRuns.Select(s => s.CycleId).Distinct().Count();
+            var totalHours = stageRuns.Sum(s => s.DurationDays * 24.0 + s.DurationHours);
+
+            var barrelName = !string.IsNullOrEmpty(barrel.Nickname)
+                ? barrel.Nickname
+                : $"Barrel {barrel.BarrelNumber}";
+
+            var tumblerName = barrel.Tumbler != null
+                ? (!string.IsNullOrEmpty(barrel.Tumbler.Model)
+                    ? $"{barrel.Tumbler.Brand} {barrel.Tumbler.Model}"
+                    : barrel.Tumbler.Brand)
+                : "Unknown";
+
+            return new BarrelStatsDto(
+                barrel.BarrelId,
+                barrelName,
+                tumblerName,
+                cycleIds,
+                totalHours
+            );
+        }).ToList();
+    }
+
+    private static SpecimenStatsDto CalculateSpecimenStats(List<Cycle> cycles)
+    {
+        var allSpecimens = cycles.SelectMany(c => c.CycleSpecimens).ToList();
+        var totalSpecimens = allSpecimens.Count;
+        var avgPerCycle = cycles.Count > 0 ? (double)totalSpecimens / cycles.Count : 0;
+
+        // Most common rock types
+        var rockTypeCounts = allSpecimens
+            .Select(cs => cs.Specimen?.CommonName ?? cs.UserSpecimen?.CommonName)
+            .Where(name => !string.IsNullOrEmpty(name))
+            .GroupBy(name => name!)
+            .Select(g => new RockTypeCountDto(g.Key, g.Count()))
+            .OrderByDescending(r => r.Count)
+            .Take(10)
+            .ToList();
+
+        return new SpecimenStatsDto(
+            avgPerCycle,
+            totalSpecimens,
+            rockTypeCounts
+        );
+    }
+
+    private static OverdueStatsDto CalculateOverdueStats(List<StageRun> allStageRuns)
+    {
+        // Find stages that went overdue (completed after their estimate)
+        var overdueStages = allStageRuns
+            .Where(s => s.Status == StageRunStatus.Completed
+                && s.EndDateTime.HasValue
+                && s.DurationEstimateEndDate.HasValue
+                && s.EndDateTime > s.DurationEstimateEndDate)
+            .ToList();
+
+        // Most overdue stage type
+        string? mostOverdueStage = null;
+        if (overdueStages.Count > 0)
+        {
+            mostOverdueStage = overdueStages
+                .GroupBy(s => s.StageName)
+                .OrderByDescending(g => g.Count())
+                .First()
+                .Key;
+        }
+
+        // Average days over estimate
+        double? avgDaysOver = null;
+        if (overdueStages.Count > 0)
+        {
+            var daysOverList = overdueStages
+                .Select(s => (s.EndDateTime!.Value - s.DurationEstimateEndDate!.Value).TotalDays)
+                .ToList();
+            avgDaysOver = daysOverList.Average();
+        }
+
+        // On-time completion rate
+        var completedStages = allStageRuns.Where(s => s.Status == StageRunStatus.Completed).ToList();
+        var onTimeCount = completedStages.Count - overdueStages.Count;
+        var onTimeRate = completedStages.Count > 0 ? (onTimeCount / (double)completedStages.Count) * 100 : 100;
+
+        return new OverdueStatsDto(
+            mostOverdueStage,
+            avgDaysOver,
+            onTimeRate
+        );
+    }
+
+    private static ActivityStatsDto CalculateActivityStats(List<Cycle> cycles)
+    {
+        if (cycles.Count == 0)
+        {
+            return new ActivityStatsDto(0, 0, []);
+        }
+
+        // Calculate monthly activity
+        var monthlyData = new Dictionary<(int Year, int Month), (int Started, int Completed)>();
+
+        foreach (var cycle in cycles)
+        {
+            var startKey = (cycle.StartDate.Year, cycle.StartDate.Month);
+            if (!monthlyData.ContainsKey(startKey))
+                monthlyData[startKey] = (0, 0);
+            monthlyData[startKey] = (monthlyData[startKey].Started + 1, monthlyData[startKey].Completed);
+
+            if (cycle.EndDate.HasValue)
+            {
+                var endKey = (cycle.EndDate.Value.Year, cycle.EndDate.Value.Month);
+                if (!monthlyData.ContainsKey(endKey))
+                    monthlyData[endKey] = (0, 0);
+                monthlyData[endKey] = (monthlyData[endKey].Started, monthlyData[endKey].Completed + 1);
+            }
+        }
+
+        var monthlyActivity = monthlyData
+            .OrderBy(kv => kv.Key.Year)
+            .ThenBy(kv => kv.Key.Month)
+            .Select(kv => new MonthlyActivityDto(kv.Key.Year, kv.Key.Month, kv.Value.Started, kv.Value.Completed))
+            .ToList();
+
+        // Calculate concurrent cycles
+        // For each day, count how many cycles were active
+        var allDates = cycles
+            .SelectMany(c => {
+                var end = c.EndDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+                var dates = new List<DateOnly>();
+                for (var d = c.StartDate; d <= end; d = d.AddDays(1))
+                    dates.Add(d);
+                return dates;
+            })
+            .Distinct()
+            .ToList();
+
+        if (allDates.Count == 0)
+        {
+            return new ActivityStatsDto(0, 0, monthlyActivity);
+        }
+
+        var concurrentCounts = allDates.Select(date =>
+            cycles.Count(c => c.StartDate <= date && (c.EndDate == null || c.EndDate >= date))
+        ).ToList();
+
+        var maxConcurrent = concurrentCounts.Max();
+        var avgConcurrent = concurrentCounts.Average();
+
+        return new ActivityStatsDto(
+            maxConcurrent,
+            avgConcurrent,
+            monthlyActivity
+        );
+    }
 }

@@ -37,6 +37,7 @@ export const queryKeys = {
     details: () => [...queryKeys.cycles.all, 'detail'] as const,
     detail: (id: string) => [...queryKeys.cycles.details(), id] as const,
     stageRun: (id: string) => [...queryKeys.cycles.all, 'stageRun', id] as const,
+    statistics: () => [...queryKeys.cycles.all, 'statistics'] as const,
   },
 
   // Reference Data (long-lived cache)
