@@ -39,19 +39,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("numeric(5,2)")
                         .HasColumnName("capacity_lbs");
 
-                    b.Property<string>("ContaminationNotes")
-                        .HasColumnType("text")
-                        .HasColumnName("contamination_notes");
-
                     b.Property<DateTime>("DateCreated")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date_created")
                         .HasDefaultValueSql("now()");
-
-                    b.Property<DateOnly?>("DateLastDeepClean")
-                        .HasColumnType("date")
-                        .HasColumnName("date_last_deep_clean");
 
                     b.Property<DateTime>("DateUpdated")
                         .ValueGeneratedOnAdd()
@@ -208,10 +200,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.Property<Guid>("MaterialId")
                         .HasColumnType("uuid")
                         .HasColumnName("material_id");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
 
                     b.Property<int>("SortOrder")
                         .ValueGeneratedOnAdd()
@@ -1655,10 +1643,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("material_id");
 
-                    b.Property<string>("Notes")
-                        .HasColumnType("text")
-                        .HasColumnName("notes");
-
                     b.Property<int>("SortOrder")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -1687,11 +1671,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("stage_run_id")
                         .HasDefaultValueSql("gen_random_uuid()");
-
-                    b.Property<decimal?>("BarrelRpm")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("numeric(6,2)")
-                        .HasColumnName("barrel_rpm");
 
                     b.Property<Guid>("CycleId")
                         .HasColumnType("uuid")
@@ -1742,10 +1721,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
-
-                    b.Property<bool?>("IsRpmEstimated")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_rpm_estimated");
 
                     b.Property<bool?>("IssueChips")
                         .HasColumnType("boolean")
