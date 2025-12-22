@@ -2,6 +2,68 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased] - 2025-12-22
+
+### Added
+
+#### Tumbler Numbering Feature
+- **Feature**: When a user has multiple tumblers of the same brand AND model, a tumbler number is displayed to distinguish between them
+- **Display Rule**: Tumbler numbers only shown when duplicates exist (e.g., "Lortone 3A #1" and "Lortone 3A #2")
+- **Backend Files**:
+  - [Tumbler.cs](../src/api/MyUglyRocks.Core/Entities/Tumbler.cs) - Added `TumblerNumber` property
+  - [TumblerConfiguration.cs](../src/api/MyUglyRocks.Infrastructure/Data/Configurations/TumblerConfiguration.cs) - Column config and index
+  - [TumblerDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/TumblerDtos.cs) - Added `TumblerNumber` and `HasDuplicateBrandModel` to DTOs
+  - [TumblerService.cs](../src/api/MyUglyRocks.Core/Services/TumblerService.cs) - Auto-assign on create, recalculate on update
+  - [CycleDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs) - Added `ActiveTumblerNumber` and `HasDuplicateTumbler`
+  - [CycleService.cs](../src/api/MyUglyRocks.Core/Services/CycleService.cs) - Duplicate detection for cycle list
+- **Frontend Files**:
+  - [tumbler.ts](../src/web/src/types/tumbler.ts) - Added TypeScript types
+  - [cycle.ts](../src/web/src/types/cycle.ts) - Added tumbler number fields
+  - [tumblers/page.tsx](../src/web/src/app/(protected)/tumblers/page.tsx) - Display helper function
+  - [tumblers/[id]/page.tsx](../src/web/src/app/(protected)/tumblers/[id]/page.tsx) - Detail page display
+  - [cycles/[id]/page.tsx](../src/web/src/app/(protected)/cycles/[id]/page.tsx) - Barrel selector with tumbler number
+  - [cycle-card.tsx](../src/web/src/components/cycle-card/cycle-card.tsx) - Tumbler display in card
+- **Database Migration**: `20251222000000_AddTumblerNumber` - Adds column with backfill for existing data
+- **Plan Document**: [tumbler-numbering-plan.md](../docs/plans/tumbler-numbering-plan.md) - Updated to reflect completed implementation
+
+#### Expand/Collapse All Toggle for Cycles Page
+- **Feature**: Added a toggle button to expand or collapse all cycle cards at once on the cycles list page
+- **File**: [cycles/page.tsx](../src/web/src/app/(protected)/cycles/page.tsx)
+- **Component**: [cycle-card.tsx](../src/web/src/components/cycle-card/cycle-card.tsx) - Added `expandedOverride` prop
+- **Icons**: Uses `ChevronsUpDown` / `ChevronsDownUp` from lucide-react
+
+### Removed
+
+#### Orphaned Database Columns
+- **Removed**: Database columns that existed but were never used in the frontend
+- **StageRun table**:
+  - `barrel_rpm` - RPM setting (no UI to input/display)
+  - `is_rpm_estimated` - Estimated flag (no UI)
+- **Barrel table**:
+  - `date_last_deep_clean` - Deep clean tracking (no UI)
+  - `contamination_notes` - Contamination notes (no UI)
+- **StageMaterial table**:
+  - `notes` - Per-material notes (no UI)
+- **CleaningMaterial table**:
+  - `notes` - Per-material notes (no UI)
+- **Files Modified**:
+  - Entity classes (StageRun.cs, Barrel.cs, StageMaterial.cs, CleaningMaterial.cs)
+  - [ExportDtos.cs](../src/api/MyUglyRocks.Abstractions/DTOs/ExportDtos.cs) - Removed BarrelRpm from StageCsvRow
+  - [ExportService.cs](../src/api/MyUglyRocks.Core/Services/ExportService.cs) - Removed BarrelRpm references
+  - [DemoUserSeedService.cs](../src/api/MyUglyRocks.Infrastructure/Data/DemoUserSeedService.cs) - Removed seeding of removed fields
+- **Database Migration**: `20251222100000_RemoveOrphanedColumns`
+
+### Fixed
+
+#### React Compiler Lint Error in CycleCard
+- **Problem**: React Compiler flagged "setState synchronously within effect" error in cycle-card.tsx
+- **Root Cause**: The `useEffect` that synced `expandedOverride` prop with internal state caused cascading renders
+- **Fix**: Refactored to use derived state pattern - compute `effectiveExpanded` directly instead of syncing via effect
+- **File**: [cycle-card.tsx](../src/web/src/components/cycle-card/cycle-card.tsx)
+- **Result**: Lint now passes with 0 errors (26 warnings remain - pre-existing `<img>` suggestions)
+
+---
+
 ## [Unreleased] - 2025-12-17
 
 ### Added
