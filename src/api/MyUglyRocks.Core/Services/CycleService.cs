@@ -1690,15 +1690,15 @@ public class CycleService : ICycleService
         var weightLossByHardness = CalculateWeightLossByHardness(cycles);
 
         return new WeightStatsDto(
-            stage1Weight?.WeightLossPercent,
-            stage2Weight?.WeightLossPercent,
-            stage3Weight?.WeightLossPercent,
-            stage4Weight?.WeightLossPercent,
+            stage1Weight.WeightLossPercent,
+            stage2Weight.WeightLossPercent,
+            stage3Weight.WeightLossPercent,
+            stage4Weight.WeightLossPercent,
             avgTotalWeightLoss,
-            stage1Weight?.StageWeight,
-            stage2Weight?.StageWeight,
-            stage3Weight?.StageWeight,
-            stage4Weight?.StageWeight,
+            stage1Weight.StageWeight,
+            stage2Weight.StageWeight,
+            stage3Weight.StageWeight,
+            stage4Weight.StageWeight,
             weightLossByHardness
         );
     }
