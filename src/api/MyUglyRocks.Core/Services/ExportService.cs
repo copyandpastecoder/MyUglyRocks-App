@@ -98,7 +98,6 @@ public class ExportService : IExportService
             BarrelName: GetBarrelNamesString(s),
             LoadWeightBeforeGrams: s.LoadWeightBeforeGrams,
             LoadWeightAfterGrams: s.LoadWeightAfterGrams,
-            BarrelRpm: s.BarrelRpm,
             ResultRating: s.ResultRating,
             NextAction: s.NextAction?.ToString(),
             Notes: s.Notes
@@ -148,7 +147,6 @@ public class ExportService : IExportService
             BarrelName: GetBarrelNamesString(s),
             LoadWeightBeforeGrams: s.LoadWeightBeforeGrams,
             LoadWeightAfterGrams: s.LoadWeightAfterGrams,
-            BarrelRpm: s.BarrelRpm,
             ResultRating: s.ResultRating,
             NextAction: s.NextAction?.ToString(),
             Notes: s.Notes

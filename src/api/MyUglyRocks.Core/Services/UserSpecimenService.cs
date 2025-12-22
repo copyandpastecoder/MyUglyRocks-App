@@ -31,11 +31,18 @@ public class UserSpecimenService : IUserSpecimenService
 
         if (!string.IsNullOrEmpty(search))
         {
-            var searchLower = search.ToLower();
-            query = query.Where(us =>
-                us.CommonName.ToLower().Contains(searchLower) ||
-                (us.ScientificName != null && us.ScientificName.ToLower().Contains(searchLower)) ||
-                (us.Alias != null && us.Alias.ToLower().Contains(searchLower)));
+            // Split query into words and require ALL words to match (AND logic)
+            var searchTerms = search.ToLower()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+            foreach (var term in searchTerms)
+            {
+                var searchTerm = term; // Capture for closure
+                query = query.Where(us =>
+                    us.CommonName.ToLower().Contains(searchTerm) ||
+                    (us.ScientificName != null && us.ScientificName.ToLower().Contains(searchTerm)) ||
+                    (us.Alias != null && us.Alias.ToLower().Contains(searchTerm)));
+            }
         }
 
         if (!string.IsNullOrEmpty(materialType) && Enum.TryParse<SpecimenMaterialType>(materialType, true, out var matType))
@@ -170,25 +177,31 @@ public class UserSpecimenService : IUserSpecimenService
 
         if (!string.IsNullOrEmpty(search))
         {
-            var searchLower = search.ToLower();
+            // Split query into words and require ALL words to match (AND logic)
+            var searchTerms = search.ToLower()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-            userQuery = userQuery.Where(us =>
-                us.CommonName.ToLower().Contains(searchLower) ||
-                (us.ScientificName != null && us.ScientificName.ToLower().Contains(searchLower)) ||
-                (us.Alias != null && us.Alias.ToLower().Contains(searchLower)));
-
-            if (includePublic)
+            foreach (var term in searchTerms)
             {
-                publicQuery = publicQuery.Where(us =>
-                    us.CommonName.ToLower().Contains(searchLower) ||
-                    (us.ScientificName != null && us.ScientificName.ToLower().Contains(searchLower)) ||
-                    (us.Alias != null && us.Alias.ToLower().Contains(searchLower)));
-            }
+                var searchTerm = term; // Capture for closure
+                userQuery = userQuery.Where(us =>
+                    us.CommonName.ToLower().Contains(searchTerm) ||
+                    (us.ScientificName != null && us.ScientificName.ToLower().Contains(searchTerm)) ||
+                    (us.Alias != null && us.Alias.ToLower().Contains(searchTerm)));
 
-            systemQuery = systemQuery.Where(s =>
-                s.CommonName.ToLower().Contains(searchLower) ||
-                (s.ScientificName != null && s.ScientificName.ToLower().Contains(searchLower)) ||
-                (s.Alias != null && s.Alias.ToLower().Contains(searchLower)));
+                if (includePublic)
+                {
+                    publicQuery = publicQuery.Where(us =>
+                        us.CommonName.ToLower().Contains(searchTerm) ||
+                        (us.ScientificName != null && us.ScientificName.ToLower().Contains(searchTerm)) ||
+                        (us.Alias != null && us.Alias.ToLower().Contains(searchTerm)));
+                }
+
+                systemQuery = systemQuery.Where(s =>
+                    s.CommonName.ToLower().Contains(searchTerm) ||
+                    (s.ScientificName != null && s.ScientificName.ToLower().Contains(searchTerm)) ||
+                    (s.Alias != null && s.Alias.ToLower().Contains(searchTerm)));
+            }
         }
 
         var userSpecimens = await userQuery

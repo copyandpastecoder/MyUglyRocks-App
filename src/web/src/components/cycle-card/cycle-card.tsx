@@ -21,19 +21,25 @@ import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
 import { useCycle } from '@/hooks';
 import type { CycleCardProps } from './types';
 
-export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false }: CycleCardProps) {
+export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false, expandedOverride }: CycleCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [shouldFetchDetails, setShouldFetchDetails] = useState(false);
+  // Track if we've ever been expanded (for lazy loading - once true, stays true)
+  const [hasBeenExpanded, setHasBeenExpanded] = useState(false);
 
-  // Lazy load cycle details (including specimens) when expanded
-  const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
+  // Parent override takes precedence over internal state
+  const effectiveExpanded = expandedOverride !== undefined ? expandedOverride : isExpanded;
 
-  // Handle expand/collapse - trigger fetch on first expand
+  // Lazy load cycle details when expanded - uses hasBeenExpanded to keep query enabled once triggered
+  // React Query caches data, so collapsing won't lose data
+  const shouldFetch = hasBeenExpanded || effectiveExpanded;
+  const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetch ? cycle.cycleId : null);
+
+  // Handle manual expand/collapse - mark as having been expanded for lazy loading
   const handleOpenChange = (open: boolean) => {
     setIsExpanded(open);
-    if (open && !shouldFetchDetails) {
-      setShouldFetchDetails(true);
+    if (open && !hasBeenExpanded) {
+      setHasBeenExpanded(true);
     }
   };
 
@@ -43,6 +49,13 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
         new Date(cycle.activeStageDurationEstimateEndDate),
         cycle.activeStageDaysOverdue
       )
+    : null;
+
+  // Format tumbler display - show number only when duplicates exist
+  const tumblerDisplay = cycle.activeTumblerName
+    ? cycle.hasDuplicateTumbler && cycle.activeTumblerNumber
+      ? `${cycle.activeTumblerName} #${cycle.activeTumblerNumber}`
+      : cycle.activeTumblerName
     : null;
 
   // Format barrel display - show both number and nickname when available
@@ -65,9 +78,9 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
     : getCycleStatusClass(cycle);
 
   return (
-    <Collapsible open={isExpanded} onOpenChange={handleOpenChange}>
+    <Collapsible open={effectiveExpanded} onOpenChange={handleOpenChange}>
       <div
-        className={`rounded-lg border transition-all duration-200 ${cardClassName} ${isExpanded ? 'shadow-md' : 'hover:shadow-sm hover:-translate-y-0.5'}`}
+        className={`rounded-lg border transition-all duration-200 ${cardClassName} ${effectiveExpanded ? 'shadow-md' : 'hover:shadow-sm hover:-translate-y-0.5'}`}
       >
         {/* Main row - always visible */}
         <div className="flex items-center p-3 gap-2">
@@ -81,9 +94,9 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
                 onClick={(e) => e.stopPropagation()}
               >
                 <ChevronDown
-                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${effectiveExpanded ? 'rotate-180' : ''}`}
                 />
-                <span className="sr-only">{isExpanded ? 'Collapse' : 'Expand'} details</span>
+                <span className="sr-only">{effectiveExpanded ? 'Collapse' : 'Expand'} details</span>
               </Button>
             </CollapsibleTrigger>
           )}
@@ -161,11 +174,11 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
         <CollapsibleContent>
           <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
             <div className="pt-3 space-y-2 text-sm">
-              {cycle.activeTumblerName && (
+              {tumblerDisplay && (
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Cylinder className="h-4 w-4 shrink-0" />
                   <span className="font-medium text-foreground">Tumbler:</span>
-                  <span className="truncate">{cycle.activeTumblerName}</span>
+                  <span className="truncate">{tumblerDisplay}</span>
                 </div>
               )}
               {barrelDisplay && (

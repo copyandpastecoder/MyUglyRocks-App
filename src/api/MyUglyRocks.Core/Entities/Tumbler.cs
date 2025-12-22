@@ -18,6 +18,7 @@ public class Tumbler : BaseEntity
     public required string Brand { get; set; }
     public string? Model { get; set; }
     public TumblerType TumblerType { get; set; } = TumblerType.Rotary;
+    public int TumblerNumber { get; set; } = 1;
 
     // Capacity override (only for DIY/Generic/Other/MJR models)
     public decimal? MotorCapacityLbs { get; set; } // Overrides TumblerModel.MotorCapacityLbs if allowed

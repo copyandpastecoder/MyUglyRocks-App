@@ -8,4 +8,6 @@ export interface CycleCardProps {
   showActions?: boolean;
   /** Use plain card styling (for completed cycles) */
   plainStyle?: boolean;
+  /** Override expansion state from parent (for expand/collapse all) */
+  expandedOverride?: boolean;
 }

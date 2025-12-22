@@ -43,8 +43,6 @@ public class StageRun : SoftDeletableEntity
     // Load & barrel setup
     public decimal? LoadWeightBeforeGrams { get; set; }
     public decimal? LoadWeightAfterGrams { get; set; }
-    public decimal? BarrelRpm { get; set; }
-    public bool? IsRpmEstimated { get; set; }
     public int? WaterAmountMl { get; set; } // Precise measurement in milliliters
 
     // Results

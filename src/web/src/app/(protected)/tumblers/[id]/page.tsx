@@ -48,7 +48,15 @@ import { toast } from 'sonner';
 import { ArrowLeft, Loader2, Plus, Pencil, Trash2, AlertTriangle, ChevronDown, Settings2 } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import type { BarrelDto, UpdateBarrelRequest } from '@/types/tumbler';
+import type { BarrelDto, TumblerDto, UpdateBarrelRequest } from '@/types/tumbler';
+
+// Helper to format tumbler display name - only show # when duplicates exist
+function getTumblerDisplayName(tumbler: TumblerDto): string {
+  const baseName = `${tumbler.brand} ${tumbler.model || ''}`.trim();
+  return tumbler.hasDuplicateBrandModel
+    ? `${baseName} #${tumbler.tumblerNumber}`
+    : baseName;
+}
 
 const formSchema = z.object({
   brand: z.string().min(1, 'Brand is required').max(100),
@@ -270,7 +278,7 @@ export default function EditTumblerPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold tracking-tight truncate">
-                {tumbler.brand} {tumbler.model}
+                {getTumblerDisplayName(tumbler)}
               </h1>
               {!tumbler.isActive && <Badge variant="secondary">Inactive</Badge>}
             </div>

@@ -21,10 +21,6 @@ public class Barrel : BaseEntity
     public bool IsDedicated { get; set; }
     public string[]? DedicatedStages { get; set; }
 
-    // Maintenance
-    public DateOnly? DateLastDeepClean { get; set; }
-    public string? ContaminationNotes { get; set; }
-
     // Metadata
     public bool IsActive { get; set; } = true;
 

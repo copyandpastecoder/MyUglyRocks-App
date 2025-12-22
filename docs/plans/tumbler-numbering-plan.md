@@ -1,401 +1,172 @@
 # Tumbler Numbering Feature Plan
 
+## Status: ✅ IMPLEMENTED
+
+**Implemented:** December 22, 2024
+**Commit:** `9ec54b3` - feat: add tumbler numbering to distinguish same brand/model tumblers
+
+---
+
 ## Overview
 
-When a user has multiple tumblers of the same brand and model, we need to:
-1. Add a **Tumbler Number** to distinguish between them
-2. Make barrel numbers **sequential across all tumblers** of the same brand/model
+When a user has multiple tumblers of the same brand and model, we add a **Tumbler Number** to distinguish between them.
 
 ### Example
 
 If a user has three 2-barrel tumblers of the same brand/model:
 - **Tumbler #1**: Barrels 1, 2
-- **Tumbler #2**: Barrels 3, 4
-- **Tumbler #3**: Barrels 5, 6
+- **Tumbler #2**: Barrels 1, 2
+- **Tumbler #3**: Barrels 1, 2
+
+Display example: "Lortone 3A #2 - Barrel 2" clearly identifies which tumbler and barrel.
 
 ---
 
-## Current State
+## Design Decisions
 
-- `Tumbler` entity has: Brand, Model, TumblerType, but **no TumblerNumber**
-- `Barrel.BarrelNumber` is user-provided (1-100), stored per barrel
-- Barrel numbers are assigned by frontend when adding barrels (next sequential within that tumbler)
-- No cross-tumbler barrel numbering exists
+### Tumbler Number Display Rule
+**IMPORTANT:** Tumbler numbers are ONLY displayed when there is more than one tumbler with the same brand AND model combination.
+
+- If user has 1 "Lortone 3A" → Display as "Lortone 3A" (no number)
+- If user has 2 "Lortone 3A" → Display as "Lortone 3A #1" and "Lortone 3A #2"
+- The count is per (brand, model) pair, case-insensitive
+
+This applies to:
+- Tumbler list page
+- Tumbler detail page header
+- Barrel selector dropdowns
+- Cycle cards
+
+### No Global Barrel Numbering
+**DECIDED:** We do NOT implement global barrel numbering across tumblers.
+
+Each tumbler keeps its own barrel numbers (1, 2, etc.). Display format: "Lortone 3A #2 - Barrel 2"
+
+**Rationale:**
+- Simpler implementation
+- No complex cross-tumbler calculations
+- Less confusion if barrels are added/removed
+- Barrel numbers stay stable
 
 ---
 
-## Implementation Plan
+## Implementation Summary
 
-### Phase 1: Database Changes
+### Phase 1: Database Changes ✅
 
-#### 1.1 Add TumblerNumber Column
+#### 1.1 Added TumblerNumber Column
+- [x] Created EF Core migration `20251222000000_AddTumblerNumber.cs`
+- [x] Added index for (UserId, Brand, Model, TumblerNumber) with filter on is_active
 
-**File:** New migration in `src/api/MyUglyRocks.Core/Migrations/`
-
-```sql
--- Add tumbler_number column (nullable initially for migration)
-ALTER TABLE tumblers ADD COLUMN tumbler_number integer NULL;
-
--- Create index for efficient lookups
-CREATE INDEX ix_tumblers_user_brand_model_number
-ON tumblers(user_id, brand, model, tumbler_number)
-WHERE is_active = true;
-```
-
-**Tasks:**
-- [ ] Create EF Core migration to add `TumblerNumber` column
-- [ ] Add index for (UserId, Brand, Model, TumblerNumber) for efficient duplicate detection
-
-#### 1.2 Update Tumbler Entity
-
+#### 1.2 Updated Tumbler Entity
 **File:** `src/api/MyUglyRocks.Core/Entities/Tumbler.cs`
-
-```csharp
-// Add property
-public int TumblerNumber { get; set; } = 1;
-```
-
-**Tasks:**
-- [ ] Add `TumblerNumber` property to `Tumbler` entity
-- [ ] Update EF Core configuration in `TumblerConfiguration.cs` if needed
+- [x] Added `TumblerNumber` property (int, default 1)
 
 #### 1.3 Backfill Existing Data
-
-**Migration SQL to assign tumbler numbers to existing data:**
-
-```sql
--- Assign tumbler numbers based on creation date within brand/model groups
-WITH numbered AS (
-  SELECT
-    tumbler_id,
-    ROW_NUMBER() OVER (
-      PARTITION BY user_id, LOWER(brand), LOWER(model)
-      ORDER BY date_created
-    ) as tumbler_num
-  FROM tumblers
-  WHERE is_active = true
-)
-UPDATE tumblers t
-SET tumbler_number = n.tumbler_num
-FROM numbered n
-WHERE t.tumbler_id = n.tumbler_id;
-
--- Set default for any remaining nulls
-UPDATE tumblers SET tumbler_number = 1 WHERE tumbler_number IS NULL;
-
--- Make column NOT NULL after backfill
-ALTER TABLE tumblers ALTER COLUMN tumbler_number SET NOT NULL;
-ALTER TABLE tumblers ALTER COLUMN tumbler_number SET DEFAULT 1;
-```
-
-**Tasks:**
-- [ ] Add backfill logic to migration
-- [ ] Make column NOT NULL after backfill
-- [ ] Add verification query to confirm no nulls remain
+- [x] Migration includes SQL to assign tumbler numbers based on creation date within brand/model groups
+- [x] Made column NOT NULL with default value of 1
 
 ---
 
-### Phase 2: API Changes
+### Phase 2: API Changes ✅
 
-#### 2.1 Update DTOs
+#### 2.1 Updated DTOs
+**File:** `src/api/MyUglyRocks.Abstractions/DTOs/TumblerDtos.cs`
+- [x] Added `TumblerNumber` to `TumblerDto`
+- [x] Added `HasDuplicateBrandModel` to `TumblerDto`
+- [x] Added `TumblerNumber` to `TumblerListDto`
+- [x] Added `HasDuplicateBrandModel` to `TumblerListDto`
 
-**File:** `src/api/MyUglyRocks.Api/Dtos/TumblerDtos.cs`
+**File:** `src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs`
+- [x] Added `ActiveTumblerNumber` to `CycleListDto`
+- [x] Added `HasDuplicateTumbler` to `CycleListDto`
 
-```csharp
-// TumblerDto - add TumblerNumber
-public record TumblerDto(
-    Guid TumblerId,
-    string Brand,
-    string? Model,
-    TumblerType TumblerType,
-    int TumblerNumber,        // NEW
-    // ... rest of properties
-);
+#### 2.2 Updated TumblerService
+**File:** `src/api/MyUglyRocks.Core/Services/TumblerService.cs`
+- [x] Auto-assigns next TumblerNumber on create (based on existing same brand/model)
+- [x] Recalculates TumblerNumber when brand/model changes on update
+- [x] Computes `HasDuplicateBrandModel` flag in list and detail queries
 
-// TumblerListDto - add TumblerNumber
-public record TumblerListDto(
-    Guid TumblerId,
-    string Brand,
-    string? Model,
-    TumblerType TumblerType,
-    int TumblerNumber,        // NEW
-    // ... rest of properties
-);
-
-// CreateTumblerRequest - optionally allow specifying TumblerNumber
-public record CreateTumblerRequest(
-    // ... existing properties
-    int? TumblerNumber        // NEW - optional, auto-assigned if not provided
-);
-```
-
-**Tasks:**
-- [ ] Add `TumblerNumber` to `TumblerDto`
-- [ ] Add `TumblerNumber` to `TumblerListDto`
-- [ ] Add optional `TumblerNumber` to `CreateTumblerRequest`
-- [ ] Update `UpdateTumblerRequest` to allow changing TumblerNumber
-
-#### 2.2 Update TumblerService
-
-**File:** `src/api/MyUglyRocks.Api/Services/TumblerService.cs`
-
-**Auto-assign TumblerNumber on creation:**
-```csharp
-public async Task<TumblerDto> CreateTumblerAsync(Guid userId, CreateTumblerRequest request)
-{
-    // Calculate next tumbler number for this brand/model
-    var nextTumblerNumber = await _context.Tumblers
-        .Where(t => t.UserId == userId
-            && t.Brand.ToLower() == request.Brand.ToLower()
-            && t.Model != null && request.Model != null
-            && t.Model.ToLower() == request.Model.ToLower()
-            && t.IsActive)
-        .Select(t => t.TumblerNumber)
-        .DefaultIfEmpty(0)
-        .MaxAsync() + 1;
-
-    // Use provided number or auto-assign
-    var tumblerNumber = request.TumblerNumber ?? nextTumblerNumber;
-
-    // Create tumbler with number
-    var tumbler = new Tumbler
-    {
-        // ... existing properties
-        TumblerNumber = tumblerNumber
-    };
-}
-```
-
-**Tasks:**
-- [ ] Add auto-assignment logic for TumblerNumber on create
-- [ ] Update mapping configuration to include TumblerNumber in DTOs
-- [ ] Add validation to prevent duplicate TumblerNumbers for same brand/model
-
-#### 2.3 Add Computed Barrel Display Number
-
-This is a **display-only calculation** - the actual `BarrelNumber` in the database remains the same (local to each tumbler), but we compute a **global barrel number** for display across tumblers of the same brand/model.
-
-**Option A: Compute in API (Recommended)**
-
-Add a computed property to BarrelDto:
-
-```csharp
-public record BarrelDto(
-    // ... existing properties
-    int BarrelNumber,           // Local number (1, 2, etc.)
-    int GlobalBarrelNumber      // NEW: Computed across tumblers (1, 2, 3, 4, 5, 6...)
-);
-```
-
-**Calculation logic:**
-```csharp
-// In mapping or service layer
-public int CalculateGlobalBarrelNumber(Barrel barrel, Tumbler tumbler, List<Tumbler> sameBrandModelTumblers)
-{
-    // Get all tumblers of same brand/model with lower TumblerNumber
-    var precedingTumblers = sameBrandModelTumblers
-        .Where(t => t.TumblerNumber < tumbler.TumblerNumber)
-        .OrderBy(t => t.TumblerNumber);
-
-    // Sum all barrels from preceding tumblers
-    var precedingBarrelCount = precedingTumblers
-        .Sum(t => t.Barrels.Count(b => b.IsActive));
-
-    return precedingBarrelCount + barrel.BarrelNumber;
-}
-```
-
-**Tasks:**
-- [ ] Add `GlobalBarrelNumber` computed property to BarrelDto
-- [ ] Implement calculation in TumblerService or mapping
-- [ ] Ensure barrels are sorted by GlobalBarrelNumber in responses
+#### 2.3 Updated CycleService
+**File:** `src/api/MyUglyRocks.Core/Services/CycleService.cs`
+- [x] Added Tumblers DbSet for duplicate detection
+- [x] Computes `HasDuplicateTumbler` flag for cycle list
 
 ---
 
-### Phase 3: Frontend Changes
+### Phase 3: Frontend Changes ✅
 
-#### 3.1 Update TypeScript Types
-
+#### 3.1 Updated TypeScript Types
 **File:** `src/web/src/types/tumbler.ts`
+- [x] Added `tumblerNumber` to `TumblerDto`
+- [x] Added `hasDuplicateBrandModel` to `TumblerDto`
+- [x] Added `tumblerNumber` to `TumblerListDto`
+- [x] Added `hasDuplicateBrandModel` to `TumblerListDto`
 
-```typescript
-export interface Tumbler {
-  // ... existing properties
-  tumblerNumber: number;       // NEW
-}
+**File:** `src/web/src/types/cycle.ts`
+- [x] Added `activeTumblerNumber` to `CycleListDto`
+- [x] Added `hasDuplicateTumbler` to `CycleListDto`
 
-export interface Barrel {
-  // ... existing properties
-  barrelNumber: number;        // Local number
-  globalBarrelNumber: number;  // NEW: Display number across tumblers
-}
-```
-
-**Tasks:**
-- [ ] Add `tumblerNumber` to Tumbler interface
-- [ ] Add `globalBarrelNumber` to Barrel interface
-
-#### 3.2 Update Tumbler Display
-
+#### 3.2 Updated Tumbler Display
 **File:** `src/web/src/app/(protected)/tumblers/page.tsx`
-
-Display tumbler number when there are multiple of same brand/model:
-
-```tsx
-// Show: "Lortone 3A #2" instead of just "Lortone 3A"
-const displayName = tumbler.tumblerNumber > 1 || hasDuplicateBrandModel
-  ? `${tumbler.brand} ${tumbler.model || ''} #${tumbler.tumblerNumber}`
-  : `${tumbler.brand} ${tumbler.model || ''}`;
-```
-
-**Tasks:**
-- [ ] Update tumbler list to show tumbler number when duplicates exist
-- [ ] Update tumbler detail page header to include number
-- [ ] Add ability to edit tumbler number (with validation)
-
-#### 3.3 Update Barrel Display
+- [x] Added `getTumblerDisplayName()` helper that includes number only when duplicates exist
 
 **File:** `src/web/src/app/(protected)/tumblers/[id]/page.tsx`
+- [x] Added same helper for detail page header
 
-Use global barrel number for display:
+#### 3.3 Updated Barrel Selector
+**File:** `src/web/src/app/(protected)/cycles/[id]/page.tsx`
+- [x] Updated barrel selector to show tumbler number when duplicates exist
 
-```tsx
-// Display global barrel number instead of local
-<Badge>{barrel.globalBarrelNumber}</Badge>
-```
-
-**Tasks:**
-- [ ] Update barrel badges to show globalBarrelNumber
-- [ ] Update barrel tooltips/labels
-
-#### 3.4 Update Barrel Selector
-
-**File:** `src/web/src/components/stage/barrel-selector.tsx`
-
-```tsx
-// Update display to use global barrel number
-// "Lortone 3A #2 - 3 lbs #4 (Blue Boulder)"
-const displayText = `${tumblerName} #${tumbler.tumblerNumber} - ${barrel.capacityLbs} lbs #${barrel.globalBarrelNumber} (${barrel.nickname})`;
-```
-
-**Tasks:**
-- [ ] Update barrel selector dropdown to show global barrel numbers
-- [ ] Group by tumbler with tumbler number in group header
-
-#### 3.5 Update Cycle Card
-
+#### 3.4 Updated Cycle Card
 **File:** `src/web/src/components/cycle-card/cycle-card.tsx`
-
-The CycleListDto already includes `activeBarrelNumber` - may need to update to use global number.
-
-**Tasks:**
-- [ ] Verify CycleListDto returns correct (global) barrel number
-- [ ] Update display logic if needed
+- [x] Added `tumblerDisplay` that includes number only when `hasDuplicateTumbler` is true
 
 ---
 
-### Phase 4: Validation & Edge Cases
+### Phase 4: Validation & Edge Cases ✅
 
-#### 4.1 Validation Rules
-
-- [ ] TumblerNumber must be ≥ 1
-- [ ] TumblerNumber must be unique per (UserId, Brand, Model) combination
-- [ ] Case-insensitive brand/model matching for uniqueness
-- [ ] When deleting a tumbler, don't renumber remaining tumblers (gaps allowed)
-- [ ] When updating brand/model, recalculate TumblerNumber if needed
-
-#### 4.2 Edge Cases
-
-- [ ] User creates tumbler with no model - treat as unique brand-only group
-- [ ] User changes brand or model - reassign TumblerNumber
-- [ ] Soft-deleted tumblers - exclude from numbering (WHERE is_active = true)
-- [ ] Restoring soft-deleted tumbler - assign next available number
-
-#### 4.3 Barrel Renumbering Considerations
-
-**Important Decision:** Should we automatically renumber barrels when:
-- A tumbler is deleted?
-- A tumbler's brand/model is changed?
-- A barrel is deleted from a tumbler?
-
-**Recommendation:** Do NOT auto-renumber. This maintains stability and avoids confusion:
-- Users can manually renumber if they want
-- Historical references remain valid
-- Simpler implementation
-
-**Tasks:**
-- [ ] Document that barrel numbers are stable (no auto-renumbering)
-- [ ] Add UI option for manual barrel renumbering if requested
+- [x] TumblerNumber must be ≥ 1 (enforced by default value)
+- [x] Case-insensitive brand/model matching using `.ToLower()`
+- [x] Soft-deleted tumblers excluded from numbering (WHERE is_active = true in index)
+- [x] When deleting a tumbler, remaining tumblers keep their numbers (gaps allowed)
+- [x] When updating brand/model, recalculates TumblerNumber
 
 ---
 
-### Phase 5: Testing
-
-#### 5.1 Unit Tests
-
-- [ ] Test TumblerNumber auto-assignment for new tumblers
-- [ ] Test TumblerNumber uniqueness validation
-- [ ] Test GlobalBarrelNumber calculation
-- [ ] Test edge cases (no model, case-insensitive matching)
-
-#### 5.2 Integration Tests
-
-- [ ] Test creating multiple tumblers of same brand/model
-- [ ] Test barrel numbering across tumblers
-- [ ] Test tumbler deletion doesn't break remaining numbering
-- [ ] Test brand/model update recalculates tumbler number
-
-#### 5.3 Manual Testing
-
-- [ ] Create 3 identical tumblers, verify numbering
-- [ ] Add barrels to each, verify global numbers
-- [ ] Delete middle tumbler, verify remaining numbers unchanged
-- [ ] Create new tumbler of same type, verify gets next number
-
----
-
-## Implementation Order
-
-1. **Phase 1.1-1.2**: Database schema + Entity changes
-2. **Phase 1.3**: Backfill existing data
-3. **Phase 2.1-2.2**: API DTOs and service changes
-4. **Phase 2.3**: Global barrel number computation
-5. **Phase 3.1**: Frontend type updates
-6. **Phase 3.2-3.5**: UI component updates
-7. **Phase 4**: Validation and edge case handling
-8. **Phase 5**: Testing
-
----
-
-## Files to Modify
+## Files Modified
 
 ### Backend (C#)
 - `src/api/MyUglyRocks.Core/Entities/Tumbler.cs`
-- `src/api/MyUglyRocks.Core/Configurations/TumblerConfiguration.cs`
-- `src/api/MyUglyRocks.Api/Dtos/TumblerDtos.cs`
-- `src/api/MyUglyRocks.Api/Services/TumblerService.cs`
-- `src/api/MyUglyRocks.Api/Mapping/MappingConfig.cs`
-- New migration file
+- `src/api/MyUglyRocks.Infrastructure/Data/Configurations/TumblerConfiguration.cs`
+- `src/api/MyUglyRocks.Infrastructure/Migrations/20251222000000_AddTumblerNumber.cs`
+- `src/api/MyUglyRocks.Infrastructure/Migrations/20251222000000_AddTumblerNumber.Designer.cs`
+- `src/api/MyUglyRocks.Infrastructure/Migrations/AppDbContextModelSnapshot.cs`
+- `src/api/MyUglyRocks.Abstractions/DTOs/TumblerDtos.cs`
+- `src/api/MyUglyRocks.Abstractions/DTOs/CycleDtos.cs`
+- `src/api/MyUglyRocks.Core/Services/TumblerService.cs`
+- `src/api/MyUglyRocks.Core/Services/CycleService.cs`
 
 ### Frontend (TypeScript/React)
 - `src/web/src/types/tumbler.ts`
+- `src/web/src/types/cycle.ts`
 - `src/web/src/app/(protected)/tumblers/page.tsx`
 - `src/web/src/app/(protected)/tumblers/[id]/page.tsx`
-- `src/web/src/components/stage/barrel-selector.tsx`
+- `src/web/src/app/(protected)/cycles/[id]/page.tsx`
 - `src/web/src/components/cycle-card/cycle-card.tsx`
 
 ---
 
-## Open Questions
+## Open Questions (Resolved)
 
 1. **Should tumbler numbers auto-compact when one is deleted?**
-   - Recommendation: No, allow gaps for stability
+   - **Answer:** No, allow gaps for stability ✅
 
 2. **Should we show tumbler number when only one tumbler of that type exists?**
-   - Recommendation: Only show when > 1 tumbler of same brand/model
+   - **Answer:** No, only show when > 1 tumbler of same brand/model ✅
 
 3. **Should global barrel numbers recalculate when a barrel is deleted?**
-   - Recommendation: No, keep stable for consistency
+   - **Answer:** No global barrel numbering implemented - barrels keep local numbers ✅
 
-4. **Do we need API endpoints to manually renumber tumblers/barrels?**
-   - Can add later if users request it
+4. **Do we need API endpoints to manually renumber tumblers?**
+   - **Answer:** Not implemented - can add later if users request it

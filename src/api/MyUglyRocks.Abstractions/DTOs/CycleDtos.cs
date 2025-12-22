@@ -49,6 +49,8 @@ public record CycleListDto(
     int? ActiveStageDaysOverdue = null,
     // Active tumbler/barrel info (from most recent active stage, or most recent completed stage if no active)
     string? ActiveTumblerName = null,
+    int? ActiveTumblerNumber = null,
+    bool HasDuplicateTumbler = false,
     int? ActiveBarrelNumber = null,
     string? ActiveBarrelNickname = null
 );

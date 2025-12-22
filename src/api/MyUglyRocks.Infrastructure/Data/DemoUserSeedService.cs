@@ -575,9 +575,6 @@ public class DemoUserSeedService
 
                     if (detailLevel == DetailLevel.Full)
                     {
-                        stageRun.BarrelRpm = isVibratory ? null : _random.Next(20, 35);
-                        stageRun.IsRpmEstimated = !isVibratory;
-
                         if (isCompleted)
                         {
                             stageRun.ResultShapeRounding = _random.Next(60, 100);

@@ -45,6 +45,8 @@ export interface CycleListDto {
   activeStageDaysOverdue: number | null;
   // Active tumbler/barrel info
   activeTumblerName: string | null;
+  activeTumblerNumber: number | null;
+  hasDuplicateTumbler: boolean;
   activeBarrelNumber: number | null;
   activeBarrelNickname: string | null;
 }

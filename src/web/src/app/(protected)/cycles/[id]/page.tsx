@@ -567,15 +567,20 @@ export default function CycleDetailPage() {
   };
 
   // Get all active barrels from all active tumblers
-  const allBarrels: BarrelInfo[] = tumblers?.flatMap(t =>
-    t.isActive && t.barrels
-      ? t.barrels.filter(b => b.isActive).map(b => ({
-          ...b,
-          tumblerName: `${t.brand} ${t.model || ''}`.trim(),
-          tumblerId: t.tumblerId,
-        }))
-      : []
-  ) || [];
+  const allBarrels: BarrelInfo[] = tumblers?.flatMap(t => {
+    if (!t.isActive || !t.barrels) return [];
+    // Build tumbler name - include number only if duplicates exist
+    const baseName = `${t.brand} ${t.model || ''}`.trim();
+    const tumblerName = t.hasDuplicateBrandModel
+      ? `${baseName} #${t.tumblerNumber}`
+      : baseName;
+
+    return t.barrels.filter(b => b.isActive).map(b => ({
+      ...b,
+      tumblerName,
+      tumblerId: t.tumblerId,
+    }));
+  }) || [];
 
   if (cycleLoading) {
     return (
