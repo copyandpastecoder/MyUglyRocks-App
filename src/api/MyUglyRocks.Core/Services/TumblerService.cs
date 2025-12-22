@@ -79,7 +79,11 @@ public class TumblerService : ITumblerService
         tumbler.DateCreated = DateTime.UtcNow;
         tumbler.DateUpdated = DateTime.UtcNow;
 
-        // Auto-assign tumbler number for this brand/model combination
+        // Auto-assign tumbler number for this brand/model combination.
+        // Note: Only active tumblers are considered for numbering because:
+        // 1. Only active tumblers are displayed to users
+        // 2. Inactive tumblers may have stale numbers from before deactivation
+        // 3. If reactivated, tumbler numbers can be manually adjusted if needed
         var existingMaxNumber = await Tumblers
             .Where(t => t.UserId == userId
                 && t.Brand.ToLower() == request.Brand.ToLower()
@@ -154,6 +158,7 @@ public class TumblerService : ITumblerService
         if (brandModelChanged)
         {
             // Assign next available number in the new brand/model group
+            // (only considers active tumblers - see CreateTumblerAsync for rationale)
             var existingMaxNumber = await Tumblers
                 .Where(t => t.UserId == userId
                     && t.TumblerId != tumblerId
