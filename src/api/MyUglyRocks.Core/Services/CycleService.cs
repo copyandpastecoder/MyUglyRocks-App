@@ -460,10 +460,7 @@ public class CycleService : ICycleService
             var toRemove = cycle.CycleSpecimens
                 .Where(cs => cs.SpecimenId.HasValue && request.RemovedSpecimenIds.Contains(cs.SpecimenId.Value))
                 .ToList();
-            foreach (var cs in toRemove)
-            {
-                cycle.CycleSpecimens.Remove(cs);
-            }
+            CycleSpecimens.RemoveRange(toRemove);
         }
 
         // Remove user specimens if requested
@@ -472,10 +469,7 @@ public class CycleService : ICycleService
             var toRemove = cycle.CycleSpecimens
                 .Where(cs => cs.UserSpecimenId.HasValue && request.RemovedUserSpecimenIds.Contains(cs.UserSpecimenId.Value))
                 .ToList();
-            foreach (var cs in toRemove)
-            {
-                cycle.CycleSpecimens.Remove(cs);
-            }
+            CycleSpecimens.RemoveRange(toRemove);
         }
 
         // Remove inventory specimens if requested
@@ -497,10 +491,7 @@ public class CycleService : ICycleService
                 invSpecimen.DateUpdated = DateTime.UtcNow;
             }
 
-            foreach (var cs in toRemove)
-            {
-                cycle.CycleSpecimens.Remove(cs);
-            }
+            CycleSpecimens.RemoveRange(toRemove);
         }
 
         // Track if we added any new inventory specimens with AddPhotosFromInventory
