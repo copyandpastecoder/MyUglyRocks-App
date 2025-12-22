@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, MoreVertical, Pencil, CheckCircle, Trash2, AlertCircle, RotateCcw, Cylinder, Eye, Gem, Loader2 } from 'lucide-react';
@@ -24,26 +24,22 @@ import type { CycleCardProps } from './types';
 export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false, expandedOverride }: CycleCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [shouldFetchDetails, setShouldFetchDetails] = useState(false);
+  // Track if we've ever been expanded (for lazy loading - once true, stays true)
+  const [hasBeenExpanded, setHasBeenExpanded] = useState(false);
 
-  // Sync with parent's expand/collapse all override
-  useEffect(() => {
-    if (expandedOverride !== undefined) {
-      setIsExpanded(expandedOverride);
-      if (expandedOverride && !shouldFetchDetails) {
-        setShouldFetchDetails(true);
-      }
-    }
-  }, [expandedOverride, shouldFetchDetails]);
+  // Parent override takes precedence over internal state
+  const effectiveExpanded = expandedOverride !== undefined ? expandedOverride : isExpanded;
 
-  // Lazy load cycle details (including specimens) when expanded
-  const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetchDetails ? cycle.cycleId : null);
+  // Lazy load cycle details when expanded - uses hasBeenExpanded to keep query enabled once triggered
+  // React Query caches data, so collapsing won't lose data
+  const shouldFetch = hasBeenExpanded || effectiveExpanded;
+  const { data: cycleDetails, isLoading: isLoadingDetails, isError: isDetailsError } = useCycle(shouldFetch ? cycle.cycleId : null);
 
-  // Handle expand/collapse - trigger fetch on first expand
+  // Handle manual expand/collapse - mark as having been expanded for lazy loading
   const handleOpenChange = (open: boolean) => {
     setIsExpanded(open);
-    if (open && !shouldFetchDetails) {
-      setShouldFetchDetails(true);
+    if (open && !hasBeenExpanded) {
+      setHasBeenExpanded(true);
     }
   };
 
@@ -82,9 +78,9 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
     : getCycleStatusClass(cycle);
 
   return (
-    <Collapsible open={isExpanded} onOpenChange={handleOpenChange}>
+    <Collapsible open={effectiveExpanded} onOpenChange={handleOpenChange}>
       <div
-        className={`rounded-lg border transition-all duration-200 ${cardClassName} ${isExpanded ? 'shadow-md' : 'hover:shadow-sm hover:-translate-y-0.5'}`}
+        className={`rounded-lg border transition-all duration-200 ${cardClassName} ${effectiveExpanded ? 'shadow-md' : 'hover:shadow-sm hover:-translate-y-0.5'}`}
       >
         {/* Main row - always visible */}
         <div className="flex items-center p-3 gap-2">
@@ -98,9 +94,9 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
                 onClick={(e) => e.stopPropagation()}
               >
                 <ChevronDown
-                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                  className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${effectiveExpanded ? 'rotate-180' : ''}`}
                 />
-                <span className="sr-only">{isExpanded ? 'Collapse' : 'Expand'} details</span>
+                <span className="sr-only">{effectiveExpanded ? 'Collapse' : 'Expand'} details</span>
               </Button>
             </CollapsibleTrigger>
           )}
