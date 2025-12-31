@@ -21,8 +21,9 @@ export function StageFormModal(props: StageFormProps) {
   return <StageFormDesktop {...props} />;
 }
 
-// Re-export types for consumers
+// Re-export types and constants for consumers
 export type { StageFormProps, BarrelInfo, MaterialSelection, CleaningRunData } from './types';
+export { WATER_UNITS } from './types';
 
 // Also export individual components for testing or direct use
 export { StageFormDesktop } from './stage-form.desktop';

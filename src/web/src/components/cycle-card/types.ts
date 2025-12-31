@@ -10,4 +10,6 @@ export interface CycleCardProps {
   plainStyle?: boolean;
   /** Override expansion state from parent (for expand/collapse all) */
   expandedOverride?: boolean;
+  /** Called when user manually toggles expansion (to reset expand all state) */
+  onExpandedChange?: () => void;
 }

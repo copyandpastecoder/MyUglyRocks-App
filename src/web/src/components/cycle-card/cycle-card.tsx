@@ -21,7 +21,7 @@ import { getCycleStatusClass, getStageProgressText } from '@/lib/cycle-utils';
 import { useCycle } from '@/hooks';
 import type { CycleCardProps } from './types';
 
-export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false, expandedOverride }: CycleCardProps) {
+export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false, expandedOverride, onExpandedChange }: CycleCardProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   // Track if we've ever been expanded (for lazy loading - once true, stays true)
@@ -37,6 +37,10 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
 
   // Handle manual expand/collapse - mark as having been expanded for lazy loading
   const handleOpenChange = (open: boolean) => {
+    // If override is active, notify parent to reset it so individual control takes over
+    if (expandedOverride !== undefined && onExpandedChange) {
+      onExpandedChange();
+    }
     setIsExpanded(open);
     if (open && !hasBeenExpanded) {
       setHasBeenExpanded(true);
