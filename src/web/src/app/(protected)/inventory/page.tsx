@@ -103,6 +103,7 @@ export default function InventoryPage() {
   const { data: stats } = useInventoryStats();
   const deleteMutation = useDeleteInventory();
   const updateStatusMutation = useUpdateInventoryStatus();
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   const handleDelete = (id: string) => {
     setDeleteId(id);
@@ -123,25 +124,31 @@ export default function InventoryPage() {
     });
   };
 
+  const handleImageError = (inventoryId: string) => {
+    setImageErrors(prev => new Set(prev).add(inventoryId));
+  };
+
   const renderInventoryRow = (item: InventoryListDto) => {
+
     return (
       <div
         key={item.inventoryId}
-        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200"
+        className="flex items-center justify-between p-4 rounded-lg border bg-card hover:shadow-sm hover:-translate-y-0.5 transition-all duration-200"
       >
         <Link href={`/inventory/${item.inventoryId}`} className="flex-1 min-w-0 flex items-center gap-3">
-          {item.coverPhotoThumbnailUrl ? (
+          {item.coverPhotoThumbnailUrl && !imageErrors.has(item.inventoryId) ? (
             <img
               src={item.coverPhotoThumbnailUrl}
-              alt={item.name}
-              className="w-12 h-12 rounded object-cover"
+              alt=""
+              className="w-12 h-12 rounded object-cover flex-shrink-0"
+              onError={() => handleImageError(item.inventoryId)}
             />
           ) : (
-            <div className="w-12 h-12 rounded bg-muted flex items-center justify-center">
+            <div className="w-12 h-12 rounded bg-muted flex items-center justify-center flex-shrink-0">
               <Package className="h-5 w-5 text-muted-foreground" />
             </div>
           )}
-          <div className="min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <p className="font-medium truncate">{item.name}</p>
             <p className="text-sm text-muted-foreground truncate">
               {item.sourceName || (item.sourceType ? sourceTypeDisplayNames[item.sourceType as InventorySourceType] : null) || 'No source'}
@@ -149,12 +156,12 @@ export default function InventoryPage() {
             </p>
           </div>
         </Link>
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium">{formatWeight(item.remainingWeightGrams, item.displayUnit)}</p>
-            <p className="text-xs text-muted-foreground">{formatCost(item.cost)}</p>
+        <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="text-right hidden sm:block flex-shrink-0">
+            <p className="text-sm font-medium whitespace-nowrap">{formatWeight(item.remainingWeightGrams, item.displayUnit)}</p>
+            <p className="text-xs text-muted-foreground whitespace-nowrap">{formatCost(item.cost)}</p>
           </div>
-          <Badge variant="secondary" className={INVENTORY_STATUS_COLORS[item.status]}>
+          <Badge variant="secondary" className={`${INVENTORY_STATUS_COLORS[item.status]} flex-shrink-0`}>
             {INVENTORY_STATUS_LABELS[item.status]}
           </Badge>
           <DropdownMenu modal={false}>

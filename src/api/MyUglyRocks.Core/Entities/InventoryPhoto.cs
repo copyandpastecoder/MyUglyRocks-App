@@ -31,6 +31,12 @@ public class InventoryPhoto : BaseEntity
     public string? MediumStorageKey { get; set; }
     public string? LargeStorageKey { get; set; }
 
+    // Original uploaded photo (preserved in original format)
+    public string? OriginalStorageKey { get; set; }
+    public string? OriginalUrl { get; set; }
+    public string? OriginalMimeType { get; set; }
+    public long? OriginalFileSizeBytes { get; set; }
+
     // Navigation properties
     public virtual Inventory Inventory { get; set; } = null!;
     public virtual InventorySpecimen? InventorySpecimen { get; set; }

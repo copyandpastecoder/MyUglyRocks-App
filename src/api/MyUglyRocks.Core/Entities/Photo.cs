@@ -19,10 +19,12 @@ public class Photo : SoftDeletableEntity
 {
     public Guid PhotoId { get; set; }
     public Guid StageRunId { get; set; }
+
+    // WebP "original" size variant (largest WebP version, but not the actual uploaded file)
     public required string StorageKey { get; set; }
     public required string Url { get; set; }
     public string? FileName { get; set; }
-    public required string MimeType { get; set; }
+    public required string MimeType { get; set; }    // Always "image/webp" for this variant
     public long FileSizeBytes { get; set; }
     public int? Width { get; set; }
     public int? Height { get; set; }
@@ -44,6 +46,12 @@ public class Photo : SoftDeletableEntity
     public string? ThumbnailStorageKey { get; set; }
     public string? MediumStorageKey { get; set; }
     public string? LargeStorageKey { get; set; }
+
+    // Original uploaded photo (preserved in original format)
+    public string? OriginalStorageKey { get; set; }
+    public string? OriginalUrl { get; set; }
+    public string? OriginalMimeType { get; set; }
+    public long? OriginalFileSizeBytes { get; set; }
 
     // Navigation properties
     public virtual StageRun StageRun { get; set; } = null!;
