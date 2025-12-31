@@ -16,6 +16,7 @@ interface StatCardProps {
     value: number;
     label?: string;
   };
+  onClick?: () => void;
 }
 
 const gradientClasses: Record<GradientVariant, string> = {
@@ -44,15 +45,18 @@ export function StatCard({
   gradient = 'default',
   className,
   trend,
+  onClick,
 }: StatCardProps) {
   return (
     <div
       className={cn(
         'relative overflow-hidden rounded-xl border p-6 shadow-sm transition-all duration-200',
         'hover:shadow-md hover:-translate-y-0.5',
+        onClick && 'cursor-pointer',
         gradientClasses[gradient],
         className
       )}
+      onClick={onClick}
     >
       <div className="flex items-start justify-between">
         <div className="space-y-2">
