@@ -194,6 +194,40 @@ public class ImageProcessingService : IImageProcessingService
         );
     }
 
+    public async Task<OriginalPreservationResult> PreserveOriginalAsync(
+        Stream inputStream,
+        string fileName,
+        CancellationToken cancellationToken = default)
+    {
+        _logger.LogDebug("Preserving original photo: {FileName}", PiiMaskingHelper.SanitizeForLog(fileName));
+
+        // Copy the stream to a new MemoryStream (since the input stream may not support seeking)
+        var memoryStream = new MemoryStream();
+        await inputStream.CopyToAsync(memoryStream, cancellationToken);
+        memoryStream.Position = 0;
+
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        var mimeType = GetMimeTypeFromExtension(extension);
+
+        _logger.LogInformation("Preserved original: {Extension}, {Size} bytes", extension, memoryStream.Length);
+
+        return new OriginalPreservationResult(memoryStream, mimeType, extension, memoryStream.Length);
+    }
+
+    private static string GetMimeTypeFromExtension(string extension)
+    {
+        return extension switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".heic" => "image/heic",
+            ".heif" => "image/heif",
+            _ => "application/octet-stream"
+        };
+    }
+
     private async Task<string?> GenerateBlurHashAsync(Image image, CancellationToken cancellationToken)
     {
         try
