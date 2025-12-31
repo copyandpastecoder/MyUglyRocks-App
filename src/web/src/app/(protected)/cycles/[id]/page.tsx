@@ -76,11 +76,18 @@ import { PhotoUploadModal } from '@/components/photo-upload-modal';
 import { DurationPicker } from '@/components/duration-picker';
 import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
-import { StageFormModal, type BarrelInfo } from '@/components/stage-form';
+import { StageFormModal, type BarrelInfo, WATER_UNITS } from '@/components/stage-form';
 import { CycleFormDialog } from '@/components/cycle-form-dialog';
 import {
   CleaningRunSection,
 } from '@/components/stage';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useSettings, useTimezone } from '@/hooks/use-user';
 import { useMaterials } from '@/hooks/use-materials';
 import { calculateDurationFromDates } from '@/lib/date-utils';
@@ -156,6 +163,7 @@ export default function CycleDetailPage() {
   // Next stage values (for Repeat or Advance)
   const [nextStageWeightBefore, setNextStageWeightBefore] = useState<number | null>(null);
   const [nextStageWaterAmount, setNextStageWaterAmount] = useState<string>('');
+  const [nextStageWaterUnit, setNextStageWaterUnit] = useState<'ml' | 'floz'>('ml');
 
   // Edit Cycle Dialog State
   const [isEditCycleOpen, setIsEditCycleOpen] = useState(false);
@@ -238,6 +246,7 @@ export default function CycleDetailPage() {
       data: CompleteStageRunRequest;
       nextStageWeightBefore?: number | null;
       nextStageWaterAmount?: string;
+      nextStageWaterUnit?: 'ml' | 'floz';
     }) => cycleApi.completeStageRun(id, data),
     onSuccess: async (_result, variables) => {
       const shouldAutoRepeat = variables.data.nextAction === 'Repeat';
@@ -319,8 +328,10 @@ export default function CycleDetailPage() {
             materials,
             cleaningRun,
             // Transfer weight and water from Complete Stage modal
-            weightBeforeGrams: variables.nextStageWeightBefore ?? undefined,
-            waterAmount: variables.nextStageWaterAmount || undefined,
+            loadWeightBeforeGrams: variables.nextStageWeightBefore ?? undefined,
+            waterAmountMl: variables.nextStageWaterAmount && variables.nextStageWaterUnit
+              ? Math.round(parseFloat(variables.nextStageWaterAmount) * (variables.nextStageWaterUnit === 'floz' ? 29.5735 : 1))
+              : undefined,
           });
 
           const actionWord = shouldAutoRepeat ? 'repeat' : 'advance';
@@ -397,6 +408,7 @@ export default function CycleDetailPage() {
     setCompleteStageWeightBefore(null);
     setNextStageWeightBefore(null);
     setNextStageWaterAmount('');
+    setNextStageWaterUnit(settings?.measurementSystem === 'Imperial' ? 'floz' : 'ml');
   };
 
   // Open stage form modal for creating new stage
@@ -580,6 +592,7 @@ export default function CycleDetailPage() {
       // Pass next stage values for auto-creation
       nextStageWeightBefore,
       nextStageWaterAmount,
+      nextStageWaterUnit,
     });
   };
 
@@ -1260,13 +1273,30 @@ export default function CycleDetailPage() {
                 {/* Water Amount for Next Stage */}
                 <div className="space-y-2">
                   <Label htmlFor="nextStageWaterAmount">Water Amount (optional)</Label>
-                  <Input
-                    id="nextStageWaterAmount"
-                    type="text"
-                    placeholder={settings?.measurementSystem === 'Metric' ? 'e.g., 2 cups, 500ml' : 'e.g., 2 cups, 16 oz'}
-                    value={nextStageWaterAmount}
-                    onChange={(e) => setNextStageWaterAmount(e.target.value)}
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="nextStageWaterAmount"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      placeholder="e.g., 250"
+                      value={nextStageWaterAmount}
+                      onChange={(e) => setNextStageWaterAmount(e.target.value)}
+                      className="flex-1"
+                    />
+                    <Select value={nextStageWaterUnit} onValueChange={(value) => setNextStageWaterUnit(value as 'ml' | 'floz')}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {WATER_UNITS.map(unit => (
+                          <SelectItem key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Amount of water to add when starting the next stage
                   </p>

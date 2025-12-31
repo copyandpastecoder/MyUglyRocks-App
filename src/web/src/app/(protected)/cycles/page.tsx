@@ -141,6 +141,7 @@ export default function CyclesPage() {
                       onEdit={handleEdit}
                       plainStyle={activeTab === 'Completed'}
                       expandedOverride={expandAllState}
+                      onExpandedChange={() => setExpandAllState(undefined)}
                     />
                   </StaggerItem>
                 ))}

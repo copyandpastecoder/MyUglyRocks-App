@@ -1,0 +1,40 @@
+feat: dashboard navigation, photo processing refactor, and UI fixes
+
+## Features
+- Add clickable navigation to dashboard stat cards
+  - Active Cycles → /cycles
+  - Completed Cycles → /cycles?tab=completed
+  - My Tumblers → /tumblers
+- Enhance water amount input with unit conversion (ml/fl oz)
+- Add image error handling with placeholder fallback for inventory cards
+
+## Refactoring
+- Eliminate code duplication in photo processing jobs
+  - Create generic BasePhotoProcessingJob<TPhoto> base class
+  - Reduce PhotoProcessingJob and InventoryPhotoProcessingJob from 310 to 76 lines (-75%)
+  - Total reduction: ~460 lines of duplicate code
+
+## Bug Fixes
+- Fix cycles expand/collapse individual control after using "Expand All"
+  - Add onExpandedChange callback to reset global state
+- Fix inventory card text overflow on desktop
+  - Add overflow-hidden to text container
+  - Add flex-shrink-0 to right side elements
+  - Increase padding from p-3 to p-4
+- Fix React hook error (#310) by moving useState to component level
+- Fix water amount type mismatch with proper numeric input
+
+## Database
+- Add migration for photo original file fields
+  - OriginalFileSizeBytes, OriginalMimeType, OriginalStorageKey, OriginalUrl
+  - Apply to both photos and inventory_photos tables
+
+## Documentation
+- Add XML documentation for photo file naming conventions
+- Export WATER_UNITS constant from stage-form
+
+See CHANGELOG-2025-12-31.md for detailed changes.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>
