@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useTumblers, useCycles } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { PAGE_CONTAINER_LOOSE } from '@/lib/layout';
@@ -10,6 +11,7 @@ import { CheckCircle2, Cylinder, RotateCcw, Clock } from 'lucide-react';
 import { DashboardStatistics } from '@/components/dashboard-statistics';
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user } = useAuth();
 
   const { data: tumblers, isLoading: tumblersLoading } = useTumblers();
@@ -49,6 +51,7 @@ export default function DashboardPage() {
               subtitle={`${activeStageCount} active stage${activeStageCount !== 1 ? 's' : ''}`}
               icon={RotateCcw}
               gradient="blue"
+              onClick={() => router.push('/cycles')}
             />
           </StaggerItem>
 
@@ -59,6 +62,7 @@ export default function DashboardPage() {
               subtitle="All time"
               icon={CheckCircle2}
               gradient="green"
+              onClick={() => router.push('/cycles?tab=completed')}
             />
           </StaggerItem>
 
@@ -69,6 +73,7 @@ export default function DashboardPage() {
               subtitle="Registered machines"
               icon={Cylinder}
               gradient="purple"
+              onClick={() => router.push('/tumblers')}
             />
           </StaggerItem>
 

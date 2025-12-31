@@ -148,7 +148,7 @@ function MaterialRow({ material, sortedMaterials, onMaterialChange, onRemove }: 
           >
             <Command>
               <CommandInput placeholder="Search materials..." />
-              <CommandList>
+              <CommandList className="max-h-[60vh] overflow-y-auto">
                 <CommandEmpty>No material found.</CommandEmpty>
                 <CommandGroup>
                   {sortedMaterials.map((m) => (

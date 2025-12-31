@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
@@ -46,6 +47,7 @@ import {
   Image as ImageIcon,
   Trophy,
   PartyPopper,
+  Info,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -151,6 +153,9 @@ export default function CycleDetailPage() {
   });
   // Weight before (from when stage was started)
   const [completeStageWeightBefore, setCompleteStageWeightBefore] = useState<number | null>(null);
+  // Next stage values (for Repeat or Advance)
+  const [nextStageWeightBefore, setNextStageWeightBefore] = useState<number | null>(null);
+  const [nextStageWaterAmount, setNextStageWaterAmount] = useState<string>('');
 
   // Edit Cycle Dialog State
   const [isEditCycleOpen, setIsEditCycleOpen] = useState(false);
@@ -225,8 +230,15 @@ export default function CycleDetailPage() {
   });
 
   const completeStageMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: CompleteStageRunRequest }) =>
-      cycleApi.completeStageRun(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: CompleteStageRunRequest;
+      nextStageWeightBefore?: number | null;
+      nextStageWaterAmount?: string;
+    }) => cycleApi.completeStageRun(id, data),
     onSuccess: async (_result, variables) => {
       const shouldAutoRepeat = variables.data.nextAction === 'Repeat';
       const shouldAutoAdvance = variables.data.nextAction === 'Advance';
@@ -306,6 +318,9 @@ export default function CycleDetailPage() {
             reminderEnabled: false,
             materials,
             cleaningRun,
+            // Transfer weight and water from Complete Stage modal
+            weightBeforeGrams: variables.nextStageWeightBefore ?? undefined,
+            waterAmount: variables.nextStageWaterAmount || undefined,
           });
 
           const actionWord = shouldAutoRepeat ? 'repeat' : 'advance';
@@ -380,6 +395,8 @@ export default function CycleDetailPage() {
     setCompleteStageBarrelCapacity(null);
     setCompleteStageCleaningRun(null);
     setCompleteStageWeightBefore(null);
+    setNextStageWeightBefore(null);
+    setNextStageWaterAmount('');
   };
 
   // Open stage form modal for creating new stage
@@ -557,7 +574,13 @@ export default function CycleDetailPage() {
       data.resultShine = resultShine;
     }
 
-    completeStageMutation.mutate({ id: completeStageId, data });
+    completeStageMutation.mutate({
+      id: completeStageId,
+      data,
+      // Pass next stage values for auto-creation
+      nextStageWeightBefore,
+      nextStageWaterAmount,
+    });
   };
 
 
@@ -1214,6 +1237,42 @@ export default function CycleDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Next Stage Initial Values (only for Repeat or Advance) */}
+            {(nextAction === 'Repeat' || nextAction === 'Advance') && (
+              <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20 space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-4 w-4 text-blue-500" />
+                  <span className="font-medium text-blue-900 dark:text-blue-100">
+                    {nextAction === 'Repeat' ? 'Starting values for repeat run' : 'Starting values for next stage'}
+                  </span>
+                </div>
+
+                {/* Weight Before for Next Stage */}
+                <WeightInput
+                  label="Weight Before (optional)"
+                  valueGrams={nextStageWeightBefore}
+                  onValueChange={setNextStageWeightBefore}
+                  barrelCapacityLbs={completeStageBarrelCapacity || undefined}
+                  helperText="Starting weight for the next stage run"
+                />
+
+                {/* Water Amount for Next Stage */}
+                <div className="space-y-2">
+                  <Label htmlFor="nextStageWaterAmount">Water Amount (optional)</Label>
+                  <Input
+                    id="nextStageWaterAmount"
+                    type="text"
+                    placeholder={settings?.measurementSystem === 'Metric' ? 'e.g., 2 cups, 500ml' : 'e.g., 2 cups, 16 oz'}
+                    value={nextStageWaterAmount}
+                    onChange={(e) => setNextStageWaterAmount(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Amount of water to add when starting the next stage
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Cleaning Run Display */}
             {completeStageCleaningRun && (

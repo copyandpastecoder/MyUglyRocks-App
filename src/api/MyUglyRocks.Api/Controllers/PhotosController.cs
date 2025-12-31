@@ -145,19 +145,24 @@ public class PhotosController : ControllerBase
             await Photos.AddAsync(photo, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Two-phase processing: thumbnail first (fast), then large variants (background)
+            // Three-phase processing: thumbnail first (fast), then large variant (medium speed), then preserve original (background)
             // Jobs fetch from R2 temp storage instead of receiving byte[] (prevents DB bloat)
             // Phase 1: Thumbnail - user sees this quickly, status becomes Completed
             var thumbnailJobId = _backgroundJobClient.Enqueue<PhotoProcessingJob>(
                 job => job.ProcessThumbnailAsync(photoId, tempStorageKey, file.FileName));
 
-            // Phase 2: Large variants - runs after thumbnail, user doesn't wait
-            // This job also cleans up the temp file after processing
-            _backgroundJobClient.ContinueJobWith<PhotoProcessingJob>(
+            // Phase 2: Large WebP variant - runs after thumbnail, user can click to view this
+            var largeVariantJobId = _backgroundJobClient.ContinueJobWith<PhotoProcessingJob>(
                 thumbnailJobId,
                 job => job.ProcessLargeVariantsAsync(photoId, tempStorageKey, file.FileName));
 
-            _logger.LogInformation("Photo {PhotoId} queued for two-phase processing, temp key: {TempKey}", photoId, tempStorageKey);
+            // Phase 3: Preserve original - runs after large variant, stores original without conversion
+            // This job also cleans up the temp file after processing
+            _backgroundJobClient.ContinueJobWith<PhotoProcessingJob>(
+                largeVariantJobId,
+                job => job.PreserveOriginalAsync(photoId, tempStorageKey, file.FileName));
+
+            _logger.LogInformation("Photo {PhotoId} queued for three-phase processing, temp key: {TempKey}", photoId, tempStorageKey);
 
             var dto = new PhotoDto(
                 photo.PhotoId,
@@ -304,19 +309,24 @@ public class PhotosController : ControllerBase
             await InventoryPhotos.AddAsync(photo, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
 
-            // Two-phase processing: thumbnail first (fast), then large variants (background)
+            // Three-phase processing: thumbnail first (fast), then large variant (medium speed), then preserve original (background)
             // Jobs fetch from R2 temp storage instead of receiving byte[] (prevents DB bloat)
             // Phase 1: Thumbnail - user sees this quickly, status becomes Completed
             var thumbnailJobId = _backgroundJobClient.Enqueue<InventoryPhotoProcessingJob>(
                 job => job.ProcessThumbnailAsync(photoId, tempStorageKey, file.FileName));
 
-            // Phase 2: Large variants - runs after thumbnail, user doesn't wait
-            // This job also cleans up the temp file after processing
-            _backgroundJobClient.ContinueJobWith<InventoryPhotoProcessingJob>(
+            // Phase 2: Large WebP variant - runs after thumbnail, user can click to view this
+            var largeVariantJobId = _backgroundJobClient.ContinueJobWith<InventoryPhotoProcessingJob>(
                 thumbnailJobId,
                 job => job.ProcessLargeVariantsAsync(photoId, tempStorageKey, file.FileName));
 
-            _logger.LogInformation("Inventory photo {PhotoId} queued for two-phase processing, temp key: {TempKey}", photoId, tempStorageKey);
+            // Phase 3: Preserve original - runs after large variant, stores original without conversion
+            // This job also cleans up the temp file after processing
+            _backgroundJobClient.ContinueJobWith<InventoryPhotoProcessingJob>(
+                largeVariantJobId,
+                job => job.PreserveOriginalAsync(photoId, tempStorageKey, file.FileName));
+
+            _logger.LogInformation("Inventory photo {PhotoId} queued for three-phase processing, temp key: {TempKey}", photoId, tempStorageKey);
 
             var dto = new InventoryPhotoDto(
                 photo.InventoryPhotoId,
@@ -372,7 +382,7 @@ public class PhotosController : ControllerBase
             return Forbid();
         }
 
-        // Delete all variants from storage
+        // Delete all variants from storage (including original)
         try
         {
             var keysToDelete = new List<string> { photo.StorageKey };
@@ -382,6 +392,8 @@ public class PhotosController : ControllerBase
                 keysToDelete.Add(photo.MediumStorageKey);
             if (!string.IsNullOrEmpty(photo.LargeStorageKey))
                 keysToDelete.Add(photo.LargeStorageKey);
+            if (!string.IsNullOrEmpty(photo.OriginalStorageKey))
+                keysToDelete.Add(photo.OriginalStorageKey);
 
             await _storageService.DeleteManyAsync(keysToDelete, cancellationToken);
         }
@@ -624,7 +636,7 @@ public class PhotosController : ControllerBase
             return Forbid();
         }
 
-        // Delete all variants from storage
+        // Delete all variants from storage (including original)
         try
         {
             var keysToDelete = new List<string> { photo.StorageKey };
@@ -634,6 +646,8 @@ public class PhotosController : ControllerBase
                 keysToDelete.Add(photo.MediumStorageKey);
             if (!string.IsNullOrEmpty(photo.LargeStorageKey))
                 keysToDelete.Add(photo.LargeStorageKey);
+            if (!string.IsNullOrEmpty(photo.OriginalStorageKey))
+                keysToDelete.Add(photo.OriginalStorageKey);
 
             await _storageService.DeleteManyAsync(keysToDelete, cancellationToken);
         }

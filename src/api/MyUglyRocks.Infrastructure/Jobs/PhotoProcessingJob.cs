@@ -111,8 +111,8 @@ public class PhotoProcessingJob
     }
 
     /// <summary>
-    /// Phase 2: Process large variants in background. User doesn't wait for this.
-    /// Also cleans up the temp storage file after processing.
+    /// Phase 2: Process large WebP variant only. User can view this while original is being preserved.
+    /// Does NOT clean up temp file - Phase 3 will do that.
     /// </summary>
     /// <param name="photoId">The photo ID</param>
     /// <param name="tempStorageKey">R2 temp storage key where the original image is stored</param>
@@ -127,8 +127,6 @@ public class PhotoProcessingJob
         if (photo == null)
         {
             _logger.LogWarning("Photo {PhotoId} not found for large variant processing", photoId);
-            // Clean up temp file even if photo not found
-            await CleanupTempFileAsync(tempStorageKey);
             return;
         }
 
@@ -139,8 +137,6 @@ public class PhotoProcessingJob
             if (inputStream == null)
             {
                 _logger.LogError("Temp image not found in R2 for photo {PhotoId}: {Key}", photoId, tempStorageKey);
-                // Attempt cleanup in case the file still exists
-                await CleanupTempFileAsync(tempStorageKey);
                 return;
             }
 
@@ -193,9 +189,79 @@ public class PhotoProcessingJob
             // Don't mark as failed - thumbnail is already showing
             _logger.LogError(ex, "Failed to process large variants for photo {PhotoId}", photoId);
         }
+        // NOTE: NOT cleaning up temp file here - Phase 3 will do that
+    }
+
+    /// <summary>
+    /// Phase 3: Preserve the original uploaded photo without any conversion.
+    /// Cleans up the temp storage file after preserving the original.
+    /// </summary>
+    /// <param name="photoId">The photo ID</param>
+    /// <param name="tempStorageKey">R2 temp storage key where the original image is stored</param>
+    /// <param name="fileName">Original file name for content type detection</param>
+    public async Task PreserveOriginalAsync(Guid photoId, string tempStorageKey, string fileName)
+    {
+        _logger.LogInformation("Starting original preservation for photo {PhotoId}", photoId);
+
+        var photo = await _dbContext.Set<Photo>()
+            .FirstOrDefaultAsync(p => p.PhotoId == photoId);
+
+        if (photo == null)
+        {
+            _logger.LogWarning("Photo {PhotoId} not found for original preservation", photoId);
+            // Clean up temp file even if photo not found
+            await CleanupTempFileAsync(tempStorageKey);
+            return;
+        }
+
+        try
+        {
+            // Fetch original from R2 temp storage
+            using var inputStream = await _storageService.GetStreamAsync(tempStorageKey);
+            if (inputStream == null)
+            {
+                _logger.LogError("Temp image not found in R2 for photo {PhotoId}: {Key}", photoId, tempStorageKey);
+                await CleanupTempFileAsync(tempStorageKey);
+                return;
+            }
+
+            // Preserve the original without conversion
+            var result = await _imageProcessingService.PreserveOriginalAsync(inputStream, fileName);
+
+            var folder = $"photos/stages/{photo.StageRunId}";
+            var baseKey = $"{DateTime.UtcNow:yyyyMMdd}-{photoId:N}";
+            var originalKey = $"{baseKey}-original{result.Extension}";
+
+            // Upload original to R2
+            var originalUrl = await _storageService.UploadAsync(
+                result.Stream,
+                $"{originalKey}",
+                folder,
+                originalKey);
+
+            var originalStorageKey = new Uri(originalUrl).AbsolutePath.TrimStart('/');
+
+            // Update photo with original URL
+            photo.OriginalUrl = originalUrl;
+            photo.OriginalStorageKey = originalStorageKey;
+            photo.OriginalMimeType = result.MimeType;
+            photo.OriginalFileSizeBytes = result.FileSizeBytes;
+            photo.DateUpdated = DateTime.UtcNow;
+
+            await result.Stream.DisposeAsync();
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation(
+                "Original preserved for photo {PhotoId}: {Extension}, {Size} bytes",
+                photoId, result.Extension, result.FileSizeBytes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to preserve original for photo {PhotoId}", photoId);
+        }
         finally
         {
-            // Always clean up temp file after processing
+            // Always clean up temp file after preserving original
             await CleanupTempFileAsync(tempStorageKey);
         }
     }

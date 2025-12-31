@@ -40,6 +40,16 @@ public record LargeVariantsResult(
 );
 
 /// <summary>
+/// Result of original preservation (phase 3) - preserves original format without conversion
+/// </summary>
+public record OriginalPreservationResult(
+    Stream Stream,
+    string MimeType,
+    string Extension,
+    long FileSizeBytes
+);
+
+/// <summary>
 /// Service for processing and resizing images
 /// </summary>
 public interface IImageProcessingService
@@ -79,5 +89,13 @@ public interface IImageProcessingService
         Stream inputStream,
         string fileName,
         int size = 256,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 3: Preserve original uploaded photo without any conversion or processing
+    /// </summary>
+    Task<OriginalPreservationResult> PreserveOriginalAsync(
+        Stream inputStream,
+        string fileName,
         CancellationToken cancellationToken = default);
 }
