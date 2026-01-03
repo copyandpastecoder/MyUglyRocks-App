@@ -1,13 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useTumblers, useCycles } from '@/hooks';
+import { useTumblers, useCycles, useInventoryStats } from '@/hooks';
 import { useAuth } from '@/providers/auth-provider';
 import { PAGE_CONTAINER_LOOSE } from '@/lib/layout';
 import { DashboardSkeleton } from '@/components/skeletons';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
-import { CheckCircle2, Cylinder, RotateCcw, Clock } from 'lucide-react';
+import { CheckCircle2, Cylinder, RotateCcw, Package } from 'lucide-react';
 import { DashboardStatistics } from '@/components/dashboard-statistics';
 
 export default function DashboardPage() {
@@ -17,8 +17,9 @@ export default function DashboardPage() {
   const { data: tumblers, isLoading: tumblersLoading } = useTumblers();
   const { data: activeCycles, isLoading: activeCyclesLoading } = useCycles('Active', 'asc');
   const { data: completedCycles, isLoading: completedCyclesLoading } = useCycles('Completed', 'desc');
+  const { data: inventoryStats, isLoading: inventoryStatsLoading } = useInventoryStats();
 
-  const isLoading = tumblersLoading || activeCyclesLoading || completedCyclesLoading;
+  const isLoading = tumblersLoading || activeCyclesLoading || completedCyclesLoading || inventoryStatsLoading;
 
   if (isLoading) {
     return <DashboardSkeleton />;
@@ -28,8 +29,9 @@ export default function DashboardPage() {
   const activeCycleCount = activeCycles?.length ?? 0;
   const completedCycleCount = completedCycles?.length ?? 0;
 
-  // Calculate active stages
-  const activeStageCount = activeCycles?.reduce((acc, cycle) => acc + cycle.activeStageCount, 0) ?? 0;
+  // Inventory stats
+  const totalInventoryItems = inventoryStats?.totalItems ?? 0;
+  const availableInventoryCount = inventoryStats?.availableCount ?? 0;
 
   return (
     <PageTransition>
@@ -48,7 +50,7 @@ export default function DashboardPage() {
             <StatCard
               title="Active Cycles"
               value={activeCycleCount}
-              subtitle={`${activeStageCount} active stage${activeStageCount !== 1 ? 's' : ''}`}
+              subtitle="In progress"
               icon={RotateCcw}
               gradient="blue"
               onClick={() => router.push('/cycles')}
@@ -79,11 +81,12 @@ export default function DashboardPage() {
 
           <StaggerItem>
             <StatCard
-              title="Active Stages"
-              value={activeStageCount}
-              subtitle="Currently running"
-              icon={Clock}
+              title="Inventory"
+              value={totalInventoryItems}
+              subtitle={`${availableInventoryCount} available`}
+              icon={Package}
               gradient="amber"
+              onClick={() => router.push('/inventory')}
             />
           </StaggerItem>
         </StaggerContainer>
