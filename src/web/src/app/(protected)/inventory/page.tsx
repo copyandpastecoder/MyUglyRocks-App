@@ -139,7 +139,7 @@ export default function InventoryPage() {
           {item.coverPhotoThumbnailUrl && !imageErrors.has(item.inventoryId) ? (
             <img
               src={item.coverPhotoThumbnailUrl}
-              alt=""
+              alt={item.name ? `Photo of ${item.name}` : 'Inventory item photo'}
               className="w-12 h-12 rounded object-cover flex-shrink-0"
               onError={() => handleImageError(item.inventoryId)}
             />

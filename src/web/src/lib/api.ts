@@ -1,5 +1,15 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
-import type { AuthResult, LoginRequest, RegisterRequest, ForgotPasswordRequest, ResetPasswordRequest } from '@/types/auth';
+import type { 
+  AuthResult, 
+  LoginRequest, 
+  RegisterRequest, 
+  ForgotPasswordRequest, 
+  ResetPasswordRequest,
+  InvitationCodeDto,
+  InvitationStatsDto,
+  CreateInvitationCodeRequest,
+  RevokeInvitationCodeRequest
+} from '@/types/auth';
 
 // Runtime config - fetched once on app load
 let runtimeApiUrl: string | null = null;
@@ -392,6 +402,11 @@ export const postApi = {
     return response.data;
   },
 
+  getFeedback: async (category?: string, sort?: string, skip = 0, take = 20): Promise<PostListDto[]> => {
+    const response = await api.get<PostListDto[]>('/posts/feedback', { params: { category, sort, skip, take } });
+    return response.data;
+  },
+
   getById: async (id: string): Promise<PostDto> => {
     const response = await api.get<PostDto>(`/posts/${id}`);
     return response.data;
@@ -724,6 +739,40 @@ export const adminApi = {
     const response = await api.get<BrowserStatsDto>('/admin/browser-stats', {
       params: { days },
     });
+    return response.data;
+  },
+
+  // Invitation Codes
+  generateInvitationCodes: async (request: CreateInvitationCodeRequest): Promise<InvitationCodeDto[]> => {
+    const response = await api.post<InvitationCodeDto[]>('/admin/invitation-codes/generate', request);
+    return response.data;
+  },
+
+  getInvitationCodes: async (
+    status?: string,
+    page = 1,
+    pageSize = 50
+  ): Promise<PaginatedResult<InvitationCodeDto>> => {
+    const response = await api.get<{ codes: InvitationCodeDto[], total: number, page: number, pageSize: number }>('/admin/invitation-codes', {
+      params: { status, page, pageSize },
+    });
+    // Map backend response to frontend PaginatedResult format
+    return {
+      items: response.data.codes,
+      totalCount: response.data.total,
+      page: response.data.page,
+      pageSize: response.data.pageSize,
+      totalPages: Math.ceil(response.data.total / response.data.pageSize)
+    };
+  },
+
+  getInvitationCodeStats: async (): Promise<InvitationStatsDto> => {
+    const response = await api.get<InvitationStatsDto>('/admin/invitation-codes/stats');
+    return response.data;
+  },
+
+  revokeInvitationCode: async (codeId: string, request: RevokeInvitationCodeRequest): Promise<void> => {
+    const response = await api.post<void>(`/admin/invitation-codes/${codeId}/revoke`, request);
     return response.data;
   },
 };

@@ -18,19 +18,22 @@ public class AuthController : ControllerBase
     private readonly ILogger<AuthController> _logger;
     private readonly IWebHostEnvironment _environment;
     private readonly int _refreshTokenExpirationDays;
+    private readonly IInvitationCodeService _invitationCodeService;
 
     public AuthController(
         IAuthService authService,
         IServiceScopeFactory scopeFactory,
         ILogger<AuthController> logger,
         IWebHostEnvironment environment,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IInvitationCodeService invitationCodeService)
     {
         _authService = authService;
         _scopeFactory = scopeFactory;
         _logger = logger;
         _environment = environment;
         _refreshTokenExpirationDays = int.Parse(configuration["Jwt:RefreshTokenExpirationDays"] ?? "90");
+        _invitationCodeService = invitationCodeService;
     }
 
     [HttpPost("register")]
@@ -231,6 +234,72 @@ public class AuthController : ControllerBase
             username,
             isAdmin
         });
+    }
+
+    /// <summary>
+    /// Validate an invitation code before registration
+    /// </summary>
+    [HttpPost("validate-invitation-code")]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(typeof(InvitationCodeValidationResult), StatusCodes.Status200OK)]
+    public async Task<ActionResult<InvitationCodeValidationResult>> ValidateInvitationCode(
+        [FromBody] ValidateInvitationCodeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _invitationCodeService.ValidateCodeAsync(request.Code, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Register with an invitation code
+    /// </summary>
+    [HttpPost("register-with-code")]
+    [EnableRateLimiting("auth")]
+    [ProducesResponseType(typeof(AuthResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(AuthResult), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> RegisterWithInvitationCode(
+        [FromBody] RegisterWithInvitationCodeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // First, validate the invitation code
+        var codeValidation = await _invitationCodeService.ValidateCodeAsync(request.InvitationCode, cancellationToken);
+        if (!codeValidation.IsValid)
+        {
+            return BadRequest(new AuthResult(false, Error: codeValidation.Error));
+        }
+
+        // Convert to standard registration request
+        var registerRequest = new RegisterRequest(
+            request.Email,
+            request.Username,
+            request.Password,
+            request.DisplayName);
+
+        // Perform standard registration
+        var result = await _authService.RegisterAsync(registerRequest, cancellationToken);
+
+        if (!result.Success || result.User == null)
+        {
+            return BadRequest(result);
+        }
+
+        // Mark the invitation code as used
+        try
+        {
+            await _invitationCodeService.UseCodeAsync(request.InvitationCode, result.User.UserId, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to mark invitation code as used for user {UserId}", result.User.UserId);
+            // Don't fail registration - code marking is non-critical
+        }
+
+        SetRefreshTokenCookie(result.RefreshToken!);
+        _logger.LogInformation(
+            "User registered via invitation code: {Email}",
+            PiiMaskingHelper.MaskEmail(request.Email));
+
+        return Ok(result);
     }
 
     private void SetRefreshTokenCookie(string token)

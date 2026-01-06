@@ -1,5 +1,16 @@
 // Post types
-export type PostType = 'Cycle' | 'Inventory';
+export type PostType = 'Cycle' | 'Inventory' | 'Feedback';
+
+export type FeedbackCategory =
+  | 'General'
+  | 'Cycles'
+  | 'Inventory'
+  | 'Tumblers'
+  | 'Gallery'
+  | 'Materials'
+  | 'Specimens'
+  | 'FAQ'
+  | 'Settings';
 
 export interface PostDto {
   postId: string;
@@ -7,6 +18,7 @@ export interface PostDto {
   cycleId: string | null;
   inventoryId: string | null;
   postType: PostType;
+  feedbackCategory: FeedbackCategory | null;
   title: string;
   description: string | null;
   status: string;
@@ -22,6 +34,7 @@ export interface PostDto {
 export interface PostListDto {
   postId: string;
   postType: PostType;
+  feedbackCategory: FeedbackCategory | null;
   title: string;
   description: string | null;
   publishedDate: string;
@@ -93,6 +106,7 @@ export interface InventoryPreviewDto {
 export interface CreatePostRequest {
   cycleId?: string;
   inventoryId?: string;
+  feedbackCategory?: FeedbackCategory;
   title: string;
   description?: string;
   photoIds?: string[];

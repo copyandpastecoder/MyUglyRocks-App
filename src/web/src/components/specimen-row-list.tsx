@@ -359,6 +359,8 @@ export function SpecimenRowList({
               commonName: option.commonName,
               scientificName: option.scientificName ?? undefined,
               tumblingDifficulty: option.tumblingDifficulty ?? undefined,
+              // Preserve inventorySpecimenId to maintain photo tag links
+              inventorySpecimenId: s.inventorySpecimenId,
             }
           : s
       )

@@ -102,7 +102,6 @@ public class SeedDataService
                 Username = "system",
                 Email = "system@myuglyrocks.local",
                 PasswordHash = "SYSTEM_USER_NO_LOGIN",
-                DisplayName = "System",
                 EmailVerified = true,
                 Role = UserRole.Admin,
                 DateCreated = DateTime.UtcNow,
@@ -125,7 +124,6 @@ public class SeedDataService
                 Email = "test@myuglyrocks.local",
                 // Password: "Test123!" - pre-hashed for convenience
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test123!"),
-                DisplayName = "Test User",
                 EmailVerified = true,
                 DateEmailVerified = now,
                 Role = UserRole.User,
@@ -183,7 +181,6 @@ public class SeedDataService
             Username = username,
             Email = normalizedEmail,
             PasswordHash = unusablePassword,
-            DisplayName = "Admin",
             EmailVerified = true, // Pre-verified so they can use forgot password
             DateEmailVerified = now,
             Role = UserRole.Admin,

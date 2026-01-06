@@ -174,6 +174,7 @@ try
     // Register application services
     builder.Services.AddScoped<ITokenService, TokenService>();
     builder.Services.AddScoped<IAuthService, AuthService>();
+    builder.Services.AddScoped<IInvitationCodeService, InvitationCodeService>();
     builder.Services.AddScoped<ITumblerService, TumblerService>();
     builder.Services.AddScoped<ICycleService, CycleService>();
     builder.Services.AddScoped<IReferenceDataService, ReferenceDataService>();

@@ -24,6 +24,7 @@ import {
   Menu,
   ChevronLeft,
   Package,
+  MessageSquare,
 } from 'lucide-react';
 import { getHelpTopicFromPath } from '@/data/help-content';
 
@@ -32,6 +33,7 @@ const navigation = [
   { name: 'Tumbling Cycles', href: '/cycles', icon: RotateCcw },
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Photo Gallery', href: '/gallery', icon: ImageIcon },
+  { name: 'Feedback', href: '/feedback', icon: MessageSquare },
   { name: 'My Tumblers', href: '/tumblers', icon: Cylinder },
 ];
 

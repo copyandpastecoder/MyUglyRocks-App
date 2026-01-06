@@ -79,8 +79,19 @@ export default function PostDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['post', postId] });
       queryClient.invalidateQueries({ queryKey: ['votes', postId] });
     },
-    onError: () => {
-      toast.error('Failed to update vote');
+    onError: (err) => {
+      // Check if this is a 409 Conflict (already voted)
+      const isAlreadyVoted = err instanceof Error && 
+        'response' in err && 
+        (err as any).response?.status === 409;
+      
+      if (!isAlreadyVoted) {
+        // Only show error for actual failures
+        toast.error('Failed to update vote');
+      }
+      // For 409, just let the query invalidation update the correct state
+      queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      queryClient.invalidateQueries({ queryKey: ['votes', postId] });
     },
   });
 
@@ -170,7 +181,7 @@ export default function PostDetailPage() {
         <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">{post.title}</h1>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>by {post.author.displayName || post.author.username}</span>
+            <span>by {post.author.username}</span>
             <span>-</span>
             <span>{formatDate(post.publishedDate, 'MMM d, yyyy')}</span>
           </div>
@@ -561,7 +572,7 @@ function CommentItem({
         <div className="flex-1 space-y-1">
           <div className="flex items-center gap-2">
             <span className="font-medium text-sm">
-              {comment.author.displayName || comment.author.username}
+              {comment.author.username}
             </span>
             <span className="text-xs text-muted-foreground">
               {formatDate(comment.dateCreated, 'MMM d, yyyy')}

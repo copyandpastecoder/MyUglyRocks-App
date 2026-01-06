@@ -16,17 +16,23 @@ public class AdminController : ControllerBase
     private readonly IReferenceDataService _referenceDataService;
     private readonly ISessionAnalyticsService _sessionAnalyticsService;
     private readonly IDatabaseBackupService _databaseBackupService;
+    private readonly IInvitationCodeService _invitationCodeService;
+    private readonly ILogger<AdminController> _logger;
 
     public AdminController(
         IAdminService adminService,
         IReferenceDataService referenceDataService,
         ISessionAnalyticsService sessionAnalyticsService,
-        IDatabaseBackupService databaseBackupService)
+        IDatabaseBackupService databaseBackupService,
+        IInvitationCodeService invitationCodeService,
+        ILogger<AdminController> logger)
     {
         _adminService = adminService;
         _referenceDataService = referenceDataService;
         _sessionAnalyticsService = sessionAnalyticsService;
         _databaseBackupService = databaseBackupService;
+        _invitationCodeService = invitationCodeService;
+        _logger = logger;
     }
 
     private Guid? GetCurrentUserId()
@@ -612,6 +618,122 @@ public class AdminController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    #endregion
+
+    #region Invitation Codes
+
+    /// <summary>
+    /// Generate one or more invitation codes (Admin only)
+    /// </summary>
+    [HttpPost("invitation-codes/generate")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<InvitationCodeDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<List<InvitationCodeDto>>> GenerateInvitationCodes(
+        [FromBody] CreateInvitationCodeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            var codes = await _invitationCodeService.GenerateCodesAsync(request, userId.Value, cancellationToken);
+            return CreatedAtAction(nameof(GetInvitationCodes), codes);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get all invitation codes with optional filtering (Admin only)
+    /// </summary>
+    [HttpGet("invitation-codes")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(PaginatedInvitationCodesResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedInvitationCodesResponse>> GetInvitationCodes(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? status = null,
+        [FromQuery] string? search = null,
+        CancellationToken cancellationToken = default)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var result = await _invitationCodeService.GetCodesAsync(
+            page, pageSize, status, search, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get a specific invitation code (Admin only)
+    /// </summary>
+    [HttpGet("invitation-codes/{codeId:guid}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(InvitationCodeDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<InvitationCodeDto>> GetInvitationCodeById(
+        Guid codeId,
+        CancellationToken cancellationToken = default)
+    {
+        var code = await _invitationCodeService.GetCodeByIdAsync(codeId, cancellationToken);
+        if (code == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(code);
+    }
+
+    /// <summary>
+    /// Revoke an invitation code (Admin only)
+    /// </summary>
+    [HttpPost("invitation-codes/{codeId:guid}/revoke")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevokeInvitationCode(
+        Guid codeId,
+        [FromBody] RevokeInvitationCodeRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = GetCurrentUserId();
+        if (!userId.HasValue)
+        {
+            return Unauthorized();
+        }
+
+        try
+        {
+            await _invitationCodeService.RevokeCodeAsync(codeId, userId.Value, request.Reason, cancellationToken);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning("Failed to revoke code {CodeId}: {Error}", codeId, ex.Message);
+            return NotFound();
+        }
+    }
+
+    /// <summary>
+    /// Get invitation code statistics (Admin only)
+    /// </summary>
+    [HttpGet("invitation-codes/stats")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(InvitationStatsDto), StatusCodes.Status200OK)]
+    public async Task<ActionResult<InvitationStatsDto>> GetInvitationCodeStats(
+        CancellationToken cancellationToken = default)
+    {
+        var stats = await _invitationCodeService.GetStatsAsync(cancellationToken);
+        return Ok(stats);
     }
 
     #endregion

@@ -209,8 +209,7 @@ public class AdminService : IAdminService
             search = search.ToLower();
             query = query.Where(u =>
                 u.Username.ToLower().Contains(search) ||
-                u.Email.ToLower().Contains(search) ||
-                (u.DisplayName != null && u.DisplayName.ToLower().Contains(search)));
+                u.Email.ToLower().Contains(search));
         }
 
         if (!string.IsNullOrEmpty(role) && Enum.TryParse<UserRole>(role, true, out var userRole))
@@ -233,7 +232,7 @@ public class AdminService : IAdminService
                 u.UserId,
                 u.Username,
                 u.Email,
-                u.DisplayName,
+                null,
                 u.Role.ToString(),
                 u.IsActive,
                 u.DateCreated,
@@ -263,7 +262,7 @@ public class AdminService : IAdminService
             UserId: user.UserId,
             Username: user.Username,
             Email: user.Email,
-            DisplayName: user.DisplayName,
+            DisplayName: null,
             Role: user.Role.ToString(),
             IsActive: user.IsActive,
             EmailVerified: user.EmailVerified,
@@ -307,7 +306,6 @@ public class AdminService : IAdminService
             Username = username,
             Email = normalizedEmail,
             PasswordHash = unusablePassword,
-            DisplayName = null,
             EmailVerified = true, // Pre-verified so they can use forgot password
             DateEmailVerified = now,
             Role = UserRole.User,
@@ -326,7 +324,7 @@ public class AdminService : IAdminService
             UserId: user.UserId,
             Username: user.Username,
             Email: user.Email,
-            DisplayName: user.DisplayName,
+            DisplayName: null,
             Role: user.Role.ToString(),
             IsActive: user.IsActive,
             EmailVerified: user.EmailVerified,
