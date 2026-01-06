@@ -392,6 +392,11 @@ export const postApi = {
     return response.data;
   },
 
+  getFeedback: async (category?: string, sort?: string, skip = 0, take = 20): Promise<PostListDto[]> => {
+    const response = await api.get<PostListDto[]>('/posts/feedback', { params: { category, sort, skip, take } });
+    return response.data;
+  },
+
   getById: async (id: string): Promise<PostDto> => {
     const response = await api.get<PostDto>(`/posts/${id}`);
     return response.data;

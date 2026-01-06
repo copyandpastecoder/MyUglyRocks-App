@@ -17,7 +17,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { LogOut, Settings, Shield, Menu, Home, RotateCcw, Cylinder, Package } from 'lucide-react';
+import { LogOut, Settings, Shield, Menu, Home, RotateCcw, Cylinder, Package, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,7 @@ const navItems = [
   { label: 'Cycles', href: '/cycles', icon: RotateCcw },
   { label: 'Tumblers', href: '/tumblers', icon: Cylinder },
   { label: 'Inventory', href: '/inventory', icon: Package },
+  { label: 'Feedback', href: '/feedback', icon: MessageSquare },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 

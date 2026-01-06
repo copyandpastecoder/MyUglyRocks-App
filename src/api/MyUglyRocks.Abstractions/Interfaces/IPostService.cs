@@ -6,6 +6,7 @@ public interface IPostService
 {
     // Post operations
     Task<IEnumerable<PostListDto>> GetPostsAsync(string? sortBy = null, int skip = 0, int take = 20);
+    Task<IEnumerable<PostListDto>> GetFeedbackPostsAsync(string? category = null, string? sortBy = null, int skip = 0, int take = 20);
     Task<PostDto?> GetPostByIdAsync(Guid postId, Guid? currentUserId = null);
     Task<IEnumerable<PostListDto>> GetUserPostsAsync(string username, int skip = 0, int take = 20);
     Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request);

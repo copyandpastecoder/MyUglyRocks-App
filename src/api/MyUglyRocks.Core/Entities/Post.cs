@@ -7,14 +7,42 @@ public enum PostStatus
     Removed = 2
 }
 
+public enum PostType
+{
+    Cycle = 0,
+    Inventory = 1,
+    Feedback = 2
+}
+
+public enum FeedbackCategory
+{
+    General = 0,
+    Cycles = 1,
+    Inventory = 2,
+    Tumblers = 3,
+    Gallery = 4,
+    Materials = 5,
+    Specimens = 6,
+    FAQ = 7,
+    Settings = 8
+}
+
 public class Post : SoftDeletableEntity
 {
     public Guid PostId { get; set; }
     public Guid UserId { get; set; }
 
-    // Either CycleId or InventoryId must be set (XOR constraint in DB)
+    // PostType determines whether this is a Cycle post, Inventory post, or Feedback post
+    public PostType PostType { get; set; } = PostType.Cycle;
+
+    // For Cycle and Inventory posts: Either CycleId or InventoryId must be set
+    // For Feedback posts: Both should be null
     public Guid? CycleId { get; set; }
     public Guid? InventoryId { get; set; }
+
+    // For Feedback posts: Category is required
+    // For Cycle/Inventory posts: Category is null
+    public FeedbackCategory? FeedbackCategory { get; set; }
 
     public required string Title { get; set; }
     public string? Description { get; set; }

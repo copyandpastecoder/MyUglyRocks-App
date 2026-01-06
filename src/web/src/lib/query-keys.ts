@@ -69,6 +69,8 @@ export const queryKeys = {
     all: ['posts'] as const,
     lists: () => [...queryKeys.posts.all, 'list'] as const,
     list: (sortBy?: string) => [...queryKeys.posts.lists(), { sortBy }] as const,
+    feedback: (category?: string, sortBy?: string) =>
+      [...queryKeys.posts.all, 'feedback', { category, sortBy }] as const,
     userPosts: (username: string) =>
       [...queryKeys.posts.all, 'user', username] as const,
     details: () => [...queryKeys.posts.all, 'detail'] as const,

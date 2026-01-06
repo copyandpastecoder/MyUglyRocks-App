@@ -19,6 +19,18 @@ export function usePosts(sortBy?: string) {
 }
 
 /**
+ * Hook to fetch feedback posts with optional category filter and sorting
+ * Uses medium cache time matching backend Redis cache (5 min)
+ */
+export function useFeedbackPosts(category?: string, sortBy?: string) {
+  return useQuery({
+    queryKey: queryKeys.posts.feedback(category, sortBy),
+    queryFn: () => postApi.getFeedback(category, sortBy === 'newest' ? undefined : sortBy),
+    ...cacheConfig.posts,
+  });
+}
+
+/**
  * Hook to fetch a single post by ID
  * Uses longer cache time for details (15 min)
  */

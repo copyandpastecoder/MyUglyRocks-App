@@ -26,6 +26,13 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.Property(p => p.InventoryId)
             .HasColumnName("inventory_id");
 
+        builder.Property(p => p.PostType)
+            .HasColumnName("post_type")
+            .HasDefaultValue(PostType.Cycle);
+
+        builder.Property(p => p.FeedbackCategory)
+            .HasColumnName("feedback_category");
+
         builder.Property(p => p.Title)
             .HasColumnName("title")
             .HasMaxLength(255)
@@ -65,10 +72,15 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             .HasColumnName("date_updated")
             .HasDefaultValueSql("now()");
 
-        // XOR constraint: exactly one of CycleId or InventoryId must be set
+        // Post type constraint:
+        // - Cycle posts: CycleId NOT NULL, InventoryId NULL
+        // - Inventory posts: CycleId NULL, InventoryId NOT NULL
+        // - Feedback posts: CycleId NULL, InventoryId NULL
         builder.ToTable(t => t.HasCheckConstraint(
             "chk_post_source_xor",
-            "(cycle_id IS NOT NULL AND inventory_id IS NULL) OR (cycle_id IS NULL AND inventory_id IS NOT NULL)"));
+            @"(post_type = 0 AND cycle_id IS NOT NULL AND inventory_id IS NULL) OR
+              (post_type = 1 AND cycle_id IS NULL AND inventory_id IS NOT NULL) OR
+              (post_type = 2 AND cycle_id IS NULL AND inventory_id IS NULL)"));
 
         // Relationships
         builder.HasOne(p => p.User)
@@ -115,6 +127,10 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         // Index for inventory posts lookup
         builder.HasIndex(p => p.InventoryId)
             .HasDatabaseName("ix_posts_inventory_id");
+
+        // Index for feedback category filtering
+        builder.HasIndex(p => new { p.PostType, p.FeedbackCategory, p.Status, p.PublishedDate })
+            .HasDatabaseName("ix_posts_feedback_category_status_date");
     }
 }
 
