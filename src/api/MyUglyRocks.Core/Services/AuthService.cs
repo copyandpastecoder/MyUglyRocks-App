@@ -25,6 +25,9 @@ public class AuthService : IAuthService
     private const string PasswordResetKeyPrefix = "pwd_reset:";
     private static readonly TimeSpan PasswordResetTokenExpiry = TimeSpan.FromHours(1);
 
+    private const string EmailVerificationKeyPrefix = "email_verify:";
+    private static readonly TimeSpan EmailVerificationTokenExpiry = TimeSpan.FromHours(24);
+
     // Account lockout settings
     private const int MaxFailedLoginAttempts = 5;
     private static readonly TimeSpan LockoutDuration = TimeSpan.FromMinutes(15);
@@ -116,17 +119,43 @@ public class AuthService : IAuthService
         await Users.AddAsync(user, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
 
-        // Generate tokens
-        var accessToken = _tokenService.GenerateAccessToken(user.UserId, user.Email, user.Username, user.Role == UserRole.Admin);
-        var refreshToken = await CreateRefreshTokenAsync(user.UserId, cancellationToken);
+        // Generate email verification token
+        var verificationToken = GenerateSecureToken();
+        var cacheKey = $"{EmailVerificationKeyPrefix}{verificationToken}";
 
-        return new AuthResult(
-            true,
-            accessToken,
-            refreshToken.Token,
-            DateTime.UtcNow.AddMinutes(15),
-            user.Adapt<UserDto>()
-        );
+        // Store token -> userId mapping in Redis with expiry
+        var tokenData = new EmailVerificationTokenData
+        {
+            UserId = user.UserId,
+            Email = user.Email,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _cacheService.SetAsync(cacheKey, tokenData, EmailVerificationTokenExpiry, cancellationToken);
+
+        // Build verification URL and send email
+        var verificationUrl = $"{_baseUrl}/verify-email?token={verificationToken}";
+
+        try
+        {
+            await _emailService.SendVerificationEmailAsync(
+                user.Email,
+                user.Username,
+                verificationUrl,
+                cancellationToken);
+
+            _logger.LogInformation("Verification email sent to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send verification email to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
+            // Remove the token from cache since email failed
+            await _cacheService.RemoveAsync(cacheKey, cancellationToken);
+            throw;
+        }
+
+        // Return success without tokens - user must verify email first
+        return new AuthResult(true, Error: null);
     }
 
     public async Task<AuthResult> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
@@ -176,6 +205,12 @@ public class AuthService : IAuthService
         if (!user.IsActive)
         {
             return new AuthResult(false, Error: "Account is deactivated");
+        }
+
+        // Check if email is verified
+        if (!user.EmailVerified)
+        {
+            return new AuthResult(false, Error: "Please verify your email address before logging in. Check your inbox for the verification link.");
         }
 
         // Reset failed login attempts on successful login
@@ -266,9 +301,56 @@ public class AuthService : IAuthService
 
     public async Task<bool> VerifyEmailAsync(string token, CancellationToken cancellationToken = default)
     {
-        // TODO: Implement with EmailVerificationToken entity
-        // For now, this is a placeholder that always returns true
-        await Task.CompletedTask;
+        var cacheKey = $"{EmailVerificationKeyPrefix}{token}";
+
+        // Atomically retrieve and remove token to prevent replay attacks
+        var tokenData = await _cacheService.GetAndRemoveAsync<EmailVerificationTokenData>(cacheKey, cancellationToken);
+
+        if (tokenData == null)
+        {
+            _logger.LogWarning("Invalid, expired, or already-used email verification token attempted");
+            return false;
+        }
+
+        // Get the user
+        var user = await Users.FirstOrDefaultAsync(u => u.UserId == tokenData.UserId, cancellationToken);
+
+        if (user == null)
+        {
+            _logger.LogWarning("Email verification token for non-existent user {UserId}", tokenData.UserId);
+            return false;
+        }
+
+        // Check if email is already verified
+        if (user.EmailVerified)
+        {
+            _logger.LogInformation("Email already verified for user {UserId}", user.UserId);
+            return true; // Return true anyway since the goal is achieved
+        }
+
+        // Mark email as verified
+        user.EmailVerified = true;
+        user.DateEmailVerified = DateTime.UtcNow;
+        user.DateUpdated = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        _logger.LogInformation("Email verified successfully for user {UserId}", user.UserId);
+
+        // Send welcome email
+        try
+        {
+            await _emailService.SendWelcomeEmailAsync(
+                user.Email,
+                user.Username,
+                cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Don't fail verification if welcome email fails
+            _logger.LogWarning(ex, "Failed to send welcome email to {Email}", PiiMaskingHelper.MaskEmail(user.Email));
+        }
+
         return true;
     }
 
@@ -409,6 +491,13 @@ public class AuthService : IAuthService
     }
 
     private class PasswordResetTokenData
+    {
+        public Guid UserId { get; set; }
+        public string Email { get; set; } = string.Empty;
+        public DateTime CreatedAt { get; set; }
+    }
+
+    private class EmailVerificationTokenData
     {
         public Guid UserId { get; set; }
         public string Email { get; set; } = string.Empty;

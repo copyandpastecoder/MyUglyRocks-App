@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Mail } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -35,7 +37,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [showVerificationAlert, setShowVerificationAlert] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login } = useAuth();
 
   const form = useForm<LoginFormData>({
@@ -45,6 +49,17 @@ export default function LoginPage() {
       password: '',
     },
   });
+
+  useEffect(() => {
+    // Check if user just registered
+    if (searchParams.get('registered') === 'true') {
+      setShowVerificationAlert(true);
+    }
+    // Show success toast if email was just verified
+    if (searchParams.get('verified') === 'true') {
+      toast.success('Email verified successfully! You can now log in.');
+    }
+  }, [searchParams]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -74,6 +89,14 @@ export default function LoginPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {showVerificationAlert && (
+          <Alert className="mb-4 bg-blue-50 border-blue-200">
+            <Mail className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-800">
+              Account created successfully! Please check your email and click the verification link before logging in.
+            </AlertDescription>
+          </Alert>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField

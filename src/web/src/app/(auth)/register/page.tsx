@@ -43,6 +43,10 @@ const registerSchema = z.object({
     .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
     .regex(/[0-9]/, 'Password must contain at least one number')
     .regex(/[!@#$%^&*(),.?":{}|<>\[\];'~_+\-=\/]/, 'Password must contain at least one special character'),
+  confirmPassword: z.string().min(1, 'Please confirm your password'),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ['confirmPassword'],
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -60,6 +64,7 @@ export default function RegisterPage() {
       email: '',
       username: '',
       password: '',
+      confirmPassword: '',
     },
   });
 
@@ -115,8 +120,9 @@ export default function RegisterPage() {
       const result: AuthResult = await response.json();
 
       if (result.success) {
-        toast.success('Welcome to MyUglyRocks!');
-        router.push('/dashboard');
+        toast.success('Account created! Please check your email to verify your account.');
+        // Redirect to login with a message
+        router.push('/login?registered=true');
       } else {
         toast.error(result.error || 'Registration failed');
       }
@@ -244,6 +250,23 @@ export default function RegisterPage() {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="confirmPassword"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Confirm Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="password"
+                      placeholder="Confirm your password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Button
               type="submit"
