@@ -118,9 +118,9 @@ export function useVoteMutation() {
     },
     onError: (err, _vars, context) => {
       // Check if this is a 409 Conflict (already voted)
-      const isAlreadyVoted = err instanceof Error && 
-        'response' in err && 
-        (err as any).response?.status === 409;
+      const isAlreadyVoted = err instanceof Error &&
+        'response' in err &&
+        (err as { response?: { status?: number } }).response?.status === 409;
       
       if (!isAlreadyVoted) {
         // Only rollback and show error for actual failures
