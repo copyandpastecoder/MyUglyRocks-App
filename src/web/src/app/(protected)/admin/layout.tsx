@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/providers/auth-provider';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Flag, Users, ShieldAlert, Gem, FlaskConical, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Flag, Users, ShieldAlert, Gem, FlaskConical, BarChart3, Mail } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const adminNavItems = [
@@ -22,6 +22,12 @@ const adminNavItems = [
     title: 'Users',
     href: '/admin/users',
     icon: Users,
+    adminOnly: true,
+  },
+  {
+    title: 'Invitations',
+    href: '/admin/invitations',
+    icon: Mail,
     adminOnly: true,
   },
   {

@@ -59,17 +59,15 @@ const formSchema = z.object({
     'Specimens',
     'FAQ',
     'Settings',
-  ], {
-    required_error: 'Please select a category',
-  }),
+  ] as const),
   title: z
     .string()
     .min(1, 'Title is required')
     .max(200, 'Title must be at most 200 characters'),
   description: z
     .string()
-    .max(2000, 'Description must be at most 2000 characters')
-    .optional(),
+    .min(1, 'Comment is required')
+    .max(2000, 'Comment must be at most 2000 characters'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -108,9 +106,10 @@ export function CreateFeedbackDialog({ open, onOpenChange }: CreateFeedbackDialo
 
       // Navigate to the new feedback post
       router.push(`/feedback/${newPost.postId}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating feedback:', error);
-      toast.error(error?.response?.data?.error || 'Failed to create feedback');
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err?.response?.data?.error || 'Failed to create feedback');
     } finally {
       setIsSubmitting(false);
     }
@@ -182,7 +181,7 @@ export function CreateFeedbackDialog({ open, onOpenChange }: CreateFeedbackDialo
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description (optional)</FormLabel>
+                  <FormLabel>Comment *</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Provide more details about your feedback..."
@@ -192,7 +191,7 @@ export function CreateFeedbackDialog({ open, onOpenChange }: CreateFeedbackDialo
                     />
                   </FormControl>
                   <FormDescription>
-                    {(field.value?.length || 0)}/2000 characters
+                    {field.value.length}/2000 characters
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

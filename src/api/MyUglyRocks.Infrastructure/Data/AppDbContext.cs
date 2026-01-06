@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<UserSettings> UserSettings => Set<UserSettings>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<InvitationCode> InvitationCodes => Set<InvitationCode>();
 
     // Tumbler entities
     public DbSet<TumblerModel> TumblerModels => Set<TumblerModel>();

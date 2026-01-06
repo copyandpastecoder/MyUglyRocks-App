@@ -621,7 +621,7 @@ public class PostService : IPostService
             {
                 UserId = post.User.UserId,
                 Username = post.User.Username,
-                DisplayName = post.User.DisplayName,
+                DisplayName = null,
                 AvatarUrl = post.User.AvatarUrl
             },
             SourceType = sourceType,
@@ -780,7 +780,7 @@ public class PostService : IPostService
             {
                 UserId = post.User.UserId,
                 Username = post.User.Username,
-                DisplayName = post.User.DisplayName,
+                DisplayName = null,
                 AvatarUrl = post.User.AvatarUrl
             },
             Cycle = cyclePreview,
@@ -804,7 +804,7 @@ public class PostService : IPostService
             {
                 UserId = comment.User.UserId,
                 Username = comment.User.Username,
-                DisplayName = comment.User.DisplayName,
+                DisplayName = null,
                 AvatarUrl = comment.User.AvatarUrl
             },
             Replies = comment.Replies?.Select(MapCommentToDto) ?? []
@@ -816,6 +816,18 @@ public class PostService : IPostService
         await _cache.RemoveAsync($"{PostsListCacheKey}newest");
         await _cache.RemoveAsync($"{PostsListCacheKey}votes");
         await _cache.RemoveAsync($"{PostsListCacheKey}comments");
+        
+        // Invalidate feedback caches for all categories and sort orders
+        var feedbackCategories = new[] { "all", "general", "cycles", "inventory", "tumblers", "gallery", "materials", "specimens", "faq", "settings" };
+        var sortOrders = new[] { "newest", "votes", "comments" };
+        
+        foreach (var category in feedbackCategories)
+        {
+            foreach (var sort in sortOrders)
+            {
+                await _cache.RemoveAsync($"{PostsListCacheKey}feedback:{category}:{sort}");
+            }
+        }
     }
 
     #endregion

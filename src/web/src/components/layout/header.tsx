@@ -38,14 +38,7 @@ export function Header() {
 
   const isAdminOrMod = user?.role === 'Admin' || user?.role === 'Moderator';
 
-  const initials = user?.displayName
-    ? user.displayName
-        .split(' ')
-        .map((n) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : user?.username?.slice(0, 2).toUpperCase() ?? 'U';
+  const initials = user?.username?.slice(0, 2).toUpperCase() ?? 'U';
 
   return (
     <>
@@ -67,7 +60,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src={user?.avatarUrl ?? undefined} alt={user?.displayName ?? user?.username} />
+                    <AvatarImage src={user?.avatarUrl ?? undefined} alt={user?.username} />
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {initials}
                     </AvatarFallback>
@@ -77,9 +70,7 @@ export function Header() {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    {user?.displayName && (
-                      <p className="font-medium">{user.displayName}</p>
-                    )}
+                    <p className="font-medium">@{user?.username}</p>
                     <p className="text-sm text-muted-foreground">
                       {user?.email}
                     </p>

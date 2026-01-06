@@ -70,17 +70,19 @@ export default function FeedbackPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 space-y-4">
         {/* Category Tabs */}
-        <Tabs value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as FeedbackCategory | 'All')}>
-          <TabsList className="grid w-full grid-cols-5 lg:grid-cols-10">
-            {categories.map((cat) => (
-              <TabsTrigger key={cat.value} value={cat.value} className="text-xs sm:text-sm">
-                {cat.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <div className="-mx-4 px-4 sm:mx-0 sm:px-0">
+          <Tabs value={selectedCategory} onValueChange={(v) => setSelectedCategory(v as FeedbackCategory | 'All')}>
+            <TabsList className="inline-flex w-auto flex-wrap gap-1 h-auto">
+              {categories.map((cat) => (
+                <TabsTrigger key={cat.value} value={cat.value} className="shrink-0">
+                  {cat.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
 
         {/* Sort */}
         <div className="flex items-center gap-2">
@@ -156,7 +158,7 @@ export default function FeedbackPage() {
                   <span>
                     by{' '}
                     <span className="font-medium text-foreground">
-                      {post.author.displayName || post.author.username}
+                      {post.author.username}
                     </span>
                   </span>
                   <span>

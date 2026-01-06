@@ -49,3 +49,61 @@ export interface ResetPasswordRequest {
   token: string;
   newPassword: string;
 }
+
+// Invitation code types
+export interface RegisterWithInvitationCodeRequest {
+  email: string;
+  username: string;
+  password: string;
+  displayName?: string;
+  invitationCode: string;
+}
+
+export interface ValidateInvitationCodeRequest {
+  code: string;
+}
+
+export interface InvitationCodeValidationResult {
+  isValid: boolean;
+  error?: string;
+  invitationCodeId?: string;
+}
+
+export interface InvitationCodeDto {
+  invitationCodeId: string;
+  code: string;
+  dateCreated: string;
+  dateUsed?: string;
+  usedByUserId?: string;
+  usedByUsername?: string;
+  dateExpires?: string;
+  isRevoked: boolean;
+  dateRevoked?: string;
+  description?: string;
+  status: 'Unused' | 'Used' | 'Expired' | 'Revoked';
+}
+
+export interface CreateInvitationCodeRequest {
+  quantity: number;
+  description?: string;
+  expiresAt?: string;
+}
+
+export interface PaginatedInvitationCodesResponse {
+  codes: InvitationCodeDto[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface RevokeInvitationCodeRequest {
+  reason: string;
+}
+
+export interface InvitationStatsDto {
+  totalCodesGenerated: number;
+  codesUsed: number;
+  codesExpired: number;
+  codesRevoked: number;
+  codesAvailable: number;
+}

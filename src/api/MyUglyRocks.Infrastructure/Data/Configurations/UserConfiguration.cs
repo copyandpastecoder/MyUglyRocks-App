@@ -31,10 +31,6 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(255)
             .IsRequired();
 
-        builder.Property(u => u.DisplayName)
-            .HasColumnName("display_name")
-            .HasMaxLength(100);
-
         builder.Property(u => u.Bio)
             .HasColumnName("bio");
 
@@ -84,6 +80,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.DateOnboardingCompleted)
             .HasColumnName("date_onboarding_completed");
 
+        builder.Property(u => u.InvitedByUserId)
+            .HasColumnName("invited_by_user_id");
+
         builder.Property(u => u.DateCreated)
             .HasColumnName("date_created")
             .HasDefaultValueSql("now()");
@@ -96,6 +95,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasOne(u => u.Settings)
             .WithOne(s => s.User)
             .HasForeignKey<UserSettings>(s => s.UserId);
+
+        builder.HasOne(u => u.InvitedByUser)
+            .WithMany(u => u.InvitedUsers)
+            .HasForeignKey(u => u.InvitedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // Indexes
         builder.HasIndex(u => u.Email)

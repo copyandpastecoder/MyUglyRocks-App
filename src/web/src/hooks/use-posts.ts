@@ -116,12 +116,20 @@ export function useVoteMutation() {
 
       return { previousPosts };
     },
-    onError: (_err, _vars, context) => {
-      // Rollback on error
-      context?.previousPosts.forEach(([queryKey, data]) => {
-        queryClient.setQueryData(queryKey, data);
-      });
-      toast.error('Failed to update vote');
+    onError: (err, _vars, context) => {
+      // Check if this is a 409 Conflict (already voted)
+      const isAlreadyVoted = err instanceof Error && 
+        'response' in err && 
+        (err as any).response?.status === 409;
+      
+      if (!isAlreadyVoted) {
+        // Only rollback and show error for actual failures
+        context?.previousPosts.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+        toast.error('Failed to update vote');
+      }
+      // For 409, just let the refetch update the correct state silently
     },
     onSettled: (_data, _error, variables) => {
       // Always refetch after mutation settles

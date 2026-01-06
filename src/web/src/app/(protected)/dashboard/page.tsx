@@ -38,7 +38,7 @@ export default function DashboardPage() {
       <div className={PAGE_CONTAINER_LOOSE}>
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-heading">
-            Welcome back, {user?.displayName || user?.username}!
+            Welcome back, {user?.username}!
           </h1>
           <p className="text-muted-foreground mt-2">
             Track your rock tumbling journey

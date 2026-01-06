@@ -17,7 +17,6 @@ import { PageTransition } from '@/components/ui/page-transition';
 export default function ProfileSettingsPage() {
   const queryClient = useQueryClient();
   const { formatDate } = useTimezone();
-  const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -37,7 +36,6 @@ export default function ProfileSettingsPage() {
   // Initialize form when profile loads
   useState(() => {
     if (profile) {
-      setDisplayName(profile.displayName || '');
       setBio(profile.bio || '');
     }
   });
@@ -87,17 +85,12 @@ export default function ProfileSettingsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate({
-      displayName: displayName || undefined,
       bio: bio || undefined,
     });
   };
 
-  const handleChange = (field: 'displayName' | 'bio', value: string) => {
-    if (field === 'displayName') {
-      setDisplayName(value);
-    } else {
-      setBio(value);
-    }
+  const handleChange = (value: string) => {
+    setBio(value);
     setHasChanges(true);
   };
 
@@ -128,7 +121,7 @@ export default function ProfileSettingsPage() {
                   {profile?.avatarUrl ? (
                     <img
                       src={profile.avatarUrl}
-                      alt={profile.displayName || profile.username}
+                      alt={profile.username}
                       className="h-20 w-20 rounded-full object-cover"
                     />
                   ) : (
@@ -237,25 +230,11 @@ export default function ProfileSettingsPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="displayName">Display Name</Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => handleChange('displayName', e.target.value)}
-                placeholder={profile?.username || 'Enter a display name'}
-                maxLength={50}
-              />
-              <p className="text-xs text-muted-foreground">
-                This is how your name will appear to others
-              </p>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>
               <Textarea
                 id="bio"
                 value={bio}
-                onChange={(e) => handleChange('bio', e.target.value)}
+                onChange={(e) => handleChange(e.target.value)}
                 placeholder="Tell us about yourself and your rock tumbling journey..."
                 rows={4}
                 maxLength={500}

@@ -316,9 +316,7 @@ export default function UserManagementPage() {
                         <TableCell>
                           <div>
                             <p className="font-medium">{user.username}</p>
-                            {user.displayName && (
-                              <p className="text-sm text-muted-foreground">{user.displayName}</p>
-                            )}
+
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.email}</TableCell>

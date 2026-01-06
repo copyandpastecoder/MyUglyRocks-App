@@ -6,19 +6,21 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
-import { ThumbsUp, ArrowLeft, MessageCircle } from 'lucide-react';
+import { ThumbsUp, ArrowLeft, MessageCircle, User } from 'lucide-react';
 import Link from 'next/link';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { useAuth } from '@/providers/auth-provider';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { CommentDto } from '@/types/post';
 
 export default function FeedbackDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const { id } = resolvedParams;
   const { user, isAuthenticated } = useAuth();
   const [commentText, setCommentText] = useState('');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
 
   const { data: post, isLoading: postLoading } = usePost(id);
   const { data: comments, isLoading: commentsLoading } = useComments(id);
@@ -36,11 +38,13 @@ export default function FeedbackDetailPage({ params }: { params: Promise<{ id: s
     try {
       await addCommentMutation.mutateAsync({
         content: commentText,
+        parentCommentId: replyingTo || undefined,
       });
       setCommentText('');
-      toast.success('Comment added successfully');
+      setReplyingTo(null);
+      toast.success(replyingTo ? 'Reply added successfully' : 'Comment added successfully');
     } catch (error) {
-      toast.error('Failed to add comment');
+      toast.error(replyingTo ? 'Failed to add reply' : 'Failed to add comment');
     }
   };
 
@@ -112,11 +116,11 @@ export default function FeedbackDetailPage({ params }: { params: Promise<{ id: s
             <Avatar className="h-10 w-10">
               <AvatarImage src={post.author.avatarUrl || undefined} />
               <AvatarFallback>
-                {post.author.displayName?.[0] || post.author.username[0].toUpperCase()}
+                {post.author.username[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <p className="font-medium">{post.author.displayName || post.author.username}</p>
+              <p className="font-medium">{post.author.username}</p>
               <p className="text-sm text-muted-foreground">
                 {formatDistanceToNow(new Date(post.publishedDate), { addSuffix: true })}
               </p>
@@ -154,17 +158,28 @@ export default function FeedbackDetailPage({ params }: { params: Promise<{ id: s
           <Card className="mb-6">
             <CardContent className="pt-6">
               <Textarea
-                placeholder="Add a comment..."
+                placeholder={replyingTo ? 'Write a reply...' : 'Add a comment...'}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 className="mb-4 min-h-[100px]"
               />
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                {replyingTo && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setReplyingTo(null)}
+                  >
+                    Cancel reply
+                  </Button>
+                )}
                 <Button
                   onClick={handleSubmitComment}
                   disabled={!commentText.trim() || addCommentMutation.isPending}
+                  className="ml-auto"
                 >
-                  {addCommentMutation.isPending ? 'Posting...' : 'Post Comment'}
+                  {addCommentMutation.isPending ? 'Posting...' : replyingTo ? 'Post Reply' : 'Post Comment'}
                 </Button>
               </div>
             </CardContent>
@@ -187,36 +202,84 @@ export default function FeedbackDetailPage({ params }: { params: Promise<{ id: s
         {!commentsLoading && comments && comments.length > 0 && (
           <div className="space-y-4">
             {comments.map((comment) => (
-              <Card key={comment.commentId}>
-                <CardContent className="pt-6">
-                  <div className="mb-4 flex items-start gap-4">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={comment.author.avatarUrl || undefined} />
-                      <AvatarFallback>
-                        {comment.author.displayName?.[0] || comment.author.username[0].toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">
-                          {comment.author.displayName || comment.author.username}
-                        </p>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDistanceToNow(new Date(comment.dateCreated), { addSuffix: true })}
-                        </span>
-                        {comment.isEdited && (
-                          <span className="text-xs text-muted-foreground">(edited)</span>
-                        )}
-                      </div>
-                      <p className="mt-2 whitespace-pre-wrap text-sm">{comment.content}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <CommentItem
+                key={comment.commentId}
+                comment={comment}
+                onReply={(id) => setReplyingTo(id)}
+                currentUserId={user?.userId}
+              />
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function CommentItem({
+  comment,
+  onReply,
+  currentUserId,
+  depth = 0,
+}: {
+  comment: CommentDto;
+  onReply: (id: string) => void;
+  currentUserId?: string;
+  depth?: number;
+}) {
+  const maxDepth = 3;
+
+  return (
+    <div className={depth > 0 ? 'ml-8 border-l-2 pl-4' : ''}>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarImage src={comment.author.avatarUrl || undefined} />
+              <AvatarFallback>
+                <User className="h-4 w-4" />
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-sm">
+                  {comment.author.username}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {format(new Date(comment.dateCreated), 'MMM d, yyyy')}
+                </span>
+                {comment.isEdited && (
+                  <span className="text-xs text-muted-foreground">(edited)</span>
+                )}
+              </div>
+              <p className="text-sm">{comment.content}</p>
+              {depth < maxDepth && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => onReply(comment.commentId)}
+                >
+                  Reply
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      {comment.replies?.length > 0 && (
+        <div className="mt-3 space-y-3">
+          {comment.replies.map((reply) => (
+            <CommentItem
+              key={reply.commentId}
+              comment={reply}
+              onReply={onReply}
+              currentUserId={currentUserId}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

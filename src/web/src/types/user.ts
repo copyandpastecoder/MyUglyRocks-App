@@ -11,7 +11,6 @@ export interface UserProfileDto {
 }
 
 export interface UpdateProfileRequest {
-  displayName?: string;
   bio?: string;
 }
 
