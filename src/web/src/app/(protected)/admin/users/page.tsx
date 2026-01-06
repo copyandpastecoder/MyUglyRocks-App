@@ -314,10 +314,7 @@ export default function UserManagementPage() {
                     return (
                       <TableRow key={user.userId}>
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{user.username}</p>
-
-                          </div>
+                          <p className="font-medium">{user.username}</p>
                         </TableCell>
                         <TableCell className="text-muted-foreground">{user.email}</TableCell>
                         <TableCell>

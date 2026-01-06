@@ -365,7 +365,6 @@ public class ExportService : IExportService
         sb.AppendLine($"UserId,{EscapeCsvField(user.UserId.ToString())}");
         sb.AppendLine($"Username,{EscapeCsvField(user.Username)}");
         sb.AppendLine($"Email,{EscapeCsvField(user.Email)}");
-        sb.AppendLine($"Username,{EscapeCsvField(user.Username)}");
         sb.AppendLine($"Bio,{EscapeCsvField(user.Bio)}");
         sb.AppendLine($"Role,{user.Role}");
         sb.AppendLine($"EmailVerified,{(user.EmailVerified ? "Yes" : "No")}");
