@@ -77,6 +77,56 @@ public class PostService : IPostService
         return result;
     }
 
+    public async Task<IEnumerable<PostListDto>> GetFeedbackPostsAsync(string? category = null, string? sortBy = null, int skip = 0, int take = 20)
+    {
+        // Cache only the first page of results
+        var isFirstPage = skip == 0 && take <= 20;
+        var sortKey = sortBy?.ToLower() ?? "newest";
+        var categoryKey = category?.ToLower() ?? "all";
+        var cacheKey = $"{PostsListCacheKey}feedback:{categoryKey}:{sortKey}";
+
+        if (isFirstPage)
+        {
+            var cached = await _cache.GetAsync<List<PostListDto>>(cacheKey);
+            if (cached != null)
+                return cached;
+        }
+
+        var query = _context.Set<Post>()
+            .Include(p => p.User)
+            .Include(p => p.PostPhotos)
+                .ThenInclude(pp => pp.Photo)
+            .Where(p => p.PostType == PostType.Feedback && p.Status == PostStatus.Published);
+
+        // Filter by category if provided
+        if (!string.IsNullOrEmpty(category) && Enum.TryParse<FeedbackCategory>(category, true, out var feedbackCategory))
+        {
+            query = query.Where(p => p.FeedbackCategory == feedbackCategory);
+        }
+
+        query = sortBy?.ToLower() switch
+        {
+            "votes" => query.OrderByDescending(p => p.VoteCount),
+            "comments" => query.OrderByDescending(p => p.CommentCount),
+            _ => query.OrderByDescending(p => p.PublishedDate)
+        };
+
+        var posts = await query
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync();
+
+        var result = posts.Select(MapToListDto).ToList();
+
+        // Cache first page results
+        if (isFirstPage)
+        {
+            await _cache.SetAsync(cacheKey, result, ListCacheDuration);
+        }
+
+        return result;
+    }
+
     public async Task<PostDto?> GetPostByIdAsync(Guid postId, Guid? currentUserId = null)
     {
         var cacheKey = $"{PostsCacheKeyPrefix}{postId}";
@@ -141,16 +191,38 @@ public class PostService : IPostService
 
     public async Task<PostDto> CreatePostAsync(Guid userId, CreatePostRequest request)
     {
-        // Validate that exactly one of CycleId or InventoryId is provided
-        if (!request.CycleId.HasValue && !request.InventoryId.HasValue)
-            throw new InvalidOperationException("Either CycleId or InventoryId must be provided");
+        // Validate post type based on provided fields
+        var hasCycleId = request.CycleId.HasValue;
+        var hasInventoryId = request.InventoryId.HasValue;
+        var hasFeedbackCategory = !string.IsNullOrEmpty(request.FeedbackCategory);
 
-        if (request.CycleId.HasValue && request.InventoryId.HasValue)
-            throw new InvalidOperationException("Only one of CycleId or InventoryId can be provided");
+        // Exactly one of the three types must be specified
+        if ((hasCycleId && hasInventoryId) || (hasCycleId && hasFeedbackCategory) || (hasInventoryId && hasFeedbackCategory))
+            throw new InvalidOperationException("Only one of CycleId, InventoryId, or FeedbackCategory can be provided");
+
+        if (!hasCycleId && !hasInventoryId && !hasFeedbackCategory)
+            throw new InvalidOperationException("Either CycleId, InventoryId, or FeedbackCategory must be provided");
 
         Post post;
 
-        if (request.CycleId.HasValue)
+        if (hasFeedbackCategory)
+        {
+            // Feedback post
+            if (!Enum.TryParse<FeedbackCategory>(request.FeedbackCategory, true, out var feedbackCategory))
+                throw new InvalidOperationException($"Invalid feedback category: {request.FeedbackCategory}");
+
+            post = new Post
+            {
+                UserId = userId,
+                PostType = PostType.Feedback,
+                FeedbackCategory = feedbackCategory,
+                Title = request.Title,
+                Description = request.Description,
+                Status = PostStatus.Published,
+                PublishedDate = DateTime.UtcNow
+            };
+        }
+        else if (request.CycleId.HasValue)
         {
             var cycle = await _context.Set<Cycle>()
                 .Include(c => c.StageRuns)
@@ -172,6 +244,7 @@ public class PostService : IPostService
             post = new Post
             {
                 UserId = userId,
+                PostType = PostType.Cycle,
                 CycleId = request.CycleId,
                 Title = request.Title,
                 Description = request.Description,
@@ -202,6 +275,7 @@ public class PostService : IPostService
             post = new Post
             {
                 UserId = userId,
+                PostType = PostType.Inventory,
                 InventoryId = request.InventoryId,
                 Title = request.Title,
                 Description = request.Description,
@@ -483,7 +557,7 @@ public class PostService : IPostService
 
     private static PostListDto MapToListDto(Post post)
     {
-        var postType = post.CycleId.HasValue ? "Cycle" : "Inventory";
+        var postType = post.PostType.ToString();
 
         // Get cover photo and photo count - different sources for cycle vs inventory posts
         string? coverPhotoUrl = null;
@@ -533,6 +607,7 @@ public class PostService : IPostService
         {
             PostId = post.PostId,
             PostType = postType,
+            FeedbackCategory = post.FeedbackCategory?.ToString(),
             Title = post.Title,
             Description = post.Description,
             PublishedDate = post.PublishedDate,
@@ -546,7 +621,7 @@ public class PostService : IPostService
             {
                 UserId = post.User.UserId,
                 Username = post.User.Username,
-                DisplayName = post.User.DisplayName,
+                DisplayName = null,
                 AvatarUrl = post.User.AvatarUrl
             },
             SourceType = sourceType,
@@ -557,7 +632,7 @@ public class PostService : IPostService
 
     private static PostDto MapToDto(Post post)
     {
-        var postType = post.CycleId.HasValue ? "Cycle" : "Inventory";
+        var postType = post.PostType.ToString();
 
         CyclePreviewDto? cyclePreview = null;
         InventoryPreviewDto? inventoryPreview = null;
@@ -694,6 +769,7 @@ public class PostService : IPostService
             CycleId = post.CycleId,
             InventoryId = post.InventoryId,
             PostType = postType,
+            FeedbackCategory = post.FeedbackCategory?.ToString(),
             Title = post.Title,
             Description = post.Description,
             Status = post.Status.ToString(),
@@ -704,7 +780,7 @@ public class PostService : IPostService
             {
                 UserId = post.User.UserId,
                 Username = post.User.Username,
-                DisplayName = post.User.DisplayName,
+                DisplayName = null,
                 AvatarUrl = post.User.AvatarUrl
             },
             Cycle = cyclePreview,
@@ -728,7 +804,7 @@ public class PostService : IPostService
             {
                 UserId = comment.User.UserId,
                 Username = comment.User.Username,
-                DisplayName = comment.User.DisplayName,
+                DisplayName = null,
                 AvatarUrl = comment.User.AvatarUrl
             },
             Replies = comment.Replies?.Select(MapCommentToDto) ?? []
@@ -740,6 +816,18 @@ public class PostService : IPostService
         await _cache.RemoveAsync($"{PostsListCacheKey}newest");
         await _cache.RemoveAsync($"{PostsListCacheKey}votes");
         await _cache.RemoveAsync($"{PostsListCacheKey}comments");
+        
+        // Invalidate feedback caches for all categories and sort orders
+        var feedbackCategories = new[] { "all", "general", "cycles", "inventory", "tumblers", "gallery", "materials", "specimens", "faq", "settings" };
+        var sortOrders = new[] { "newest", "votes", "comments" };
+        
+        foreach (var category in feedbackCategories)
+        {
+            foreach (var sort in sortOrders)
+            {
+                await _cache.RemoveAsync($"{PostsListCacheKey}feedback:{category}:{sort}");
+            }
+        }
     }
 
     #endregion

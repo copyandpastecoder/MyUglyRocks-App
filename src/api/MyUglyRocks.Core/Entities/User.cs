@@ -13,7 +13,6 @@ public class User : BaseEntity
     public required string Email { get; set; }
     public required string Username { get; set; }
     public required string PasswordHash { get; set; }
-    public string? DisplayName { get; set; }
     public string? Bio { get; set; }
     public string? AvatarUrl { get; set; }
     public UserRole Role { get; set; } = UserRole.User;
@@ -29,6 +28,12 @@ public class User : BaseEntity
     public bool OnboardingCompleted { get; set; }
     public DateTime? DateOnboardingCompleted { get; set; }
 
+    /// <summary>
+    /// The user who invited this user via invitation code.
+    /// Null if user registered without a code or was created directly by admin.
+    /// </summary>
+    public Guid? InvitedByUserId { get; set; }
+
     // Navigation properties
     public virtual UserSettings? Settings { get; set; }
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = [];
@@ -36,4 +41,9 @@ public class User : BaseEntity
     public virtual ICollection<Cycle> Cycles { get; set; } = [];
     public virtual ICollection<Post> Posts { get; set; } = [];
     public virtual ICollection<UserSession> Sessions { get; set; } = [];
+
+    // Invitation relationships
+    public virtual User? InvitedByUser { get; set; }
+    public virtual ICollection<User> InvitedUsers { get; set; } = [];
+    public virtual ICollection<InvitationCode> CreatedInvitationCodes { get; set; } = [];
 }

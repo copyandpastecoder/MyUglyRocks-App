@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MyUglyRocks.Infrastructure.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MyUglyRocks.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260106010422_AddInvitationCodeSystem")]
+    partial class AddInvitationCodeSystem
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1402,10 +1405,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("description");
 
-                    b.Property<int?>("FeedbackCategory")
-                        .HasColumnType("integer")
-                        .HasColumnName("feedback_category");
-
                     b.Property<Guid?>("InventoryId")
                         .HasColumnType("uuid")
                         .HasColumnName("inventory_id");
@@ -1415,12 +1414,6 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
-
-                    b.Property<int>("PostType")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0)
-                        .HasColumnName("post_type");
 
                     b.Property<DateTime>("PublishedDate")
                         .HasColumnType("timestamp with time zone")
@@ -1476,12 +1469,9 @@ namespace MyUglyRocks.Infrastructure.Migrations
                     b.HasIndex("UserId", "Status", "PublishedDate")
                         .HasDatabaseName("ix_posts_user_status_date");
 
-                    b.HasIndex("PostType", "FeedbackCategory", "Status", "PublishedDate")
-                        .HasDatabaseName("ix_posts_feedback_category_status_date");
-
                     b.ToTable("posts", null, t =>
                         {
-                            t.HasCheckConstraint("chk_post_source_xor", "(post_type = 0 AND cycle_id IS NOT NULL AND inventory_id IS NULL) OR\r\n              (post_type = 1 AND cycle_id IS NULL AND inventory_id IS NOT NULL) OR\r\n              (post_type = 2 AND cycle_id IS NULL AND inventory_id IS NULL)");
+                            t.HasCheckConstraint("chk_post_source_xor", "(cycle_id IS NOT NULL AND inventory_id IS NULL) OR (cycle_id IS NULL AND inventory_id IS NOT NULL)");
                         });
                 });
 
@@ -2184,6 +2174,11 @@ namespace MyUglyRocks.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("date_updated")
                         .HasDefaultValueSql("now()");
+
+                    b.Property<string>("DisplayName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("display_name");
 
                     b.Property<string>("Email")
                         .IsRequired()

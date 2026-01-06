@@ -167,7 +167,7 @@ function PostRow({
             <>
               {post.photoCount} photo{post.photoCount !== 1 ? 's' : ''}
               {' · '}
-              {post.author.displayName || post.author.username}
+              {post.author.username}
             </>
           )}
         </p>

@@ -52,9 +52,6 @@ public class UserService : IUserService
 
         if (user == null) return null;
 
-        if (request.DisplayName != null)
-            user.DisplayName = request.DisplayName;
-
         if (request.Bio != null)
             user.Bio = request.Bio;
 

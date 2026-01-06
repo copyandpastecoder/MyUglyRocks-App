@@ -183,7 +183,6 @@ public class DemoUserSeedService
             Username = "DemoUser",
             Email = _demoEmail!,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(_demoPassword!),
-            DisplayName = "Demo User",
             EmailVerified = true,
             DateEmailVerified = now.AddMonths(-12),
             Role = UserRole.User,

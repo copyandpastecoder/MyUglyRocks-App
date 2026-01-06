@@ -87,19 +87,6 @@ public class AuthService : IAuthService
             return new AuthResult(false, Error: string.Join("; ", emailErrors));
         }
 
-        // Validate display name length if provided
-        if (!string.IsNullOrEmpty(request.DisplayName))
-        {
-            var displayNameErrors = ValidationHelper.ValidateStringLength(
-                request.DisplayName,
-                "Display name",
-                maxLength: ValidationHelper.StringLimits.DisplayNameMax);
-            if (displayNameErrors.Count > 0)
-            {
-                return new AuthResult(false, Error: string.Join("; ", displayNameErrors));
-            }
-        }
-
         // Check if email already exists
         if (await Users.AnyAsync(u => u.Email.ToLower() == request.Email.ToLower(), cancellationToken))
         {
@@ -118,7 +105,6 @@ public class AuthService : IAuthService
             UserId = Guid.NewGuid(),
             Email = request.Email.ToLower(),
             Username = request.Username,
-            DisplayName = request.DisplayName ?? request.Username,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             EmailVerified = false,
             IsActive = true,
@@ -320,7 +306,7 @@ public class AuthService : IAuthService
         {
             await _emailService.SendPasswordResetEmailAsync(
                 user.Email,
-                user.DisplayName ?? user.Username,
+                user.Username,
                 resetUrl,
                 cancellationToken);
 
@@ -401,7 +387,7 @@ public class AuthService : IAuthService
         {
             await _emailService.SendPasswordChangedEmailAsync(
                 user.Email,
-                user.DisplayName ?? user.Username,
+                user.Username,
                 DateTime.UtcNow,
                 cancellationToken);
         }

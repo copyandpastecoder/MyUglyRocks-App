@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useCycles, useDeleteCycle, useCycle } from '@/hooks';
 import { PAGE_CONTAINER } from '@/lib/layout';
@@ -28,18 +28,14 @@ export default function CyclesPage() {
   const tabParam = searchParams.get('tab');
 
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('Active');
+  // Set initial tab from URL parameter directly
+  const [activeTab, setActiveTab] = useState(
+    tabParam === 'completed' || tabParam === 'Completed' ? 'Completed' : 'Active'
+  );
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
   // Expand/collapse all: undefined = individual control, true = all expanded, false = all collapsed
   const [expandAllState, setExpandAllState] = useState<boolean | undefined>(undefined);
-
-  // Set initial tab from URL parameter
-  useEffect(() => {
-    if (tabParam === 'completed' || tabParam === 'Completed') {
-      setActiveTab('Completed');
-    }
-  }, [tabParam]);
 
   // Active cycles: oldest first (ASC), Completed: newest first (DESC)
   const sortOrder = activeTab === 'Active' ? 'asc' : 'desc';

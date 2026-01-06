@@ -48,6 +48,28 @@ public class PostsController : ControllerBase
     }
 
     /// <summary>
+    /// Get feedback posts with optional category filter
+    /// </summary>
+    [HttpGet("feedback")]
+    [ProducesResponseType(typeof(IEnumerable<PostListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<PostListDto>>> GetFeedbackPosts(
+        [FromQuery] string? category = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 20)
+    {
+        // Validate sort parameter against whitelist
+        sort = PaginationHelper.ValidatePostSort(sort);
+
+        // Validate pagination parameters to prevent resource exhaustion
+        skip = PaginationHelper.ClampSkip(skip);
+        take = PaginationHelper.ClampTake(take);
+
+        var posts = await _postService.GetFeedbackPostsAsync(category, sort, skip, take);
+        return Ok(posts);
+    }
+
+    /// <summary>
     /// Get post by ID
     /// </summary>
     [HttpGet("{postId:guid}")]

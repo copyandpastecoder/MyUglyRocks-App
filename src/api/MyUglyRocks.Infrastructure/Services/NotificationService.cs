@@ -115,7 +115,7 @@ public class NotificationService : INotificationService
 
             await emailService.SendStageReminderEmailAsync(
                 user.Email,
-                user.DisplayName ?? user.Username,
+                user.Username,
                 stage.Cycle.Name,
                 stage.StageName,
                 tumblerName,
@@ -193,8 +193,8 @@ public class NotificationService : INotificationService
 
             await emailService.SendCommentNotificationEmailAsync(
                 postOwner.Email,
-                postOwner.DisplayName ?? postOwner.Username,
-                comment.User.DisplayName ?? comment.User.Username,
+                postOwner.Username,
+                comment.User.Username,
                 post.Title,
                 comment.Content,
                 postUrl,
@@ -266,8 +266,8 @@ public class NotificationService : INotificationService
 
             await emailService.SendReplyNotificationEmailAsync(
                 commentOwner.Email,
-                commentOwner.DisplayName ?? commentOwner.Username,
-                reply.User.DisplayName ?? reply.User.Username,
+                commentOwner.Username,
+                reply.User.Username,
                 parentComment.Content,
                 reply.Content,
                 parentComment.Post.Title,
@@ -343,8 +343,8 @@ public class NotificationService : INotificationService
 
             await emailService.SendFirstVoteNotificationEmailAsync(
                 postOwner.Email,
-                postOwner.DisplayName ?? postOwner.Username,
-                voter.DisplayName ?? voter.Username,
+                postOwner.Username,
+                voter.Username,
                 post.Title,
                 postUrl,
                 cancellationToken);
@@ -405,7 +405,7 @@ public class NotificationService : INotificationService
 
             await emailService.SendMilestoneNotificationEmailAsync(
                 postOwner.Email,
-                postOwner.DisplayName ?? postOwner.Username,
+                postOwner.Username,
                 post.Title,
                 post.VoteCount,
                 postUrl,

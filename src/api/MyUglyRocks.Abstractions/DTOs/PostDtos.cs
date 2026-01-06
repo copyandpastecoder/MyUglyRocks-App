@@ -8,7 +8,8 @@ public record PostDto
     public Guid UserId { get; init; }
     public Guid? CycleId { get; init; }
     public Guid? InventoryId { get; init; }
-    public required string PostType { get; init; } // "Cycle" or "Inventory"
+    public required string PostType { get; init; } // "Cycle", "Inventory", or "Feedback"
+    public string? FeedbackCategory { get; init; } // Only set for Feedback posts
     public required string Title { get; init; }
     public string? Description { get; init; }
     public string Status { get; init; } = "Published";
@@ -24,7 +25,8 @@ public record PostDto
 public record PostListDto
 {
     public Guid PostId { get; init; }
-    public required string PostType { get; init; } // "Cycle" or "Inventory"
+    public required string PostType { get; init; } // "Cycle", "Inventory", or "Feedback"
+    public string? FeedbackCategory { get; init; } // Only set for Feedback posts
     public required string Title { get; init; }
     public string? Description { get; init; }
     public DateTime PublishedDate { get; init; }
@@ -98,9 +100,14 @@ public record InventoryPreviewDto
 
 public record CreatePostRequest
 {
-    // Either CycleId or InventoryId must be provided (validated in service)
+    // For Cycle/Inventory posts: Either CycleId or InventoryId must be provided
+    // For Feedback posts: Both should be null
     public Guid? CycleId { get; init; }
     public Guid? InventoryId { get; init; }
+
+    // For Feedback posts: Category is required
+    // For Cycle/Inventory posts: Category should be null
+    public string? FeedbackCategory { get; init; }
 
     [Required(ErrorMessage = "Title is required")]
     [StringLength(200, MinimumLength = 1, ErrorMessage = "Title must be between 1 and 200 characters")]
