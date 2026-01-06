@@ -115,8 +115,9 @@ export default function RegisterPage() {
       const result: AuthResult = await response.json();
 
       if (result.success) {
-        toast.success('Welcome to MyUglyRocks!');
-        router.push('/dashboard');
+        toast.success('Account created! Please check your email to verify your account.');
+        // Redirect to login with a message
+        router.push('/login?registered=true');
       } else {
         toast.error(result.error || 'Registration failed');
       }
