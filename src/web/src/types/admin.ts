@@ -177,6 +177,7 @@ export interface CreateBackupResponse {
 export interface TestFileResult {
   success: boolean;
   key?: string;
+  /** File size in bytes (integer) */
   size: number;
   message?: string;
 }
