@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/providers/auth-provider';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Flag, Users, ShieldAlert, Gem, FlaskConical, BarChart3, Mail, Database } from 'lucide-react';
+import { LayoutDashboard, Flag, Users, ShieldAlert, Gem, FlaskConical, BarChart3, Mail, Database, AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const adminNavItems = [
@@ -54,6 +54,12 @@ const adminNavItems = [
     icon: Database,
     adminOnly: true,
   },
+  {
+    title: 'Error Logs',
+    href: '/admin/error-logs',
+    icon: AlertTriangle,
+    adminOnly: true,
+  },
 ];
 
 export default function AdminLayout({
@@ -95,7 +101,7 @@ export default function AdminLayout({
 
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Sidebar Navigation */}
-        <nav className="flex flex-col gap-1 md:w-48 lg:w-56">
+        <nav className="flex flex-col gap-1 md:w-56 lg:w-64">
           {adminNavItems.map((item) => {
             // Hide admin-only items from moderators
             if (item.adminOnly && !isAdmin) return null;

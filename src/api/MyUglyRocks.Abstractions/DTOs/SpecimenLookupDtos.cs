@@ -86,3 +86,20 @@ public record SpecimenLookupData(
     /// <summary>Brief explanation of the confidence score</summary>
     string? ConfidenceReason
 );
+
+/// <summary>
+/// Response from lookup-and-create endpoint
+/// </summary>
+public record SpecimenLookupAndCreateResponse(
+    /// <summary>Whether the lookup was successful</summary>
+    bool Success,
+
+    /// <summary>Error message if lookup failed</summary>
+    string? Error,
+
+    /// <summary>The looked-up specimen data</summary>
+    SpecimenLookupData? Data,
+
+    /// <summary>System specimen ID if confidence >= 85% (added to Specimens table)</summary>
+    Guid? SpecimenId
+);

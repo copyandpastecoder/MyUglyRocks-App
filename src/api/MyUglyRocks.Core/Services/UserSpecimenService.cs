@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
 using MyUglyRocks.Core.Entities;
@@ -8,10 +9,17 @@ namespace MyUglyRocks.Core.Services;
 public class UserSpecimenService : IUserSpecimenService
 {
     private readonly DbContext _context;
+    private readonly IGeminiService _geminiService;
+    private readonly ILogger<UserSpecimenService> _logger;
 
-    public UserSpecimenService(DbContext context)
+    public UserSpecimenService(
+        DbContext context,
+        IGeminiService geminiService,
+        ILogger<UserSpecimenService> logger)
     {
         _context = context;
+        _geminiService = geminiService;
+        _logger = logger;
     }
 
     private DbSet<UserSpecimen> UserSpecimens => _context.Set<UserSpecimen>();
@@ -290,5 +298,110 @@ public class UserSpecimenService : IUserSpecimenService
             specimen.AiConfidenceScore,
             specimen.AiIsKnownSpecimen
         );
+    }
+
+    public async Task<SpecimenLookupAndCreateResponse> LookupAndCreateSpecimenIfHighConfidenceAsync(
+        Guid userId,
+        SpecimenLookupRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        // Perform AI lookup
+        var lookupResult = await _geminiService.LookupSpecimenAsync(request, cancellationToken);
+
+        if (!lookupResult.Success || lookupResult.Data == null)
+        {
+            return new SpecimenLookupAndCreateResponse(
+                lookupResult.Success,
+                lookupResult.Error,
+                lookupResult.Data,
+                null);
+        }
+
+        var data = lookupResult.Data;
+
+        // Check if confidence is high enough (>= 85%)
+        if (data.ConfidenceScore >= 85)
+        {
+            // Check if specimen already exists in system catalog
+            var existingSpecimen = await Specimens
+                .FirstOrDefaultAsync(s =>
+                    s.CommonName.ToLower() == data.CommonName.ToLower() &&
+                    s.IsActive,
+                    cancellationToken);
+
+            if (existingSpecimen != null)
+            {
+                _logger.LogInformation(
+                    "High-confidence specimen lookup matched existing specimen: {CommonName} (ID: {SpecimenId})",
+                    data.CommonName, existingSpecimen.SpecimenId);
+
+                return new SpecimenLookupAndCreateResponse(
+                    true,
+                    null,
+                    data,
+                    existingSpecimen.SpecimenId);
+            }
+
+            // Create new specimen in system catalog
+            var materialType = Enum.TryParse<SpecimenMaterialType>(data.MaterialType, true, out var parsedMaterialType)
+                ? parsedMaterialType
+                : SpecimenMaterialType.Other;
+
+            TumblingDifficulty? tumblingDifficulty = null;
+            if (!string.IsNullOrEmpty(data.TumblingDifficulty))
+            {
+                if (Enum.TryParse<TumblingDifficulty>(data.TumblingDifficulty, true, out var parsedDifficulty))
+                {
+                    tumblingDifficulty = parsedDifficulty;
+                }
+            }
+
+            var newSpecimen = new Specimen
+            {
+                SpecimenId = Guid.NewGuid(),
+                CommonName = data.CommonName,
+                ScientificName = data.ScientificName,
+                Alias = data.Alias,
+                RockFamily = data.RockFamily,
+                Species = data.Species,
+                Variety = data.Variety,
+                MaterialType = materialType,
+                MohsHardnessMin = data.MohsHardnessMin,
+                MohsHardnessMax = data.MohsHardnessMax,
+                TumblingDifficulty = tumblingDifficulty,
+                RecommendedGritSequence = data.RecommendedGritSequence,
+                SpecialConsiderations = data.SpecialConsiderations,
+                Notes = $"AI-generated via high-confidence lookup (Score: {data.ConfidenceScore}%) by user {userId}",
+                IsActive = true,
+                UserCreated = userId,
+                UserUpdated = userId,
+                DateCreated = DateTime.UtcNow,
+                DateUpdated = DateTime.UtcNow
+            };
+
+            Specimens.Add(newSpecimen);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Created new system specimen from high-confidence AI lookup: {CommonName} (ID: {SpecimenId}, Confidence: {Confidence}%)",
+                newSpecimen.CommonName, newSpecimen.SpecimenId, data.ConfidenceScore);
+
+            return new SpecimenLookupAndCreateResponse(
+                true,
+                null,
+                data,
+                newSpecimen.SpecimenId);
+        }
+
+        // Confidence < 85%, return lookup data without creating specimen
+        _logger.LogInformation(
+            "Specimen lookup below confidence threshold: {CommonName} (Confidence: {Confidence}%)",
+            data.CommonName, data.ConfidenceScore);
+
+        return new SpecimenLookupAndCreateResponse(
+            true,
+            null,
+            data,
+            null);
     }
 }

@@ -169,7 +169,7 @@ export default function InventoryDetailPage() {
     // Create a new row with the custom specimen already selected
     const newRow: SpecimenRowItem = {
       id: crypto.randomUUID(),
-      selectedId: data.userSpecimenId,
+      selectedId: data.userSpecimenId || '',
       userSpecimenId: data.userSpecimenId,
       source: 'user',
       commonName: data.commonName,

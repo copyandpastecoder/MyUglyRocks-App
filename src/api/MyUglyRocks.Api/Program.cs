@@ -182,6 +182,7 @@ try
     builder.Services.AddScoped<IUserService, UserService>();
     builder.Services.AddScoped<IExportService, ExportService>();
     builder.Services.AddScoped<IAdminService, AdminService>();
+    builder.Services.AddScoped<IErrorLogService, ErrorLogService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
     builder.Services.AddScoped<IInventoryService, InventoryService>();
     builder.Services.AddScoped<IInventorySourceService, InventorySourceService>();
@@ -317,6 +318,28 @@ try
                     QueueLimit = 0
                 });
         });
+
+        // Per-user rate limit for AI lookup operations (Gemini API calls)
+        options.AddPolicy("ai-lookup", context =>
+        {
+            var userId = context.User?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                      ?? context.User?.FindFirst("sub")?.Value;
+
+            var partitionKey = !string.IsNullOrEmpty(userId)
+                ? $"user:{userId}"
+                : $"ip:{context.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+            return RateLimitPartition.GetFixedWindowLimiter(
+                partitionKey: partitionKey,
+                factory: _ => new FixedWindowRateLimiterOptions
+                {
+                    // 20 AI lookups per minute to prevent API abuse
+                    PermitLimit = 20,
+                    Window = TimeSpan.FromMinutes(1),
+                    QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                    QueueLimit = 0
+                });
+        });
     });
 
     var app = builder.Build();
@@ -435,6 +458,16 @@ try
     {
         Log.Warning("R2:BackupBucketName not configured, database backup jobs disabled");
     }
+
+    // Error log cleanup job (runs daily at 2 AM UTC)
+    var recurringJobManagerForErrorLogs = app.Services.GetRequiredService<IRecurringJobManager>();
+    recurringJobManagerForErrorLogs.AddOrUpdate<MyUglyRocks.Infrastructure.Jobs.ErrorLogCleanupJob>(
+        "error-log-cleanup",
+        job => job.ExecuteAsync(CancellationToken.None),
+        "0 2 * * *", // Cron: 2:00 AM UTC daily
+        new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc });
+
+    Log.Information("Error log cleanup job configured (daily at 2 AM UTC, retention: 180 days)");
 
     app.Run();
 }

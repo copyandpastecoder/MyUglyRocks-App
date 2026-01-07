@@ -87,3 +87,20 @@ export const sourceTypeDescriptions: Record<InventorySourceType, string> = {
   GemShow: 'Gem and mineral shows (Tucson, local shows, etc.)',
   Other: 'Other source'
 };
+
+// AI Lookup types
+export interface InventorySourceLookupResponse {
+  success: boolean;
+  error: string | null;
+  data: InventorySourceLookupData | null;
+}
+
+export interface InventorySourceLookupData {
+  name: string;
+  url: string | null;
+  location: string | null;
+  phone: string | null;
+  contactName: string | null;
+  confidenceScore: number;
+  confidenceReason: string | null;
+}

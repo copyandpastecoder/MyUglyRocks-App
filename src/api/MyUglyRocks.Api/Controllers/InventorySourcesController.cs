@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
 
@@ -12,10 +13,12 @@ namespace MyUglyRocks.Api.Controllers;
 public class InventorySourcesController : ControllerBase
 {
     private readonly IInventorySourceService _sourceService;
+    private readonly IGeminiService _geminiService;
 
-    public InventorySourcesController(IInventorySourceService sourceService)
+    public InventorySourcesController(IInventorySourceService sourceService, IGeminiService geminiService)
     {
         _sourceService = sourceService;
+        _geminiService = geminiService;
     }
 
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -141,5 +144,25 @@ public class InventorySourcesController : ControllerBase
     {
         var exists = await _sourceService.SourceNameExistsAsync(GetUserId(), sourceType, name, excludeSourceId, cancellationToken);
         return Ok(new { exists });
+    }
+
+    /// <summary>
+    /// AI-powered lookup of inventory source information
+    /// </summary>
+    [HttpPost("lookup")]
+    [EnableRateLimiting("ai-lookup")]
+    [ProducesResponseType(typeof(InventorySourceLookupResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> LookupSource([FromBody] InventorySourceLookupRequest request, CancellationToken cancellationToken)
+    {
+        if (!_geminiService.IsConfigured)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new InventorySourceLookupResponse(
+                false, "AI lookup service is not available", null));
+        }
+
+        var result = await _geminiService.LookupInventorySourceAsync(request, cancellationToken);
+        return Ok(result);
     }
 }

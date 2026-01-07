@@ -181,3 +181,50 @@ export interface TestFileResult {
   size: number;
   message?: string;
 }
+
+// Error Logging types
+export type ErrorSeverity = 'Info' | 'Warning' | 'Error' | 'Critical';
+
+export interface ErrorLogListDto {
+  errorLogId: string;
+  correlationId: string;
+  exceptionType: string;
+  messageExcerpt: string;
+  severity: ErrorSeverity;
+  httpMethod: string | null;
+  httpPath: string | null;
+  httpStatusCode: number | null;
+  username: string | null;
+  dateCreated: string;
+}
+
+export interface ErrorLogDetailDto {
+  errorLogId: string;
+  correlationId: string;
+  exceptionType: string;
+  message: string;
+  stackTrace: string | null;
+  severity: ErrorSeverity;
+  httpMethod: string | null;
+  httpPath: string | null;
+  httpQueryString: string | null;
+  httpStatusCode: number | null;
+  userId: string | null;
+  username: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  requestHeaders: Record<string, string> | null;
+  innerException: string | null;
+  dateCreated: string;
+}
+
+export interface ErrorLogFilterParams {
+  startDate?: string;
+  endDate?: string;
+  severity?: ErrorSeverity;
+  userId?: string;
+  searchPath?: string;
+  searchCorrelationId?: string;
+  page?: number;
+  pageSize?: number;
+}

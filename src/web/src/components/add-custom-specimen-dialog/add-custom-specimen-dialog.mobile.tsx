@@ -154,7 +154,7 @@ export function AddCustomSpecimenDialogMobile({
     setLookupResult(null);
 
     try {
-      const response = await userSpecimenApi.lookup({
+      const response = await userSpecimenApi.lookupAndCreate({
         commonName,
         sourceUrl: sourceUrl || null,
         sourceName: sourceName || null,
@@ -164,6 +164,25 @@ export function AddCustomSpecimenDialogMobile({
       if (response.success && response.data) {
         setLookupResult(response.data);
         const data = response.data;
+
+        // Check if high confidence (>= 85%) - specimen was auto-added to system catalog
+        if (response.specimenId && data.confidenceScore >= 85) {
+          // Close dialog and pass system specimen ID back
+          onOpenChange(false);
+          form.reset();
+          if (onSuccess) {
+            onSuccess({
+              specimenId: response.specimenId,
+              commonName: data.commonName,
+              scientificName: data.scientificName,
+              tumblingDifficulty: data.tumblingDifficulty,
+              materialType: data.materialType,
+            });
+          }
+          return;
+        }
+
+        // Lower confidence - populate form for user to review and manually add
         form.setValue('scientificName', data.scientificName);
         form.setValue('alias', data.alias);
         form.setValue('rockFamily', data.rockFamily);

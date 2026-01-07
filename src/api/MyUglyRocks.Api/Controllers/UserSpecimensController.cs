@@ -141,6 +141,29 @@ public class UserSpecimensController : ControllerBase
     }
 
     /// <summary>
+    /// Look up specimen using AI and auto-create if confidence >= 85%
+    /// Returns specimen ID (from system Specimens table) if high confidence, null otherwise
+    /// </summary>
+    [HttpPost("lookup-and-create")]
+    [EnableRateLimiting("intensive")]
+    [ProducesResponseType(typeof(SpecimenLookupAndCreateResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> LookupAndCreateSpecimen([FromBody] SpecimenLookupRequest request, CancellationToken cancellationToken)
+    {
+        if (!_geminiService.IsConfigured)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new SpecimenLookupAndCreateResponse(
+                false, "AI lookup service is not available", null, null));
+        }
+
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _userSpecimenService.LookupAndCreateSpecimenIfHighConfidenceAsync(
+            userId, request, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Check if AI lookup service is available
     /// </summary>
     [HttpGet("lookup/status")]

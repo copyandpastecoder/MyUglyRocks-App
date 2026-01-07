@@ -57,6 +57,9 @@ public class AppDbContext : DbContext
     // Analytics
     public DbSet<UserSession> UserSessions => Set<UserSession>();
 
+    // Error Logging
+    public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

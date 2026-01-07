@@ -2,7 +2,9 @@ import type { CreateUserSpecimenRequest, SpecimenLookupData } from '@/types/user
 
 // Data passed to onSuccess callback
 export interface CustomSpecimenCreatedData {
-  userSpecimenId: string;
+  // Either userSpecimenId (custom user specimen) or specimenId (system specimen from high-confidence AI)
+  userSpecimenId?: string;
+  specimenId?: string;
   commonName: string;
   scientificName: string | null;
   tumblingDifficulty: string | null;

@@ -78,3 +78,25 @@ public record UpdateInventorySourceRequest(
 
     bool? IsActive
 );
+
+public record InventorySourceLookupRequest(
+    [Required(ErrorMessage = "Query is required")]
+    [StringLength(500, MinimumLength = 1, ErrorMessage = "Query must be between 1 and 500 characters")]
+    string Query
+);
+
+public record InventorySourceLookupResponse(
+    bool Success,
+    string? Error,
+    InventorySourceLookupData? Data
+);
+
+public record InventorySourceLookupData(
+    string Name,
+    string? Url,
+    string? Location,
+    string? Phone,
+    string? ContactName,
+    int ConfidenceScore,
+    string? ConfidenceReason
+);

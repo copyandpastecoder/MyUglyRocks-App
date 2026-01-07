@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
-using MyUglyRocks.Api.Helpers;
+using MyUglyRocks.Abstractions.Helpers;
 
 namespace MyUglyRocks.Api.Controllers;
 

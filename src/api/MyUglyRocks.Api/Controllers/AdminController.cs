@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Interfaces;
-using MyUglyRocks.Api.Helpers;
+using MyUglyRocks.Abstractions.Helpers;
 
 namespace MyUglyRocks.Api.Controllers;
 
@@ -18,6 +18,7 @@ public class AdminController : ControllerBase
     private readonly IDatabaseBackupService _databaseBackupService;
     private readonly IBackupStorageService _backupStorageService;
     private readonly IInvitationCodeService _invitationCodeService;
+    private readonly IErrorLogService _errorLogService;
     private readonly ILogger<AdminController> _logger;
 
     public AdminController(
@@ -27,6 +28,7 @@ public class AdminController : ControllerBase
         IDatabaseBackupService databaseBackupService,
         IBackupStorageService backupStorageService,
         IInvitationCodeService invitationCodeService,
+        IErrorLogService errorLogService,
         ILogger<AdminController> logger)
     {
         _adminService = adminService;
@@ -35,6 +37,7 @@ public class AdminController : ControllerBase
         _databaseBackupService = databaseBackupService;
         _backupStorageService = backupStorageService;
         _invitationCodeService = invitationCodeService;
+        _errorLogService = errorLogService;
         _logger = logger;
     }
 
@@ -791,6 +794,52 @@ public class AdminController : ControllerBase
     {
         var stats = await _invitationCodeService.GetStatsAsync(cancellationToken);
         return Ok(stats);
+    }
+
+    #endregion
+
+    #region Error Logs
+
+    /// <summary>
+    /// Get error logs with filtering and pagination (Admin only)
+    /// </summary>
+    [HttpGet("error-logs")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(PaginatedResult<ErrorLogListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PaginatedResult<ErrorLogListDto>>> GetErrorLogs(
+        [FromQuery] DateTime? startDate,
+        [FromQuery] DateTime? endDate,
+        [FromQuery] ErrorSeverity? severity,
+        [FromQuery] Guid? userId,
+        [FromQuery] string? searchPath,
+        [FromQuery] string? searchCorrelationId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _errorLogService.GetErrorLogsAsync(
+            startDate, endDate, severity, userId, searchPath, searchCorrelationId,
+            page, pageSize, cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get error log detail by ID (Admin only)
+    /// </summary>
+    [HttpGet("error-logs/{errorLogId:guid}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(ErrorLogDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ErrorLogDetailDto>> GetErrorLog(
+        Guid errorLogId,
+        CancellationToken cancellationToken = default)
+    {
+        var errorLog = await _errorLogService.GetErrorLogByIdAsync(errorLogId, cancellationToken);
+        if (errorLog == null)
+        {
+            return NotFound();
+        }
+        return Ok(errorLog);
     }
 
     #endregion
