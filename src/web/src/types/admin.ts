@@ -157,3 +157,26 @@ export interface SessionTrendDto {
   sessionCount: number;
   uniqueUsers: number;
 }
+
+// Database Backup types
+export interface BackupInfo {
+  r2Key: string;
+  fileName: string;
+  backupType: string;
+  createdAt: string;
+  size: number;
+}
+
+export interface CreateBackupResponse {
+  success: boolean;
+  sizeBytes?: number;
+  errorMessage?: string;
+  message?: string;
+}
+
+export interface TestFileResult {
+  success: boolean;
+  key?: string;
+  size: number;
+  message?: string;
+}

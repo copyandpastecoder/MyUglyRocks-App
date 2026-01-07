@@ -595,6 +595,9 @@ import type {
   CreateMaterialRequest,
   UpdateMaterialRequest,
   BrowserStatsDto,
+  BackupInfo,
+  CreateBackupResponse,
+  TestFileResult,
 } from '@/types/admin';
 
 export const adminApi = {
@@ -773,6 +776,36 @@ export const adminApi = {
 
   revokeInvitationCode: async (codeId: string, request: RevokeInvitationCodeRequest): Promise<void> => {
     const response = await api.post<void>(`/admin/invitation-codes/${codeId}/revoke`, request);
+    return response.data;
+  },
+
+  // Backups
+  getLatestBackup: async (): Promise<BackupInfo | null> => {
+    try {
+      const response = await api.get<BackupInfo>('/admin/backups/latest');
+      return response.data;
+    } catch (error) {
+      if ((error as AxiosError)?.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+
+  getBackups: async (limit = 20): Promise<BackupInfo[]> => {
+    const response = await api.get<BackupInfo[]>('/admin/backups', {
+      params: { limit },
+    });
+    return response.data;
+  },
+
+  createBackup: async (): Promise<CreateBackupResponse> => {
+    const response = await api.post<CreateBackupResponse>('/admin/backups');
+    return response.data;
+  },
+
+  testBackupBucket: async (): Promise<TestFileResult> => {
+    const response = await api.post<TestFileResult>('/admin/backups/test');
     return response.data;
   },
 };

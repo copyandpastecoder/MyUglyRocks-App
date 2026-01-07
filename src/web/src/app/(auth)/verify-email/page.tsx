@@ -22,6 +22,8 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    let redirectTimeout: NodeJS.Timeout | null = null;
+
     const verifyEmail = async () => {
       const token = searchParams.get('token');
 
@@ -40,10 +42,10 @@ function VerifyEmailContent() {
 
         const result = await response.json();
 
-        if (response.ok && result.message) {
+        if (response.ok) {
           setStatus('success');
           // Redirect to login after 3 seconds
-          setTimeout(() => {
+          redirectTimeout = setTimeout(() => {
             router.push('/login?verified=true');
           }, 3000);
         } else {
@@ -57,6 +59,13 @@ function VerifyEmailContent() {
     };
 
     verifyEmail();
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (redirectTimeout) {
+        clearTimeout(redirectTimeout);
+      }
+    };
   }, [searchParams, router]);
 
   return (
@@ -125,9 +134,30 @@ function VerifyEmailContent() {
   );
 }
 
+function LoadingFallback() {
+  return (
+    <Card>
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">
+          Email Verification
+        </CardTitle>
+        <CardDescription className="text-center">
+          Preparing verification page...
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center space-y-4 py-6">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">
+          Please wait...
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <VerifyEmailContent />
     </Suspense>
   );
