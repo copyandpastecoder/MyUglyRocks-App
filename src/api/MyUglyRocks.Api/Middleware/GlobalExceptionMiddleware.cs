@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json;
 using MyUglyRocks.Abstractions.Helpers;
+using MyUglyRocks.Abstractions.Interfaces;
 
 namespace MyUglyRocks.Api.Middleware;
 
@@ -14,15 +15,18 @@ public class GlobalExceptionMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionMiddleware> _logger;
     private readonly IHostEnvironment _environment;
+    private readonly IErrorLogService _errorLogService;
 
     public GlobalExceptionMiddleware(
         RequestDelegate next,
         ILogger<GlobalExceptionMiddleware> logger,
-        IHostEnvironment environment)
+        IHostEnvironment environment,
+        IErrorLogService errorLogService)
     {
         _next = next;
         _logger = logger;
         _environment = environment;
+        _errorLogService = errorLogService;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -46,6 +50,20 @@ public class GlobalExceptionMiddleware
         _logger.LogError(exception,
             "Unhandled exception occurred. CorrelationId: {CorrelationId}, Path: {Path}, Method: {Method}",
             correlationId, PiiMaskingHelper.SanitizeForLog(context.Request.Path), context.Request.Method);
+
+        // Log to database (fire-and-forget, non-blocking)
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await _errorLogService.LogErrorAsync(context, exception, CancellationToken.None);
+            }
+            catch (Exception dbEx)
+            {
+                // Never fail request due to DB logging failure
+                _logger.LogWarning(dbEx, "Failed to log error to database. CorrelationId: {CorrelationId}", correlationId);
+            }
+        });
 
         // Determine status code based on exception type
         var (statusCode, message) = exception switch

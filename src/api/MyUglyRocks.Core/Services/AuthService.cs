@@ -53,7 +53,7 @@ public class AuthService : IAuthService
     private DbSet<User> Users => _context.Set<User>();
     private DbSet<RefreshToken> RefreshTokens => _context.Set<RefreshToken>();
 
-    public async Task<AuthResult> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
+    public async Task<AuthResult> RegisterAsync(RegisterRequest request, string? invitationCode = null, CancellationToken cancellationToken = default)
     {
         // Validate password strength
         var passwordValidation = ValidationHelper.ValidatePassword(request.Password);
@@ -117,6 +117,22 @@ public class AuthService : IAuthService
         };
 
         await Users.AddAsync(user, cancellationToken);
+
+        // If invitation code is provided, update it in the same transaction
+        if (!string.IsNullOrWhiteSpace(invitationCode))
+        {
+            var normalizedCode = invitationCode.Trim().ToUpper();
+            var invitation = await _context.Set<Core.Entities.InvitationCode>()
+                .FirstOrDefaultAsync(ic => ic.Code == normalizedCode, cancellationToken);
+
+            if (invitation != null)
+            {
+                invitation.UsedByUserId = user.UserId;
+                invitation.DateUsed = DateTime.UtcNow;
+                user.InvitedByUserId = invitation.CreatedByUserId;
+            }
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         // Generate email verification token

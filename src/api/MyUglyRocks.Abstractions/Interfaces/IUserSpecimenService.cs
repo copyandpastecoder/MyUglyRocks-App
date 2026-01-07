@@ -32,4 +32,12 @@ public interface IUserSpecimenService
         int skip = 0,
         int take = 50,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Look up specimen using AI and auto-create in Specimens table if confidence >= 85%
+    /// </summary>
+    Task<SpecimenLookupAndCreateResponse> LookupAndCreateSpecimenIfHighConfidenceAsync(
+        Guid userId,
+        SpecimenLookupRequest request,
+        CancellationToken cancellationToken = default);
 }

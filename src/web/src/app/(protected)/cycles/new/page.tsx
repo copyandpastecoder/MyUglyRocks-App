@@ -47,7 +47,13 @@ export default function NewCyclePage() {
 
   // Handle when a custom specimen is created - add it to the selection
   const handleCustomSpecimenCreated = (data: CustomSpecimenCreatedData) => {
-    setSelectedSpecimenItems(prev => [...prev, { id: data.userSpecimenId, source: 'user' }]);
+    if (data.specimenId) {
+      // High-confidence AI result - added to system specimens
+      setSelectedSpecimenItems(prev => [...prev, { id: data.specimenId!, source: 'system' }]);
+    } else if (data.userSpecimenId) {
+      // Low-confidence or manual entry - added to user specimens  
+      setSelectedSpecimenItems(prev => [...prev, { id: data.userSpecimenId!, source: 'user' }]);
+    }
     setSpecimenError(null);
   };
 

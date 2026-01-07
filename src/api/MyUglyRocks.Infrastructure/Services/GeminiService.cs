@@ -81,6 +81,51 @@ public class GeminiService : IGeminiService
         return new SpecimenLookupResponse(false, "Failed to lookup specimen information", null);
     }
 
+    public async Task<InventorySourceLookupResponse> LookupInventorySourceAsync(InventorySourceLookupRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!IsConfigured)
+        {
+            return new InventorySourceLookupResponse(false, "Gemini AI lookup is not configured", null);
+        }
+
+        // Try up to 3 times in case of parsing issues or transient errors
+        for (int attempt = 1; attempt <= 3; attempt++)
+        {
+            try
+            {
+                var result = await TryLookupSourceAsync(request, cancellationToken);
+
+                // If successful or configuration error, return immediately
+                if (result.Success || 
+                    result.Error == "Gemini AI lookup is not configured")
+                {
+                    return result;
+                }
+
+                // If parsing failed and we have retries left, try again
+                if (attempt < 3 && result.Error?.Contains("parse", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    _logger.LogWarning("Gemini response parsing failed, retrying (attempt {Attempt}/{MaxRetries})",
+                        attempt, 3);
+                    await Task.Delay(500 * attempt, cancellationToken); // Exponential backoff
+                    continue;
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error looking up inventory source (attempt {Attempt}/{MaxRetries})", attempt, 3);
+                if (attempt == 3)
+                {
+                    return new InventorySourceLookupResponse(false, "An error occurred while looking up source information", null);
+                }
+            }
+        }
+
+        return new InventorySourceLookupResponse(false, "Failed to lookup source information", null);
+    }
+
     private async Task<SpecimenLookupResponse> TryLookupAsync(SpecimenLookupRequest request, CancellationToken cancellationToken)
     {
         var prompt = BuildPrompt(request);
@@ -283,6 +328,175 @@ Respond ONLY with the JSON object, no additional text.";
         }
     }
 
+    private async Task<InventorySourceLookupResponse> TryLookupSourceAsync(InventorySourceLookupRequest request, CancellationToken cancellationToken)
+    {
+        var prompt = BuildSourcePrompt(request);
+        var geminiRequest = new GeminiRequest
+        {
+            Contents = new[]
+            {
+                new GeminiContent
+                {
+                    Parts = new[] { new GeminiPart { Text = prompt } }
+                }
+            },
+            GenerationConfig = new GeminiGenerationConfig
+            {
+                Temperature = 0.2f,
+                TopP = 0.8f,
+                TopK = 40,
+                MaxOutputTokens = 1024,
+                ResponseMimeType = "application/json"
+            }
+            // Note: Google Search grounding (googleSearchRetrieval) is not available with standard Gemini API
+        };
+
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_settings.Model}:generateContent";
+
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, url);
+        httpRequest.Headers.Add("x-goog-api-key", _settings.ApiKey);
+        httpRequest.Content = JsonContent.Create(geminiRequest, options: JsonOptions);
+
+        var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+            _logger.LogError("Gemini API error for inventory source lookup: {StatusCode} - {Error}", response.StatusCode, errorContent);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests ||
+                errorContent.Contains("RESOURCE_EXHAUSTED", StringComparison.OrdinalIgnoreCase) ||
+                errorContent.Contains("quota", StringComparison.OrdinalIgnoreCase))
+            {
+                return new InventorySourceLookupResponse(false, "Rate limit reached. Please try again in 1 minute.", null);
+            }
+
+            // If grounding is not supported, log and return error
+            if (errorContent.Contains("googleSearchRetrieval", StringComparison.OrdinalIgnoreCase) ||
+                errorContent.Contains("not supported", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning("Google Search grounding not supported. Error: {Error}", errorContent);
+                return new InventorySourceLookupResponse(false, "Could not find information for this source. Please enter the details manually.", null);
+            }
+
+            return new InventorySourceLookupResponse(false, "Could not find information for this source. Please enter the details manually.", null);
+        }
+
+        var geminiResponse = await response.Content.ReadFromJsonAsync<GeminiResponse>(JsonOptions, cancellationToken);
+
+        if (geminiResponse?.Candidates == null || geminiResponse.Candidates.Length == 0)
+        {
+            return new InventorySourceLookupResponse(false, "No response from AI", null);
+        }
+
+        var text = geminiResponse.Candidates[0].Content?.Parts?[0]?.Text;
+        if (string.IsNullOrEmpty(text))
+        {
+            return new InventorySourceLookupResponse(false, "Empty response from AI", null);
+        }
+
+        var lookupData = ParseSourceResponse(text, request.Query);
+        if (lookupData == null)
+        {
+            _logger.LogWarning("Failed to parse inventory source response: {Response}", text);
+            return new InventorySourceLookupResponse(false, "Could not find information for this source. Please enter the details manually.", null);
+        }
+
+        _logger.LogInformation(
+            "Source lookup successful: {Name} - Confidence: {Confidence}%",
+            lookupData.Name, lookupData.ConfidenceScore);
+
+        // If confidence is too low, treat as not found
+        if (lookupData.ConfidenceScore < 50)
+        {
+            _logger.LogInformation("Inventory source confidence too low ({Confidence}%), returning not found", lookupData.ConfidenceScore);
+            return new InventorySourceLookupResponse(false, "Could not find information for this source. Please enter the details manually.", null);
+        }
+
+        return new InventorySourceLookupResponse(true, null, lookupData);
+    }
+
+    private static string BuildSourcePrompt(InventorySourceLookupRequest request)
+    {
+        return $@"You are an expert in the rock, mineral, and lapidary supply industry. A user is looking up an online supplier.
+
+User's search query: ""{request.Query}""
+
+TASK: Look up information about this rock/mineral/lapidary supplier. If the query is a website URL or domain name, visit or research that website to find their business information. If it's a business name, find their website and details.
+
+Provide information in this EXACT JSON structure:
+
+{{
+  ""name"": ""Official business name"",
+  ""url"": ""Website URL with https:// prefix"",
+  ""location"": ""Physical address or City, State, Country"",
+  ""phone"": ""Phone number in (XXX) XXX-XXXX or international format"",
+  ""contactName"": ""Owner or primary contact name if available"",
+  ""confidenceScore"": 0-100,
+  ""confidenceReason"": ""Explain your confidence level and sources""
+}}
+
+INSTRUCTIONS:
+1. For domain queries (e.g., ""rockshed.com""), research or look up the business information
+2. Try to find: business name, physical location, phone number, contact person
+3. Look for contact pages, about pages, or business listings
+4. Format the URL with https:// prefix (e.g., https://www.rockshed.com)
+5. Provide actual business information, not guesses
+
+CONFIDENCE SCORING:
+- 90-100: Found detailed, verified information from the website/source
+- 70-89: Found most information but some details may be incomplete
+- 50-69: Found basic information but uncertain about accuracy
+- Below 50: Could only find minimal information or URL formatting
+
+Focus on businesses selling rocks, minerals, lapidary equipment, or tumbling supplies.
+
+Respond with ONLY the JSON object, no additional text.";
+    }
+
+    private InventorySourceLookupData? ParseSourceResponse(string jsonText, string originalQuery)
+    {
+        try
+        {
+            // Remove markdown code blocks if present
+            jsonText = jsonText.Replace("```json", "").Replace("```", "").Trim();
+
+            var parsed = JsonSerializer.Deserialize<InventorySourceLookupJson>(jsonText, JsonOptions);
+            if (parsed == null || string.IsNullOrWhiteSpace(parsed.Name))
+                return null;
+
+            return new InventorySourceLookupData(
+                Name: parsed.Name,
+                Url: NormalizeUrl(parsed.Url),
+                Location: parsed.Location,
+                Phone: parsed.Phone,
+                ContactName: parsed.ContactName,
+                ConfidenceScore: Math.Clamp(parsed.ConfidenceScore, 0, 100),
+                ConfidenceReason: parsed.ConfidenceReason
+            );
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse source lookup response JSON: {Response}", jsonText);
+            return null;
+        }
+    }
+
+    private static string? NormalizeUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+
+        url = url.Trim();
+        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+            !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        {
+            url = "https://" + url;
+        }
+
+        return url;
+    }
+
     private static string NormalizeMaterialType(string? materialType)
     {
         return materialType?.ToLowerInvariant() switch
@@ -315,6 +529,17 @@ Respond ONLY with the JSON object, no additional text.";
     {
         public GeminiContent[] Contents { get; set; } = Array.Empty<GeminiContent>();
         public GeminiGenerationConfig? GenerationConfig { get; set; }
+        public GeminiTool[]? Tools { get; set; }
+    }
+
+    private class GeminiTool
+    {
+        public GeminiGoogleSearchRetrieval? GoogleSearchRetrieval { get; set; }
+    }
+
+    private class GeminiGoogleSearchRetrieval
+    {
+        // Empty object to enable Google Search grounding
     }
 
     private class GeminiContent
@@ -361,6 +586,17 @@ Respond ONLY with the JSON object, no additional text.";
         public string? RecommendedGritSequence { get; set; }
         public string? SpecialConsiderations { get; set; }
         public bool IsKnownSpecimen { get; set; }
+        public int ConfidenceScore { get; set; }
+        public string? ConfidenceReason { get; set; }
+    }
+
+    private class InventorySourceLookupJson
+    {
+        public string? Name { get; set; }
+        public string? Url { get; set; }
+        public string? Location { get; set; }
+        public string? Phone { get; set; }
+        public string? ContactName { get; set; }
         public int ConfidenceScore { get; set; }
         public string? ConfidenceReason { get; set; }
     }

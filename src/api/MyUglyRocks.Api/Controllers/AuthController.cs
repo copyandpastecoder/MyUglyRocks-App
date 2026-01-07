@@ -42,7 +42,7 @@ public class AuthController : ControllerBase
     [ProducesResponseType(typeof(AuthResult), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
     {
-        var result = await _authService.RegisterAsync(request, cancellationToken);
+        var result = await _authService.RegisterAsync(request, null, cancellationToken);
 
         if (!result.Success)
         {
@@ -275,23 +275,12 @@ public class AuthController : ControllerBase
             request.Password,
             request.DisplayName);
 
-        // Perform standard registration
-        var result = await _authService.RegisterAsync(registerRequest, cancellationToken);
+        // Perform registration with invitation code (updated in same transaction)
+        var result = await _authService.RegisterAsync(registerRequest, request.InvitationCode, cancellationToken);
 
-        if (!result.Success || result.User == null)
+        if (!result.Success)
         {
             return BadRequest(result);
-        }
-
-        // Mark the invitation code as used
-        try
-        {
-            await _invitationCodeService.UseCodeAsync(request.InvitationCode, result.User.UserId, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to mark invitation code as used for user {UserId}", result.User.UserId);
-            // Don't fail registration - code marking is non-critical
         }
 
         SetRefreshTokenCookie(result.RefreshToken!);
