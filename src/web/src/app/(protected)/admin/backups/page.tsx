@@ -15,6 +15,7 @@ import {
   Shield,
   AlertCircle,
   RefreshCw,
+  TestTube,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -24,6 +25,7 @@ import type { BackupInfo } from '@/types/admin';
 export default function AdminBackupsPage() {
   const queryClient = useQueryClient();
   const [isCreatingBackup, setIsCreatingBackup] = useState(false);
+  const [isTestingBucket, setIsTestingBucket] = useState(false);
 
   // Fetch latest backup
   const { data: latestBackup, isLoading: isLoadingLatest } = useQuery({
@@ -59,6 +61,27 @@ export default function AdminBackupsPage() {
     onError: (error: Error) => {
       setIsCreatingBackup(false);
       toast.error(error.message || 'Failed to create backup');
+    },
+  });
+
+  // Test bucket connection mutation
+  const testBucketMutation = useMutation({
+    mutationFn: () => adminApi.testBackupBucket(),
+    onMutate: () => {
+      setIsTestingBucket(true);
+      toast.info('Testing backup bucket connection...');
+    },
+    onSuccess: (data) => {
+      setIsTestingBucket(false);
+      if (data.success) {
+        toast.success(`Test file uploaded! Key: ${data.key}, Size: ${formatBytes(data.size)}`);
+      } else {
+        toast.error(`Test failed: ${data.message}`);
+      }
+    },
+    onError: (error: Error) => {
+      setIsTestingBucket(false);
+      toast.error(error.message || 'Failed to test backup bucket');
     },
   });
 
@@ -176,26 +199,45 @@ export default function AdminBackupsPage() {
             Create an on-demand backup of the database. Backups run daily at 4 AM UTC automatically.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button
-            onClick={() => createBackupMutation.mutate()}
-            disabled={isCreatingBackup}
-            className="w-full sm:w-auto"
-          >
-            {isCreatingBackup ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                Creating Backup...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" />
-                Create Backup Now
-              </>
-            )}
-          </Button>
-          <p className="mt-2 text-xs text-muted-foreground">
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() => createBackupMutation.mutate()}
+              disabled={isCreatingBackup}
+            >
+              {isCreatingBackup ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Backup...
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  Create Backup Now
+                </>
+              )}
+            </Button>
+            <Button
+              onClick={() => testBucketMutation.mutate()}
+              disabled={isTestingBucket}
+              variant="outline"
+            >
+              {isTestingBucket ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Testing...
+                </>
+              ) : (
+                <>
+                  <TestTube className="mr-2 h-4 w-4" />
+                  Test Backup Bucket
+                </>
+              )}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
             Manual backups are stored in the &quot;manual/&quot; folder and are encrypted with AES-256.
+            Test button uploads a simple text file to verify R2 bucket connectivity.
           </p>
         </CardContent>
       </Card>

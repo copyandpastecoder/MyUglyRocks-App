@@ -597,6 +597,7 @@ import type {
   BrowserStatsDto,
   BackupInfo,
   CreateBackupResponse,
+  TestFileResult,
 } from '@/types/admin';
 
 export const adminApi = {
@@ -800,6 +801,11 @@ export const adminApi = {
 
   createBackup: async (): Promise<CreateBackupResponse> => {
     const response = await api.post<CreateBackupResponse>('/admin/backups');
+    return response.data;
+  },
+
+  testBackupBucket: async (): Promise<TestFileResult> => {
+    const response = await api.post<TestFileResult>('/admin/backups/test');
     return response.data;
   },
 };

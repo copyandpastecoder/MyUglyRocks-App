@@ -173,3 +173,10 @@ export interface CreateBackupResponse {
   errorMessage?: string;
   message?: string;
 }
+
+export interface TestFileResult {
+  success: boolean;
+  key?: string;
+  size: number;
+  message?: string;
+}
