@@ -27,9 +27,10 @@ WORKDIR /app
 # Required for pg_dump and pg_restore commands used by DatabaseBackupService
 # Install PostgreSQL 17 client to match Railway's PostgreSQL version
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends wget gnupg && \
-    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - && \
-    echo "deb http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get install -y --no-install-recommends wget gnupg ca-certificates && \
+    mkdir -p /usr/share/keyrings && \
+    wget --quiet -O /usr/share/keyrings/postgresql.gpg https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \
     apt-get install -y --no-install-recommends postgresql-client-17 && \
     rm -rf /var/lib/apt/lists/*

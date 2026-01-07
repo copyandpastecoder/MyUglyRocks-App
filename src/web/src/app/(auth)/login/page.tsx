@@ -26,7 +26,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Mail } from 'lucide-react';
+import { Mail, Loader2 } from 'lucide-react';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email'),
@@ -160,9 +160,30 @@ function LoginForm() {
   );
 }
 
+function LoadingFallback() {
+  return (
+    <Card>
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">
+          Welcome Back
+        </CardTitle>
+        <CardDescription className="text-center">
+          Loading login page...
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center space-y-4 py-6">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">
+          Please wait...
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <LoginForm />
     </Suspense>
   );
