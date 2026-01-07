@@ -81,9 +81,9 @@ export default function PostDetailPage() {
     },
     onError: (err) => {
       // Check if this is a 409 Conflict (already voted)
-      const isAlreadyVoted = err instanceof Error && 
-        'response' in err && 
-        (err as any).response?.status === 409;
+      const isAlreadyVoted = err instanceof Error &&
+        'response' in err &&
+        (err as { response?: { status?: number } }).response?.status === 409;
       
       if (!isAlreadyVoted) {
         // Only show error for actual failures
