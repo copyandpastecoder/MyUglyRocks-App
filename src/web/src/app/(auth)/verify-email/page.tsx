@@ -134,9 +134,30 @@ function VerifyEmailContent() {
   );
 }
 
+function LoadingFallback() {
+  return (
+    <Card>
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl font-bold text-center">
+          Email Verification
+        </CardTitle>
+        <CardDescription className="text-center">
+          Preparing verification page...
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col items-center space-y-4 py-6">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">
+          Please wait...
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<LoadingFallback />}>
       <VerifyEmailContent />
     </Suspense>
   );

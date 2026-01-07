@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { adminApi } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,6 +18,18 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+
+interface BackupInfo {
+  r2Key: string;
+  fileName: string;
+  backupType: string;
+  createdAt: string;
+  size: number;
+}
+
+interface LatestBackupInfo extends BackupInfo {
+  // Latest backup may have additional fields if needed
+}
 
 export default function AdminBackupsPage() {
   const queryClient = useQueryClient();
@@ -95,8 +106,8 @@ export default function AdminBackupsPage() {
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
+    const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1);
     return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
 
@@ -245,7 +256,7 @@ export default function AdminBackupsPage() {
             </div>
           ) : backups && backups.length > 0 ? (
             <div className="space-y-2">
-              {backups.map((backup: any) => (
+              {backups.map((backup: BackupInfo) => (
                 <div
                   key={backup.r2Key}
                   className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors"
