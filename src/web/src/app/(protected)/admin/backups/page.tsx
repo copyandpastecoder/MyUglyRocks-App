@@ -18,18 +18,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-
-interface BackupInfo {
-  r2Key: string;
-  fileName: string;
-  backupType: string;
-  createdAt: string;
-  size: number;
-}
-
-interface LatestBackupInfo extends BackupInfo {
-  // Latest backup may have additional fields if needed
-}
+import { adminApi } from '@/lib/api';
+import type { BackupInfo } from '@/types/admin';
 
 export default function AdminBackupsPage() {
   const queryClient = useQueryClient();
@@ -38,51 +28,20 @@ export default function AdminBackupsPage() {
   // Fetch latest backup
   const { data: latestBackup, isLoading: isLoadingLatest } = useQuery({
     queryKey: ['admin', 'backups', 'latest'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/backups/latest', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      if (!response.ok) {
-        if (response.status === 404) return null;
-        throw new Error('Failed to fetch latest backup');
-      }
-      return response.json();
-    },
+    queryFn: () => adminApi.getLatestBackup(),
     refetchInterval: 60000, // Refresh every minute
   });
 
   // Fetch backup list
   const { data: backups, isLoading: isLoadingBackups } = useQuery({
     queryKey: ['admin', 'backups'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/backups?limit=20', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to fetch backups');
-      return response.json();
-    },
+    queryFn: () => adminApi.getBackups(20),
     refetchInterval: 60000,
   });
 
   // Create manual backup mutation
   const createBackupMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch('/api/admin/backups', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Failed to create backup');
-      }
-      return response.json();
-    },
+    mutationFn: () => adminApi.createBackup(),
     onMutate: () => {
       setIsCreatingBackup(true);
       toast.info('Creating backup...');
