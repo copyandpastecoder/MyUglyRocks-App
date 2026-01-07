@@ -126,3 +126,10 @@ export interface SpecimenLookupData {
   confidenceScore: number;
   confidenceReason: string | null;
 }
+
+export interface SpecimenLookupAndCreateResponse {
+  success: boolean;
+  error: string | null;
+  data: SpecimenLookupData | null;
+  specimenId: string | null; // System specimen ID if confidence >= 85%
+}

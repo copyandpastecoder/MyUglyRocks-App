@@ -10,6 +10,9 @@ import type {
   CreateInvitationCodeRequest,
   RevokeInvitationCodeRequest
 } from '@/types/auth';
+import type {
+  InventorySourceLookupResponse
+} from '@/types/inventory-source';
 
 // Runtime config - fetched once on app load
 let runtimeApiUrl: string | null = null;
@@ -598,6 +601,9 @@ import type {
   BackupInfo,
   CreateBackupResponse,
   TestFileResult,
+  ErrorLogFilterParams,
+  ErrorLogListDto,
+  ErrorLogDetailDto,
 } from '@/types/admin';
 
 export const adminApi = {
@@ -808,6 +814,24 @@ export const adminApi = {
     const response = await api.post<TestFileResult>('/admin/backups/test');
     return response.data;
   },
+
+  // Error Logs
+  getErrorLogs: async (params: ErrorLogFilterParams): Promise<PaginatedResult<ErrorLogListDto>> => {
+    const response = await api.get<PaginatedResult<ErrorLogListDto>>('/admin/error-logs', {
+      params: {
+        ...params,
+        // Convert date objects to ISO strings if needed
+        startDate: params.startDate ? new Date(params.startDate).toISOString() : undefined,
+        endDate: params.endDate ? new Date(params.endDate).toISOString() : undefined,
+      }
+    });
+    return response.data;
+  },
+
+  getErrorLog: async (errorLogId: string): Promise<ErrorLogDetailDto> => {
+    const response = await api.get<ErrorLogDetailDto>(`/admin/error-logs/${errorLogId}`);
+    return response.data;
+  },
 };
 
 // Waitlist API functions (public)
@@ -991,6 +1015,7 @@ import type {
   UserSpecimenFilters,
   SpecimenLookupRequest,
   SpecimenLookupResponse,
+  SpecimenLookupAndCreateResponse,
 } from '@/types/user-specimen';
 
 export const userSpecimenApi = {
@@ -1034,6 +1059,12 @@ export const userSpecimenApi = {
   // AI-powered specimen lookup using Google Gemini
   lookup: async (request: SpecimenLookupRequest): Promise<SpecimenLookupResponse> => {
     const response = await api.post<SpecimenLookupResponse>('/user-specimens/lookup', request);
+    return response.data;
+  },
+
+  // AI-powered lookup that auto-creates specimen if confidence >= 85%
+  lookupAndCreate: async (request: SpecimenLookupRequest): Promise<SpecimenLookupAndCreateResponse> => {
+    const response = await api.post<SpecimenLookupAndCreateResponse>('/user-specimens/lookup-and-create', request);
     return response.data;
   },
 
@@ -1089,6 +1120,11 @@ export const inventorySourceApi = {
       params.excludeSourceId = excludeSourceId;
     }
     const response = await api.get<{ exists: boolean }>('/inventory-sources/check-name', { params });
+    return response.data;
+  },
+
+  lookup: async (query: string): Promise<InventorySourceLookupResponse> => {
+    const response = await api.post<InventorySourceLookupResponse>('/inventory-sources/lookup', { query });
     return response.data;
   },
 };
