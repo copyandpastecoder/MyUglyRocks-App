@@ -348,12 +348,10 @@ public class UserSpecimenService : IUserSpecimenService
                 : SpecimenMaterialType.Other;
 
             TumblingDifficulty? tumblingDifficulty = null;
-            if (!string.IsNullOrEmpty(data.TumblingDifficulty))
+            if (!string.IsNullOrEmpty(data.TumblingDifficulty) &&
+                Enum.TryParse<TumblingDifficulty>(data.TumblingDifficulty, true, out var parsedDifficulty))
             {
-                if (Enum.TryParse<TumblingDifficulty>(data.TumblingDifficulty, true, out var parsedDifficulty))
-                {
-                    tumblingDifficulty = parsedDifficulty;
-                }
+                tumblingDifficulty = parsedDifficulty;
             }
 
             var newSpecimen = new Specimen
