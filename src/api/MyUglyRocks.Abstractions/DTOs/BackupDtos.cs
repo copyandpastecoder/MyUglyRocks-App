@@ -79,3 +79,14 @@ public record ValidateRequest(string BackupKey);
 /// Request to restore a backup
 /// </summary>
 public record RestoreRequest(string BackupKey, string Confirmation);
+
+/// <summary>
+/// Result of test file upload to backup bucket
+/// </summary>
+public record TestFileResult
+{
+    public bool Success { get; init; }
+    public string? Key { get; init; }
+    public long Size { get; init; }
+    public string? Message { get; init; }
+}

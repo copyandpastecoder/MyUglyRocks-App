@@ -16,6 +16,7 @@ public class AdminController : ControllerBase
     private readonly IReferenceDataService _referenceDataService;
     private readonly ISessionAnalyticsService _sessionAnalyticsService;
     private readonly IDatabaseBackupService _databaseBackupService;
+    private readonly IBackupStorageService _backupStorageService;
     private readonly IInvitationCodeService _invitationCodeService;
     private readonly ILogger<AdminController> _logger;
 
@@ -24,6 +25,7 @@ public class AdminController : ControllerBase
         IReferenceDataService referenceDataService,
         ISessionAnalyticsService sessionAnalyticsService,
         IDatabaseBackupService databaseBackupService,
+        IBackupStorageService backupStorageService,
         IInvitationCodeService invitationCodeService,
         ILogger<AdminController> logger)
     {
@@ -31,6 +33,7 @@ public class AdminController : ControllerBase
         _referenceDataService = referenceDataService;
         _sessionAnalyticsService = sessionAnalyticsService;
         _databaseBackupService = databaseBackupService;
+        _backupStorageService = backupStorageService;
         _invitationCodeService = invitationCodeService;
         _logger = logger;
     }
@@ -618,6 +621,60 @@ public class AdminController : ControllerBase
         }
 
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Test file upload to backup bucket (admin only).
+    /// Creates a simple text file to verify R2 backup bucket connectivity.
+    /// </summary>
+    [HttpPost("backups/test")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(TestFileResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<TestFileResult>> TestBackupBucket(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            if (!_backupStorageService.IsConfigured)
+            {
+                return BadRequest(new { message = "Backup storage is not configured. Set R2:BackupBucketName in configuration." });
+            }
+
+            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd-HH-mm-ss");
+            var key = $"test/test-{timestamp}.txt";
+            var content = $"Test file created at {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\nBackup bucket connectivity test successful.";
+            
+            var contentBytes = System.Text.Encoding.UTF8.GetBytes(content);
+            using var stream = new MemoryStream(contentBytes);
+            
+            var metadata = new Dictionary<string, string>
+            {
+                ["test-timestamp"] = timestamp,
+                ["test-type"] = "connectivity"
+            };
+
+            await _backupStorageService.UploadAsync(
+                key, 
+                stream, 
+                "text/plain", 
+                metadata, 
+                cancellationToken);
+
+            _logger.LogInformation("Test file uploaded successfully to backup bucket: {Key}", key);
+
+            return Ok(new TestFileResult
+            {
+                Success = true,
+                Key = key,
+                Size = contentBytes.Length,
+                Message = "Test file uploaded successfully to backup bucket"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to upload test file to backup bucket");
+            return BadRequest(new { message = $"Test file upload failed: {ex.Message}" });
+        }
     }
 
     #endregion
