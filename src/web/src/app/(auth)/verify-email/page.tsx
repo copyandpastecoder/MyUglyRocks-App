@@ -22,6 +22,8 @@ function VerifyEmailContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
+    let redirectTimeout: NodeJS.Timeout | null = null;
+
     const verifyEmail = async () => {
       const token = searchParams.get('token');
 
@@ -40,10 +42,10 @@ function VerifyEmailContent() {
 
         const result = await response.json();
 
-        if (response.ok && result.message) {
+        if (response.ok) {
           setStatus('success');
           // Redirect to login after 3 seconds
-          setTimeout(() => {
+          redirectTimeout = setTimeout(() => {
             router.push('/login?verified=true');
           }, 3000);
         } else {
@@ -57,6 +59,13 @@ function VerifyEmailContent() {
     };
 
     verifyEmail();
+
+    // Cleanup timeout on unmount
+    return () => {
+      if (redirectTimeout) {
+        clearTimeout(redirectTimeout);
+      }
+    };
   }, [searchParams, router]);
 
   return (
