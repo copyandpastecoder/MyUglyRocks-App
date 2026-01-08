@@ -22,7 +22,7 @@ interface ClientErrorRequest {
 class ErrorLogger {
   private recentErrors = new Map<string, number>();
   private errorQueue: Array<{ error: Error; context?: ErrorContext }> = [];
-  private flushTimer: NodeJS.Timeout | null = null;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private errorCount = 0;
   private errorCountResetTime = Date.now();
 
@@ -148,9 +148,14 @@ class ErrorLogger {
         return null;
       }
 
-      const payload = JSON.parse(atob(parts[1]));
-      // Look for user ID claim (common claim names)
-      return payload.sub || payload.userId || payload.nameid || null;
+      try {
+        const payload = JSON.parse(atob(parts[1]));
+        // Look for user ID claim (common claim names)
+        return payload.sub || payload.userId || payload.nameid || null;
+      } catch {
+        // Malformed token
+        return null;
+      }
     } catch {
       return null;
     }
@@ -169,7 +174,6 @@ class ErrorLogger {
    */
   private checkRateLimit(): boolean {
     const now = Date.now();
-    const oneMinuteAgo = now - 60000;
 
     // Reset counter if more than 1 minute has passed
     if (now - this.errorCountResetTime > 60000) {
