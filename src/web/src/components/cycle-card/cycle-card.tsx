@@ -23,9 +23,9 @@ import type { CycleCardProps } from './types';
 
 export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainStyle = false, expandedOverride, onExpandedChange }: CycleCardProps) {
   const router = useRouter();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   // Track if we've ever been expanded (for lazy loading - once true, stays true)
-  const [hasBeenExpanded, setHasBeenExpanded] = useState(false);
+  const [hasBeenExpanded, setHasBeenExpanded] = useState(true);
 
   // Parent override takes precedence over internal state
   const effectiveExpanded = expandedOverride !== undefined ? expandedOverride : isExpanded;

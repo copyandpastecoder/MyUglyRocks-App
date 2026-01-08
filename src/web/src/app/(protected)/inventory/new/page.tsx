@@ -73,9 +73,9 @@ export default function NewInventoryPage() {
   const handleCustomSpecimenCreated = (data: CustomSpecimenCreatedData) => {
     const newRow: SpecimenRowItem = {
       id: crypto.randomUUID(),
-      selectedId: data.userSpecimenId || '',
+      selectedId: data.specimenId || data.userSpecimenId || '',
       userSpecimenId: data.userSpecimenId,
-      source: 'user',
+      source: data.specimenId ? 'system' : 'user',
       commonName: data.commonName,
       scientificName: data.scientificName ?? undefined,
       tumblingDifficulty: data.tumblingDifficulty ?? undefined,

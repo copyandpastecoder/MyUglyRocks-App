@@ -90,6 +90,7 @@ public static class PaginationHelper
 
     /// <summary>
     /// Validates and clamps 'page' parameter.
+    /// Upper bound is implicitly limited by MaxSkip / pageSize since skip is clamped separately.
     /// </summary>
     public static int ClampPage(int page)
     {

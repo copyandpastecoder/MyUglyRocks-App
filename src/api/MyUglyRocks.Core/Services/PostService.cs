@@ -52,7 +52,8 @@ public class PostService : IPostService
             .Include(p => p.Inventory)
                 .ThenInclude(i => i!.InventorySpecimens)
                     .ThenInclude(s => s.UserSpecimen)
-            .Where(p => p.Status == PostStatus.Published);
+            .Where(p => p.Status == PostStatus.Published 
+                && (p.PostType == PostType.Cycle || p.PostType == PostType.Inventory));
 
         query = sortBy?.ToLower() switch
         {
@@ -231,9 +232,6 @@ public class PostService : IPostService
             if (cycle == null)
                 throw new InvalidOperationException("Cycle not found or doesn't belong to user");
 
-            if (cycle.Status != CycleStatus.Completed)
-                throw new InvalidOperationException("Can only share completed cycles");
-
             // Check if a post already exists for this cycle
             var existingCyclePost = await _context.Set<Post>()
                 .AnyAsync(p => p.CycleId == request.CycleId && !p.IsDeleted);
@@ -325,12 +323,54 @@ public class PostService : IPostService
     public async Task<PostDto?> UpdatePostAsync(Guid postId, Guid userId, UpdatePostRequest request)
     {
         var post = await _context.Set<Post>()
+            .Include(p => p.PostPhotos)
             .FirstOrDefaultAsync(p => p.PostId == postId && p.UserId == userId);
 
         if (post == null) return null;
 
         post.Title = request.Title;
         post.Description = request.Description;
+
+        // Update photos if provided
+        if (request.PhotoIds != null)
+        {
+            // Validate all photos belong to the post's cycle/inventory
+            if (post.CycleId.HasValue)
+            {
+                var cyclePhotoIds = await _context.Set<Photo>()
+                    .Where(p => p.StageRun.CycleId == post.CycleId && p.ProcessingStatus == PhotoProcessingStatus.Completed)
+                    .Select(p => p.PhotoId)
+                    .ToListAsync();
+
+                if (!request.PhotoIds.All(id => cyclePhotoIds.Contains(Guid.Parse(id))))
+                    throw new InvalidOperationException("Some photos don't belong to this cycle");
+            }
+            else if (post.InventoryId.HasValue)
+            {
+                var inventoryPhotoIds = await _context.Set<InventoryPhoto>()
+                    .Where(ip => ip.InventoryId == post.InventoryId)
+                    .Select(ip => ip.InventoryPhotoId)
+                    .ToListAsync();
+
+                if (!request.PhotoIds.All(id => inventoryPhotoIds.Contains(Guid.Parse(id))))
+                    throw new InvalidOperationException("Some photos don't belong to this inventory");
+            }
+
+            // Remove old photo associations
+            _context.Set<PostPhoto>().RemoveRange(post.PostPhotos);
+
+            // Add new photo associations
+            foreach (var photoId in request.PhotoIds)
+            {
+                post.PostPhotos.Add(new PostPhoto
+                {
+                    PostId = postId,
+                    PhotoId = Guid.Parse(photoId)
+                });
+            }
+
+            // Note: Cover photo is determined by the first photo in PostPhotos, not a separate field
+        }
 
         await _context.SaveChangesAsync();
 

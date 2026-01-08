@@ -32,10 +32,12 @@ public class ErrorLogService : IErrorLogService
             Guid? userId = null;
             var userIdClaim = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? context.User?.FindFirst("sub")?.Value;
-            if (!string.IsNullOrEmpty(userIdClaim) &&
-                Guid.TryParse(userIdClaim, out var parsedUserId))
+            if (!string.IsNullOrEmpty(userIdClaim))
             {
-                userId = parsedUserId;
+                if (Guid.TryParse(userIdClaim, out Guid parsedUserId))
+                {
+                    userId = parsedUserId;
+                }
             }
 
             // Determine HTTP status code and severity
@@ -108,8 +110,8 @@ public class ErrorLogService : IErrorLogService
                 HttpStatusCode = statusCode,
                 UserId = userId,
                 IpAddress = ipAddress,
-                UserAgent = context.Request?.Headers.UserAgent.ToString() is string ua && !string.IsNullOrEmpty(ua)
-                    ? ua.Substring(0, Math.Min(512, ua.Length))
+                UserAgent = context.Request?.Headers.TryGetValue("User-Agent", out Microsoft.Extensions.Primitives.StringValues userAgentValue) == true && !string.IsNullOrEmpty(userAgentValue.ToString())
+                    ? userAgentValue.ToString().Substring(0, Math.Min(512, userAgentValue.ToString().Length))
                     : null,
                 RequestHeaders = headersJson,
                 InnerException = innerException
@@ -283,5 +285,65 @@ public class ErrorLogService : IErrorLogService
             KeyNotFoundException => ErrorSeverity.Info,
             _ => ErrorSeverity.Critical
         };
+    }
+
+    public async Task LogClientErrorAsync(ClientErrorRequest request, string ipAddress, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Parse user ID if provided
+            Guid? userId = null;
+            if (!string.IsNullOrEmpty(request.UserId))
+            {
+                if (Guid.TryParse(request.UserId, out Guid parsedUserId))
+                {
+                    userId = parsedUserId;
+                }
+            }
+
+            // Mask IP address
+            var maskedIp = PiiMaskingHelper.MaskIpAddress(ipAddress);
+
+            // Generate correlation ID
+            var correlationId = Guid.NewGuid().ToString();
+
+            // Truncate stack trace if too long
+            var stackTrace = request.StackTrace;
+            if (!string.IsNullOrEmpty(stackTrace) && stackTrace.Length > MaxStackTraceLength)
+            {
+                stackTrace = stackTrace.Substring(0, MaxStackTraceLength) + "\n... (truncated)";
+            }
+
+            // Sanitize URL
+            var sanitizedUrl = PiiMaskingHelper.SanitizeForLog(request.Url);
+
+            var errorLog = new ErrorLog
+            {
+                CorrelationId = correlationId,
+                ExceptionType = request.ExceptionType,
+                Message = request.Message,
+                StackTrace = stackTrace,
+                Severity = ErrorSeverity.Error, // Client errors default to Error severity
+                HttpMethod = "CLIENT", // Special marker to distinguish client errors
+                HttpPath = sanitizedUrl,
+                HttpQueryString = null,
+                HttpStatusCode = null, // Not applicable for client errors
+                UserId = userId,
+                IpAddress = maskedIp,
+                UserAgent = !string.IsNullOrEmpty(request.UserAgent) && request.UserAgent.Length > 512
+                    ? request.UserAgent.Substring(0, 512)
+                    : request.UserAgent,
+                RequestHeaders = null, // Not applicable for client errors
+                InnerException = request.ComponentStack // Store React component stack in InnerException field
+            };
+
+            _context.Set<ErrorLog>().Add(errorLog);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // Log failure to Serilog but don't throw (fire-and-forget pattern)
+            _logger.LogWarning(ex, "Failed to log client error to database");
+        }
     }
 }

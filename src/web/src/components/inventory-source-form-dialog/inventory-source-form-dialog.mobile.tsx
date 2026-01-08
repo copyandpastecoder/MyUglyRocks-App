@@ -187,7 +187,7 @@ export function InventorySourceFormDialogMobile({
       const response = await inventorySourceApi.lookup(aiLookupQuery.trim());
       
       if (response.success && response.data) {
-        const mockResult = {
+        const lookupResult = {
           success: true,
           name: response.data.name,
           url: response.data.url || '',
@@ -197,7 +197,7 @@ export function InventorySourceFormDialogMobile({
           confidenceReason: response.data.confidenceReason || undefined,
         };
 
-        setAiLookupResult(mockResult);
+        setAiLookupResult(lookupResult);
         
         // Auto-populate fields if successful
         form.setValue('name', response.data.name);
