@@ -115,12 +115,13 @@ class ErrorLogger {
    */
   private async sendError(error: Error, context?: ErrorContext): Promise<void> {
     try {
+      const rawUrl = typeof window !== 'undefined' ? window.location.href : 'unknown';
       const payload: ClientErrorRequest = {
         message: error.message || 'Unknown error',
         stackTrace: error.stack || null,
         exceptionType: error.name || 'Error',
         componentStack: context?.componentStack || null,
-        url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+        url: this.sanitizeUrl(rawUrl),
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
         userId: this.getUserId(),
       };
@@ -158,6 +159,28 @@ class ErrorLogger {
       }
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Sanitize URL to remove sensitive query parameters
+   */
+  private sanitizeUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const sensitiveParams = ['token', 'code', 'key', 'secret', 'password', 'api_key', 'apikey'];
+      
+      // Remove sensitive query parameters
+      sensitiveParams.forEach(param => {
+        if (urlObj.searchParams.has(param)) {
+          urlObj.searchParams.set(param, '[REDACTED]');
+        }
+      });
+      
+      return urlObj.toString();
+    } catch {
+      // If URL parsing fails, return path only
+      return url.split('?')[0];
     }
   }
 

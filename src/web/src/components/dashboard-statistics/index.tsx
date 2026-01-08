@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useCycleStatistics } from '@/hooks/use-cycle-statistics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DurationStatsCard } from './duration-stats-card';
@@ -18,8 +19,20 @@ import { StageDurationChart } from './stage-duration-chart';
 
 export function DashboardStatistics() {
   const { data: statistics, isLoading, error } = useCycleStatistics();
+  const [chartsReady, setChartsReady] = useState(false);
 
-  if (isLoading) {
+  // Ensure charts render after layout is complete to prevent Recharts dimension warnings
+  useEffect(() => {
+    if (!isLoading && statistics) {
+      // Small delay to ensure grid layout has calculated dimensions
+      const timer = setTimeout(() => setChartsReady(true), 50);
+      return () => clearTimeout(timer);
+    } else {
+      setChartsReady(false);
+    }
+  }, [isLoading, statistics]);
+
+  if (isLoading || !chartsReady) {
     return <DashboardStatisticsSkeleton />;
   }
 

@@ -17,9 +17,10 @@ namespace MyUglyRocks.Infrastructure.Migrations
             foreach (var word in badWords)
             {
                 migrationBuilder.Sql(
-                    $"INSERT INTO bad_words (word, notes, date_created, date_updated) " +
-                    $"VALUES ('{word.Replace("'", "''")}', 'Imported from bad-words-seed.txt', now(), now()) " +
-                    $"ON CONFLICT (word) DO NOTHING;");
+                    "INSERT INTO bad_words (word, notes, date_created, date_updated) " +
+                    "VALUES ({0}, 'Imported from bad-words-seed.txt', now(), now()) " +
+                    "ON CONFLICT (word) DO NOTHING;",
+                    word);
             }
         }
 
