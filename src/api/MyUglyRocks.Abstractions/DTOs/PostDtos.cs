@@ -130,5 +130,4 @@ public record UpdatePostRequest
     public string? Description { get; init; }
 
     public List<string>? PhotoIds { get; init; }
-    public Guid? CoverPhotoId { get; init; }
 }

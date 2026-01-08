@@ -1796,7 +1796,7 @@ function StageCard({
           {/* Name and status */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className={`font-medium text-sm ${isPlanned ? 'text-muted-foreground' : ''}`}>{displayName}</p>
+              <p className={`font-medium text-sm truncate ${isPlanned ? 'text-muted-foreground' : ''}`}>{displayName}</p>
               {isPlanned && (
                 <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
                   Scheduled
