@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { cycleApi, photosApi, postApi } from '@/lib/api';
 import { formatStageDisplayName } from '@/lib/cycle-utils';
 import type { CyclePhotoDto, StageRunSummaryDto } from '@/types/cycle';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PhotoUploadModal } from './photo-upload-modal';
 import { PhotoLightbox, useLightbox } from './photo-lightbox';
 import {
@@ -46,36 +46,7 @@ export function CyclePhotos({ cycleId, stages, postId }: CyclePhotosProps) {
   const [editPhotoType, setEditPhotoType] = useState<PhotoType>('during');
   const [isSaving, setIsSaving] = useState(false);
   const lightbox = useLightbox();
-
-  // Mutation for syncing photos to gallery
-  const syncPhotosMutation = useMutation({
-    mutationFn: async () => {
-      if (!postId) throw new Error('No gallery post found');
-      
-      // Get current post data
-      const post = await postApi.getById(postId);
-      
-      // Get completed photos
-      const completedPhotos = allPhotos.filter(p => p.processingStatus === 'Completed');
-      const photoIds = completedPhotos.map(p => p.photoId);
-      const coverPhotoId = photoIds.length > 0 ? photoIds[0] : undefined;
-      
-      // Update post with new photos
-      await postApi.update(postId, {
-        title: post.title,
-        description: post.description || undefined,
-        photoIds,
-        coverPhotoId,
-      });
-    },
-    onSuccess: () => {
-      toast.success('Gallery photos updated');
-    },
-    onError: (error: Error) => {
-      console.error('Sync photos error:', error);
-      toast.error('Failed to sync photos');
-    },
-  });
+  const queryClient = useQueryClient();
 
   // Fetch all photos for the cycle in a single request
   const { data: allPhotos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
@@ -98,6 +69,40 @@ export function CyclePhotos({ cycleId, stages, postId }: CyclePhotosProps) {
     refetchInterval: (query) => {
       const photos = query.state.data ?? [];
       return photos.some(p => p.processingStatus === 'Processing') ? 2000 : false;
+    },
+  });
+
+  // Mutation for syncing photos to gallery
+  const syncPhotosMutation = useMutation({
+    mutationFn: async () => {
+      if (!postId) throw new Error('No gallery post found');
+      
+      // Get current post data
+      const post = await postApi.getById(postId);
+      
+      // Get completed photos from current allPhotos data
+      const completedPhotos = allPhotos.filter(p => p.processingStatus === 'Completed');
+      const photoIds = completedPhotos.map(p => p.photoId);
+      const coverPhotoId = photoIds.length > 0 ? photoIds[0] : undefined;
+      
+      // Update post with new photos
+      await postApi.update(postId, {
+        title: post.title,
+        description: post.description || undefined,
+        photoIds,
+        coverPhotoId,
+      });
+    },
+    onSuccess: () => {
+      // Invalidate post query to update gallery UI
+      if (postId) {
+        queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      }
+      toast.success('Gallery photos updated');
+    },
+    onError: (error: Error) => {
+      console.error('Sync photos error:', error);
+      toast.error('Failed to sync photos');
     },
   });
 
