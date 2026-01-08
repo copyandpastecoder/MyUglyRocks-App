@@ -32,9 +32,12 @@ public class ErrorLogService : IErrorLogService
             Guid? userId = null;
             var userIdClaim = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? context.User?.FindFirst("sub")?.Value;
-            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out Guid parsedUserId))
+            if (!string.IsNullOrEmpty(userIdClaim))
             {
-                userId = parsedUserId;
+                if (Guid.TryParse(userIdClaim, out Guid parsedUserId))
+                {
+                    userId = parsedUserId;
+                }
             }
 
             // Determine HTTP status code and severity
