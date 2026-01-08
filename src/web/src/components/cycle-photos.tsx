@@ -83,14 +83,12 @@ export function CyclePhotos({ cycleId, stages, postId }: CyclePhotosProps) {
       // Get completed photos from current allPhotos data
       const completedPhotos = allPhotos.filter(p => p.processingStatus === 'Completed');
       const photoIds = completedPhotos.map(p => p.photoId);
-      const coverPhotoId = photoIds.length > 0 ? photoIds[0] : undefined;
       
       // Update post with new photos
       await postApi.update(postId, {
         title: post.title,
         description: post.description || undefined,
         photoIds,
-        coverPhotoId,
       });
     },
     onSuccess: () => {
