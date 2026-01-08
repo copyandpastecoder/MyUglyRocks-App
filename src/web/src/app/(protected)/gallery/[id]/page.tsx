@@ -123,13 +123,11 @@ export default function PostDetailPage() {
       if (!post || !cyclePhotos) return;
       const completedPhotos = cyclePhotos.filter(p => p.processingStatus === 'Completed');
       const photoIds = completedPhotos.map(p => p.photoId);
-      const coverPhotoId = completedPhotos[0]?.photoId || undefined;
       
       return postApi.update(postId, {
         title: post.title,
         description: post.description || undefined,
         photoIds,
-        coverPhotoId,
       });
     },
     onSuccess: () => {

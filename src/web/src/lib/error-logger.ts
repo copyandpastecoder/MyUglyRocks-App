@@ -168,14 +168,17 @@ class ErrorLogger {
   private sanitizeUrl(url: string): string {
     try {
       const urlObj = new URL(url);
-      const sensitiveParams = ['token', 'code', 'key', 'secret', 'password', 'api_key', 'apikey'];
+      const sensitiveParams = new Set(['token', 'code', 'key', 'secret', 'password', 'api_key', 'apikey']);
       
-      // Remove sensitive query parameters
-      sensitiveParams.forEach(param => {
-        if (urlObj.searchParams.has(param)) {
-          urlObj.searchParams.set(param, '[REDACTED]');
+      // Remove sensitive query parameters (case-insensitive)
+      const paramsToDelete: string[] = [];
+      urlObj.searchParams.forEach((value, name) => {
+        if (sensitiveParams.has(name.toLowerCase())) {
+          paramsToDelete.push(name);
         }
       });
+      
+      paramsToDelete.forEach(param => urlObj.searchParams.delete(param));
       
       return urlObj.toString();
     } catch {
