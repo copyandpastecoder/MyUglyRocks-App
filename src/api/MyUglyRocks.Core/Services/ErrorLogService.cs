@@ -104,7 +104,7 @@ public class ErrorLogService : IErrorLogService
                 var userAgentString = userAgentValue.ToString();
                 if (!string.IsNullOrEmpty(userAgentString))
                 {
-                    userAgent = userAgentString.Length > 512 
+                    userAgent = userAgentString.Length >= 512 
                         ? userAgentString.Substring(0, 512) 
                         : userAgentString;
                 }

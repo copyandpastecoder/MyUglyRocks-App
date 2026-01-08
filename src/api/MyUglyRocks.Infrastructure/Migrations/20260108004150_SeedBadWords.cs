@@ -13,14 +13,15 @@ namespace MyUglyRocks.Infrastructure.Migrations
             // Seed bad words from docs/seed-data/bad-words-seed.txt
             // This list prevents inappropriate usernames
             var badWords = GetBadWords();
+            var now = DateTime.UtcNow;
 
+            // Use InsertData for proper parameterization (prevents SQL injection)
             foreach (var word in badWords)
             {
-                // Use parameterized query to prevent SQL injection
-                migrationBuilder.Sql(
-                    $"INSERT INTO bad_words (word, notes, date_created, date_updated) " +
-                    $"VALUES ('{word.Replace("'", "''")}', 'Imported from bad-words-seed.txt', now(), now()) " +
-                    $"ON CONFLICT (word) DO NOTHING;");
+                migrationBuilder.InsertData(
+                    table: "bad_words",
+                    columns: new[] { "word", "notes", "date_created", "date_updated" },
+                    values: new object[] { word, "Imported from bad-words-seed.txt", now, now });
             }
         }
 
