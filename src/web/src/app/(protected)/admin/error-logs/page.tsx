@@ -43,7 +43,7 @@ import {
   AlertCircle,
   Info,
 } from 'lucide-react';
-import type { ErrorLogListDto, ErrorLogDetailDto, ErrorSeverity } from '@/types/admin';
+import type { ErrorLogListDto, ErrorSeverity } from '@/types/admin';
 
 type TimePreset = '24h' | '7d' | '30d' | 'all';
 
