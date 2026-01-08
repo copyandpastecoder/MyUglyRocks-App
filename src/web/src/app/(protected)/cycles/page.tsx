@@ -35,7 +35,7 @@ export default function CyclesPage() {
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
   // Expand/collapse all: undefined = individual control, true = all expanded, false = all collapsed
-  const [expandAllState, setExpandAllState] = useState<boolean | undefined>(undefined);
+  const [expandAllState, setExpandAllState] = useState<boolean | undefined>(true);
 
   // Active cycles: oldest first (ASC), Completed: newest first (DESC)
   const sortOrder = activeTab === 'Active' ? 'asc' : 'desc';

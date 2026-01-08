@@ -64,7 +64,7 @@ export default function ShareCyclePage() {
   const { data: photos, isLoading: photosLoading } = useQuery({
     queryKey: ['cycle-photos', cycleId],
     queryFn: () => cycleApi.getPhotos(cycleId),
-    enabled: !!cycle && cycle.status === 'Completed',
+    enabled: !!cycle,
   });
 
   // Filter to only show completed photos (not processing or failed)
@@ -197,39 +197,7 @@ export default function ShareCyclePage() {
     );
   }
 
-  if (cycle.status !== 'Completed') {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href={`/cycles/${cycleId}`}>
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Share Your Results</h1>
-            <p className="text-muted-foreground">Share your tumbled rocks with the community</p>
-          </div>
-        </div>
 
-        <Card className="border-yellow-300 bg-yellow-50">
-          <CardContent className="flex items-center gap-4 py-6">
-            <AlertCircle className="h-8 w-8 text-yellow-600" />
-            <div>
-              <p className="font-medium">Cycle not completed</p>
-              <p className="text-sm text-muted-foreground">
-                You can only share completed cycles. Please complete this cycle first.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Button asChild>
-          <Link href={`/cycles/${cycleId}`}>Back to Cycle</Link>
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -240,10 +208,28 @@ export default function ShareCyclePage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Share Your Results</h1>
-          <p className="text-muted-foreground">Share your tumbled rocks with the community</p>
+          <h1 className="text-2xl font-bold tracking-tight">Share to Gallery</h1>
+          <p className="text-muted-foreground">
+            {cycle.status === 'Completed' 
+              ? 'Share your completed rocks with the community' 
+              : 'Share your work-in-progress with the community'}
+          </p>
         </div>
       </div>
+
+      {cycle.status === 'Active' && (
+        <Card className="border-blue-300 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
+          <CardContent className="flex items-center gap-4 py-4">
+            <AlertCircle className="h-6 w-6 text-blue-600 dark:text-blue-400 shrink-0" />
+            <div className="text-sm">
+              <p className="font-medium text-blue-900 dark:text-blue-100">Sharing an active cycle</p>
+              <p className="text-blue-700 dark:text-blue-300">
+                You can share your cycle now and update photos as you progress. Your post will show that this cycle is still in progress.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cycle Summary */}
       <Card>

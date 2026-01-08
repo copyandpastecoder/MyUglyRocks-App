@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { postApi } from '@/lib/api';
+import { postApi, cycleApi } from '@/lib/api';
 import { PAGE_CONTAINER } from '@/lib/layout';
 import { formatSizeCategories } from '@/lib/utils';
 import { useAuth } from '@/providers/auth-provider';
@@ -33,6 +33,7 @@ import {
   ChevronDown,
   Maximize2,
   Package,
+  RefreshCw,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import Link from 'next/link';
@@ -65,6 +66,13 @@ export default function PostDetailPage() {
   const { data: comments, isLoading: commentsLoading } = useQuery({
     queryKey: ['comments', postId],
     queryFn: () => postApi.getComments(postId),
+  });
+
+  // Fetch cycle photos if this is a cycle post and user is the author
+  const { data: cyclePhotos } = useQuery({
+    queryKey: ['cycle-photos', post?.cycle?.cycleId],
+    queryFn: () => cycleApi.getPhotos(post!.cycle!.cycleId),
+    enabled: !!post && post.postType === 'Cycle' && !!post.cycle?.cycleId && post.author.userId === user?.userId,
   });
 
   const voteMutation = useMutation({
@@ -107,6 +115,29 @@ export default function PostDetailPage() {
     },
     onError: () => {
       toast.error('Failed to add comment');
+    },
+  });
+
+  const syncPhotosMutation = useMutation({
+    mutationFn: async () => {
+      if (!post || !cyclePhotos) return;
+      const completedPhotos = cyclePhotos.filter(p => p.processingStatus === 'Completed');
+      const photoIds = completedPhotos.map(p => p.photoId);
+      const coverPhotoId = completedPhotos[0]?.photoId || undefined;
+      
+      return postApi.update(postId, {
+        title: post.title,
+        description: post.description || undefined,
+        photoIds,
+        coverPhotoId,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['post', postId] });
+      toast.success('Photos synced successfully!');
+    },
+    onError: () => {
+      toast.error('Failed to sync photos');
     },
   });
 
@@ -267,6 +298,21 @@ export default function PostDetailPage() {
           <MessageCircle className="h-4 w-4" />
           {post.commentCount} Comments
         </Button>
+        {post.postType === 'Cycle' && post.author.userId === user?.userId && cyclePhotos && (
+          <Button
+            variant="outline"
+            onClick={() => syncPhotosMutation.mutate()}
+            disabled={syncPhotosMutation.isPending}
+            className="gap-2 ml-auto"
+          >
+            {syncPhotosMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            Sync Photos
+          </Button>
+        )}
       </div>
 
       {/* Description */}
