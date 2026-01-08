@@ -41,7 +41,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { adminApi } from '@/lib/api';
 import type {
   InvitationCodeDto,
-  PaginatedInvitationCodesResponse,
   InvitationStatsDto,
   CreateInvitationCodeRequest,
   RevokeInvitationCodeRequest,

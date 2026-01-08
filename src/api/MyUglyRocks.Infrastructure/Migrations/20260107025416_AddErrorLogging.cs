@@ -53,7 +53,7 @@ namespace MyUglyRocks.Infrastructure.Migrations
                 name: "ix_error_logs_date_created",
                 table: "error_logs",
                 column: "date_created",
-                descending: new bool[0]);
+                descending: new[] { true });
 
             migrationBuilder.CreateIndex(
                 name: "ix_error_logs_http_path",

@@ -32,12 +32,10 @@ public class ErrorLogService : IErrorLogService
             Guid? userId = null;
             var userIdClaim = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? context.User?.FindFirst("sub")?.Value;
-            if (!string.IsNullOrEmpty(userIdClaim))
+            if (!string.IsNullOrEmpty(userIdClaim) &&
+                Guid.TryParse(userIdClaim, out var parsedUserId))
             {
-                if (Guid.TryParse(userIdClaim, out Guid parsedUserId))
-                {
-                    userId = parsedUserId;
-                }
+                userId = parsedUserId;
             }
 
             // Determine HTTP status code and severity
@@ -110,7 +108,9 @@ public class ErrorLogService : IErrorLogService
                 HttpStatusCode = statusCode,
                 UserId = userId,
                 IpAddress = ipAddress,
-                UserAgent = context.Request?.Headers.UserAgent.ToString()?.Substring(0, Math.Min(512, context.Request.Headers.UserAgent.ToString().Length ?? 0)),
+                UserAgent = context.Request?.Headers.UserAgent.ToString() is string ua && !string.IsNullOrEmpty(ua)
+                    ? ua.Substring(0, Math.Min(512, ua.Length))
+                    : null,
                 RequestHeaders = headersJson,
                 InnerException = innerException
             };
