@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -21,6 +22,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Table,
   TableBody,
   TableCell,
@@ -28,11 +37,30 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Search, Gem, AlertCircle } from 'lucide-react';
+import { Search, Gem, AlertCircle, Settings2 } from 'lucide-react';
 import { PageTransition } from '@/components/ui/page-transition';
 
 const MATERIAL_TYPES = ['Rock', 'Mineral', 'Gemstone', 'Fossil', 'Glass', 'Other'];
 const DIFFICULTY_LEVELS = ['Easy', 'Medium', 'Hard', 'Expert'];
+
+// Column visibility configuration
+type ColumnKey = 'alias' | 'family' | 'materialType' | 'hardness' | 'difficulty';
+
+interface ColumnConfig {
+  key: ColumnKey;
+  label: string;
+  defaultVisible: boolean;
+}
+
+const AVAILABLE_COLUMNS: ColumnConfig[] = [
+  { key: 'alias', label: 'Alias', defaultVisible: true },
+  { key: 'family', label: 'Family', defaultVisible: true },
+  { key: 'materialType', label: 'Material Type', defaultVisible: true },
+  { key: 'hardness', label: 'Hardness', defaultVisible: true },
+  { key: 'difficulty', label: 'Tumbling Difficulty', defaultVisible: true },
+];
+
+const STORAGE_KEY = 'learn-specimens-columns';
 
 function getDifficultyColor(difficulty: string | null): string {
   switch (difficulty?.toLowerCase()) {
@@ -49,6 +77,34 @@ export default function SpecimensPage() {
   const [materialType, setMaterialType] = useState<string>('__all__');
   const [difficulty, setDifficulty] = useState<string>('__all__');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  // Column visibility state - load from localStorage
+  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          // Invalid JSON, use defaults
+        }
+      }
+    }
+    // Default visibility
+    return AVAILABLE_COLUMNS.reduce((acc, col) => {
+      acc[col.key] = col.defaultVisible;
+      return acc;
+    }, {} as Record<ColumnKey, boolean>);
+  });
+
+  // Save column visibility to localStorage
+  const toggleColumn = (key: ColumnKey) => {
+    setVisibleColumns((prev) => {
+      const newState = { ...prev, [key]: !prev[key] };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
+      return newState;
+    });
+  };
 
   const { data: specimens, isLoading, error } = useSpecimens({
     query: search || undefined,
@@ -104,6 +160,28 @@ export default function SpecimensPage() {
                   ))}
                 </SelectContent>
               </Select>
+              {/* Column visibility dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <Settings2 className="h-4 w-4" />
+                    <span className="sr-only">Toggle columns</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuLabel>Show Columns</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {AVAILABLE_COLUMNS.map((column) => (
+                    <DropdownMenuCheckboxItem
+                      key={column.key}
+                      checked={visibleColumns[column.key]}
+                      onCheckedChange={() => toggleColumn(column.key)}
+                    >
+                      {column.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardContent>
@@ -143,10 +221,21 @@ export default function SpecimensPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead className="hidden sm:table-cell">Family</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Hardness</TableHead>
-                  <TableHead>Difficulty</TableHead>
+                  {visibleColumns.alias && (
+                    <TableHead className="hidden md:table-cell">Alias</TableHead>
+                  )}
+                  {visibleColumns.family && (
+                    <TableHead className="hidden sm:table-cell">Family</TableHead>
+                  )}
+                  {visibleColumns.materialType && (
+                    <TableHead>Type</TableHead>
+                  )}
+                  {visibleColumns.hardness && (
+                    <TableHead>Hardness</TableHead>
+                  )}
+                  {visibleColumns.difficulty && (
+                    <TableHead>Difficulty</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -157,35 +246,48 @@ export default function SpecimensPage() {
                     onClick={() => setSelectedId(specimen.specimenId)}
                   >
                     <TableCell className="font-medium">{specimen.commonName}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-muted-foreground">
-                      {specimen.rockFamily || '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="text-xs">
-                        {specimen.materialType}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {specimen.mohsHardnessMin != null ? (
+                    {visibleColumns.alias && (
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
+                        {specimen.alias || '—'}
+                      </TableCell>
+                    )}
+                    {visibleColumns.family && (
+                      <TableCell className="hidden sm:table-cell text-muted-foreground">
+                        {specimen.rockFamily || '—'}
+                      </TableCell>
+                    )}
+                    {visibleColumns.materialType && (
+                      <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {specimen.mohsHardnessMin}
-                          {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
-                            ? `-${specimen.mohsHardnessMax}`
-                            : ''}
+                          {specimen.materialType}
                         </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {specimen.tumblingDifficulty ? (
-                        <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
-                          {specimen.tumblingDifficulty}
-                        </Badge>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
-                    </TableCell>
+                      </TableCell>
+                    )}
+                    {visibleColumns.hardness && (
+                      <TableCell>
+                        {specimen.mohsHardnessMin != null ? (
+                          <Badge variant="outline" className="text-xs">
+                            {specimen.mohsHardnessMin}
+                            {specimen.mohsHardnessMax && specimen.mohsHardnessMax !== specimen.mohsHardnessMin
+                              ? `-${specimen.mohsHardnessMax}`
+                              : ''}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    )}
+                    {visibleColumns.difficulty && (
+                      <TableCell>
+                        {specimen.tumblingDifficulty ? (
+                          <Badge className={getDifficultyColor(specimen.tumblingDifficulty)}>
+                            {specimen.tumblingDifficulty}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

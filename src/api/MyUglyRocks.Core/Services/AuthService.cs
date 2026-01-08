@@ -52,6 +52,7 @@ public class AuthService : IAuthService
 
     private DbSet<User> Users => _context.Set<User>();
     private DbSet<RefreshToken> RefreshTokens => _context.Set<RefreshToken>();
+    private DbSet<BadWord> BadWords => _context.Set<BadWord>();
 
     public async Task<AuthResult> RegisterAsync(RegisterRequest request, string? invitationCode = null, CancellationToken cancellationToken = default)
     {
@@ -72,6 +73,13 @@ public class AuthService : IAuthService
         if (usernameErrors.Count > 0)
         {
             return new AuthResult(false, Error: string.Join("; ", usernameErrors));
+        }
+
+        // Validate username does not contain bad words
+        var containsBadWord = await ContainsBadWordAsync(request.Username, cancellationToken);
+        if (containsBadWord)
+        {
+            return new AuthResult(false, Error: "Username contains inappropriate content. Please choose a different username.");
         }
 
         // Validate email
@@ -536,5 +544,20 @@ public class AuthService : IAuthService
         await RefreshTokens.AddAsync(refreshToken, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
         return refreshToken;
+    }
+
+    /// <summary>
+    /// Checks if the username contains any bad words.
+    /// Uses case-insensitive partial matching to catch variations.
+    /// </summary>
+    private async Task<bool> ContainsBadWordAsync(string username, CancellationToken cancellationToken)
+    {
+        var lowercaseUsername = username.ToLowerInvariant();
+
+        // Check if username contains any bad word as a substring
+        var hasBadWord = await BadWords
+            .AnyAsync(bw => lowercaseUsername.Contains(bw.Word), cancellationToken);
+
+        return hasBadWord;
     }
 }

@@ -116,6 +116,8 @@ export interface CreatePostRequest {
 export interface UpdatePostRequest {
   title: string;
   description?: string;
+  photoIds?: string[];
+  coverPhotoId?: string;
 }
 
 // Vote types

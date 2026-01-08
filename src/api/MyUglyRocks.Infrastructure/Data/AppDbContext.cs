@@ -60,6 +60,9 @@ public class AppDbContext : DbContext
     // Error Logging
     public DbSet<ErrorLog> ErrorLogs => Set<ErrorLog>();
 
+    // Content Moderation
+    public DbSet<BadWord> BadWords => Set<BadWord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

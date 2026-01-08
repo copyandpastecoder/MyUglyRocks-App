@@ -81,4 +81,12 @@ public interface IErrorLogService
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Number of records deleted</returns>
     Task<int> DeleteOldErrorLogsAsync(int retentionDays, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Log a client-side error from the UI
+    /// </summary>
+    /// <param name="request">Client error details</param>
+    /// <param name="ipAddress">Client IP address (will be masked)</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task LogClientErrorAsync(ClientErrorRequest request, string ipAddress, CancellationToken cancellationToken = default);
 }

@@ -87,7 +87,8 @@
       "Bash(gh pr view:*)",
       "Bash(gh pr diff:*)",
       "Bash(del \"d:\\\\MyRepo\\\\MyUglyRocks-App\\\\src\\\\api\\\\MyUglyRocks.Infrastructure\\\\Migrations\\\\20251231000000_AddOriginalPhotoFields.cs\")",
-      "Bash(del D:temp_pg_pass.txt)"
+      "Bash(del D:temp_pg_pass.txt)",
+      "Bash(.scriptsrestart-apps.ps1)"
     ],
     "deny": [],
     "ask": []

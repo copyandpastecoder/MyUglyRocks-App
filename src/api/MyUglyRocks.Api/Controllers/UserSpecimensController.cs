@@ -145,7 +145,7 @@ public class UserSpecimensController : ControllerBase
     /// Returns specimen ID (from system Specimens table) if high confidence, null otherwise
     /// </summary>
     [HttpPost("lookup-and-create")]
-    [EnableRateLimiting("intensive")]
+    [EnableRateLimiting("ai-lookup")]
     [ProducesResponseType(typeof(SpecimenLookupAndCreateResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]

@@ -128,4 +128,7 @@ public record UpdatePostRequest
 
     [StringLength(2000, ErrorMessage = "Description must be at most 2000 characters")]
     public string? Description { get; init; }
+
+    public List<string>? PhotoIds { get; init; }
+    public Guid? CoverPhotoId { get; init; }
 }
