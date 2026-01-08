@@ -731,7 +731,7 @@ export default function CycleDetailPage() {
                       </Button>
                     </>
                   )}
-                  {cycle.status === 'Completed' && (
+                  {(cycle.status === 'Completed' || cycle.status === 'Active') && (
                     <Button variant="outline" size="icon" className="h-8 w-8 sm:w-auto sm:px-3" asChild>
                       {cycle.postId ? (
                         <Link href={`/gallery/${cycle.postId}`}>
@@ -1674,7 +1674,7 @@ export default function CycleDetailPage() {
       </Dialog>
 
       {/* Photos */}
-      <CyclePhotos cycleId={cycleId} stages={cycle?.stageRuns || []} />
+      <CyclePhotos cycleId={cycleId} stages={cycle?.stageRuns || []} postId={cycle?.postId} />
       </div>
     </PageTransition>
   );
@@ -1795,8 +1795,8 @@ function StageCard({
 
           {/* Name and status */}
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className={`font-medium text-sm truncate ${isPlanned ? 'text-muted-foreground' : ''}`}>{displayName}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className={`font-medium text-sm ${isPlanned ? 'text-muted-foreground' : ''}`}>{displayName}</p>
               {isPlanned && (
                 <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
                   Scheduled
@@ -1808,7 +1808,6 @@ function StageCard({
                   {stage.resultRating}
                 </Badge>
               )}
-              <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isDetailsOpen ? 'rotate-180' : ''}`} />
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlanned ? (
@@ -1827,6 +1826,11 @@ function StageCard({
                 <>{formatDate(stage.startDateTime, 'MMM d, yyyy')}{effectiveEndDate && <> → {formatDate(stage.endDateTime || stage.durationEstimateEndDate, 'MMM d, yyyy')}</>}</>
               )}
             </p>
+          </div>
+
+          {/* Chevron */}
+          <div className="shrink-0">
+            <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isDetailsOpen ? 'rotate-180' : ''}`} />
           </div>
 
           {/* Progress bar (active only) */}

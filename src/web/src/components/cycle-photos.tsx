@@ -5,12 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Camera, Pencil } from 'lucide-react';
+import { ImagePlus, X, Image as ImageIcon, Loader2, CloudOff, Camera, Pencil, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { cycleApi, photosApi } from '@/lib/api';
+import { cycleApi, photosApi, postApi } from '@/lib/api';
 import { formatStageDisplayName } from '@/lib/cycle-utils';
 import type { CyclePhotoDto, StageRunSummaryDto } from '@/types/cycle';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { PhotoUploadModal } from './photo-upload-modal';
 import { PhotoLightbox, useLightbox } from './photo-lightbox';
 import {
@@ -31,11 +31,12 @@ import {
 interface CyclePhotosProps {
   cycleId: string;
   stages: StageRunSummaryDto[];
+  postId?: string | null;
 }
 
 type PhotoType = 'before' | 'during' | 'after' | 'inventory';
 
-export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
+export function CyclePhotos({ cycleId, stages, postId }: CyclePhotosProps) {
   const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -45,6 +46,36 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
   const [editPhotoType, setEditPhotoType] = useState<PhotoType>('during');
   const [isSaving, setIsSaving] = useState(false);
   const lightbox = useLightbox();
+
+  // Mutation for syncing photos to gallery
+  const syncPhotosMutation = useMutation({
+    mutationFn: async () => {
+      if (!postId) throw new Error('No gallery post found');
+      
+      // Get current post data
+      const post = await postApi.getById(postId);
+      
+      // Get completed photos
+      const completedPhotos = allPhotos.filter(p => p.processingStatus === 'Completed');
+      const photoIds = completedPhotos.map(p => p.photoId);
+      const coverPhotoId = photoIds.length > 0 ? photoIds[0] : undefined;
+      
+      // Update post with new photos
+      await postApi.update(postId, {
+        title: post.title,
+        description: post.description || undefined,
+        photoIds,
+        coverPhotoId,
+      });
+    },
+    onSuccess: () => {
+      toast.success('Gallery photos updated');
+    },
+    onError: (error: Error) => {
+      console.error('Sync photos error:', error);
+      toast.error('Failed to sync photos');
+    },
+  });
 
   // Fetch all photos for the cycle in a single request
   const { data: allPhotos = [], isLoading: photosLoading, refetch: refetchPhotos } = useQuery({
@@ -195,16 +226,29 @@ export function CyclePhotos({ cycleId, stages }: CyclePhotosProps) {
               </CardTitle>
               <CardDescription>Track your progress with before, during, and after photos</CardDescription>
             </div>
-            {canUpload && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setUploadModalOpen(true)}
-              >
-                <Camera className="mr-2 h-4 w-4" />
-                New Photo
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {postId && allPhotos.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => syncPhotosMutation.mutate()}
+                  disabled={syncPhotosMutation.isPending}
+                >
+                  <RefreshCw className={`mr-2 h-4 w-4 ${syncPhotosMutation.isPending ? 'animate-spin' : ''}`} />
+                  Sync
+                </Button>
+              )}
+              {canUpload && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setUploadModalOpen(true)}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  New Photo
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>

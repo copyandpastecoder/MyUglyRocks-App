@@ -43,7 +43,7 @@ export default function FeedbackDetailPage({ params }: { params: Promise<{ id: s
       setCommentText('');
       setReplyingTo(null);
       toast.success(replyingTo ? 'Reply added successfully' : 'Comment added successfully');
-    } catch (error) {
+    } catch {
       toast.error(replyingTo ? 'Failed to add reply' : 'Failed to add comment');
     }
   };
