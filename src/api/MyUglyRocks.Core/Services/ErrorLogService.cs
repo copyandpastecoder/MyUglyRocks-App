@@ -97,6 +97,19 @@ public class ErrorLogService : IErrorLogService
                 innerException = $"{exception.InnerException.GetType().FullName}: {exception.InnerException.Message}";
             }
 
+            // Extract and truncate User-Agent header
+            string? userAgent = null;
+            if (context.Request?.Headers.TryGetValue("User-Agent", out Microsoft.Extensions.Primitives.StringValues userAgentValue) == true)
+            {
+                var userAgentString = userAgentValue.ToString();
+                if (!string.IsNullOrEmpty(userAgentString))
+                {
+                    userAgent = userAgentString.Length > 512 
+                        ? userAgentString.Substring(0, 512) 
+                        : userAgentString;
+                }
+            }
+
             var errorLog = new ErrorLog
             {
                 CorrelationId = context.TraceIdentifier,
@@ -110,9 +123,7 @@ public class ErrorLogService : IErrorLogService
                 HttpStatusCode = statusCode,
                 UserId = userId,
                 IpAddress = ipAddress,
-                UserAgent = context.Request?.Headers.TryGetValue("User-Agent", out Microsoft.Extensions.Primitives.StringValues userAgentValue) == true && !string.IsNullOrEmpty(userAgentValue.ToString())
-                    ? userAgentValue.ToString().Substring(0, Math.Min(512, userAgentValue.ToString().Length))
-                    : null,
+                UserAgent = userAgent,
                 RequestHeaders = headersJson,
                 InnerException = innerException
             };
