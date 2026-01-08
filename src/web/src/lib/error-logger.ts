@@ -22,7 +22,7 @@ interface ClientErrorRequest {
 class ErrorLogger {
   private recentErrors = new Map<string, number>();
   private errorQueue: Array<{ error: Error; context?: ErrorContext }> = [];
-  private flushTimer: NodeJS.Timeout | null = null;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
   private errorCount = 0;
   private errorCountResetTime = Date.now();
 
@@ -115,12 +115,13 @@ class ErrorLogger {
    */
   private async sendError(error: Error, context?: ErrorContext): Promise<void> {
     try {
+      const rawUrl = typeof window !== 'undefined' ? window.location.href : 'unknown';
       const payload: ClientErrorRequest = {
         message: error.message || 'Unknown error',
         stackTrace: error.stack || null,
         exceptionType: error.name || 'Error',
         componentStack: context?.componentStack || null,
-        url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+        url: this.sanitizeUrl(rawUrl),
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
         userId: this.getUserId(),
       };
@@ -148,11 +149,38 @@ class ErrorLogger {
         return null;
       }
 
-      const payload = JSON.parse(atob(parts[1]));
-      // Look for user ID claim (common claim names)
-      return payload.sub || payload.userId || payload.nameid || null;
+      try {
+        const payload = JSON.parse(atob(parts[1]));
+        // Look for user ID claim (common claim names)
+        return payload.sub || payload.userId || payload.nameid || null;
+      } catch {
+        // Malformed token
+        return null;
+      }
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Sanitize URL to remove sensitive query parameters
+   */
+  private sanitizeUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      const sensitiveParams = ['token', 'code', 'key', 'secret', 'password', 'api_key', 'apikey'];
+      
+      // Remove sensitive query parameters
+      sensitiveParams.forEach(param => {
+        if (urlObj.searchParams.has(param)) {
+          urlObj.searchParams.set(param, '[REDACTED]');
+        }
+      });
+      
+      return urlObj.toString();
+    } catch {
+      // If URL parsing fails, return path only
+      return url.split('?')[0];
     }
   }
 
@@ -169,7 +197,6 @@ class ErrorLogger {
    */
   private checkRateLimit(): boolean {
     const now = Date.now();
-    const oneMinuteAgo = now - 60000;
 
     // Reset counter if more than 1 minute has passed
     if (now - this.errorCountResetTime > 60000) {

@@ -32,12 +32,9 @@ public class ErrorLogService : IErrorLogService
             Guid? userId = null;
             var userIdClaim = context.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
                 ?? context.User?.FindFirst("sub")?.Value;
-            if (!string.IsNullOrEmpty(userIdClaim))
+            if (!string.IsNullOrEmpty(userIdClaim) && Guid.TryParse(userIdClaim, out Guid parsedUserId))
             {
-                if (Guid.TryParse(userIdClaim, out Guid parsedUserId))
-                {
-                    userId = parsedUserId;
-                }
+                userId = parsedUserId;
             }
 
             // Determine HTTP status code and severity
@@ -293,12 +290,9 @@ public class ErrorLogService : IErrorLogService
         {
             // Parse user ID if provided
             Guid? userId = null;
-            if (!string.IsNullOrEmpty(request.UserId))
+            if (!string.IsNullOrEmpty(request.UserId) && Guid.TryParse(request.UserId, out Guid parsedUserId))
             {
-                if (Guid.TryParse(request.UserId, out Guid parsedUserId))
-                {
-                    userId = parsedUserId;
-                }
+                userId = parsedUserId;
             }
 
             // Mask IP address

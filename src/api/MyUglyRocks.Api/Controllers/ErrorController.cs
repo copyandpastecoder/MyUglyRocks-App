@@ -63,18 +63,15 @@ public class ErrorController : ControllerBase
             request.Message,
             request.Url);
 
-        // Log to database (fire-and-forget)
-        _ = Task.Run(async () =>
+        // Log to database
+        try
         {
-            try
-            {
-                await _errorLogService.LogClientErrorAsync(request, ipAddress, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to log client error to database");
-            }
-        }, cancellationToken);
+            await _errorLogService.LogClientErrorAsync(request, ipAddress, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to log client error to database");
+        }
 
         return NoContent();
     }
