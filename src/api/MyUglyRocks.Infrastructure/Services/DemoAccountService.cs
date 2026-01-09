@@ -122,7 +122,7 @@ public class DemoAccountService : IDemoAccountService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "FAILED to enqueue photo copy job for demo account {UserId}", user.UserId);
+            _logger.LogError(ex, "Failed to enqueue photo copy job for demo account");
             throw;
         }
 
