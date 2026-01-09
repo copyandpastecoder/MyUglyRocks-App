@@ -24,11 +24,10 @@ export function DashboardStatistics() {
   // Ensure charts render after layout is complete to prevent Recharts dimension warnings
   useEffect(() => {
     if (!isLoading && statistics) {
-      // Small delay to ensure grid layout has calculated dimensions
-      const timer = setTimeout(() => setChartsReady(true), 50);
+      // Delay to ensure grid layout has calculated dimensions before rendering charts
+      const timer = setTimeout(() => setChartsReady(true), 100);
       return () => clearTimeout(timer);
     }
-    // Note: chartsReady=false is handled by the else branch of the render below
   }, [isLoading, statistics]);
 
   if (isLoading || !chartsReady) {

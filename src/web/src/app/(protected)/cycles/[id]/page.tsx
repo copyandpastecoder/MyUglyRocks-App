@@ -1680,6 +1680,45 @@ export default function CycleDetailPage() {
   );
 }
 
+function shouldShowWeightLossBadge(
+  stage: StageRunSummaryDto,
+  isActive: boolean,
+  isPlanned: boolean
+): boolean {
+  return (
+    !isActive &&
+    !isPlanned &&
+    !!stage.loadWeightBeforeGrams &&
+    !!stage.loadWeightAfterGrams &&
+    stage.loadWeightBeforeGrams > 0 &&
+    stage.loadWeightAfterGrams < stage.loadWeightBeforeGrams
+  );
+}
+
+function renderWeightLossBadge(
+  stage: StageRunSummaryDto,
+  isActive: boolean,
+  isPlanned: boolean
+): React.ReactNode {
+  if (!shouldShowWeightLossBadge(stage, isActive, isPlanned)) {
+    return null;
+  }
+
+  const lossPercent = Math.round(
+    ((stage.loadWeightBeforeGrams! - stage.loadWeightAfterGrams!) / stage.loadWeightBeforeGrams!) * 100
+  );
+
+  if (lossPercent <= 0) {
+    return null;
+  }
+
+  return (
+    <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
+      -{lossPercent}%
+    </Badge>
+  );
+}
+
 function StageCard({
   stage,
   onComplete,
@@ -1808,19 +1847,7 @@ function StageCard({
                   {stage.resultRating}
                 </Badge>
               )}
-              {!isActive && !isPlanned && stage.loadWeightBeforeGrams && stage.loadWeightAfterGrams && stage.loadWeightBeforeGrams > 0 && stage.loadWeightAfterGrams < stage.loadWeightBeforeGrams && (
-                (() => {
-                  const lossPercent = Math.round(((stage.loadWeightBeforeGrams - stage.loadWeightAfterGrams) / stage.loadWeightBeforeGrams) * 100);
-                  if (lossPercent > 0) {
-                    return (
-                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
-                        -{lossPercent}%
-                      </Badge>
-                    );
-                  }
-                  return null;
-                })()
-              )}
+              {renderWeightLossBadge(stage, isActive, isPlanned || false)}
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlanned ? (
