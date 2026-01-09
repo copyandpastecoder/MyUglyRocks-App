@@ -29,6 +29,12 @@ public class User : BaseEntity
     public DateTime? DateOnboardingCompleted { get; set; }
 
     /// <summary>
+    /// Indicates if this is a demo account created for demonstration purposes.
+    /// Demo accounts can be hard-deleted including all associated data.
+    /// </summary>
+    public bool IsDemoAccount { get; set; }
+
+    /// <summary>
     /// The user who invited this user via invitation code.
     /// Null if user registered without a code or was created directly by admin.
     /// </summary>
@@ -39,6 +45,7 @@ public class User : BaseEntity
     public virtual ICollection<RefreshToken> RefreshTokens { get; set; } = [];
     public virtual ICollection<Tumbler> Tumblers { get; set; } = [];
     public virtual ICollection<Cycle> Cycles { get; set; } = [];
+    public virtual ICollection<Inventory> Inventories { get; set; } = [];
     public virtual ICollection<Post> Posts { get; set; } = [];
     public virtual ICollection<UserSession> Sessions { get; set; } = [];
 

@@ -150,6 +150,8 @@ public record StageRunSummaryDto(
     DateTime? DurationEstimateEndDate,  // Calculated estimate based on duration
     string Status,
     int? ResultRating,
+    decimal? LoadWeightBeforeGrams,
+    decimal? LoadWeightAfterGrams,
     CleaningRunDto? CleaningRun
 );
 

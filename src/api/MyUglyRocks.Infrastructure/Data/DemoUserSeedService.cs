@@ -184,12 +184,12 @@ public class DemoUserSeedService
             Email = _demoEmail!,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(_demoPassword!),
             EmailVerified = true,
-            DateEmailVerified = now.AddMonths(-12),
+            DateEmailVerified = now.AddMonths(-4),
             Role = UserRole.User,
             IsActive = true,
             OnboardingCompleted = true,
-            DateOnboardingCompleted = now.AddMonths(-12),
-            DateCreated = now.AddMonths(-12),
+            DateOnboardingCompleted = now.AddMonths(-4),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -203,7 +203,7 @@ public class DemoUserSeedService
             DateFormat = DateFormat.MMDDYYYY,
             TimeFormat = TimeFormat.TwelveHour,
             Timezone = "America/New_York",
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -242,7 +242,7 @@ public class DemoUserSeedService
             IsGeneric = false,
             IsActive = true,
             Notes = "Dedicated to Stage 1 coarse grinding. Rocks go to Tumbler 3 after.",
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -256,7 +256,7 @@ public class DemoUserSeedService
             IsDedicated = true,
             DedicatedStages = new[] { "Coarse" },
             IsActive = true,
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -270,7 +270,7 @@ public class DemoUserSeedService
             IsDedicated = true,
             DedicatedStages = new[] { "Coarse" },
             IsActive = true,
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -288,7 +288,7 @@ public class DemoUserSeedService
             IsGeneric = false,
             IsActive = true,
             Notes = "Main workhorse tumbler. Barrel 1 for coarse only, Barrel 2 runs all stages.",
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -302,7 +302,7 @@ public class DemoUserSeedService
             IsDedicated = true,
             DedicatedStages = new[] { "Coarse" },
             IsActive = true,
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -315,7 +315,7 @@ public class DemoUserSeedService
             CapacityLbs = 6m,
             IsDedicated = false,
             IsActive = true,
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -331,7 +331,7 @@ public class DemoUserSeedService
             IsGeneric = false,
             IsActive = true,
             Notes = "Fast vibratory for stages 2-5. 1-2 days per stage.",
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -345,7 +345,7 @@ public class DemoUserSeedService
             IsDedicated = true,
             DedicatedStages = new[] { "Medium", "Fine", "Pre-Polish", "Polish" },
             IsActive = true,
-            DateCreated = now.AddMonths(-12),
+            DateCreated = now.AddMonths(-4),
             DateUpdated = now
         };
 
@@ -377,7 +377,7 @@ public class DemoUserSeedService
         _logger.LogInformation("Loaded {Count} specimens", specimens.Count);
 
         var now = DateTime.UtcNow;
-        var startDate = now.AddMonths(-12);
+        var startDate = now.AddMonths(-4);
         var currentDate = startDate;
 
         // Track barrel availability (end date when barrel becomes free)
@@ -405,10 +405,10 @@ public class DemoUserSeedService
 
         _logger.LogInformation("Starting cycle generation loop from {StartDate} to {Now}", startDate, now);
 
-        // Pre-calculate cycle start dates spread across 12 months
-        // Leave room for cycles to complete (max ~60 days for full rotary cycle)
+        // Pre-calculate cycle start dates spread across 4 months
+        // Leave room for cycles to complete (max ~40 days for full rotary cycle)
         var cycleStartDates = new List<DateTime>();
-        var safeEndDate = now.AddDays(-60); // Don't start cycles within last 60 days so they can complete
+        var safeEndDate = now.AddDays(-20); // Don't start cycles within last 20 days so they can complete
         var dateSpan = (safeEndDate - startDate).TotalDays;
         var daysPerCycle = dateSpan / (maxCycles - 5); // Reserve 5 slots for recent/active cycles
 

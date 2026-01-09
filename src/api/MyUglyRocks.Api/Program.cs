@@ -187,6 +187,7 @@ try
     builder.Services.AddScoped<IInventoryService, InventoryService>();
     builder.Services.AddScoped<IInventorySourceService, InventorySourceService>();
     builder.Services.AddScoped<IUserSpecimenService, UserSpecimenService>();
+    builder.Services.AddScoped<IDemoAccountService, DemoAccountService>();
     builder.Services.AddScoped<SeedDataService>();
 
     // Session analytics services
@@ -382,15 +383,16 @@ try
         await next();
     });
 
+    // API Documentation (Scalar) - available in all environments
+    app.MapOpenApi();
+    app.MapScalarApiReference(options =>
+    {
+        options.Title = "MyUglyRocks API";
+        options.Theme = ScalarTheme.Purple;
+    });
+
     if (app.Environment.IsDevelopment())
     {
-        app.MapOpenApi();
-        app.MapScalarApiReference(options =>
-        {
-            options.Title = "MyUglyRocks API";
-            options.Theme = ScalarTheme.Purple;
-        });
-
         // Hangfire Dashboard (only in development, requires Admin authentication)
         app.MapHangfireDashboard("/hangfire", new DashboardOptions
         {

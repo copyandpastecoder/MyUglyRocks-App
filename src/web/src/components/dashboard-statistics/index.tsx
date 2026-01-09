@@ -27,9 +27,8 @@ export function DashboardStatistics() {
       // Small delay to ensure grid layout has calculated dimensions
       const timer = setTimeout(() => setChartsReady(true), 50);
       return () => clearTimeout(timer);
-    } else {
-      setChartsReady(false);
     }
+    // Note: chartsReady=false is handled by the else branch of the render below
   }, [isLoading, statistics]);
 
   if (isLoading || !chartsReady) {

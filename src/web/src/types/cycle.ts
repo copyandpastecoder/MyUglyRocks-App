@@ -112,6 +112,8 @@ export interface StageRunSummaryDto {
   durationEstimateEndDate: string | null; // Calculated estimate based on duration
   status: string;
   resultRating: number | null;
+  loadWeightBeforeGrams: number | null;
+  loadWeightAfterGrams: number | null;
   cleaningRun: CleaningRunDto | null;
 }
 

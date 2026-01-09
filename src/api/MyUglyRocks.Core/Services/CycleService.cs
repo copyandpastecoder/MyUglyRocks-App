@@ -254,6 +254,8 @@ public class CycleService : ICycleService
                 s.DurationEstimateEndDate,
                 s.Status.ToString(),
                 s.ResultRating,
+                s.LoadWeightBeforeGrams,
+                s.LoadWeightAfterGrams,
                 s.CleaningRun?.Adapt<CleaningRunDto>()
             ));
 
