@@ -19,6 +19,7 @@ public class AdminController : ControllerBase
     private readonly IBackupStorageService _backupStorageService;
     private readonly IInvitationCodeService _invitationCodeService;
     private readonly IErrorLogService _errorLogService;
+    private readonly IDemoAccountService _demoAccountService;
     private readonly ILogger<AdminController> _logger;
 
     public AdminController(
@@ -29,6 +30,7 @@ public class AdminController : ControllerBase
         IBackupStorageService backupStorageService,
         IInvitationCodeService invitationCodeService,
         IErrorLogService errorLogService,
+        IDemoAccountService demoAccountService,
         ILogger<AdminController> logger)
     {
         _adminService = adminService;
@@ -38,6 +40,7 @@ public class AdminController : ControllerBase
         _backupStorageService = backupStorageService;
         _invitationCodeService = invitationCodeService;
         _errorLogService = errorLogService;
+        _demoAccountService = demoAccountService;
         _logger = logger;
     }
 
@@ -840,6 +843,111 @@ public class AdminController : ControllerBase
             return NotFound();
         }
         return Ok(errorLog);
+    }
+
+    #endregion
+
+    #region Demo Accounts
+
+    /// <summary>
+    /// Create a demo account with sample data (Admin only)
+    /// </summary>
+    [HttpPost("demo-accounts")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(DemoAccountCreatedResponse), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<DemoAccountCreatedResponse>> CreateDemoAccount(
+        [FromBody] CreateDemoAccountRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var adminId = GetCurrentUserId();
+        if (!adminId.HasValue) return Unauthorized();
+
+        try
+        {
+            var result = await _demoAccountService.CreateDemoAccountAsync(
+                request,
+                adminId.Value,
+                cancellationToken);
+
+            return CreatedAtAction(
+                nameof(GetDemoAccounts),
+                new { userId = result.UserId },
+                result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// List all demo accounts (Admin only)
+    /// </summary>
+    [HttpGet("demo-accounts")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(List<DemoAccountListDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<DemoAccountListDto>>> GetDemoAccounts(
+        CancellationToken cancellationToken = default)
+    {
+        var accounts = await _demoAccountService.GetDemoAccountsAsync(cancellationToken);
+        return Ok(accounts);
+    }
+
+    /// <summary>
+    /// Manually trigger photo copying for a demo account (Admin only)
+    /// Use this if the automatic photo copy job failed or needs to be re-run.
+    /// This operation may take 30-60 seconds to complete.
+    /// </summary>
+    [HttpPost("demo-accounts/{userId:guid}/copy-photos")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(PhotoCopyJobResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<PhotoCopyJobResult>> TriggerPhotoCopy(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        var adminId = GetCurrentUserId();
+        if (!adminId.HasValue) return Unauthorized();
+
+        var result = await _demoAccountService.TriggerPhotoCopyAsync(userId, adminId.Value, cancellationToken);
+
+        if (!result.Success)
+            return BadRequest(result);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Hard delete a demo account and all associated data (Admin only)
+    /// DANGEROUS: This permanently deletes the user, all data, and R2 files
+    /// </summary>
+    [HttpDelete("demo-accounts/{userId:guid}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(DemoAccountDeletionResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<DemoAccountDeletionResult>> DeleteDemoAccount(
+        Guid userId,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var result = await _demoAccountService.DeleteDemoAccountAsync(userId, cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.Contains("not found"))
+                return NotFound(new { message = ex.Message });
+
+            // Safety check failed
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     #endregion

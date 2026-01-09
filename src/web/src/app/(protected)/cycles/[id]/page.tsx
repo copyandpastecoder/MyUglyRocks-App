@@ -1808,6 +1808,19 @@ function StageCard({
                   {stage.resultRating}
                 </Badge>
               )}
+              {!isActive && !isPlanned && stage.loadWeightBeforeGrams && stage.loadWeightAfterGrams && stage.loadWeightBeforeGrams > 0 && stage.loadWeightAfterGrams < stage.loadWeightBeforeGrams && (
+                (() => {
+                  const lossPercent = Math.round(((stage.loadWeightBeforeGrams - stage.loadWeightAfterGrams) / stage.loadWeightBeforeGrams) * 100);
+                  if (lossPercent > 0) {
+                    return (
+                      <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-muted-foreground">
+                        -{lossPercent}%
+                      </Badge>
+                    );
+                  }
+                  return null;
+                })()
+              )}
             </div>
             <p className="text-xs text-muted-foreground">
               {isPlanned ? (

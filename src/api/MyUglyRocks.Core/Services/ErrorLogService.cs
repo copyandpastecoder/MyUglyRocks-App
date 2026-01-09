@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Primitives;
 using MyUglyRocks.Abstractions.DTOs;
 using MyUglyRocks.Abstractions.Helpers;
 using MyUglyRocks.Abstractions.Interfaces;
@@ -99,14 +100,17 @@ public class ErrorLogService : IErrorLogService
 
             // Extract and truncate User-Agent header
             string? userAgent = null;
-            if (context.Request?.Headers.TryGetValue("User-Agent", out Microsoft.Extensions.Primitives.StringValues userAgentValue) == true)
+            if (context.Request != null)
             {
-                var userAgentString = userAgentValue.ToString();
-                if (!string.IsNullOrEmpty(userAgentString))
+                if (context.Request.Headers.TryGetValue("User-Agent", out StringValues userAgentValue))
                 {
-                    userAgent = userAgentString.Length >= 512 
-                        ? userAgentString.Substring(0, 512) 
-                        : userAgentString;
+                    var userAgentString = userAgentValue.ToString();
+                    if (!string.IsNullOrEmpty(userAgentString))
+                    {
+                        userAgent = userAgentString.Length >= 512
+                            ? userAgentString[..512]
+                            : userAgentString;
+                    }
                 }
             }
 

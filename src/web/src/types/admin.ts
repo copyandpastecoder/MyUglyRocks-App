@@ -228,3 +228,42 @@ export interface ErrorLogFilterParams {
   page?: number;
   pageSize?: number;
 }
+
+// Demo Account types
+export interface CreateDemoAccountRequest {
+  email: string;
+}
+
+export interface DemoAccountCreatedResponse {
+  userId: string;
+  email: string;
+  username: string;
+  password: string; // ONE-TIME VIEW
+  message: string;
+  dateCreated: string;
+}
+
+export interface DemoAccountListDto {
+  userId: string;
+  email: string;
+  username: string;
+  dateCreated: string;
+  dateLastLogin: string | null;
+  inventoryCount: number;
+  cycleCount: number;
+  photoCount: number;
+}
+
+export interface DemoAccountDeletionResult {
+  success: boolean;
+  message: string;
+  photosDeleted: number;
+  recordsDeleted: number;
+}
+
+export interface PhotoCopyJobResult {
+  success: boolean;
+  message: string;
+  photosCopied: number;
+  cyclePhotosCopied: number;
+}

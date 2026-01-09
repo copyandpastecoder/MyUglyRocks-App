@@ -604,6 +604,11 @@ import type {
   ErrorLogFilterParams,
   ErrorLogListDto,
   ErrorLogDetailDto,
+  CreateDemoAccountRequest,
+  DemoAccountCreatedResponse,
+  DemoAccountListDto,
+  DemoAccountDeletionResult,
+  PhotoCopyJobResult,
 } from '@/types/admin';
 
 export const adminApi = {
@@ -830,6 +835,27 @@ export const adminApi = {
 
   getErrorLog: async (errorLogId: string): Promise<ErrorLogDetailDto> => {
     const response = await api.get<ErrorLogDetailDto>(`/admin/error-logs/${errorLogId}`);
+    return response.data;
+  },
+
+  // Demo Accounts
+  getDemoAccounts: async (): Promise<DemoAccountListDto[]> => {
+    const response = await api.get<DemoAccountListDto[]>('/admin/demo-accounts');
+    return response.data;
+  },
+
+  createDemoAccount: async (request: CreateDemoAccountRequest): Promise<DemoAccountCreatedResponse> => {
+    const response = await api.post<DemoAccountCreatedResponse>('/admin/demo-accounts', request);
+    return response.data;
+  },
+
+  deleteDemoAccount: async (userId: string): Promise<DemoAccountDeletionResult> => {
+    const response = await api.delete<DemoAccountDeletionResult>(`/admin/demo-accounts/${userId}`);
+    return response.data;
+  },
+
+  triggerPhotoCopy: async (userId: string): Promise<PhotoCopyJobResult> => {
+    const response = await api.post<PhotoCopyJobResult>(`/admin/demo-accounts/${userId}/copy-photos`);
     return response.data;
   },
 };

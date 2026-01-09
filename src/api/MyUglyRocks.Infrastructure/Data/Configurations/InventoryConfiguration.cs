@@ -103,7 +103,7 @@ public class InventoryConfiguration : IEntityTypeConfiguration<Inventory>
 
         // Relationships
         builder.HasOne(i => i.User)
-            .WithMany()
+            .WithMany(u => u.Inventories)
             .HasForeignKey(i => i.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
