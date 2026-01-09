@@ -906,6 +906,8 @@ public class DemoAccountService : IDemoAccountService
                     _logger.LogError(ex, "Failed to copy cycle photo {StorageKey}", sourcePhoto.StorageKey);
                 }
             }
+        }
+
         _logger.LogInformation("CopyCyclePhotosAsync: Prepared {Count} photos to save", copiedPhotos.Count);
 
         if (copiedPhotos.Count > 0)
@@ -917,9 +919,7 @@ public class DemoAccountService : IDemoAccountService
         }
         else
         {
-            _logger.LogWarning("CopyCyclePhotosAsync: No photos were prepared for copying!"ncellationToken);
-            _logger.LogInformation("Copied {Count} cycle photos for demo user {DemoUserId}",
-                copiedPhotos.Count, demoUserId);
+            _logger.LogWarning("CopyCyclePhotosAsync: No photos were prepared for copying!");
         }
 
         return copiedPhotos.Count;
