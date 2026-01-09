@@ -112,10 +112,19 @@ public class DemoAccountService : IDemoAccountService
 
         // 9. Enqueue background job for photo copying
         var sourceUserId = DetermineSourceUserId();
-        _backgroundJobClient.Enqueue<IDemoAccountService>(
-            x => x.CopyPhotosForDemoAccountAsync(user.UserId, sourceUserId, createdByAdminId, CancellationToken.None));
+        
+        try
+        {
+            var jobId = _backgroundJobClient.Enqueue<IDemoAccountService>(
+                x => x.CopyPhotosForDemoAccountAsync(user.UserId, sourceUserId, createdByAdminId, CancellationToken.None));
 
-        _logger.LogInformation("Enqueued photo copy job for demo account {UserId}", user.UserId);
+            _logger.LogInformation("Enqueued photo copy job {JobId} for demo account {UserId}", jobId, user.UserId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "FAILED to enqueue photo copy job for demo account {UserId}", user.UserId);
+            throw;
+        }
 
         return new DemoAccountCreatedResponse(
             user.UserId,
