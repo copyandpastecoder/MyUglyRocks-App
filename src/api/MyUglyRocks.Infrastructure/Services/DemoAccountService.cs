@@ -798,6 +798,9 @@ public class DemoAccountService : IDemoAccountService
         Guid sourceUserId,
         CancellationToken cancellationToken)
     {
+        _logger.LogInformation("CopyCyclePhotosAsync: Starting for demo user {DemoUserId} from source {SourceUserId}", 
+            demoUserId, sourceUserId);
+
         // Get source user's cycle photos
         var sourcePhotos = await _context.Photos
             .Include(p => p.StageRun)
@@ -806,6 +809,8 @@ public class DemoAccountService : IDemoAccountService
             .OrderBy(p => p.DateCreated)
             .Take(20)
             .ToListAsync(cancellationToken);
+
+        _logger.LogInformation("CopyCyclePhotosAsync: Found {Count} source photos", sourcePhotos.Count);
 
         if (sourcePhotos.Count == 0)
         {
@@ -820,6 +825,8 @@ public class DemoAccountService : IDemoAccountService
             .OrderBy(sr => sr.DateCreated)
             .ToListAsync(cancellationToken);
 
+        _logger.LogInformation("CopyCyclePhotosAsync: Found {Count} demo stage runs", demoStageRuns.Count);
+
         if (demoStageRuns.Count == 0)
         {
             _logger.LogWarning("No stage runs found for demo user {DemoUserId}", demoUserId);
@@ -828,6 +835,8 @@ public class DemoAccountService : IDemoAccountService
 
         var copiedPhotos = new List<Photo>();
         var photosPerStageRun = Math.Max(1, sourcePhotos.Count / demoStageRuns.Count);
+
+        _logger.LogInformation("CopyCyclePhotosAsync: Will copy ~{PhotosPerRun} photos per stage run", photosPerStageRun);
 
         for (int i = 0; i < demoStageRuns.Count && i * photosPerStageRun < sourcePhotos.Count; i++)
         {
@@ -897,12 +906,18 @@ public class DemoAccountService : IDemoAccountService
                     _logger.LogError(ex, "Failed to copy cycle photo {StorageKey}", sourcePhoto.StorageKey);
                 }
             }
-        }
+        _logger.LogInformation("CopyCyclePhotosAsync: Prepared {Count} photos to save", copiedPhotos.Count);
 
         if (copiedPhotos.Count > 0)
         {
             _context.Photos.AddRange(copiedPhotos);
             await _context.SaveChangesAsync(cancellationToken);
+            _logger.LogInformation("Copied {Count} cycle photos for demo user {DemoUserId}",
+                copiedPhotos.Count, demoUserId);
+        }
+        else
+        {
+            _logger.LogWarning("CopyCyclePhotosAsync: No photos were prepared for copying!"ncellationToken);
             _logger.LogInformation("Copied {Count} cycle photos for demo user {DemoUserId}",
                 copiedPhotos.Count, demoUserId);
         }
