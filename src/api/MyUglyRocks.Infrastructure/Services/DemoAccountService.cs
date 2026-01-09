@@ -732,7 +732,12 @@ public class DemoAccountService : IDemoAccountService
 
                 try
                 {
-                    // Download source photo
+                    // Generate new storage key base
+                    var extension = Path.GetExtension(sourcePhoto.FileName ?? ".jpg");
+                    var folder = $"photos/inventory/{inventory.InventoryId}";
+                    var baseFileName = $"{Guid.NewGuid():N}";
+
+                    // Copy main photo
                     var stream = await _storageService.GetStreamAsync(sourcePhoto.StorageKey, cancellationToken);
                     if (stream == null)
                     {
@@ -740,18 +745,66 @@ public class DemoAccountService : IDemoAccountService
                         continue;
                     }
 
-                    // Generate new storage key
-                    var extension = Path.GetExtension(sourcePhoto.FileName ?? ".jpg");
-                    var folder = $"photos/inventory/{inventory.InventoryId}";
-                    var storageKey = $"{Guid.NewGuid():N}{extension}";
-
-                    // Upload to new location
+                    var storageKey = $"{baseFileName}{extension}";
                     var publicUrl = await _storageService.UploadAsync(
                         stream,
                         sourcePhoto.FileName ?? "photo.jpg",
                         folder,
                         storageKey,
                         cancellationToken);
+                    await stream.DisposeAsync();
+
+                    // Copy thumbnail if exists
+                    string? thumbnailStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.ThumbnailStorageKey))
+                    {
+                        var thumbStream = await _storageService.GetStreamAsync(sourcePhoto.ThumbnailStorageKey, cancellationToken);
+                        if (thumbStream != null)
+                        {
+                            thumbnailStorageKey = $"{baseFileName}_thumb{extension}";
+                            await _storageService.UploadAsync(thumbStream, $"thumb_{sourcePhoto.FileName}", folder, thumbnailStorageKey, cancellationToken);
+                            await thumbStream.DisposeAsync();
+                        }
+                    }
+
+                    // Copy medium if exists
+                    string? mediumStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.MediumStorageKey))
+                    {
+                        var mediumStream = await _storageService.GetStreamAsync(sourcePhoto.MediumStorageKey, cancellationToken);
+                        if (mediumStream != null)
+                        {
+                            mediumStorageKey = $"{baseFileName}_medium{extension}";
+                            await _storageService.UploadAsync(mediumStream, $"medium_{sourcePhoto.FileName}", folder, mediumStorageKey, cancellationToken);
+                            await mediumStream.DisposeAsync();
+                        }
+                    }
+
+                    // Copy large if exists
+                    string? largeStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.LargeStorageKey))
+                    {
+                        var largeStream = await _storageService.GetStreamAsync(sourcePhoto.LargeStorageKey, cancellationToken);
+                        if (largeStream != null)
+                        {
+                            largeStorageKey = $"{baseFileName}_large{extension}";
+                            await _storageService.UploadAsync(largeStream, $"large_{sourcePhoto.FileName}", folder, largeStorageKey, cancellationToken);
+                            await largeStream.DisposeAsync();
+                        }
+                    }
+
+                    // Copy original if exists
+                    string? originalStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.OriginalStorageKey))
+                    {
+                        var originalStream = await _storageService.GetStreamAsync(sourcePhoto.OriginalStorageKey, cancellationToken);
+                        if (originalStream != null)
+                        {
+                            originalStorageKey = $"{baseFileName}_original{extension}";
+                            await _storageService.UploadAsync(originalStream, $"original_{sourcePhoto.FileName}", folder, originalStorageKey, cancellationToken);
+                            await originalStream.DisposeAsync();
+                        }
+                    }
 
                     // Create new photo record
                     var newPhoto = new InventoryPhoto
@@ -760,6 +813,10 @@ public class DemoAccountService : IDemoAccountService
                         InventoryId = inventory.InventoryId,
                         StorageKey = $"{folder}/{storageKey}",
                         Url = publicUrl,
+                        ThumbnailStorageKey = thumbnailStorageKey != null ? $"{folder}/{thumbnailStorageKey}" : null,
+                        MediumStorageKey = mediumStorageKey != null ? $"{folder}/{mediumStorageKey}" : null,
+                        LargeStorageKey = largeStorageKey != null ? $"{folder}/{largeStorageKey}" : null,
+                        OriginalStorageKey = originalStorageKey != null ? $"{folder}/{originalStorageKey}" : null,
                         FileName = sourcePhoto.FileName,
                         MimeType = sourcePhoto.MimeType,
                         FileSizeBytes = sourcePhoto.FileSizeBytes,
@@ -773,7 +830,6 @@ public class DemoAccountService : IDemoAccountService
                     };
 
                     copiedPhotos.Add(newPhoto);
-                    await stream.DisposeAsync();
                 }
                 catch (Exception ex)
                 {
@@ -850,7 +906,12 @@ public class DemoAccountService : IDemoAccountService
 
                 try
                 {
-                    // Download source photo
+                    // Generate new storage key base
+                    var extension = Path.GetExtension(sourcePhoto.FileName ?? ".jpg");
+                    var folder = $"photos/stages/{stageRun.StageRunId}";
+                    var baseFileName = $"{Guid.NewGuid():N}";
+
+                    // Copy main photo
                     var stream = await _storageService.GetStreamAsync(sourcePhoto.StorageKey, cancellationToken);
                     if (stream == null)
                     {
@@ -858,18 +919,66 @@ public class DemoAccountService : IDemoAccountService
                         continue;
                     }
 
-                    // Generate new storage key
-                    var extension = Path.GetExtension(sourcePhoto.FileName ?? ".jpg");
-                    var folder = $"photos/stages/{stageRun.StageRunId}";
-                    var storageKey = $"{Guid.NewGuid():N}{extension}";
-
-                    // Upload to new location
+                    var storageKey = $"{baseFileName}{extension}";
                     var publicUrl = await _storageService.UploadAsync(
                         stream,
                         sourcePhoto.FileName ?? "photo.jpg",
                         folder,
                         storageKey,
                         cancellationToken);
+                    await stream.DisposeAsync();
+
+                    // Copy thumbnail if exists
+                    string? thumbnailStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.ThumbnailStorageKey))
+                    {
+                        var thumbStream = await _storageService.GetStreamAsync(sourcePhoto.ThumbnailStorageKey, cancellationToken);
+                        if (thumbStream != null)
+                        {
+                            thumbnailStorageKey = $"{baseFileName}_thumb{extension}";
+                            await _storageService.UploadAsync(thumbStream, $"thumb_{sourcePhoto.FileName}", folder, thumbnailStorageKey, cancellationToken);
+                            await thumbStream.DisposeAsync();
+                        }
+                    }
+
+                    // Copy medium if exists
+                    string? mediumStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.MediumStorageKey))
+                    {
+                        var mediumStream = await _storageService.GetStreamAsync(sourcePhoto.MediumStorageKey, cancellationToken);
+                        if (mediumStream != null)
+                        {
+                            mediumStorageKey = $"{baseFileName}_medium{extension}";
+                            await _storageService.UploadAsync(mediumStream, $"medium_{sourcePhoto.FileName}", folder, mediumStorageKey, cancellationToken);
+                            await mediumStream.DisposeAsync();
+                        }
+                    }
+
+                    // Copy large if exists
+                    string? largeStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.LargeStorageKey))
+                    {
+                        var largeStream = await _storageService.GetStreamAsync(sourcePhoto.LargeStorageKey, cancellationToken);
+                        if (largeStream != null)
+                        {
+                            largeStorageKey = $"{baseFileName}_large{extension}";
+                            await _storageService.UploadAsync(largeStream, $"large_{sourcePhoto.FileName}", folder, largeStorageKey, cancellationToken);
+                            await largeStream.DisposeAsync();
+                        }
+                    }
+
+                    // Copy original if exists
+                    string? originalStorageKey = null;
+                    if (!string.IsNullOrEmpty(sourcePhoto.OriginalStorageKey))
+                    {
+                        var originalStream = await _storageService.GetStreamAsync(sourcePhoto.OriginalStorageKey, cancellationToken);
+                        if (originalStream != null)
+                        {
+                            originalStorageKey = $"{baseFileName}_original{extension}";
+                            await _storageService.UploadAsync(originalStream, $"original_{sourcePhoto.FileName}", folder, originalStorageKey, cancellationToken);
+                            await originalStream.DisposeAsync();
+                        }
+                    }
 
                     // Create new photo record with varied photo types
                     var photoType = j switch
@@ -885,6 +994,10 @@ public class DemoAccountService : IDemoAccountService
                         StageRunId = stageRun.StageRunId,
                         StorageKey = $"{folder}/{storageKey}",
                         Url = publicUrl,
+                        ThumbnailStorageKey = thumbnailStorageKey != null ? $"{folder}/{thumbnailStorageKey}" : null,
+                        MediumStorageKey = mediumStorageKey != null ? $"{folder}/{mediumStorageKey}" : null,
+                        LargeStorageKey = largeStorageKey != null ? $"{folder}/{largeStorageKey}" : null,
+                        OriginalStorageKey = originalStorageKey != null ? $"{folder}/{originalStorageKey}" : null,
                         FileName = sourcePhoto.FileName,
                         MimeType = sourcePhoto.MimeType,
                         FileSizeBytes = sourcePhoto.FileSizeBytes,
@@ -899,7 +1012,6 @@ public class DemoAccountService : IDemoAccountService
                     };
 
                     copiedPhotos.Add(newPhoto);
-                    await stream.DisposeAsync();
                 }
                 catch (Exception ex)
                 {
