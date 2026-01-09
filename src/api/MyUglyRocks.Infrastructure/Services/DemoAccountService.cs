@@ -20,7 +20,6 @@ public class DemoAccountService : IDemoAccountService
     private readonly Random _random = new(42); // Fixed seed for reproducible data
 
     // Source user IDs for photo copying
-    private static readonly Guid DevSourceUserId = Guid.Parse("00000000-0000-0000-0000-000000000003");
     private static readonly Guid ProdSourceUserId = Guid.Parse("b40acd0e-9c94-4b3c-a248-43d3bb21b0f8");
 
     // Inventory source names by type
@@ -300,19 +299,9 @@ public class DemoAccountService : IDemoAccountService
 
     private Guid DetermineSourceUserId()
     {
-        // Check if production source exists, otherwise use dev source
-        // This allows local k8s development with Production environment
-        var prodSourceExists = _context.Users
-            .Any(u => u.UserId == ProdSourceUserId);
-        
-        if (prodSourceExists)
-        {
-            _logger.LogInformation("Using production source user for demo photos");
-            return ProdSourceUserId;
-        }
-        
-        _logger.LogInformation("Using development source user for demo photos (prod source not found)");
-        return DevSourceUserId;
+        // Always use production source user for demo photos
+        _logger.LogInformation("Using production source user {SourceUserId} for demo photos", ProdSourceUserId);
+        return ProdSourceUserId;
     }
 
     private async Task<List<InventorySource>> CreateInventorySourcesAsync(
@@ -534,7 +523,6 @@ public class DemoAccountService : IDemoAccountService
         }
 
         var specimens = await _context.Specimens.Where(s => s.IsActive).Take(10).ToListAsync(cancellationToken);
-        var materials = await _context.Materials.ToListAsync(cancellationToken);
 
         // Create active cycles for each barrel (3 total)
         var cycleNumber = 1;
@@ -604,7 +592,6 @@ public class DemoAccountService : IDemoAccountService
                     var stageRunId = Guid.NewGuid();
                     var duration = _random.Next(5, 8);
                     var stageEndDate = stageDate.AddDays(duration);
-                    var stageIsActive = stageDate <= now && stageEndDate > now;
 
                     // Weight: 650-900g begin, 3-15% loss
                     var loadWeightBeforeGrams = _random.Next(650, 901);
