@@ -6,7 +6,7 @@ interface ErrorContext {
   filename?: string;
   lineno?: number;
   colno?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ClientErrorRequest {
@@ -40,9 +40,14 @@ class ErrorLogger {
       return;
     }
 
+    // Log to console in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ErrorLogger] Logging error:', error.message, context);
+    }
+
     // Check rate limit
     if (!this.checkRateLimit()) {
-      console.warn('Error logging rate limit exceeded, dropping error:', error.message);
+      console.warn('[ErrorLogger] Rate limit exceeded, dropping error:', error.message);
       return;
     }
 
@@ -53,6 +58,9 @@ class ErrorLogger {
 
     if (lastSeen && now - lastSeen < this.DEDUPE_WINDOW_MS) {
       // Duplicate error within deduplication window, skip
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ErrorLogger] Duplicate error within dedup window, skipping:', error.message);
+      }
       return;
     }
 
@@ -65,6 +73,10 @@ class ErrorLogger {
     // Limit queue size
     if (this.errorQueue.length > this.MAX_QUEUE_SIZE) {
       this.errorQueue.shift(); // Remove oldest error
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[ErrorLogger] Error queued, queue size:', this.errorQueue.length);
     }
 
     // Schedule flush
@@ -126,10 +138,18 @@ class ErrorLogger {
         userId: this.getUserId(),
       };
 
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ErrorLogger] Sending error to server:', payload);
+      }
+
       await api.post('/errors/log-client-error', payload);
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ErrorLogger] Error sent successfully');
+      }
     } catch (err) {
       // Silently fail to avoid infinite error loops
-      console.error('Failed to send error to server:', err);
+      console.error('[ErrorLogger] Failed to send error to server:', err);
     }
   }
 
@@ -288,4 +308,19 @@ export function initializeErrorHandlers(): void {
 export function removeErrorHandlers(): void {
   // Note: Can't remove specific handlers without references
   // This is primarily for documentation purposes
+}
+
+/**
+ * Manually log a caught error (for errors that are caught and handled)
+ * Use this in catch blocks when you want to log the error but also handle it gracefully
+ */
+export function logCaughtError(error: unknown, context?: Partial<ErrorContext>): void {
+  const errorObj = error instanceof Error
+    ? error
+    : new Error(String(error));
+
+  errorLogger.logError(errorObj, {
+    type: 'caught-error',
+    ...context,
+  });
 }
