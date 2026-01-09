@@ -66,7 +66,6 @@ export default function DemoAccountsPage() {
   const [createdAccount, setCreatedAccount] = useState<DemoAccountCreatedResponse | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
-  const [isCreating, setIsCreating] = useState(false);
 
   // Fetch demo accounts
   const { data: accounts, isLoading } = useQuery({

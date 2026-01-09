@@ -56,7 +56,7 @@ export function TumblerUtilizationChart({ stats }: TumblerUtilizationChartProps)
       </CardHeader>
       <CardContent>
         <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minHeight={200}>
             <PieChart>
               <Pie
                 data={chartData}
