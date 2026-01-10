@@ -859,6 +859,7 @@ public class DemoAccountService : IDemoAccountService
 
         // Get source user's cycle photos
         var sourcePhotos = await _context.Photos
+            .AsSplitQuery() // Prevent cartesian explosion from nested includes
             .Include(p => p.StageRun)
             .ThenInclude(sr => sr.Cycle)
             .Where(p => p.StageRun.Cycle.UserId == sourceUserId && !p.IsDeleted)

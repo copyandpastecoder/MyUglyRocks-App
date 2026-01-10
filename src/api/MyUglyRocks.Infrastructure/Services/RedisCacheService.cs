@@ -131,14 +131,32 @@ public class RedisCacheService : ICacheService
         try
         {
             var server = _redis.GetServer(_redis.GetEndPoints().First());
-            var keys = server.Keys(pattern: $"{prefix}*").ToArray();
+            var db = _redis.GetDatabase();
 
-            if (keys.Length > 0)
+            // Use SCAN instead of KEYS to avoid blocking Redis
+            // SCAN iterates through the keyspace without blocking other operations
+            var pattern = $"{prefix}*";
+            var keys = new List<RedisKey>();
+
+            await foreach (var key in server.KeysAsync(pattern: pattern))
             {
-                var db = _redis.GetDatabase();
-                await db.KeyDeleteAsync(keys);
-                _logger.LogDebug("Removed {Count} cache keys with prefix {Prefix}", keys.Length, PiiMaskingHelper.SanitizeForLog(prefix));
+                keys.Add(key);
+
+                // Delete in batches of 100 to avoid memory buildup
+                if (keys.Count >= 100)
+                {
+                    await db.KeyDeleteAsync(keys.ToArray());
+                    keys.Clear();
+                }
             }
+
+            // Delete remaining keys
+            if (keys.Count > 0)
+            {
+                await db.KeyDeleteAsync(keys.ToArray());
+            }
+
+            _logger.LogDebug("Removed cache keys with prefix {Prefix}", PiiMaskingHelper.SanitizeForLog(prefix));
         }
         catch (Exception ex)
         {
