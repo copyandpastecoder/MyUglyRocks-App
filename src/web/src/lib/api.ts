@@ -252,7 +252,7 @@ export const tumblerApi = {
 };
 
 // Cycle API functions
-import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest, CleaningRunDto, CreateCleaningRunRequest, CyclePhotoDto } from '@/types/cycle';
+import type { CycleDto, CycleListDto, CreateCycleRequest, UpdateCycleRequest, CompleteCycleRequest, StageRunDto, CreateStageRunRequest, UpdateStageRunRequest, CompleteStageRunRequest, CleaningRunDto, CreateCleaningRunRequest, CyclePhotoDto, MergeCyclesRequest, MergeCyclesResult, MergeSourceCycleDto, MergedIntoCycleDto } from '@/types/cycle';
 import type { CycleStatisticsDto } from '@/types/cycle-statistics';
 
 export const cycleApi = {
@@ -340,6 +340,27 @@ export const cycleApi = {
   getPhotos: async (cycleId: string): Promise<CyclePhotoDto[]> => {
     const response = await api.get<CyclePhotoDto[]>(`/cycles/${cycleId}/photos`);
     return response.data;
+  },
+
+  // Cycle merge operations
+  mergeCycles: async (request: MergeCyclesRequest): Promise<MergeCyclesResult> => {
+    const response = await api.post<MergeCyclesResult>('/cycles/merge', request);
+    return response.data;
+  },
+
+  getMergeSourceCycles: async (cycleId: string): Promise<MergeSourceCycleDto[]> => {
+    const response = await api.get<MergeSourceCycleDto[]>(`/cycles/${cycleId}/merge-sources`);
+    return response.data;
+  },
+
+  getMergedIntoCycle: async (cycleId: string): Promise<MergedIntoCycleDto | null> => {
+    try {
+      const response = await api.get<MergedIntoCycleDto>(`/cycles/${cycleId}/merged-into`);
+      return response.data;
+    } catch (error) {
+      // 404 means not merged, return null
+      return null;
+    }
   },
 };
 

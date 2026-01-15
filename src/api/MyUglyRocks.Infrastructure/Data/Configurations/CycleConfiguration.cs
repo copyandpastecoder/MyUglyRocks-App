@@ -48,6 +48,13 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
         builder.Property(c => c.Notes)
             .HasColumnName("notes");
 
+        // Merge tracking
+        builder.Property(c => c.MergedFromCycleIds)
+            .HasColumnName("merged_from_cycle_ids");
+
+        builder.Property(c => c.MergedIntoCycleId)
+            .HasColumnName("merged_into_cycle_id");
+
         builder.Property(c => c.IsDeleted)
             .HasColumnName("is_deleted")
             .HasDefaultValue(false);
@@ -69,6 +76,11 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
             .HasForeignKey(c => c.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasOne(c => c.MergedIntoCycle)
+            .WithMany()
+            .HasForeignKey(c => c.MergedIntoCycleId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Indexes
         builder.HasIndex(c => c.UserId)
             .HasDatabaseName("ix_cycles_user_id");
@@ -81,6 +93,9 @@ public class CycleConfiguration : IEntityTypeConfiguration<Cycle>
 
         builder.HasIndex(c => c.StartDate)
             .HasDatabaseName("ix_cycles_start_date");
+
+        builder.HasIndex(c => c.MergedIntoCycleId)
+            .HasDatabaseName("ix_cycles_merged_into_cycle_id");
     }
 }
 
