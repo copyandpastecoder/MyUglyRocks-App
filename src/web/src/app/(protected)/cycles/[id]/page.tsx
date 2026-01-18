@@ -78,6 +78,8 @@ import { WeightInput } from '@/components/weight-input';
 import { CleaningRunModal } from '@/components/cleaning-run-modal';
 import { StageFormModal, type BarrelInfo, WATER_UNITS } from '@/components/stage-form';
 import { CycleFormDialog } from '@/components/cycle-form-dialog';
+import { MergeSourcesList } from '@/components/merge-sources-list';
+import { MergedIntoAlert } from '@/components/merged-into-alert';
 import {
   CleaningRunSection,
 } from '@/components/stage';
@@ -675,6 +677,9 @@ export default function CycleDetailPage() {
           <span className="text-muted-foreground">Back to Cycles</span>
         </div>
 
+        {/* Merged Into Alert - shows when this cycle was merged into another */}
+        <MergedIntoAlert cycleId={cycleId} />
+
       {/* Collapsible Cycle Overview Card */}
       <Collapsible open={isOverviewOpen} onOpenChange={setIsOverviewOpen}>
         <Card className={`overflow-hidden ${cycle.status === 'Completed' ? 'border-green-500/50 bg-gradient-to-br from-green-500/5 to-transparent dark:from-green-500/10' : ''}`}>
@@ -848,6 +853,9 @@ export default function CycleDetailPage() {
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      {/* Merge Sources List - shows source cycles when this is a merged/combined cycle */}
+      <MergeSourcesList cycleId={cycleId} />
 
       {/* Stage Runs */}
       <div className="space-y-4">
