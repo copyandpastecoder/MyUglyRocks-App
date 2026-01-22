@@ -41,6 +41,7 @@ public class PostService : IPostService
         }
 
         var query = _context.Set<Post>()
+            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Include(p => p.User)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)
@@ -52,7 +53,7 @@ public class PostService : IPostService
             .Include(p => p.Inventory)
                 .ThenInclude(i => i!.InventorySpecimens)
                     .ThenInclude(s => s.UserSpecimen)
-            .Where(p => p.Status == PostStatus.Published 
+            .Where(p => p.Status == PostStatus.Published
                 && (p.PostType == PostType.Cycle || p.PostType == PostType.Inventory));
 
         query = sortBy?.ToLower() switch
@@ -94,6 +95,7 @@ public class PostService : IPostService
         }
 
         var query = _context.Set<Post>()
+            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Include(p => p.User)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)

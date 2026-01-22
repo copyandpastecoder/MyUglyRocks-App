@@ -30,6 +30,7 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportCyclesAsync(Guid userId, ExportCyclesRequest? request = null)
     {
         var query = Cycles
+            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Where(c => c.UserId == userId && !c.IsDeleted)
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
             .Include(c => c.CycleSpecimens)
@@ -48,7 +49,11 @@ public class ExportService : IExportService
             query = query.Where(c => c.Status == status);
         }
 
-        var cycles = await query.OrderByDescending(c => c.StartDate).ToListAsync();
+        // Limit export to 10,000 records to prevent excessive memory usage
+        var cycles = await query
+            .OrderByDescending(c => c.StartDate)
+            .Take(10000)
+            .ToListAsync();
 
         var rows = cycles.Select(c => new CycleCsvRow(
             CycleId: c.CycleId,
@@ -73,6 +78,7 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportCycleAsync(Guid userId, Guid cycleId)
     {
         var cycle = await Cycles
+            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Where(c => c.CycleId == cycleId && c.UserId == userId && !c.IsDeleted)
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageRunBarrels)
@@ -113,6 +119,7 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportStagesAsync(Guid userId, ExportCyclesRequest? request = null)
     {
         var query = StageRuns
+            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Include(s => s.Cycle)
             .Include(s => s.StageRunBarrels)
                 .ThenInclude(srb => srb.Barrel)
@@ -131,7 +138,11 @@ public class ExportService : IExportService
             query = query.Where(s => s.Cycle.Status == cycleStatus);
         }
 
-        var stages = await query.OrderByDescending(s => s.StartDateTime).ToListAsync();
+        // Limit export to 10,000 records to prevent excessive memory usage
+        var stages = await query
+            .OrderByDescending(s => s.StartDateTime)
+            .Take(10000)
+            .ToListAsync();
 
         var rows = stages.Select(s => new StageCsvRow(
             StageId: s.StageRunId,
@@ -160,10 +171,13 @@ public class ExportService : IExportService
 
     public async Task<ExportResponse> ExportTumblersAsync(Guid userId)
     {
+        // Limit export to 10,000 records to prevent excessive memory usage
         var tumblers = await Tumblers
+            .AsSplitQuery()
             .Include(t => t.Barrels)
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.DateCreated)
+            .Take(10000)
             .ToListAsync();
 
         var rows = tumblers.Select(t => new TumblerCsvRow(
@@ -185,10 +199,13 @@ public class ExportService : IExportService
 
     public async Task<ExportResponse> ExportPostsAsync(Guid userId)
     {
+        // Limit export to 10,000 records to prevent excessive memory usage
         var posts = await Posts
+            .AsSplitQuery()
             .Include(p => p.Cycle)
             .Where(p => p.UserId == userId && !p.IsDeleted)
             .OrderByDescending(p => p.DateCreated)
+            .Take(10000)
             .ToListAsync();
 
         var rows = posts.Select(p => new PostCsvRow(

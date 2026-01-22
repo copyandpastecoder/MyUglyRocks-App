@@ -1532,8 +1532,10 @@ public class CycleService : ICycleService
     // Statistics
     public async Task<CycleStatisticsDto> GetCycleStatisticsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        // Load all cycles with their stage runs, barrels, and specimens
+        // Use AsSplitQuery to prevent cartesian explosion from multiple includes
+        // This executes separate SQL queries for each navigation property instead of one massive JOIN
         var cycles = await Cycles
+            .AsSplitQuery()
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageRunBarrels)
                     .ThenInclude(srb => srb.Barrel)
