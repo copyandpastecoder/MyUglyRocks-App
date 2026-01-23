@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using MyUglyRocks.Abstractions.DTOs;
@@ -135,7 +136,9 @@ public class CycleService : ICycleService
             tumblerNumber,
             hasDuplicateTumbler,
             barrelNumber,
-            barrelNickname
+            barrelNickname,
+            cycle.MergedIntoCycleId.HasValue,
+            !string.IsNullOrEmpty(cycle.MergedFromCycleIds)
         );
     }
 
@@ -349,6 +352,20 @@ public class CycleService : ICycleService
             }
         }
 
+        // Parse merge tracking fields
+        Guid[]? mergedFromCycleIds = null;
+        if (!string.IsNullOrEmpty(cycle.MergedFromCycleIds))
+        {
+            try
+            {
+                mergedFromCycleIds = JsonSerializer.Deserialize<Guid[]>(cycle.MergedFromCycleIds);
+            }
+            catch
+            {
+                // Invalid JSON, ignore
+            }
+        }
+
         return new CycleDto(
             cycle.CycleId,
             cycle.Name,
@@ -373,7 +390,9 @@ public class CycleService : ICycleService
             postId,
             galleryLikes,
             tumblerName,
-            barrelName
+            barrelName,
+            mergedFromCycleIds,
+            cycle.MergedIntoCycleId
         );
     }
 
@@ -2063,5 +2082,162 @@ public class CycleService : ICycleService
             avgConcurrent,
             monthlyActivity
         );
+    }
+
+    public async Task<MergeCyclesResult> MergeCyclesAsync(Guid userId, MergeCyclesRequest request, CancellationToken cancellationToken = default)
+    {
+        var warnings = new List<string>();
+
+        // 1. Validate and load source cycles with all related data
+        var cycle1 = await Cycles
+            .Include(c => c.CycleSpecimens)
+            .FirstOrDefaultAsync(c => c.CycleId == request.SourceCycleId1
+                && c.UserId == userId
+                && !c.IsDeleted, cancellationToken);
+
+        var cycle2 = await Cycles
+            .Include(c => c.CycleSpecimens)
+            .FirstOrDefaultAsync(c => c.CycleId == request.SourceCycleId2
+                && c.UserId == userId
+                && !c.IsDeleted, cancellationToken);
+
+        // Validation checks
+        if (cycle1 == null || cycle2 == null)
+            throw new InvalidOperationException("One or both source cycles not found");
+
+        if (cycle1.CycleId == cycle2.CycleId)
+            throw new InvalidOperationException("Cannot merge a cycle with itself");
+
+        if (cycle1.Status != CycleStatus.Completed || cycle2.Status != CycleStatus.Completed)
+            throw new InvalidOperationException("Both cycles must be completed before merging");
+
+        if (cycle1.MergedIntoCycleId.HasValue || cycle2.MergedIntoCycleId.HasValue)
+            throw new InvalidOperationException("One or both cycles have already been merged into another cycle");
+
+        // 2. Create new merged cycle
+        var newCycle = new Cycle
+        {
+            CycleId = Guid.NewGuid(),
+            UserId = userId,
+            Name = request.NewCycleName,
+            StartDate = request.StartDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+            Status = CycleStatus.Active,
+            Notes = request.NewCycleNotes,
+            MergedFromCycleIds = JsonSerializer.Serialize(new[] {
+                request.SourceCycleId1,
+                request.SourceCycleId2
+            }),
+            DateCreated = DateTime.UtcNow,
+            DateUpdated = DateTime.UtcNow
+        };
+
+        _context.Add(newCycle);
+
+        // 3. Copy specimens from both cycles (deduplicate by specimen ID combination)
+        var allSpecimens = cycle1.CycleSpecimens
+            .Concat(cycle2.CycleSpecimens)
+            .GroupBy(cs => new {
+                cs.SpecimenId,
+                cs.UserSpecimenId,
+                cs.InventorySpecimenId
+            })
+            .Select(g => g.First())
+            .ToList();
+
+        foreach (var specimen in allSpecimens)
+        {
+            _context.Set<CycleSpecimen>().Add(new CycleSpecimen
+            {
+                CycleSpecimenId = Guid.NewGuid(),
+                CycleId = newCycle.CycleId,
+                SpecimenId = specimen.SpecimenId,
+                UserSpecimenId = specimen.UserSpecimenId,
+                InventorySpecimenId = specimen.InventorySpecimenId,
+                MarkDepletedOnComplete = specimen.MarkDepletedOnComplete,
+                AddPhotosFromInventory = false // Don't re-add inventory photos
+            });
+        }
+
+        // 4. Mark source cycles as merged
+        cycle1.MergedIntoCycleId = newCycle.CycleId;
+        cycle1.DateUpdated = DateTime.UtcNow;
+        cycle2.MergedIntoCycleId = newCycle.CycleId;
+        cycle2.DateUpdated = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync(cancellationToken);
+
+        // 5. Load the new cycle with full data and return result
+        var cycleDto = await GetCycleAsync(newCycle.CycleId, userId, cancellationToken);
+
+        return new MergeCyclesResult(
+            cycleDto!,
+            allSpecimens.Count,
+            0, // No photos copied (as per requirements)
+            warnings
+        );
+    }
+
+    public async Task<IEnumerable<MergeSourceCycleDto>> GetMergeSourceCyclesAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cycle = await Cycles
+            .FirstOrDefaultAsync(c => c.CycleId == cycleId
+                && c.UserId == userId
+                && !c.IsDeleted, cancellationToken);
+
+        if (cycle?.MergedFromCycleIds == null)
+            return Enumerable.Empty<MergeSourceCycleDto>();
+
+        Guid[] sourceIds;
+        try
+        {
+            sourceIds = JsonSerializer.Deserialize<Guid[]>(cycle.MergedFromCycleIds) ?? Array.Empty<Guid>();
+        }
+        catch
+        {
+            return Enumerable.Empty<MergeSourceCycleDto>();
+        }
+
+        var sourceCycles = await Cycles
+            .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
+                .ThenInclude(s => s.Photos.Where(p => !p.IsDeleted))
+            .Include(c => c.CycleSpecimens)
+            .Where(c => sourceIds.Contains(c.CycleId) && !c.IsDeleted)
+            .ToListAsync(cancellationToken);
+
+        return sourceCycles.Select(c => new MergeSourceCycleDto(
+            c.CycleId,
+            c.Name,
+            c.StartDate,
+            c.EndDate,
+            c.StageRuns.Count,
+            c.CycleSpecimens
+                .Select(cs => cs.SpecimenId ?? cs.UserSpecimenId ?? cs.InventorySpecimenId)
+                .Distinct()
+                .Count(),
+            c.StageRuns.SelectMany(sr => sr.Photos).Count(p => !p.IsDeleted)
+        )).ToList();
+    }
+
+    public async Task<MergedIntoCycleDto?> GetMergedIntoCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var cycle = await Cycles
+            .FirstOrDefaultAsync(c => c.CycleId == cycleId
+                && c.UserId == userId
+                && !c.IsDeleted, cancellationToken);
+
+        if (cycle?.MergedIntoCycleId == null)
+            return null;
+
+        var targetCycle = await Cycles
+            .Where(c => c.CycleId == cycle.MergedIntoCycleId && !c.IsDeleted)
+            .Select(c => new MergedIntoCycleDto(
+                c.CycleId,
+                c.Name,
+                c.StartDate,
+                c.Status.ToString()
+            ))
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return targetCycle;
     }
 }

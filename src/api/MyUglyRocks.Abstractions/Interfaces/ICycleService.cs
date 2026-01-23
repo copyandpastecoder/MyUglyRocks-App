@@ -33,4 +33,9 @@ public interface ICycleService
 
     // Photo operations
     Task<IEnumerable<CyclePhotoDto>> GetCyclePhotosAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default);
+
+    // Cycle merge operations
+    Task<MergeCyclesResult> MergeCyclesAsync(Guid userId, MergeCyclesRequest request, CancellationToken cancellationToken = default);
+    Task<IEnumerable<MergeSourceCycleDto>> GetMergeSourceCyclesAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default);
+    Task<MergedIntoCycleDto?> GetMergedIntoCycleAsync(Guid cycleId, Guid userId, CancellationToken cancellationToken = default);
 }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, MoreVertical, Pencil, CheckCircle, Trash2, AlertCircle, RotateCcw, Cylinder, Eye, Gem, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -109,7 +110,19 @@ export function CycleCard({ cycle, onDelete, onEdit, showActions = true, plainSt
 
           {/* Cycle info - navigates to cycle */}
           <Link href={`/cycles/${cycle.cycleId}`} className="flex-1 min-w-0">
-            <p className="font-medium truncate">{cycle.name}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium truncate">{cycle.name}</p>
+              {cycle.isMerged && (
+                <Badge variant="outline" className="shrink-0 text-xs">
+                  Merged
+                </Badge>
+              )}
+              {cycle.isMergedResult && (
+                <Badge variant="secondary" className="shrink-0 text-xs">
+                  Combined
+                </Badge>
+              )}
+            </div>
             <p className="text-sm text-muted-foreground truncate">
               {cycle.stageCount} stage{cycle.stageCount !== 1 ? 's' : ''}
               {progressText && (
