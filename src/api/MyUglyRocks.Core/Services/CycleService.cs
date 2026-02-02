@@ -1551,10 +1551,8 @@ public class CycleService : ICycleService
     // Statistics
     public async Task<CycleStatisticsDto> GetCycleStatisticsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        // Use AsSplitQuery to prevent cartesian explosion from multiple includes
-        // This executes separate SQL queries for each navigation property instead of one massive JOIN
+        // Prevent cartesian explosion from multiple includes with separate queries if needed
         var cycles = await Cycles
-            .AsSplitQuery()
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageRunBarrels)
                     .ThenInclude(srb => srb.Barrel)
@@ -2134,6 +2132,15 @@ public class CycleService : ICycleService
         _context.Add(newCycle);
 
         // 3. Copy specimens from both cycles (deduplicate by specimen ID combination)
+        // Note: Deduplication uses AND logic - all three ID fields must match.
+        // This is correct because CycleSpecimen has exactly ONE of these fields set:
+        //   - SpecimenId (system specimen)
+        //   - UserSpecimenId (user's custom specimen)
+        //   - InventorySpecimenId (inventory specimen)
+        // Two specimens with the same SpecimenId but different UserSpecimenIds
+        // are intentionally treated as distinct (user added different specimen types).
+        var totalSpecimens = cycle1.CycleSpecimens.Count + cycle2.CycleSpecimens.Count;
+
         var allSpecimens = cycle1.CycleSpecimens
             .Concat(cycle2.CycleSpecimens)
             .GroupBy(cs => new {
@@ -2143,6 +2150,13 @@ public class CycleService : ICycleService
             })
             .Select(g => g.First())
             .ToList();
+
+        // Add warning if specimens were deduplicated
+        var deduplicatedCount = totalSpecimens - allSpecimens.Count;
+        if (deduplicatedCount > 0)
+        {
+            warnings.Add($"{deduplicatedCount} duplicate specimen(s) were found and removed during merge");
+        }
 
         foreach (var specimen in allSpecimens)
         {
@@ -2192,8 +2206,9 @@ public class CycleService : ICycleService
         {
             sourceIds = JsonSerializer.Deserialize<Guid[]>(cycle.MergedFromCycleIds) ?? Array.Empty<Guid>();
         }
-        catch
+        catch (JsonException)
         {
+            // Invalid JSON format in MergedFromCycleIds - return empty
             return Enumerable.Empty<MergeSourceCycleDto>();
         }
 

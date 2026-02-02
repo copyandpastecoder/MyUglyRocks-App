@@ -89,7 +89,9 @@
       "Bash(del \"d:\\\\MyRepo\\\\MyUglyRocks-App\\\\src\\\\api\\\\MyUglyRocks.Infrastructure\\\\Migrations\\\\20251231000000_AddOriginalPhotoFields.cs\")",
       "Bash(del D:temp_pg_pass.txt)",
       "Bash(.scriptsrestart-apps.ps1)",
-      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"& ''.\\\\scripts\\\\restart-apps.ps1''\")"
+      "Bash(powershell.exe -ExecutionPolicy Bypass -Command \"& ''.\\\\scripts\\\\restart-apps.ps1''\")",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File ./scripts/restart-apps.ps1)",
+      "Bash(.scriptsrestart-apps.ps1 -SkipApi -NoPortForward)"
     ],
     "deny": [],
     "ask": []

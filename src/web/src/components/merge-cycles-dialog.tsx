@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import axios from 'axios';
 import {
   Dialog,
   DialogContent,
@@ -72,9 +73,9 @@ export function MergeCyclesDialog({
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter out already-merged cycles
+  // Filter out already-merged cycles and completed cycles
   const availableCycles = useMemo(() => {
-    return completedCycles.filter((c) => !c.isMerged);
+    return completedCycles.filter((c) => !c.isMerged && c.status !== 'Completed');
   }, [completedCycles]);
 
   const form = useForm<FormData>({
@@ -127,7 +128,15 @@ export function MergeCyclesDialog({
       router.push(`/cycles/${result.newCycle.cycleId}`);
     } catch (error) {
       console.error('Failed to merge cycles:', error);
-      toast.error('Failed to merge cycles. Please try again.');
+
+      // Extract specific error message from API response
+      let errorMessage = 'Failed to merge cycles. Please try again.';
+      if (axios.isAxiosError(error) && error.response?.data) {
+        const data = error.response.data;
+        errorMessage = data.error || data.message || data.title || errorMessage;
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +169,7 @@ export function MergeCyclesDialog({
                     <SelectContent>
                       {availableCycles.map((cycle) => (
                         <SelectItem key={cycle.cycleId} value={cycle.cycleId}>
-                          {cycle.name}
+                          {cycle.name} - {cycle.status}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -185,7 +194,7 @@ export function MergeCyclesDialog({
                     <SelectContent>
                       {secondCycleOptions.map((cycle) => (
                         <SelectItem key={cycle.cycleId} value={cycle.cycleId}>
-                          {cycle.name}
+                          {cycle.name} - {cycle.status}
                         </SelectItem>
                       ))}
                     </SelectContent>

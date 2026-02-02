@@ -357,9 +357,12 @@ export const cycleApi = {
     try {
       const response = await api.get<MergedIntoCycleDto>(`/cycles/${cycleId}/merged-into`);
       return response.data;
-    } catch {
-      // 404 means not merged, return null
-      return null;
+    } catch (error) {
+      // 404 means not merged, return null; rethrow other errors
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        return null;
+      }
+      throw error;
     }
   },
 };

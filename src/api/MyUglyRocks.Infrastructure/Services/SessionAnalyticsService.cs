@@ -309,15 +309,23 @@ public class SessionAnalyticsService : ISessionAnalyticsService
             : 0;
 
         // Session trend (daily counts) - database-level grouping by date
-        var sessionTrend = await sessionsQuery
-            .GroupBy(s => s.SessionStart.Date)
+        // Use a two-step approach for reliable translation:
+        // 1. Group sessions by date and UserId to get distinct user sessions per day
+        // 2. Count sessions and distinct users per day
+        var dailySessionData = await sessionsQuery
+            .GroupBy(s => new { s.SessionStart.Date, s.UserId })
+            .Select(g => new { g.Key.Date, g.Key.UserId, SessionCount = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var sessionTrend = dailySessionData
+            .GroupBy(x => x.Date)
             .Select(g => new SessionTrendDto(
                 g.Key,
-                g.Count(),
-                g.Select(s => s.UserId).Distinct().Count()
+                g.Sum(x => x.SessionCount),
+                g.Select(x => x.UserId).Distinct().Count()
             ))
             .OrderBy(x => x.Date)
-            .ToListAsync(cancellationToken);
+            .ToList();
 
         return new BrowserStatsDto(
             totalSessions,

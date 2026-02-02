@@ -30,7 +30,6 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportCyclesAsync(Guid userId, ExportCyclesRequest? request = null)
     {
         var query = Cycles
-            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Where(c => c.UserId == userId && !c.IsDeleted)
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
             .Include(c => c.CycleSpecimens)
@@ -78,7 +77,6 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportCycleAsync(Guid userId, Guid cycleId)
     {
         var cycle = await Cycles
-            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Where(c => c.CycleId == cycleId && c.UserId == userId && !c.IsDeleted)
             .Include(c => c.StageRuns.Where(s => !s.IsDeleted))
                 .ThenInclude(s => s.StageRunBarrels)
@@ -119,7 +117,6 @@ public class ExportService : IExportService
     public async Task<ExportResponse> ExportStagesAsync(Guid userId, ExportCyclesRequest? request = null)
     {
         var query = StageRuns
-            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Include(s => s.Cycle)
             .Include(s => s.StageRunBarrels)
                 .ThenInclude(srb => srb.Barrel)
@@ -173,7 +170,6 @@ public class ExportService : IExportService
     {
         // Limit export to 10,000 records to prevent excessive memory usage
         var tumblers = await Tumblers
-            .AsSplitQuery()
             .Include(t => t.Barrels)
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.DateCreated)
@@ -201,7 +197,6 @@ public class ExportService : IExportService
     {
         // Limit export to 10,000 records to prevent excessive memory usage
         var posts = await Posts
-            .AsSplitQuery()
             .Include(p => p.Cycle)
             .Where(p => p.UserId == userId && !p.IsDeleted)
             .OrderByDescending(p => p.DateCreated)
