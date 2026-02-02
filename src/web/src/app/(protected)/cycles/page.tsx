@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useCycles, useDeleteCycle, useCycle } from '@/hooks';
 import { PAGE_CONTAINER } from '@/lib/layout';
@@ -9,7 +9,7 @@ import { FullPageSkeleton } from '@/components/skeletons';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageTransition, StaggerContainer, StaggerItem } from '@/components/ui/page-transition';
 import { NoCyclesEmpty } from '@/components/ui/empty-state';
-import { Plus, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
+import { Plus, ChevronsUpDown, ChevronsDownUp, Merge } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { CycleFormDialog } from '@/components/cycle-form-dialog';
 import { CycleCard } from '@/components/cycle-card';
+import { MergeCyclesDialog } from '@/components/merge-cycles-dialog';
 
 export default function CyclesPage() {
   const searchParams = useSearchParams();
@@ -34,6 +35,7 @@ export default function CyclesPage() {
   );
   const [formDialogOpen, setFormDialogOpen] = useState(false);
   const [editingCycleId, setEditingCycleId] = useState<string | null>(null);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   // Expand/collapse all: undefined = individual control, true = all expanded, false = all collapsed
   const [expandAllState, setExpandAllState] = useState<boolean | undefined>(true);
 
@@ -41,6 +43,14 @@ export default function CyclesPage() {
   const sortOrder = activeTab === 'Active' ? 'asc' : 'desc';
   const { data: cycles, isLoading, refetch } = useCycles(activeTab, sortOrder);
   const deleteMutation = useDeleteCycle();
+
+  // Calculate if merge is available (2+ completed cycles that haven't been merged)
+  const { data: completedCycles } = useCycles('Completed', 'desc');
+  const canMerge = useMemo(() => {
+    if (!completedCycles) return false;
+    const availableForMerge = completedCycles.filter((c) => !c.isMerged);
+    return availableForMerge.length >= 2;
+  }, [completedCycles]);
 
   // Fetch full cycle details when editing
   const { data: editingCycle } = useCycle(editingCycleId);
@@ -87,10 +97,18 @@ export default function CyclesPage() {
             <h1 className="text-2xl font-bold tracking-tight">Tumbling Cycles</h1>
             <p className="text-muted-foreground">Track your rock tumbling progress</p>
           </div>
-          <Button onClick={handleNewCycle}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Cycle
-          </Button>
+          <div className="flex gap-2">
+            {canMerge && (
+              <Button variant="outline" onClick={() => setMergeDialogOpen(true)}>
+                <Merge className="mr-2 h-4 w-4" />
+                Merge Cycles
+              </Button>
+            )}
+            <Button onClick={handleNewCycle}>
+              <Plus className="mr-2 h-4 w-4" />
+              New Cycle
+            </Button>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -172,6 +190,13 @@ export default function CyclesPage() {
         onOpenChange={handleDialogClose}
         cycle={editingCycle}
         onUpdated={() => refetch()}
+      />
+
+      <MergeCyclesDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
+        completedCycles={completedCycles || []}
+        onSuccess={() => refetch()}
       />
       </div>
     </PageTransition>

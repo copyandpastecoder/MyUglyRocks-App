@@ -48,7 +48,11 @@ public class ExportService : IExportService
             query = query.Where(c => c.Status == status);
         }
 
-        var cycles = await query.OrderByDescending(c => c.StartDate).ToListAsync();
+        // Limit export to 10,000 records to prevent excessive memory usage
+        var cycles = await query
+            .OrderByDescending(c => c.StartDate)
+            .Take(10000)
+            .ToListAsync();
 
         var rows = cycles.Select(c => new CycleCsvRow(
             CycleId: c.CycleId,
@@ -131,7 +135,11 @@ public class ExportService : IExportService
             query = query.Where(s => s.Cycle.Status == cycleStatus);
         }
 
-        var stages = await query.OrderByDescending(s => s.StartDateTime).ToListAsync();
+        // Limit export to 10,000 records to prevent excessive memory usage
+        var stages = await query
+            .OrderByDescending(s => s.StartDateTime)
+            .Take(10000)
+            .ToListAsync();
 
         var rows = stages.Select(s => new StageCsvRow(
             StageId: s.StageRunId,
@@ -160,10 +168,12 @@ public class ExportService : IExportService
 
     public async Task<ExportResponse> ExportTumblersAsync(Guid userId)
     {
+        // Limit export to 10,000 records to prevent excessive memory usage
         var tumblers = await Tumblers
             .Include(t => t.Barrels)
             .Where(t => t.UserId == userId)
             .OrderByDescending(t => t.DateCreated)
+            .Take(10000)
             .ToListAsync();
 
         var rows = tumblers.Select(t => new TumblerCsvRow(
@@ -185,10 +195,12 @@ public class ExportService : IExportService
 
     public async Task<ExportResponse> ExportPostsAsync(Guid userId)
     {
+        // Limit export to 10,000 records to prevent excessive memory usage
         var posts = await Posts
             .Include(p => p.Cycle)
             .Where(p => p.UserId == userId && !p.IsDeleted)
             .OrderByDescending(p => p.DateCreated)
+            .Take(10000)
             .ToListAsync();
 
         var rows = posts.Select(p => new PostCsvRow(

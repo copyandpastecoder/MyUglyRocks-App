@@ -214,85 +214,117 @@ public class SessionAnalyticsService : ISessionAnalyticsService
     public async Task<BrowserStatsDto> GetBrowserStatsAsync(int days = 30, CancellationToken cancellationToken = default)
     {
         var cutoff = DateTime.UtcNow.AddDays(-days);
+        var sessionsQuery = _dbContext.UserSessions.Where(s => s.SessionStart >= cutoff);
 
-        var sessions = await _dbContext.UserSessions
-            .Where(s => s.SessionStart >= cutoff)
-            .ToListAsync(cancellationToken);
+        // Total sessions and unique users - database-level aggregation
+        var totalSessions = await sessionsQuery.CountAsync(cancellationToken);
+        var uniqueUsers = await sessionsQuery.Select(s => s.UserId).Distinct().CountAsync(cancellationToken);
 
-        var totalSessions = sessions.Count;
-        var uniqueUsers = sessions.Select(s => s.UserId).Distinct().Count();
-
-        // Browser breakdown
-        var browserBreakdown = sessions
-            .Where(s => !string.IsNullOrEmpty(s.BrowserName))
+        // Browser breakdown - database-level grouping
+        var browserBreakdown = await sessionsQuery
+            .Where(s => s.BrowserName != null && s.BrowserName != "")
             .GroupBy(s => s.BrowserName!)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .Select(g => new { Browser = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Browser, x => x.Count, cancellationToken);
 
-        // Device type breakdown
-        var deviceTypeBreakdown = sessions
-            .GroupBy(s => s.DeviceType.ToString())
-            .ToDictionary(g => g.Key, g => g.Count());
+        // Device type breakdown - database-level grouping
+        var deviceTypeBreakdown = await sessionsQuery
+            .GroupBy(s => s.DeviceType)
+            .Select(g => new { DeviceType = g.Key.ToString(), Count = g.Count() })
+            .ToDictionaryAsync(x => x.DeviceType, x => x.Count, cancellationToken);
 
-        // OS breakdown
-        var osBreakdown = sessions
-            .Where(s => !string.IsNullOrEmpty(s.OsName))
+        // OS breakdown - database-level grouping
+        var osBreakdown = await sessionsQuery
+            .Where(s => s.OsName != null && s.OsName != "")
             .GroupBy(s => s.OsName!)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .Select(g => new { Os = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Os, x => x.Count, cancellationToken);
 
-        // WebP/AVIF support
-        var sessionsWithWebPData = sessions.Where(s => s.SupportsWebP.HasValue).ToList();
-        var webPSupportPercentage = sessionsWithWebPData.Count > 0
-            ? Math.Round(sessionsWithWebPData.Count(s => s.SupportsWebP == true) * 100.0 / sessionsWithWebPData.Count, 1)
+        // WebP/AVIF support - database-level aggregation
+        var webPStats = await sessionsQuery
+            .Where(s => s.SupportsWebP.HasValue)
+            .GroupBy(s => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Supported = g.Count(s => s.SupportsWebP == true)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var webPSupportPercentage = webPStats != null && webPStats.Total > 0
+            ? Math.Round(webPStats.Supported * 100.0 / webPStats.Total, 1)
             : 0;
 
-        var sessionsWithAvifData = sessions.Where(s => s.SupportsAvif.HasValue).ToList();
-        var avifSupportPercentage = sessionsWithAvifData.Count > 0
-            ? Math.Round(sessionsWithAvifData.Count(s => s.SupportsAvif == true) * 100.0 / sessionsWithAvifData.Count, 1)
+        var avifStats = await sessionsQuery
+            .Where(s => s.SupportsAvif.HasValue)
+            .GroupBy(s => 1)
+            .Select(g => new
+            {
+                Total = g.Count(),
+                Supported = g.Count(s => s.SupportsAvif == true)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        var avifSupportPercentage = avifStats != null && avifStats.Total > 0
+            ? Math.Round(avifStats.Supported * 100.0 / avifStats.Total, 1)
             : 0;
 
-        // Users on old browsers (Safari < 14, IE, etc.)
-        var usersOnOldBrowsers = sessions
-            .Where(s => s.BrowserName == "Safari" && s.BrowserMajorVersion < 14 ||
+        // Users on old browsers - database-level filtering and distinct count
+        var usersOnOldBrowsers = await sessionsQuery
+            .Where(s => (s.BrowserName == "Safari" && s.BrowserMajorVersion < 14) ||
                         s.BrowserName == "IE" ||
-                        s.BrowserName == "Edge" && s.BrowserMajorVersion < 79)
+                        (s.BrowserName == "Edge" && s.BrowserMajorVersion < 79))
             .Select(s => s.UserId)
             .Distinct()
-            .Count();
+            .CountAsync(cancellationToken);
 
-        // Country breakdown
-        var countryBreakdown = sessions
-            .Where(s => !string.IsNullOrEmpty(s.Country))
+        // Country breakdown - database-level grouping
+        var countryBreakdown = await sessionsQuery
+            .Where(s => s.Country != null && s.Country != "")
             .GroupBy(s => s.Country!)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .Select(g => new { Country = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Country, x => x.Count, cancellationToken);
 
-        // Timezone breakdown
-        var timezoneBreakdown = sessions
-            .Where(s => !string.IsNullOrEmpty(s.Timezone))
+        // Timezone breakdown (top 10) - database-level grouping with ordering
+        var timezoneBreakdown = await sessionsQuery
+            .Where(s => s.Timezone != null && s.Timezone != "")
             .GroupBy(s => s.Timezone!)
-            .OrderByDescending(g => g.Count())
+            .Select(g => new { Timezone = g.Key, Count = g.Count() })
+            .OrderByDescending(x => x.Count)
             .Take(10)
-            .ToDictionary(g => g.Key, g => g.Count());
+            .ToDictionaryAsync(x => x.Timezone, x => x.Count, cancellationToken);
 
-        // Average session duration
-        var sessionsWithDuration = sessions.Where(s => s.SessionDurationSeconds.HasValue).ToList();
-        var avgSessionDurationMinutes = sessionsWithDuration.Count > 0
-            ? Math.Round(sessionsWithDuration.Average(s => s.SessionDurationSeconds!.Value) / 60.0, 1)
+        // Average session duration - database-level aggregation
+        var avgSessionDurationSeconds = await sessionsQuery
+            .Where(s => s.SessionDurationSeconds.HasValue)
+            .AverageAsync(s => (double?)s.SessionDurationSeconds, cancellationToken);
+
+        var avgSessionDurationMinutes = avgSessionDurationSeconds.HasValue
+            ? Math.Round(avgSessionDurationSeconds.Value / 60.0, 1)
             : 0;
 
-        // Average page views
+        // Average page views - database-level aggregation
         var avgPageViewsPerSession = totalSessions > 0
-            ? Math.Round(sessions.Average(s => s.PageViewCount), 1)
+            ? Math.Round(await sessionsQuery.AverageAsync(s => (double)s.PageViewCount, cancellationToken), 1)
             : 0;
 
-        // Session trend (daily counts)
-        var sessionTrend = sessions
-            .GroupBy(s => s.SessionStart.Date)
-            .OrderBy(g => g.Key)
+        // Session trend (daily counts) - database-level grouping by date
+        // Use a two-step approach for reliable translation:
+        // 1. Group sessions by date and UserId to get distinct user sessions per day
+        // 2. Count sessions and distinct users per day
+        var dailySessionData = await sessionsQuery
+            .GroupBy(s => new { s.SessionStart.Date, s.UserId })
+            .Select(g => new { g.Key.Date, g.Key.UserId, SessionCount = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        var sessionTrend = dailySessionData
+            .GroupBy(x => x.Date)
             .Select(g => new SessionTrendDto(
                 g.Key,
-                g.Count(),
-                g.Select(s => s.UserId).Distinct().Count()
+                g.Sum(x => x.SessionCount),
+                g.Select(x => x.UserId).Distinct().Count()
             ))
+            .OrderBy(x => x.Date)
             .ToList();
 
         return new BrowserStatsDto(

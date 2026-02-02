@@ -26,6 +26,9 @@ export interface CycleDto {
   // Tumbler/Barrel info
   tumblerName: string | null;
   barrelName: string | null;
+  // Merge tracking
+  mergedFromCycleIds: string[] | null;
+  mergedIntoCycleId: string | null;
 }
 
 export interface CycleListDto {
@@ -49,6 +52,9 @@ export interface CycleListDto {
   hasDuplicateTumbler: boolean;
   activeBarrelNumber: number | null;
   activeBarrelNickname: string | null;
+  // Merge tracking
+  isMerged: boolean;
+  isMergedResult: boolean;
 }
 
 export interface CreateCycleRequest {
@@ -318,4 +324,48 @@ export interface CyclePhotoDto {
   stageRunId: string;
   stageName: string;
   runNumber: number;
+}
+
+/**
+ * Request to merge two cycles into a new cycle
+ */
+export interface MergeCyclesRequest {
+  sourceCycleId1: string;
+  sourceCycleId2: string;
+  newCycleName: string;
+  newCycleNotes?: string;
+  startDate?: string;
+}
+
+/**
+ * Result of merging two cycles
+ */
+export interface MergeCyclesResult {
+  newCycle: CycleDto;
+  specimensCopied: number;
+  photosCopied: number;
+  warnings: string[];
+}
+
+/**
+ * Light DTO for displaying source cycle links on merged cycle detail page
+ */
+export interface MergeSourceCycleDto {
+  cycleId: string;
+  name: string;
+  startDate: string;
+  endDate: string | null;
+  stageCount: number;
+  specimenCount: number;
+  photoCount: number;
+}
+
+/**
+ * Light DTO for displaying the target cycle on source cycle detail page
+ */
+export interface MergedIntoCycleDto {
+  cycleId: string;
+  name: string;
+  startDate: string;
+  status: string;
 }

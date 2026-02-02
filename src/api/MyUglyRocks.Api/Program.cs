@@ -63,9 +63,21 @@ try
     builder.Services.AddControllers();
     builder.Services.AddOpenApi();
 
-    // Configure PostgreSQL with EF Core
+    // Configure PostgreSQL with EF Core and connection pooling
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+        options.UseNpgsql(connectionString, npgsqlOptions =>
+               {
+                   // Connection pooling settings (Npgsql handles pooling automatically)
+                   npgsqlOptions.MaxBatchSize(100); // Batch multiple commands together
+                   npgsqlOptions.CommandTimeout(30); // 30 second command timeout
+                   npgsqlOptions.EnableRetryOnFailure(
+                       maxRetryCount: 3,
+                       maxRetryDelay: TimeSpan.FromSeconds(5),
+                       errorCodesToAdd: null); // Retry on transient failures
+               })
+               .EnableSensitiveDataLogging(builder.Environment.IsDevelopment()) // Only in dev
+               .EnableDetailedErrors(builder.Environment.IsDevelopment()) // Only in dev
                .ConfigureWarnings(warnings =>
                    warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning)));
 
@@ -131,7 +143,6 @@ try
     builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
 
     // Configure Hangfire for background jobs
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddHangfire(config => config
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()

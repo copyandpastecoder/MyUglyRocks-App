@@ -29,7 +29,10 @@ public record CycleDto(
     int GalleryLikes = 0,
     // Tumbler/Barrel info (from most recent stage)
     string? TumblerName = null,
-    string? BarrelName = null
+    string? BarrelName = null,
+    // Merge tracking
+    Guid[]? MergedFromCycleIds = null,
+    Guid? MergedIntoCycleId = null
 );
 
 public record CycleListDto(
@@ -52,7 +55,10 @@ public record CycleListDto(
     int? ActiveTumblerNumber = null,
     bool HasDuplicateTumbler = false,
     int? ActiveBarrelNumber = null,
-    string? ActiveBarrelNickname = null
+    string? ActiveBarrelNickname = null,
+    // Merge tracking
+    bool IsMerged = false,
+    bool IsMergedResult = false
 );
 
 public record CreateCycleRequest(
@@ -460,4 +466,57 @@ public record CyclePhotoDto(
     Guid StageRunId,
     string StageName,
     int RunNumber
+);
+
+/// <summary>
+/// Request to merge two cycles into a new cycle
+/// </summary>
+public record MergeCyclesRequest(
+    [Required(ErrorMessage = "Source cycle 1 is required")]
+    Guid SourceCycleId1,
+
+    [Required(ErrorMessage = "Source cycle 2 is required")]
+    Guid SourceCycleId2,
+
+    [Required(ErrorMessage = "Name is required")]
+    [StringLength(255, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 255 characters")]
+    string NewCycleName,
+
+    [StringLength(1000, ErrorMessage = "Notes must be at most 1000 characters")]
+    string? NewCycleNotes = null,
+
+    DateOnly? StartDate = null
+);
+
+/// <summary>
+/// Result of merging two cycles
+/// </summary>
+public record MergeCyclesResult(
+    CycleDto NewCycle,
+    int SpecimensCopied,
+    int PhotosCopied,
+    List<string> Warnings
+);
+
+/// <summary>
+/// Light DTO for displaying source cycle links on merged cycle detail page
+/// </summary>
+public record MergeSourceCycleDto(
+    Guid CycleId,
+    string Name,
+    DateOnly StartDate,
+    DateOnly? EndDate,
+    int StageCount,
+    int SpecimenCount,
+    int PhotoCount
+);
+
+/// <summary>
+/// Light DTO for displaying the target cycle on source cycle detail page
+/// </summary>
+public record MergedIntoCycleDto(
+    Guid CycleId,
+    string Name,
+    DateOnly StartDate,
+    string Status
 );

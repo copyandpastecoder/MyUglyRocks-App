@@ -52,7 +52,7 @@ public class PostService : IPostService
             .Include(p => p.Inventory)
                 .ThenInclude(i => i!.InventorySpecimens)
                     .ThenInclude(s => s.UserSpecimen)
-            .Where(p => p.Status == PostStatus.Published 
+            .Where(p => p.Status == PostStatus.Published
                 && (p.PostType == PostType.Cycle || p.PostType == PostType.Inventory));
 
         query = sortBy?.ToLower() switch

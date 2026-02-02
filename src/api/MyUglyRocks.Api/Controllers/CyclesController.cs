@@ -307,4 +307,49 @@ public class CyclesController : ControllerBase
         var photos = await _cycleService.GetCyclePhotosAsync(cycleId, GetUserId(), cancellationToken);
         return Ok(photos);
     }
+
+    /// <summary>
+    /// Merge two completed cycles into a new cycle
+    /// </summary>
+    [HttpPost("merge")]
+    [ProducesResponseType(typeof(MergeCyclesResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> MergeCycles([FromBody] MergeCyclesRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _cycleService.MergeCyclesAsync(GetUserId(), request, cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get source cycles that were merged to create this cycle
+    /// </summary>
+    [HttpGet("{cycleId:guid}/merge-sources")]
+    [ProducesResponseType(typeof(IEnumerable<MergeSourceCycleDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMergeSourceCycles(Guid cycleId, CancellationToken cancellationToken)
+    {
+        var sources = await _cycleService.GetMergeSourceCyclesAsync(cycleId, GetUserId(), cancellationToken);
+        return Ok(sources);
+    }
+
+    /// <summary>
+    /// Get the cycle this was merged into (if applicable)
+    /// </summary>
+    [HttpGet("{cycleId:guid}/merged-into")]
+    [ProducesResponseType(typeof(MergedIntoCycleDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMergedIntoCycle(Guid cycleId, CancellationToken cancellationToken)
+    {
+        var target = await _cycleService.GetMergedIntoCycleAsync(cycleId, GetUserId(), cancellationToken);
+        if (target == null)
+            return NotFound();
+
+        return Ok(target);
+    }
 }

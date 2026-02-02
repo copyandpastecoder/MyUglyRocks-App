@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Plus, Copy, Ban, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -70,12 +70,7 @@ export default function AdminInvitationsPage() {
 
   const pageSize = 20;
 
-  useEffect(() => {
-    fetchStats();
-    fetchCodes();
-  }, [page, statusFilter, searchQuery]);
-
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const data = await adminApi.getInvitationCodeStats();
       setStats(data || null);
@@ -83,9 +78,9 @@ export default function AdminInvitationsPage() {
       console.error('Failed to fetch stats:', error);
       setStats(null);
     }
-  };
+  }, []);
 
-  const fetchCodes = async () => {
+  const fetchCodes = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await adminApi.getInvitationCodes(
@@ -103,7 +98,12 @@ export default function AdminInvitationsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [statusFilter, page, pageSize]);
+
+  useEffect(() => {
+    fetchStats();
+    fetchCodes();
+  }, [fetchStats, fetchCodes]);
 
   const handleGenerateCodes = async () => {
     setIsGenerating(true);
