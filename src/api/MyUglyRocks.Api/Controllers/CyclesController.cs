@@ -309,7 +309,7 @@ public class CyclesController : ControllerBase
     }
 
     /// <summary>
-    /// Merge two completed cycles into a new cycle
+    /// Merge two cycles into a new cycle
     /// </summary>
     [HttpPost("merge")]
     [ProducesResponseType(typeof(MergeCyclesResult), StatusCodes.Status200OK)]
