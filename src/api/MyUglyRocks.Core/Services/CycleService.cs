@@ -2106,9 +2106,6 @@ public class CycleService : ICycleService
         if (cycle1.CycleId == cycle2.CycleId)
             throw new InvalidOperationException("Cannot merge a cycle with itself");
 
-        if (cycle1.Status != CycleStatus.Completed || cycle2.Status != CycleStatus.Completed)
-            throw new InvalidOperationException("Both cycles must be completed before merging");
-
         if (cycle1.MergedIntoCycleId.HasValue || cycle2.MergedIntoCycleId.HasValue)
             throw new InvalidOperationException("One or both cycles have already been merged into another cycle");
 

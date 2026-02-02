@@ -60,23 +60,23 @@ type FormData = z.infer<typeof formSchema>;
 interface MergeCyclesDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  completedCycles: CycleListDto[];
+  cyclesToMerge: CycleListDto[];
   onSuccess?: () => void;
 }
 
 export function MergeCyclesDialog({
   open,
   onOpenChange,
-  completedCycles,
+  cyclesToMerge,
   onSuccess,
 }: MergeCyclesDialogProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter out already-merged cycles and completed cycles
+  // Filter out already-merged cycles and cycles with Completed status
   const availableCycles = useMemo(() => {
-    return completedCycles.filter((c) => !c.isMerged && c.status !== 'Completed');
-  }, [completedCycles]);
+    return cyclesToMerge.filter((c) => !c.isMerged && c.status !== 'Completed');
+  }, [cyclesToMerge]);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
