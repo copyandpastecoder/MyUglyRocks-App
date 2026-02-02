@@ -44,13 +44,13 @@ export default function CyclesPage() {
   const { data: cycles, isLoading, refetch } = useCycles(activeTab, sortOrder);
   const deleteMutation = useDeleteCycle();
 
-  // Calculate if merge is available (2+ completed cycles that haven't been merged)
-  const { data: completedCycles } = useCycles('Completed', 'desc');
+  // Calculate if merge is available (2+ active cycles that haven't been merged)
+  const { data: activeCyclesForMerge } = useCycles('Active', 'asc');
   const canMerge = useMemo(() => {
-    if (!completedCycles) return false;
-    const availableForMerge = completedCycles.filter((c) => !c.isMerged);
+    if (!activeCyclesForMerge) return false;
+    const availableForMerge = activeCyclesForMerge.filter((c) => !c.isMerged);
     return availableForMerge.length >= 2;
-  }, [completedCycles]);
+  }, [activeCyclesForMerge]);
 
   // Fetch full cycle details when editing
   const { data: editingCycle } = useCycle(editingCycleId);
@@ -195,7 +195,7 @@ export default function CyclesPage() {
       <MergeCyclesDialog
         open={mergeDialogOpen}
         onOpenChange={setMergeDialogOpen}
-        completedCycles={completedCycles || []}
+        completedCycles={activeCyclesForMerge || []}
         onSuccess={() => refetch()}
       />
       </div>
