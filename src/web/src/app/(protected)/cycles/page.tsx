@@ -195,7 +195,7 @@ export default function CyclesPage() {
       <MergeCyclesDialog
         open={mergeDialogOpen}
         onOpenChange={setMergeDialogOpen}
-        completedCycles={activeCyclesForMerge || []}
+        cyclesToMerge={activeCyclesForMerge || []}
         onSuccess={() => refetch()}
       />
       </div>
