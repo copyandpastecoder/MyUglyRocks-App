@@ -1230,6 +1230,10 @@ export default function CycleDetailPage() {
                   onValueChange={(value) => {
                     setNextAction(value);
                     setNextActionError(false);
+                    // Auto-populate weight after when "Abort" is selected (redo = same weight)
+                    if (value === 'Abort' && completeStageWeightBefore !== null) {
+                      setLoadWeightAfterGrams(completeStageWeightBefore);
+                    }
                   }}
                 >
                   <div className="flex items-center space-x-2">

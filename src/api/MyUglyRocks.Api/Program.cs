@@ -143,7 +143,6 @@ try
     builder.Services.AddScoped<IImageProcessingService, ImageProcessingService>();
 
     // Configure Hangfire for background jobs
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddHangfire(config => config
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()

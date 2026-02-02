@@ -41,7 +41,6 @@ public class PostService : IPostService
         }
 
         var query = _context.Set<Post>()
-            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Include(p => p.User)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)
@@ -95,7 +94,6 @@ public class PostService : IPostService
         }
 
         var query = _context.Set<Post>()
-            .AsSplitQuery() // Prevent cartesian explosion from multiple includes
             .Include(p => p.User)
             .Include(p => p.PostPhotos)
                 .ThenInclude(pp => pp.Photo)

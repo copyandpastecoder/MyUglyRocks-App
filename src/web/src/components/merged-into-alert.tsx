@@ -12,13 +12,27 @@ interface MergedIntoAlertProps {
 }
 
 export function MergedIntoAlert({ cycleId }: MergedIntoAlertProps) {
-  const { data: targetCycle, isLoading } = useQuery({
+  const { data: targetCycle, isLoading, isError } = useQuery({
     queryKey: ['merged-into', cycleId],
     queryFn: () => cycleApi.getMergedIntoCycle(cycleId),
   });
 
   if (isLoading) {
     return <Skeleton className="h-20 w-full" />;
+  }
+
+  if (isError) {
+    return (
+      <Alert className="border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950">
+        <Info className="h-4 w-4 text-red-600 dark:text-red-400" />
+        <AlertTitle className="text-red-900 dark:text-red-100">
+          Error loading merge status
+        </AlertTitle>
+        <AlertDescription className="text-red-800 dark:text-red-200">
+          Unable to check if this cycle was merged. Please try refreshing the page.
+        </AlertDescription>
+      </Alert>
+    );
   }
 
   if (!targetCycle) {
