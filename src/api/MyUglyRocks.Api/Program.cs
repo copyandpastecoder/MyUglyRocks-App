@@ -149,13 +149,13 @@ try
         .UseRecommendedSerializerSettings()
         .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString), new PostgreSqlStorageOptions
         {
-            QueuePollInterval = TimeSpan.FromSeconds(1), // Faster job pickup (default 15s)
+            QueuePollInterval = TimeSpan.FromSeconds(15),
         }));
     builder.Services.AddHangfireServer(options =>
     {
-        options.SchedulePollingInterval = TimeSpan.FromSeconds(1);
+        options.SchedulePollingInterval = TimeSpan.FromSeconds(60);
         options.Queues = new[] { "default" };
-        options.WorkerCount = 5;
+        options.WorkerCount = 2;
     });
 
     // Configure Redis caching
