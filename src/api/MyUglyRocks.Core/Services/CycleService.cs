@@ -2089,12 +2089,16 @@ public class CycleService : ICycleService
         // 1. Validate and load source cycles with all related data
         var cycle1 = await Cycles
             .Include(c => c.CycleSpecimens)
+            .Include(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+                .ThenInclude(sr => sr.Photos.Where(p => !p.IsDeleted))
             .FirstOrDefaultAsync(c => c.CycleId == request.SourceCycleId1
                 && c.UserId == userId
                 && !c.IsDeleted, cancellationToken);
 
         var cycle2 = await Cycles
             .Include(c => c.CycleSpecimens)
+            .Include(c => c.StageRuns.Where(sr => !sr.IsDeleted))
+                .ThenInclude(sr => sr.Photos.Where(p => !p.IsDeleted))
             .FirstOrDefaultAsync(c => c.CycleId == request.SourceCycleId2
                 && c.UserId == userId
                 && !c.IsDeleted, cancellationToken);
@@ -2169,7 +2173,66 @@ public class CycleService : ICycleService
             });
         }
 
-        // 4. Mark source cycles as merged
+        // 4. Copy photos from both source cycles
+        var allPhotos = cycle1.StageRuns.SelectMany(sr => sr.Photos)
+            .Concat(cycle2.StageRuns.SelectMany(sr => sr.Photos))
+            .Where(p => !p.IsDeleted)
+            .ToList();
+
+        if (allPhotos.Count > 0)
+        {
+            // Create a stage run to hold merged photos
+            var photoStageRun = new StageRun
+            {
+                StageRunId = Guid.NewGuid(),
+                CycleId = newCycle.CycleId,
+                StageName = "Merged Photos",
+                RunNumber = 1,
+                TotalRuns = 1,
+                StartDateTime = DateTime.UtcNow,
+                Status = StageRunStatus.Active,
+                DateCreated = DateTime.UtcNow,
+                DateUpdated = DateTime.UtcNow
+            };
+            _context.Add(photoStageRun);
+
+            // Copy photos to new stage run
+            var sortOrder = 0;
+            foreach (var photo in allPhotos.OrderBy(p => p.DateCreated))
+            {
+                _context.Set<Photo>().Add(new Photo
+                {
+                    PhotoId = Guid.NewGuid(),
+                    StageRunId = photoStageRun.StageRunId,
+                    StorageKey = photo.StorageKey,
+                    Url = photo.Url,
+                    FileName = photo.FileName,
+                    MimeType = photo.MimeType,
+                    FileSizeBytes = photo.FileSizeBytes,
+                    Width = photo.Width,
+                    Height = photo.Height,
+                    PhotoType = photo.PhotoType,
+                    Caption = photo.Caption,
+                    SortOrder = sortOrder++,
+                    ProcessingStatus = photo.ProcessingStatus,
+                    ThumbnailUrl = photo.ThumbnailUrl,
+                    MediumUrl = photo.MediumUrl,
+                    LargeUrl = photo.LargeUrl,
+                    BlurHash = photo.BlurHash,
+                    ThumbnailStorageKey = photo.ThumbnailStorageKey,
+                    MediumStorageKey = photo.MediumStorageKey,
+                    LargeStorageKey = photo.LargeStorageKey,
+                    OriginalStorageKey = photo.OriginalStorageKey,
+                    OriginalUrl = photo.OriginalUrl,
+                    OriginalMimeType = photo.OriginalMimeType,
+                    OriginalFileSizeBytes = photo.OriginalFileSizeBytes,
+                    DateCreated = DateTime.UtcNow,
+                    DateUpdated = DateTime.UtcNow
+                });
+            }
+        }
+
+        // 5. Mark source cycles as merged
         cycle1.MergedIntoCycleId = newCycle.CycleId;
         cycle1.DateUpdated = DateTime.UtcNow;
         cycle2.MergedIntoCycleId = newCycle.CycleId;
@@ -2183,7 +2246,7 @@ public class CycleService : ICycleService
         return new MergeCyclesResult(
             cycleDto!,
             allSpecimens.Count,
-            0, // No photos copied (as per requirements)
+            allPhotos.Count,
             warnings
         );
     }
