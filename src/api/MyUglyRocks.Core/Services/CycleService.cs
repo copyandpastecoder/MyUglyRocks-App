@@ -2173,10 +2173,12 @@ public class CycleService : ICycleService
             });
         }
 
-        // 4. Copy photos from both source cycles
+        // 4. Copy photos from both source cycles (completed only — processing photos
+        //    have no background job queued for the new record and would be permanently stuck;
+        //    storage keys are shared with source photos so only completed/finalized photos are safe to reference)
         var allPhotos = cycle1.StageRuns.SelectMany(sr => sr.Photos)
             .Concat(cycle2.StageRuns.SelectMany(sr => sr.Photos))
-            .Where(p => !p.IsDeleted)
+            .Where(p => !p.IsDeleted && p.ProcessingStatus == PhotoProcessingStatus.Completed)
             .ToList();
 
         if (allPhotos.Count > 0)
@@ -2188,7 +2190,6 @@ public class CycleService : ICycleService
                 CycleId = newCycle.CycleId,
                 StageName = "Merged Photos",
                 RunNumber = 1,
-                TotalRuns = 1,
                 StartDateTime = DateTime.UtcNow,
                 Status = StageRunStatus.Active,
                 DateCreated = DateTime.UtcNow,
@@ -2196,7 +2197,7 @@ public class CycleService : ICycleService
             };
             _context.Add(photoStageRun);
 
-            // Copy photos to new stage run
+            // Copy photos to new stage run, preserving original creation date for chronological ordering
             var sortOrder = 0;
             foreach (var photo in allPhotos.OrderBy(p => p.DateCreated))
             {
@@ -2226,7 +2227,7 @@ public class CycleService : ICycleService
                     OriginalUrl = photo.OriginalUrl,
                     OriginalMimeType = photo.OriginalMimeType,
                     OriginalFileSizeBytes = photo.OriginalFileSizeBytes,
-                    DateCreated = DateTime.UtcNow,
+                    DateCreated = photo.DateCreated,
                     DateUpdated = DateTime.UtcNow
                 });
             }
