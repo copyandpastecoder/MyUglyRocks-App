@@ -1,5 +1,5 @@
 # Build stage
-FROM node:25-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 # Copy package files
@@ -15,7 +15,7 @@ COPY src/web/ .
 RUN npm run build
 
 # Production stage
-FROM node:25-alpine AS runner
+FROM node:26-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
